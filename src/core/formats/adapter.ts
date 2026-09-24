@@ -2,6 +2,7 @@ import type { FormatId } from '../area/areaDefinition';
 import type { EntryKey } from '../model/keys';
 import type { FieldId } from '../model/types';
 import type { DecodedText } from '../text/decode';
+import type { TextStyle } from '../text/style';
 
 /** Offsets into {@link DecodedText.text}: start inclusive, end exclusive. */
 export type TextRange = [start: number, end: number];
@@ -35,11 +36,38 @@ export interface ParsedFile {
   topLevelKeys: string[];
 }
 
-/** Reads one file format. Write support is added in phase 2. */
+/** A change of one entry; the adapter decides how it looks in its format. Only the field `value` so far. */
+export type FileOp =
+  | { kind: 'set'; key: EntryKey; value: string }
+  /** `after` names a sibling in the same object; without one (or if it is elsewhere) the entry goes last. */
+  | { kind: 'insert'; key: EntryKey; value: string; after?: EntryKey }
+  /** Objects that become empty are removed as well, except the top level. */
+  | { kind: 'delete'; key: EntryKey }
+  | { kind: 'rename'; from: EntryKey; to: EntryKey };
+
+export type EditErrorCode = 'missing-key' | 'key-exists' | 'path-conflict' | 'unparsable';
+
+/** An operation that does not fit the file, e.g. setting a key the file does not have. */
+export class EditError extends Error {
+  constructor(
+    readonly code: EditErrorCode,
+    message: string,
+  ) {
+    super(message);
+    this.name = 'EditError';
+  }
+}
+
+/** Reads and writes one file format without touching anything an operation does not ask for. */
 export interface FormatAdapter {
   readonly id: FormatId;
   decode(bytes: Uint8Array): DecodedText;
   parse(doc: DecodedText): ParsedFile;
+  /** Applies the operations in order; encoding and byte order mark stay. Throws {@link EditError}. */
+  applyOps(doc: DecodedText, ops: readonly FileOp[]): DecodedText;
+  encode(doc: DecodedText): Uint8Array;
+  /** Content of a new, empty file. */
+  createEmpty(style?: TextStyle): string;
 }
 
 export function hasSyntaxError(parsed: ParsedFile): boolean {

@@ -2,7 +2,10 @@ import { parseTree, printParseErrorCode, type Node, type ParseError } from 'json
 import { keyFromSegments } from '../../model/keys';
 import { VALUE_FIELD } from '../../model/types';
 import { decodeText } from '../../text/decode';
+import { encodeText } from '../../text/encode';
+import { DEFAULT_STYLE } from '../../text/style';
 import type { FileProblem, FormatAdapter, ParsedEntry, ParsedFile, TextRange } from '../adapter';
+import { applyJsonOps, emptyJsonObject } from './jsonWrite';
 
 /** Nested JSON objects with string leaves, as used by ngx-translate (edu-sharing Angular i18n). */
 export const jsonNestedAdapter: FormatAdapter = {
@@ -26,6 +29,9 @@ export const jsonNestedAdapter: FormatAdapter = {
       return { entries: [], problems, topLevelKeys: [] };
     }
   },
+  applyOps: (doc, ops) => ({ ...doc, text: applyJsonOps(doc.text, ops) }),
+  encode: encodeText,
+  createEmpty: (style = DEFAULT_STYLE) => emptyJsonObject(style),
 };
 
 function parseObject(text: string): ParsedFile {
