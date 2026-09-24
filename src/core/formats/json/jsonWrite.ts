@@ -19,8 +19,8 @@ export function applyJsonOps(text: string, ops: readonly FileOp[]): string {
   const style = detectStyle(text);
   let current = text;
   for (const op of ops) {
-    // An empty file counts as an empty object, as for Angular's HttpClient.
-    current = applyOp(current.trim() === '' ? emptyJsonObject(style) : current, op, style);
+    // An empty file has no entries (see the reader); one with only whitespace is a syntax error.
+    current = applyOp(current === '' ? emptyJsonObject(style) : current, op, style);
   }
   return current;
 }
@@ -85,7 +85,7 @@ function setValue(text: string, root: Node, key: EntryKey, value: string): strin
     throw new EditError('missing-key', `${displayKey(key)} does not exist in this file.`);
   }
   if (property.value.type !== 'string') {
-    throw new EditError('path-conflict', `${displayKey(key)} is an object, not a text.`);
+    throw new EditError('path-conflict', `${displayKey(key)} is not a text.`);
   }
   return applyEdits(text, [
     { offset: property.value.offset, length: property.value.length, content: jsonString(value) },
@@ -109,10 +109,7 @@ function insertEntry(
       break;
     }
     if (property.value.type !== 'object') {
-      throw new EditError(
-        'path-conflict',
-        `${key.segments.slice(0, depth + 1).join('.')} is a text, not an object.`,
-      );
+      throw new EditError('path-conflict', `${key.segments.slice(0, depth + 1).join('.')} is not an object.`);
     }
     object = property.value;
     depth++;
@@ -120,8 +117,7 @@ function insertEntry(
   const [name, ...below] = key.segments.slice(depth) as [string, ...string[]];
   const existing = below.length === 0 ? lastNamed(object, name) : undefined;
   if (existing) {
-    const code = existing.value.type === 'string' ? 'key-exists' : 'path-conflict';
-    throw new EditError(code, `${displayKey(key)} already exists in this file.`);
+    throw existsError(key, existing);
   }
   const sibling =
     after && samePath(after.segments.slice(0, -1), key.segments.slice(0, depth))
@@ -193,7 +189,7 @@ function deleteEntry(text: string, key: EntryKey): string {
     throw new EditError('missing-key', `${displayKey(key)} does not exist in this file.`);
   }
   if (property.value.type !== 'string') {
-    throw new EditError('path-conflict', `${displayKey(key)} is an object, not a text.`);
+    throw new EditError('path-conflict', `${displayKey(key)} is not a text.`);
   }
   // The highest level at which the path would leave an empty object behind.
   let level = key.segments.length - 1;
@@ -248,15 +244,16 @@ function renameEntry(text: string, root: Node, from: EntryKey, to: EntryKey, sty
     throw new EditError('missing-key', `${displayKey(from)} does not exist in this file.`);
   }
   if (property.value.type !== 'string') {
-    throw new EditError('path-conflict', `${displayKey(from)} is an object, not a text.`);
+    throw new EditError('path-conflict', `${displayKey(from)} is not a text.`);
   }
   if (from.id === to.id) {
     return text;
   }
   if (samePath(from.segments.slice(0, -1), to.segments.slice(0, -1))) {
     const parent = objectAt(root, to.segments.slice(0, -1))!;
-    if (lastNamed(parent, to.segments[to.segments.length - 1]!)) {
-      throw new EditError('key-exists', `${displayKey(to)} already exists in this file.`);
+    const existing = lastNamed(parent, to.segments[to.segments.length - 1]!);
+    if (existing) {
+      throw existsError(to, existing);
     }
     const content = jsonString(to.segments[to.segments.length - 1]!);
     const renamed = applyEdits(text, [{ offset: property.key.offset, length: property.key.length, content }]);
@@ -266,6 +263,13 @@ function renameEntry(text: string, root: Node, from: EntryKey, to: EntryKey, sty
   // Insert first: it checks the target path, and a shared parent object keeps its place.
   const inserted = insertEntry(text, root, to, property.value.value as string, undefined, style);
   return deleteEntry(inserted, from);
+}
+
+/** A new text cannot replace an object (a path conflict) nor any other value (the key exists). */
+function existsError(key: EntryKey, existing: Property): EditError {
+  return existing.value.type === 'object'
+    ? new EditError('path-conflict', `${displayKey(key)} is an object in this file.`)
+    : new EditError('key-exists', `${displayKey(key)} already exists in this file.`);
 }
 
 function propertiesOf(object: Node): Property[] {

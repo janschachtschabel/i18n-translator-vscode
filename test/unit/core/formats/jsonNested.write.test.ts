@@ -285,6 +285,34 @@ describe('jsonNestedAdapter.applyOps and encode', () => {
     expect(codeOf(NESTED, { kind: 'rename', from: key('A'), to: key('Z') })).toBe('path-conflict');
     expect(codeOf(NESTED, { kind: 'delete', key: key('A') })).toBe('path-conflict');
     expect(codeOf('{"A": }', { kind: 'set', key: key('A'), value: 'x' })).toBe('unparsable');
+    // Like the reader: only a file without any content counts as an empty object.
+    expect(codeOf('\n', { kind: 'insert', key: key('A'), value: 'x' })).toBe('unparsable');
+  });
+
+  it('reports an existing object as a path conflict and any other existing value as an existing key', () => {
+    const codeOf = (text: string, op: FileOp) => {
+      try {
+        apply(text, op);
+        return 'none';
+      } catch (error) {
+        return error instanceof EditError ? `${error.code}: ${error.message}` : String(error);
+      }
+    };
+    expect(codeOf(NESTED, { kind: 'rename', from: key('B'), to: key('A') })).toBe(
+      'path-conflict: A is an object in this file.',
+    );
+    expect(codeOf(NESTED, { kind: 'insert', key: key('A'), value: 'x' })).toBe(
+      'path-conflict: A is an object in this file.',
+    );
+    expect(codeOf('{\n  "N": 5\n}\n', { kind: 'insert', key: key('N'), value: 'x' })).toBe(
+      'key-exists: N already exists in this file.',
+    );
+    expect(codeOf('{\n  "N": 5\n}\n', { kind: 'set', key: key('N'), value: 'x' })).toBe(
+      'path-conflict: N is not a text.',
+    );
+    expect(codeOf('{\n  "N": null\n}\n', { kind: 'insert', key: key('N.X'), value: 'x' })).toBe(
+      'path-conflict: N is not an object.',
+    );
   });
 
   it('encodes UTF-8 with the byte order mark it was read with', () => {
