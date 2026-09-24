@@ -233,6 +233,17 @@ CONTRIBUTING: Entwicklungsumgebung (`npm ci`, F5), Tests, Architekturregeln (Ebe
 > - **1.18:** `toProblems(analysis, mode)` liegt als reine Funktion im Kern (`src/core/report/problems.ts`) statt `toDiagnostics(issues, texts, mode)` im Host; der Host lokalisiert nur und erzeugt `vscode.Diagnostic`. Ein einzelner fehlender Key behält im Modus `aggregate` seine eigene Meldung (die Sammelmeldung gilt ab zwei Keys, so passt der Plural). Verknüpfte Informationen zeigen `de: <Referenztext>` bzw. `KEY: <Referenztext>` (sprachneutral, auf 80 Zeichen gekürzt). `src/extension/localize.ts` ist der einzige Aufruf von `l10n.t()` ohne Literal; der l10n-Test prüft stattdessen den Katalog (`MESSAGE_TEMPLATES`).
 > - **1.19:** Die oberste Ebene sind die indizierten Wurzeln (Bereichsname, Pfad als Beschreibung), darunter die Einheiten. Probleme des Laufs stehen in einem eigenen Knoten. Die Zahlen stehen in Beschreibung, Tooltip-Tabelle und Screenreader-Label (Form „Fehler 3" statt „3 Fehler", damit kein Plural nötig ist). Badges von Dekorationen haben höchstens zwei Zeichen („9+"). „Im Explorer zeigen" markiert die Referenzdatei. Die Willkommensansicht unterscheidet „Suche läuft" und „nichts gefunden" (Kontext-Key `eduI18n.indexed`).
 > - **1.20:** Die Statusleiste zeigt immer beide Zahlen, kompakt formatiert. „Prüfen" wartet nicht auf die Benachrichtigung, sonst hinge der Befehl, bis sie geschlossen wird. „Ordner festlegen" fragt zuerst nach Vertrauen (`eduI18n.roots` ist eingeschränkt), bietet „Automatisch erkennen" an und schreibt nur den Wert des Workspace-Ordners. Der Befehl ist nur manuell geprüft (Dialoge lassen sich im Testhost nicht bedienen).
+> - **Review Block C/D, behoben:**
+>   - Diagnosen werden je Datei gesetzt: VS Code überträgt je `set`-Aufruf höchstens 1.100 Diagnosen und verwirft die restlichen Dateien stillschweigend (Modus `individual` im echten Repo: 1.222).
+>   - Verknüpfte Informationen sind fertige, sprachneutrale Texte; sie laufen nicht mehr über `l10n.t`, das für jede fehlende Übersetzung eine Warnung ins Log schreibt.
+>   - Wurzelknoten haben ein Screenreader-Label mit Zählern.
+>   - Markdown-Escaping, Dekorationen und Badge sind getestet.
+>   - Bereichs-IDs wie `constructor` brechen den Lauf nicht mehr ab.
+>   - In verschachtelten Workspace-Ordnern gehört eine Wurzel nur zum innersten Ordner.
+>   - „Ordner festlegen" ignoriert unter Windows und macOS die Groß-/Kleinschreibung.
+>   - „Prüfen" nennt Probleme beim Indizieren.
+>   - Deutsche Begriffe folgen VS Code („Arbeitsbereich", Ansicht „Probleme").
+> - **Verschoben (Review Block C/D):** Die Meldungen der Einstellungsprüfung im Kern (`parseSettings`, `parseAreaDefinition`, Dateimuster, Varianten) sind noch englischer Text. Sie werden in **8.2** zu Vorlagen mit Argumenten (wie `ISSUE_MESSAGES`) und übersetzt; ebenso die Parser-Codes in `parse-error` („ValueExpected"). Die Meldungen des Hosts selbst sind lokalisiert.
 
 ### Task 1.1: Textänderungen und Zeilenindex
 **Dateien:** Create `src/core/text/edits.ts`, `src/core/text/lineIndex.ts`; Test: `test/unit/core/text/edits.test.ts`, `lineIndex.test.ts`
@@ -895,6 +906,9 @@ schreibt nichts.
 **Dateien:** Modify `src/extension/services/workspaceIndex.ts`, `src/extension/panels/editorPanel.ts`; Create `src/shared/patch.ts`; Test: `test/unit/shared/patch.test.ts`, `test/integration/externalChanges.test.ts`
 - `WorkspaceIndex.refreshRoot(folder, area, root)`: nur diese Wurzel neu lesen und prüfen (Watcher und `FileStore`
   nutzen es); der volle Lauf bleibt für Konfigurationsänderungen und „Prüfen".
+- Erkannte Wurzeln bleiben gespeichert, bis der Marker-Watcher feuert oder sich Einstellungen, Ordner oder Vertrauen
+  ändern. Die workspaceweite Markersuche (136–335 ms je Bereich, mit MDS und Mail dreimal) läuft dann nicht bei
+  jedem Speichern (Hinweis aus dem Review Block C/D).
 - Offene Panels bekommen einen Patch (geänderte Zellen und Befunde); Fokus und Scrollposition bleiben.
 - Ändert sich die gerade bearbeitete Zelle extern, bleibt der Entwurf erhalten und die Zelle zeigt einen Konflikt mit
   „Übernehmen" oder „Meinen behalten".
@@ -982,7 +996,7 @@ schreibt nichts.
 **Phase 8 – Feinschliff und Release.**
 - Schritt 0: `/better-coding-workflow`.
 - 8.1 Dokumentation (README DE/EN, Nutzerhandbuch, Tastatur- und Einstellungsreferenz).
-- 8.2 l10n DE komplett.
+- 8.2 l10n DE komplett, auch die Meldungen der Einstellungsprüfung im Kern (als Vorlagen mit Argumenten) und die Parser-Codes von `parse-error` in Worten (verschoben aus dem Review Block C/D).
 - 8.3 a11y-Audit (`/better-coding-frontend`, Audit-Modus) und Behebungen.
 - 8.4 Performance mit dem echten Repo.
 - 8.5 Release-Workflow (Tag → VSIX → GitHub Release).
