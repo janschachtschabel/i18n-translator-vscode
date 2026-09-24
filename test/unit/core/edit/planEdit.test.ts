@@ -104,6 +104,10 @@ describe('planEdit: setText', () => {
     );
   });
 
+  it('plans nothing when a reference text that does not exist is cleared', () => {
+    expect(plan('common', { kind: 'setText', entryId: id('OLD_KEY'), locale: 'de', value: '' })).toEqual([]);
+  });
+
   it('needs a file for the language', () => {
     expect(plan('common', { kind: 'setText', entryId: id('SAVE'), locale: 'es', value: 'Guardar' })).toBe(
       'missing-file',
@@ -192,7 +196,18 @@ describe('planEdit: keys', () => {
 
   it('needs a reference text for a new key', () => {
     expect(plan('common', { kind: 'addKey', key: key('NEW'), values: { en: 'New' } })).toBe(
-      'reference-empty',
+      'reference-required',
+    );
+  });
+
+  it('adds no key to a bundle without a file in the reference language', () => {
+    const [unreferenced] = analyzeTexts({
+      'loose/en.json': '{\n  "A": "a"\n}\n',
+      'loose/fr.json': '{\n  "A": "a"\n}\n',
+    }).bundles;
+    expect(unreferenced!.reference).toBeUndefined();
+    expect(summary(planEdit(unreferenced!, { kind: 'addKey', key: key('NEW'), values: { en: 'New' } }))).toBe(
+      'no-reference',
     );
   });
 

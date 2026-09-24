@@ -70,12 +70,15 @@ function planSetText(
   }
   const edit = (op: FileOp) => done([{ kind: 'edit', relPath: file.relPath, ops: [op] }]);
   if (value === '') {
+    // Nothing to clear; intentionally empty reference texts stay.
+    if (current === undefined || (locale === bundle.reference && current === '')) {
+      return done([]);
+    }
     if (locale === bundle.reference) {
-      // Intentionally empty reference texts stay; a text there cannot be removed by clearing it.
-      return current === '' ? done([]) : fail(editProblem('reference-empty', { key: displayKey(key) }));
+      return fail(editProblem('reference-empty', { key: displayKey(key) }));
     }
     // An empty translation would hide the fallback, so the key goes instead (B2).
-    return current === undefined ? done([]) : edit({ kind: 'delete', key });
+    return edit({ kind: 'delete', key });
   }
   if (current !== undefined) {
     return value === current ? done([]) : edit({ kind: 'set', key, value });
@@ -102,8 +105,11 @@ function planAddKey(
   if (problem) {
     return fail(problem);
   }
-  if (bundle.reference === undefined || !values[bundle.reference]) {
-    return fail(editProblem('reference-empty', { key: displayKey(key) }));
+  if (bundle.reference === undefined) {
+    return fail(editProblem('no-reference', { bundle: bundle.name }));
+  }
+  if (!values[bundle.reference]) {
+    return fail(editProblem('reference-required', { key: displayKey(key), locale: bundle.reference }));
   }
   const withoutFile = Object.keys(values).find((locale) => values[locale] !== '' && !bundle.file(locale));
   if (withoutFile !== undefined) {

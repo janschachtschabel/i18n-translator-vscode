@@ -3,6 +3,8 @@ import type { MessageText } from '../checks/messages';
 /** Why an edit cannot be planned. */
 export type EditProblemCode =
   | 'reference-empty'
+  | 'reference-required'
+  | 'no-reference'
   | 'missing-file'
   | 'unreadable-file'
   | 'missing-key'
@@ -29,6 +31,8 @@ export interface EditWarning {
 /** English templates of the problems and warnings; hosts localize them like the issue messages. */
 export const EDIT_MESSAGES: Readonly<Record<EditProblemCode | EditWarningCode, string>> = {
   'reference-empty': 'The reference text of {key} cannot be empty; delete the key instead.',
+  'reference-required': '{key} needs a text in the reference language {locale}.',
+  'no-reference': '{bundle} has no file in the reference language; add that language first.',
   'missing-file': '{bundle} has no file for {locale} yet; add the language first.',
   'unreadable-file': '{file} has a syntax error; fix it before changing texts in this bundle.',
   'missing-key': '{key} does not exist in {bundle}.',
