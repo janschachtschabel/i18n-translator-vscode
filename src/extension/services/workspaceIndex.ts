@@ -140,11 +140,20 @@ export class WorkspaceIndex implements vscode.Disposable {
           areaRoots = fixed ?? (await timed('detect', () => this.detectRoots(folder, area, exclude)));
         } catch (error) {
           this.log.error(`Could not look for roots of ${area.id}.`, error);
-          report(`The roots of ${area.label} could not be determined: ${messageOf(error)}`);
+          report(
+            vscode.l10n.t('The roots of {area} could not be determined: {error}', {
+              area: area.label,
+              error: messageOf(error),
+            }),
+          );
           continue;
         }
         for (const root of areaRoots) {
           const base = vscode.Uri.joinPath(folder.uri, root);
+          // In nested workspace folders, a root belongs to the innermost one; otherwise it would count twice.
+          if (vscode.workspace.getWorkspaceFolder(base)?.uri.toString() !== folder.uri.toString()) {
+            continue;
+          }
           patterns.set(`${folder.uri}|root|${root}`, new vscode.RelativePattern(base, '**/*'));
           try {
             const paths = await timed('list', () => this.listRoot(folder, area, root, exclude));
@@ -153,7 +162,13 @@ export class WorkspaceIndex implements vscode.Disposable {
             roots.push({ folder, settings, analysis });
           } catch (error) {
             this.log.error(`Could not index ${area.id} in ${root || '.'}.`, error);
-            report(`${area.label} in ${root || '.'} could not be checked: ${messageOf(error)}`);
+            report(
+              vscode.l10n.t('{area} in {root} could not be checked: {error}', {
+                area: area.label,
+                root: root || '.',
+                error: messageOf(error),
+              }),
+            );
           }
         }
       }
@@ -211,7 +226,9 @@ export class WorkspaceIndex implements vscode.Disposable {
             bytes: await vscode.workspace.fs.readFile(vscode.Uri.joinPath(folder.uri, relPath)),
           };
         } catch (error) {
-          report(`${relPath} could not be read: ${messageOf(error)}`);
+          report(
+            vscode.l10n.t('{file} could not be read: {error}', { file: relPath, error: messageOf(error) }),
+          );
           return undefined;
         }
       }),
@@ -264,7 +281,11 @@ export class WorkspaceIndex implements vscode.Disposable {
 
 /** Roots from `eduI18n.roots` or the area definition; undefined means the roots are detected. */
 function fixedRoots(area: AreaDefinition, settings: Settings): readonly string[] | undefined {
-  return settings.roots[area.id] ?? (area.roots.length > 0 ? area.roots : undefined);
+  // Own keys only: an area id like "constructor" must not find Object.prototype.constructor.
+  if (Object.hasOwn(settings.roots, area.id)) {
+    return settings.roots[area.id];
+  }
+  return area.roots.length > 0 ? area.roots : undefined;
 }
 
 /** Workspace-relative paths of search results; results outside the folder cannot occur and are dropped. */

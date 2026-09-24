@@ -1,6 +1,8 @@
 {
   "{area} · {root}: errors {errors}, warnings {warnings}, infos {infos}": "{area} · {root}: Fehler {errors}, Warnungen {warnings}, Hinweise {infos}",
+  "{area} in {root} could not be checked: {error}": "{area} in {root} konnte nicht geprüft werden: {error}",
   "{count} keys are missing in {locale}.": "In {locale} fehlen {count} Keys.",
+  "{file} could not be read: {error}": "{file} konnte nicht gelesen werden: {error}",
   "{key} exists in {locale} but not in {base}.": "{key} gibt es in {locale}, aber nicht in {base}.",
   "{key} exists in {locale} but not in the reference {reference}.": "{key} gibt es in {locale}, aber nicht in der Referenz {reference}.",
   "{key} has a value that is not text.": "{key} hat einen Wert, der kein Text ist.",
@@ -38,6 +40,7 @@
   "The file is not valid UTF-8.": "Die Datei ist kein gültiges UTF-8.",
   "The HTML tags of {key} differ from the reference {reference}: missing {missing}, extra {extra}.": "Die HTML-Tags von {key} weichen von der Referenz {reference} ab: fehlend {missing}, zusätzlich {extra}.",
   "The placeholders of {key} differ from the reference {reference}: missing {missing}, extra {extra}.": "Die Platzhalter von {key} weichen von der Referenz {reference} ab: fehlend {missing}, zusätzlich {extra}.",
+  "The roots of {area} could not be determined: {error}": "Die Wurzeln von {area} konnten nicht ermittelt werden: {error}",
   "Translation folders can only be configured in a trusted workspace.": "Übersetzungsordner lassen sich nur in einem vertrauenswürdigen Workspace festlegen.",
   "Translations: errors {errors}, warnings {warnings}, infos {infos}": "Übersetzungen: Fehler {errors}, Warnungen {warnings}, Hinweise {infos}",
   "Use as Translation Folders": "Als Übersetzungsordner verwenden",

@@ -59,6 +59,39 @@ suite('workspace index', () => {
     assert.deepStrictEqual(spanishDiagnostics(), []);
   });
 
+  test('indexes a custom area whose id is also the name of an object method', async () => {
+    const { index } = await activateExtension();
+    await index.refresh();
+    const config = vscode.workspace.getConfiguration('eduI18n');
+    const area = {
+      id: 'constructor',
+      format: 'json-nested',
+      files: '{bundle}/{locale}.json',
+      localePattern: '[a-z]{2}',
+      roots: ['nowhere'],
+    };
+
+    const indexed = waitFor(index.onDidChange, (snapshot) =>
+      snapshot.roots.some((root) => root.analysis.area.id === 'constructor'),
+    );
+    await config.update('areas', [area], vscode.ConfigurationTarget.Global);
+    try {
+      const snapshot = await indexed;
+      assert.deepStrictEqual(snapshot.errors, []);
+      assert.deepStrictEqual(
+        snapshot.roots.map(({ analysis }) => [analysis.area.id, analysis.root]),
+        [
+          ['edu-sharing.angular', 'Frontend/src/assets/i18n'],
+          ['constructor', 'nowhere'],
+        ],
+      );
+    } finally {
+      const restored = waitFor(index.onDidChange, (snapshot) => snapshot.roots.length === 1);
+      await config.update('areas', undefined, vscode.ConfigurationTarget.Global);
+      await restored;
+    }
+  });
+
   test('re-indexes when a setting changes', async () => {
     const { index } = await activateExtension();
     await index.refresh();
