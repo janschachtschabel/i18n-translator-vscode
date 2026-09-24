@@ -21,16 +21,19 @@ export async function checkTranslations(index: WorkspaceIndex): Promise<void> {
   const numbers = new Intl.NumberFormat(vscode.env.language);
   const counts = countBySeverity(snapshot.roots.flatMap((root) => root.analysis.issues));
   const showProblems = vscode.l10n.t('Show Problems');
-  void vscode.window
-    .showInformationMessage(
-      vscode.l10n.t('Check finished. Errors: {errors}, warnings: {warnings}.', {
-        errors: numbers.format(counts.error),
-        warnings: numbers.format(counts.warning),
-      }),
-      showProblems,
-    )
-    .then(
-      (choice) =>
-        choice === showProblems && vscode.commands.executeCommand('workbench.actions.view.problems'),
-    );
+  const result = vscode.l10n.t('Check finished. Errors: {errors}, warnings: {warnings}.', {
+    errors: numbers.format(counts.error),
+    warnings: numbers.format(counts.warning),
+  });
+  // Unreadable files or unusable settings mean that part of the check did not run; the sidebar lists them.
+  const shown =
+    snapshot.errors.length > 0
+      ? vscode.window.showWarningMessage(
+          `${result} ${vscode.l10n.t('Problems while indexing: {0}', numbers.format(snapshot.errors.length))}`,
+          showProblems,
+        )
+      : vscode.window.showInformationMessage(result, showProblems);
+  void shown.then(
+    (choice) => choice === showProblems && vscode.commands.executeCommand('workbench.actions.view.problems'),
+  );
 }
