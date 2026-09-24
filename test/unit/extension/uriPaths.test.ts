@@ -11,8 +11,13 @@ describe('relativeUriPath', () => {
     expect(relativeUriPath('/C:/Users/jan/repo', '/c:/Users/jan/repo/i18n/de.json')).toBe('i18n/de.json');
   });
 
+  it('returns an empty path for the folder itself, as roots do', () => {
+    expect(relativeUriPath('/home/u/repo', '/home/u/repo')).toBe('');
+    expect(relativeUriPath('/C:/repo/', '/c:/repo')).toBe('');
+  });
+
   it('returns undefined for paths outside the folder', () => {
     expect(relativeUriPath('/home/u/repo', '/home/u/repository/de.json')).toBeUndefined();
-    expect(relativeUriPath('/home/u/repo', '/home/u/repo')).toBeUndefined();
+    expect(relativeUriPath('/home/u/repo', '/home/u')).toBeUndefined();
   });
 });
