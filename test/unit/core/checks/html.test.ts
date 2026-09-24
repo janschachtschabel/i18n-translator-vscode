@@ -13,6 +13,11 @@ describe('tagSignature', () => {
   it('does not mistake comparisons for tags', () => {
     expect(tagSignature('a < b und c > d')).toEqual([]);
   });
+
+  it('treats words in angle brackets as text (edu-sharing "<keine>", "<sonstige>")', () => {
+    expect(tagSignature('<keine>')).toEqual([]);
+    expect(compareTags('Autor: <keine>', 'Author: <not set>')).toEqual({ missing: [], extra: [] });
+  });
 });
 
 describe('compareTags', () => {
