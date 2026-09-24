@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { compileFilePattern } from '../../../../src/core/area/filePattern';
+import { compileFilePattern, formatFilePattern } from '../../../../src/core/area/filePattern';
 
 describe('compileFilePattern', () => {
   describe('one directory per bundle (Angular)', () => {
@@ -120,5 +120,25 @@ describe('compileFilePattern', () => {
         /localePattern/,
       );
     });
+  });
+});
+
+describe('formatFilePattern', () => {
+  const angular = { files: '{bundle}/{locale}.json', localePattern: '[a-z]{2}(?:-[a-z0-9]+)*' };
+  const mds = { files: '{bundle}[_{locale}].properties', localePattern: '[a-z]{2}_[A-Z]{2}' };
+
+  it('fills in bundle and locale', () => {
+    expect(formatFilePattern(angular, 'common', 'es')).toBe('common/es.json');
+    expect(formatFilePattern(mds, 'mds', 'fr_FR')).toBe('mds_fr_FR.properties');
+  });
+
+  it('leaves out optional parts whose placeholder has no value, as for the base file', () => {
+    expect(formatFilePattern(mds, 'mds', 'default')).toBe('mds.properties');
+  });
+
+  it('refuses paths the area would not recognise as that bundle and locale', () => {
+    expect(formatFilePattern(angular, 'common', 'ES')).toBeUndefined();
+    expect(formatFilePattern(angular, 'common', 'default')).toBeUndefined();
+    expect(formatFilePattern(angular, 'a/b', 'es')).toBeUndefined();
   });
 });

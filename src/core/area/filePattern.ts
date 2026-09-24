@@ -61,6 +61,53 @@ export function compileFilePattern(spec: FilePatternSpec): (relPath: string) => 
   };
 }
 
+/**
+ * The path of a bundle's file for a locale, relative to the area root: placeholders filled in, optional parts
+ * kept only if all their placeholders have a value (the base file `default` has no locale value). Undefined
+ * if the pattern cannot express it or the area would not read the path back as this bundle and locale.
+ */
+export function formatFilePattern(
+  spec: FilePatternSpec,
+  bundle: string,
+  locale: LocaleCode,
+): string | undefined {
+  const values: Record<string, string | undefined> = {
+    '{bundle}': bundle,
+    '{locale}': locale === BASE_FILE_LOCALE ? undefined : locale,
+  };
+  // One entry per open bracket level: the text so far and whether every placeholder in it had a value.
+  const parts = [{ text: '', complete: true }];
+  let rest = spec.files;
+  while (rest.length > 0) {
+    const part = parts[parts.length - 1]!;
+    const placeholder = rest.slice(0, 8);
+    if (placeholder in values) {
+      const value = values[placeholder];
+      part.text += value ?? '';
+      part.complete &&= value !== undefined;
+      rest = rest.slice(8);
+      continue;
+    }
+    if (rest[0] === '[') {
+      parts.push({ text: '', complete: true });
+    } else if (rest[0] === ']' && parts.length > 1) {
+      parts.pop();
+      parts[parts.length - 1]!.text += part.complete ? part.text : '';
+    } else {
+      part.text += rest[0];
+    }
+    rest = rest.slice(1);
+  }
+  const [path] = parts;
+  let match: PatternMatch | null = null;
+  try {
+    match = path!.complete ? compileFilePattern(spec)(path!.text) : null;
+  } catch {
+    // An invalid pattern cannot describe any file.
+  }
+  return match?.bundle === bundle && match.locale === locale ? path!.text : undefined;
+}
+
 function toRegexSource(spec: FilePatternSpec): {
   source: string;
   bundle: 'required' | 'optional' | 'absent';
