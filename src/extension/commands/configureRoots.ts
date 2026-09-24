@@ -60,7 +60,9 @@ export async function configureRoots(): Promise<void> {
   if (!uris || uris.length === 0) {
     return;
   }
-  const roots = uris.map((uri) => relativeUriPath(folder.uri.path, uri.path));
+  // The dialog returns the casing on disk; the workspace folder keeps the casing it was opened with.
+  const ignoreCase = process.platform === 'win32' || process.platform === 'darwin';
+  const roots = uris.map((uri) => relativeUriPath(folder.uri.path, uri.path, ignoreCase));
   if (roots.some((root) => root === undefined)) {
     await vscode.window.showErrorMessage(vscode.l10n.t('Choose folders inside {0}.', folder.name));
     return;
