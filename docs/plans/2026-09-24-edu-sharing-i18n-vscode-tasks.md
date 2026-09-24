@@ -219,6 +219,12 @@ CONTRIBUTING: Entwicklungsumgebung (`npm ci`, F5), Tests, Architekturregeln (Ebe
 > - **Positionen:** Key-bezogene Befunde (orphan, misplaced, duplicate, Merge-Regeln) zeigen auf den Key, Text-bezogene (leer, Platzhalter, HTML, Variante) auf den Wert. `missing-key` zeigt auf die Datei, `missing-file` auf den Anfang der Referenzdatei.
 > - **`variant-needed`** nennt den konkreten Treffer (z. B. „Sie") und gilt auch für Einheiten ohne Variantendatei, sobald der Bereich die Variante nutzt.
 > - **Zusätzlich:** `src/core/pipeline/analyze.ts` (`analyzeRoot`: Dateien → Einheiten → Prüfungen, gemeinsam für CLI und Extension), die Adapter-Registry `formats/registry.ts` und ein Vertragstest gegen den Fixture-Workspace (alle 21 Befunde aus `test/fixtures/README.md`).
+> - **Abweichende Schnittstellen (Review Block B, #8):**
+>   - `Issue.field` fehlt. Es kommt mit den Mail-Feldern in **Phase 6**; bis dahin hat jeder Eintrag nur das Feld `value`.
+>   - `severityOverrides` ist ein Parameter von `runChecks` statt ein Teil von `CheckContext`. Die Regeln kennen nur ihre Standard-Schwere; der Runner wendet die Einstellung an.
+>   - `compileVariants` liefert Fehler als Text (`"Variant de-informal: …"`) statt `{locale, message}`. Die Locale steht im Text; die Einstellungen zeigen die Fehler nur an.
+>   - Eine Variante mit ungültigem Ausdruck bleibt registriert (dünn besetzt), nur die Prüfung mit diesem Ausdruck entfällt.
+> - **Review Block B, behoben:** Merge-Meldungen nennen die Sprache und die Merge-Reihenfolge statt „die ganze App" (Produktions-Builds führen im Backend anders zusammen, siehe Design §2.2). `misplaced-key` ordnet eins zu eins zu (längste gemeinsame Endung zuerst); die drei Vollständigkeitsregeln teilen sich eine Analyse je Einheit. `same-as-reference` zählt nur sichtbare Buchstaben. Nur `{{GENDER_SEPARATOR}}` in exakter Schreibweise gilt als Gendermarker. Ein Vertragstest prüft, dass jede Regel alle Argumente ihrer Meldung liefert.
 
 ### Task 1.1: Textänderungen und Zeilenindex
 **Dateien:** Create `src/core/text/edits.ts`, `src/core/text/lineIndex.ts`; Test: `test/unit/core/text/edits.test.ts`, `lineIndex.test.ts`
