@@ -1,9 +1,9 @@
 # Taskliste: edu-sharing i18n – VS-Code-Extension
 
 > Gehört zu [`2026-09-24-edu-sharing-i18n-vscode-design.md`](2026-09-24-edu-sharing-i18n-vscode-design.md).
-> **Phase 0 und 1 sind vollständig ausgearbeitet.** Die Phasen 2–8 stehen hier als Gliederung. Ihre Tasks werden
-> vor dem Start der jeweiligen Phase im selben Detailgrad ausgearbeitet und kurz abgenommen. So stecken
-> Entscheidungen aus der Abnahme (E1–E9) nicht in bereits geschriebenem Plan-Code fest.
+> **Phasen 0 bis 2 sind vollständig ausgearbeitet** (Phase 2 am 24.09.2026, vor ihrem Start). Die Phasen 3–8 stehen
+> hier als Gliederung. Ihre Tasks werden vor dem Start der jeweiligen Phase im selben Detailgrad ausgearbeitet und kurz
+> abgenommen. So stecken Entscheidungen aus der Abnahme (E1–E9) nicht in bereits geschriebenem Plan-Code fest.
 
 ## Arbeitsweise je Task (gilt für alle Tasks)
 
@@ -651,27 +651,278 @@ Regeln:
 
 ---
 
-## Phasen 2–8 (Gliederung – Detailtasks folgen vor Phasenstart)
+## Phase 2 – Bearbeiten (Angular)
 
-**Phase 2 – Bearbeiten (Angular).**
-- Schritt 0: `/better-coding-workflow` und `/better-coding-frontend`.
-- 2.1 JSON-Adapter Schreib-API (`set`, `insert` nach Geschwister, `delete`, `rename`) mit Golden-Tests (No-op byte-identisch, 1 Diff-Zeile, Punkt-Keys, Komma-Behandlung beim Löschen des letzten Keys, Einrückung/EOL/Newline am Ende).
-- 2.2 Semantische Schreib-Operationen und Validierung (niemals leere Werte).
-- 2.3 FileStore (Dirty-Guard, Queue je Datei, Revisionsprüfung, Sitzungs-Undo).
-- 2.4 BackupService (`storageUri`, Intervall, N behalten, Wiederherstellen).
-- 2.5 EditorPanel (CSP mit Nonce, `localResourceRoots`, `retainContextWhenHidden`, Serializer) und Message-Router mit Laufzeitvalidierung.
-- 2.6 `shared/protocol.ts` und ViewModel-Builder.
-- 2.7 Webview-Grundgerüst (Preact, Theme-CSS, Live-Region, l10n).
-- 2.8 Werkzeugleiste und Sprach-Chips (Sichtbarkeit, Referenzmarke, Zähler, Scroll-Anker).
-- 2.9 Filterleiste (Key/Wert, Regex, Groß-/Kleinschreibung, Status, je Sprache) als reine Filterfunktion mit Tests.
-- 2.10 Tabellenansicht (ARIA-Grid, roving `tabindex`, fixierte Kopfzeile und Key-Spalte, schrittweises Rendern).
-- 2.11 Listenansicht und Auto-Umschaltung nach Breite.
-- 2.12 Zell-Editor (ein- und mehrzeilig, automatisches Wachsen, Tastenlogik, Inline-Prüfung).
-- 2.13 Details-Leiste.
-- 2.14 Befehle Key hinzufügen, umbenennen und löschen (Scope-Dialoge, Warnung „existiert in `common`") sowie Sprache hinzufügen (`{}`-Dateien).
-- 2.15 Umgang mit externen Änderungen.
-- 2.16 a11y-Tests (axe, Tastatur-Skript, NVDA-Protokoll).
-- 2.17 Performance-Test mit 2.000 Keys.
+**Schritt 0:** `/better-coding-workflow` und `/better-coding-frontend` aufrufen. Nach jedem Block (A: 2.1–2.5,
+B: 2.6–2.11, C: 2.12–2.17) folgt ein Review mit `/better-coding-review`.
+
+**Ziel:** Eine Einheit lässt sich in einem Editor-Tab bearbeiten (Tabelle oder Liste). Jede Änderung schreibt die
+betroffene Datei verlustfrei; Keys und Sprachen lassen sich anlegen, umbenennen und löschen. Nichts wird geschrieben,
+was nicht ausdrücklich geändert wurde.
+
+**Entwurfsentscheidungen (ergänzen Design §6.4, §6.10, §6.12, §7):**
+- **B1 Wahrheit im Host.** Die Webview zeigt ein ViewModel und schickt Änderungswünsche. Der Host plant sie
+  (`planEdit`), schreibt über den `FileStore` und aktualisiert die betroffene Wurzel sofort (ohne auf den Watcher zu
+  warten). Die Webview zeigt den eingegebenen Wert sofort an und gleicht beim nächsten Modell ab.
+- **B2 Nie leere Werte schreiben.** Wird eine Übersetzung geleert, wird ihr Key in dieser Sprache **gelöscht**,
+  damit der Rückfall greift (ein leerer Text würde ihn verhindern, siehe `empty-value`). Referenztexte lassen sich nicht
+  leeren; bestehende absichtlich leere Referenztexte bleiben unberührt.
+- **B3 Operationen statt Textersetzung.** `FileOp`s werden der Reihe nach auf den Text angewandt; nach jeder Operation
+  wird neu geparst. Das Ergebnis ist der neue Text (`applyOps` statt `edit(): TextEdit[]` aus dem Design): Minimale
+  Edits über mehrere Operationen zusammenzusetzen lohnt sich bei Dateien dieser Größe nicht, und E3 schreibt ohnehin
+  Bytes statt `WorkspaceEdit`s.
+- **B4 Formatierung aus der Datei.** Zeilenende, Einrückung und Newline am Dateiende werden erkannt. Eingefügt wird
+  mit eigener Textoperation direkt hinter dem Geschwister-Key und mit dessen Einrückung. `jsonc-parser.modify`
+  formatiert sonst die Nachbarzeile neu, z. B. werden Tabs zu Leerzeichen oder `"A":"1" ,` zu `"A": "1",`
+  (Probelauf 24.09.2026). `modify` dient nur noch zum Anlegen fehlender Elternobjekte.
+- **B5 Rebase statt Abbruch.** Jede Änderung trägt die Revision (Hash) der Datei, auf der sie beruht. Hat sich die
+  Datei inzwischen geändert, werden die Operationen auf den neuen Stand angewandt. Ein Konflikt entsteht nur, wenn ein
+  betroffener Key inzwischen fehlt oder einen anderen Text hat als der Ausgangswert der Änderung.
+- **B6 Webview-Technik.** Preact und `@preact/signals`, eigener esbuild-Build (`platform: 'browser'`, IIFE) nach
+  `dist/webview/`; Codicons werden dorthin kopiert. Typprüfung über `tsconfig.webview.json` (DOM-Typen, kein Node).
+  Komponententests mit vitest, `happy-dom`, `@testing-library/preact` und `axe-core`
+  (Datei-Kommentar `// @vitest-environment happy-dom`). Protokollnachrichten prüfen handgeschriebene Typwächter,
+  ohne zusätzliche Bibliothek.
+- **B7 Zustand der Ansicht** (Layout, sichtbare Sprachen, Filter, Zeilenmodus) gilt je Einheit und liegt in
+  `workspaceState`; die Webview meldet Änderungen per `uiState`.
+
+### Task 2.1: Textbausteine für das Schreiben
+**Dateien:** Create `src/core/text/edits.ts`, `src/core/text/style.ts`; Test: `test/unit/core/text/edits.test.ts`, `style.test.ts`
+**Interfaces:**
+```ts
+export interface TextEdit { offset: number; length: number; content: string }
+export function applyEdits(text: string, edits: readonly TextEdit[]): string;   // wirft bei Überlappung
+export interface TextStyle { eol: '\n' | '\r\n'; indent: string; finalNewline: boolean }
+export function detectStyle(text: string): TextStyle;   // Standard: '\n', zwei Leerzeichen, true
+```
+**Testfälle:** Edits in beliebiger Reihenfolge ergeben dasselbe Ergebnis; überlappende Edits werfen einen `RangeError`.
+`detectStyle` erkennt LF, CRLF, Tab, vier Leerzeichen und eine fehlende Newline am Ende; für `{}` gilt der Standard.
+**Commit:** `feat(core): add text edits and style detection for writing`
+
+### Task 2.2: JSON-Adapter schreibend
+**Dateien:** Modify `src/core/formats/adapter.ts`, `src/core/formats/json/jsonNested.ts`; Create `src/core/formats/json/jsonWrite.ts`, `src/core/text/encode.ts`; Test: `test/unit/core/formats/jsonNested.write.test.ts` mit Golden-Dateien unter `test/fixtures/golden/json/`
+**Interfaces:**
+```ts
+export type FileOp =
+  | { kind: 'set'; key: EntryKey; value: string }                       // Feld 'value'; Felder kommen in Phase 6
+  | { kind: 'insert'; key: EntryKey; value: string; after?: EntryKey }  // after: Geschwister im selben Objekt
+  | { kind: 'delete'; key: EntryKey }                                   // leere Elternobjekte werden mit gelöscht
+  | { kind: 'rename'; from: EntryKey; to: EntryKey };
+export class EditError extends Error { readonly code: 'missing-key' | 'key-exists' | 'path-conflict' | 'unparsable' }
+interface FormatAdapter {
+  applyOps(doc: DecodedText, ops: readonly FileOp[]): DecodedText;   // Text neu, Encoding und BOM unverändert
+  encode(doc: DecodedText): Uint8Array;                               // UTF-8, BOM wie gelesen; Latin-1 folgt in Phase 5
+  createEmpty(style?: TextStyle): string;                             // '{}\n'
+}
+```
+Umsetzung:
+- `set` ersetzt den Wertbereich durch `JSON.stringify(value)`.
+- `insert` bei vorhandenem Elternobjekt: nach dem Wert des Geschwisters (mit Komma) bzw. als letztes Element, mit der
+  Einrückung der Geschwisterzeile; fehlt das Elternobjekt, legt `modify` es mit dem erkannten Stil an.
+- `delete` entfernt die Zeile samt passendem Komma. Wird ein Objekt dadurch leer, wird es ebenfalls entfernt (bis
+  zur obersten Ebene, die als `{}` bleibt).
+- `rename` im selben Objekt ersetzt nur den Key-Text; sonst `delete` plus `insert` am Ende des neuen Elternobjekts.
+- Datei mit Syntaxfehler: `EditError('unparsable')`.
+
+**Golden-Testfälle** (Dateien mit LF, CRLF, Tabs, BOM, ohne Newline am Ende, mit ungewöhnlichen Abständen):
+| Operation | Erwartung |
+|---|---|
+| keine | Bytes identisch |
+| `set` | genau **eine** Zeile anders; Punkt-Keys (`mail.smtp.server`) und `/`-Keys funktionieren |
+| `insert` nach Geschwister in der Mitte | genau eine Zeile neu, Nachbarn unverändert (auch `"A":"1" ,`) |
+| `insert` nach dem letzten Geschwister | eine Zeile neu; die vorherige Zeile bekommt nur ein Komma |
+| `insert` mit neuem Elternpfad | Elternobjekte im Stil der Datei |
+| `delete` in der Mitte / am Ende / letztes Kind | eine Zeile weniger / Komma der Vorzeile entfernt / Elternobjekt entfernt |
+| `rename` im selben Objekt | genau eine Zeile anders |
+| Werte mit `"`, `\`, Zeilenumbruch, Umlauten, Emoji, U+2028 | Wert nach erneutem Parsen identisch |
+| `set` auf fehlenden Key, `insert` auf vorhandenen Key, `insert` unter einem Text-Blatt | `EditError` mit passendem Code |
+**Commit:** `feat(core): write nested JSON files without changing their formatting`
+
+### Task 2.3: Bearbeitung einer Einheit planen und prüfen
+**Dateien:** Create `src/core/edit/planEdit.ts`, `src/core/edit/keyCheck.ts`; Test: `test/unit/core/edit/planEdit.test.ts`, `keyCheck.test.ts`
+**Interfaces:**
+```ts
+export type BundleEdit =
+  | { kind: 'setText'; entryId: string; locale: LocaleCode; value: string; before?: string }   // before: Ausgangswert (B5)
+  | { kind: 'addKey'; key: EntryKey; values: Record<LocaleCode, string>; after?: string }
+  | { kind: 'renameKey'; entryId: string; to: EntryKey }
+  | { kind: 'deleteKey'; entryId: string };
+export type FileChange =
+  | { relPath: string; ops: FileOp[] }
+  | { relPath: string; create: 'empty' };                                   // neue Sprachdatei
+export type PlanResult = { ok: true; changes: FileChange[]; warnings: EditWarning[] } | { ok: false; error: EditProblem };
+export function planEdit(bundle: Bundle, edit: BundleEdit): PlanResult;
+export function checkKey(key: EntryKey, bundle: Bundle, others: readonly Bundle[], area: AreaDefinition): KeyCheck;
+export function planAddLanguage(bundles: readonly Bundle[], area: AreaDefinition, locale: LocaleCode): PlanResult;
+```
+Regeln:
+- `setText` mit `''` in einer Übersetzung → `delete` in dieser Sprache (B2); in der Referenz → Fehler
+  `reference-empty`. Fehlt die Sprachdatei → Fehler `missing-file` mit Hinweis „Sprache hinzufügen".
+- `setText` auf einen Key, den die Sprache noch nicht hat → `insert` nach dem nächsten vorangehenden Key der
+  Referenzreihenfolge, den die Datei hat.
+- `checkKey`: leere Segmente, Key existiert bereits, Konflikt mit einem Text-Blatt auf dem Pfad oder mit einem Objekt
+  unter dem Key → Fehler. Existiert der oberste Key in einer anderen Einheit derselben Wurzel und hat der Bereich
+  `mergeSemantics: 'shallow-toplevel'` → Warnung `exists-in-other-bundle` mit Namen (edu-sharing: „existiert in
+  `common`").
+- `planAddLanguage`: Locale passt zu `localePattern`, existiert noch nicht; je Einheit eine leere Datei (`{}`), ohne
+  Keys, damit fehlende Keys auf die Standardsprache zurückfallen.
+**Testfälle:** je Regel mindestens ein Fall; zusätzlich: Umbenennen trifft alle Sprachdateien der Einheit, die den Key
+haben; Löschen von `WORKSPACE.FILE.TITLE` im Fixture entfernt in `de` auch das dann leere Objekt `FILE`, aber nicht
+`WORKSPACE`, weil `WORKSPACE.TITLE` bleibt.
+**Commit:** `feat(core): plan edits of a bundle and check new keys`
+
+### Task 2.4: FileStore
+**Dateien:** Create `src/extension/services/fileStore.ts`, `src/core/util/hash.ts`; Test: `test/unit/core/util/hash.test.ts`, `test/integration/fileStore.test.ts`
+**Interfaces:**
+```ts
+export function revisionOf(bytes: Uint8Array): string;           // FNV-1a 64 Bit, hex; nur Änderungserkennung
+export type WriteResult = { ok: true; revision: string } | { ok: false; reason: 'dirty' | 'conflict' | 'error'; message: string };
+export class FileStore implements vscode.Disposable {
+  constructor(index: WorkspaceIndex, log: vscode.LogOutputChannel);
+  write(folder: vscode.WorkspaceFolder, area: AreaDefinition, changes: readonly FileChange[], baseRevisions: ReadonlyMap<string, string>): Promise<WriteResult>;
+  undo(): Promise<WriteResult | undefined>;
+}
+```
+- **Dirty-Guard:** Ist eine Zieldatei in einem Editor ungespeichert geändert, wird nichts geschrieben; die Meldung
+  bietet „Datei zeigen".
+- **Warteschlange je Datei**; eine Änderung über mehrere Dateien schreibt alle oder keine (vorher alles planen und
+  prüfen, dann schreiben; bei einem Fehler mittendrin werden die schon geschriebenen Dateien zurückgesetzt).
+- **Revision und Rebase** nach B5.
+- **Sitzungs-Undo:** je Schreibvorgang die Bytes vorher und nachher. Rückgängig nur, wenn die Datei noch den Stand
+  „nachher" hat.
+- Nach dem Schreiben: `index.refresh()` (nur die betroffene Wurzel, siehe 2.15) statt auf den Watcher zu warten.
+**Testfälle (Integration, Fixture-Kopie im Temp-Ordner):** geänderte Zelle → eine Zeile Diff; geöffnete, geänderte
+Datei → `dirty`, nichts geschrieben; externe Änderung eines anderen Keys → Rebase gelingt; externe Änderung desselben
+Keys → `conflict`; Undo stellt die Bytes wieder her.
+**Commit:** `feat: write translation files safely`
+
+### Task 2.5: Backups
+**Dateien:** Create `src/extension/services/backupService.ts`, `src/extension/commands/backup.ts`; Modify `package.json` (Befehle `eduI18n.backupNow`, `eduI18n.restoreBackup`; Einstellungen `eduI18n.backup.intervalMinutes` = 10, `eduI18n.backup.keep` = 10); Test: `test/integration/backup.test.ts`
+- Backup vor dem ersten Schreibvorgang einer Sitzung, vor Operationen über mehrere Einheiten, alle N Minuten bei
+  Änderungen und manuell. Ablage: `context.storageUri/backups/<Zeitstempel>/<relPath>` plus `manifest.json`, **nie im
+  Repo**. Die letzten N bleiben.
+- Wiederherstellen: QuickPick (Zeit, Anzahl Dateien) → modale Rückfrage → vorher ein Backup des aktuellen Stands →
+  Schreiben über den `FileStore` (Dirty-Guard gilt).
+**Testfälle:** erster Schreibvorgang legt genau ein Backup an; `keep` begrenzt; Wiederherstellen ergibt die alten Bytes.
+**Commit:** `feat: back up translation files outside the repository`
+
+### Task 2.6: Protokoll und ViewModel
+**Dateien:** Create `src/shared/protocol.ts`, `src/shared/viewModel.ts`; Test: `test/unit/shared/protocol.test.ts`, `viewModel.test.ts`
+- Nachrichten nach Design §6.12, in Phase 2 ohne KI und Import: `ready`, `edit`, `command`, `uiState`, `undo` bzw.
+  `init`, `bundle`, `patch`, `writeResult`.
+- `isWebviewToHost(value: unknown)` prüft Typ, Felder und Längen (Text höchstens 100.000 Zeichen); unbekannte
+  Nachrichten werden verworfen und geloggt.
+- `buildBundleViewModel(bundle, issues, localize)`: Sprachen (Referenz, Variante, Datei vorhanden, Zähler), Zeilen je
+  Key mit Zellen (Wert oder „fehlt"), Befunde je Zelle mit lokalisierter Meldung, Revision je Datei.
+**Testfälle:** gültige und ungültige Nachrichten; ViewModel von `common` im Fixture (12 Zeilen der Referenz plus 2
+Extra-Keys aus `it`, Befunde an den richtigen Zellen).
+**Commit:** `feat: define the webview protocol and bundle view model`
+
+### Task 2.7: Editor-Panel und Webview-Grundgerüst
+**Dateien:** Modify `esbuild.mjs`, `package.json`, `eslint.config.mjs`; Create `tsconfig.webview.json`, `src/extension/panels/editorPanel.ts`, `webviewHtml.ts`, `messageRouter.ts`, `src/extension/commands/openBundle.ts`, `src/webview/main.tsx`, `app.tsx`, `state/store.ts`, `a11y/liveRegion.tsx`, `styles/base.css`; Test: `test/unit/extension/webviewHtml.test.ts`, `test/unit/webview/app.test.tsx`, `test/integration/editorPanel.test.ts`
+- Ein Panel je Einheit (erneutes Öffnen holt es nach vorn); Klick auf eine Einheit in der Seitenleiste öffnet es.
+- CSP: `default-src 'none'`, Skripte nur mit Nonce, Styles aus `cspSource`, Fonts aus `cspSource`; kein
+  `unsafe-inline` für Skripte. `localResourceRoots` nur `dist/webview`. `retainContextWhenHidden`. Serializer stellt
+  offene Panels nach einem Neustart wieder her.
+- Texte der Oberfläche kommen mit `init` vom Host (`vscode.l10n`), Farben nur aus `--vscode-*`.
+**Testfälle:** HTML enthält die Nonce und keine Inline-Skripte; die App zeigt nach `init` und `bundle` die Einheit;
+axe: 0 Verstöße; Integration: `eduI18n.openBundle` für `common` öffnet ein Panel und beantwortet `ready`.
+**Commit:** `feat: open a translation editor per bundle`
+
+### Task 2.8: Werkzeugleiste, Sprach-Chips und Ansichtszustand
+**Dateien:** Create `src/webview/components/toolbar.tsx`, `languageChips.tsx`, `src/webview/state/scrollAnchor.ts`; Test: `test/unit/webview/toolbar.test.tsx`, `scrollAnchor.test.ts`
+- Umschalter Tabelle/Liste/automatisch, ein-/mehrzeilig (global), Sprach-Chips (Sichtbarkeit, Referenzmarke,
+  Zähler fehlend/Befunde), Suche (`Strg+F`), Undo-Knopf.
+- **Scroll-Anker:** Beim Ein- oder Ausblenden einer Sprache bleibt der oberste sichtbare Key an seiner Position.
+**Testfälle:** Chip blendet die Spalte aus und ist per Tastatur bedienbar (`aria-pressed`); Anker-Berechnung als reine
+Funktion; axe 0 Verstöße.
+**Commit:** `feat(webview): add toolbar, language chips and persistent view state`
+
+### Task 2.9: Filter
+**Dateien:** Create `src/shared/filter.ts`, `src/webview/components/filterBar.tsx`; Test: `test/unit/shared/filter.test.ts`, `test/unit/webview/filterBar.test.tsx`
+- `filterRows(rows, filter)`: Key-Suche, Text-Suche (alle oder eine Sprache), Regex oder Text, Groß-/Kleinschreibung,
+  Status (alle · fehlt · Befunde · leer). Ein ungültiger Regex filtert nicht und liefert eine Fehlermeldung.
+**Testfälle:** jede Kombination mindestens einmal; ungültiger Regex; „fehlt" nur für sichtbare volle Sprachen.
+**Commit:** `feat: filter entries by key, text and status`
+
+### Task 2.10: Tabellenansicht
+**Dateien:** Create `src/webview/components/table/*.tsx`, `src/webview/a11y/gridKeys.ts`; Test: `test/unit/webview/table.test.tsx`, `gridKeys.test.ts`
+- ARIA-Grid (`role="grid"`, Spalten- und Zeilenköpfe, `aria-rowcount`/`aria-rowindex`), roving `tabindex`,
+  Navigation nach Design §7.2, fixierte Kopfzeile und Key-Spalte, Fokus nie verdeckt (`scroll-padding`).
+- Schrittweises Rendern (erst 200 Zeilen, dann in Blöcken) und `content-visibility: auto`.
+- Status nie nur als Farbe: Symbol plus Text („fehlt", „leer", „Platzhalter"), `aria-describedby` auf die Meldung.
+**Testfälle:** Tastennavigation (reine Funktion und Komponente), Attribute, axe 0 Verstöße.
+**Commit:** `feat(webview): add the table view as an accessible grid`
+
+### Task 2.11: Listenansicht und Umschaltung nach Breite
+**Dateien:** Create `src/webview/components/list/*.tsx`, `src/webview/state/layout.ts`; Test: `test/unit/webview/list.test.tsx`, `layout.test.ts`
+- Je Key eine Karte (Überschrift = Key, beschriftete Felder je Sprache). Automatisch: ab 900 px Tabelle, darunter
+  Liste, bis 480 px kompakt (Referenz plus eine gewählte Sprache). Manuelle Wahl hat Vorrang.
+**Testfälle:** Breite → Layout als reine Funktion; Umbruch bei 320 px ohne horizontales Scrollen; axe 0 Verstöße.
+**Commit:** `feat(webview): add the list view and switch layouts by width`
+
+### Task 2.12: Zell-Editor
+**Dateien:** Create `src/webview/components/cellEditor.tsx`, `src/extension/panels/editHandler.ts`; Test: `test/unit/webview/cellEditor.test.tsx`, `test/integration/editing.test.ts`
+- Tasten nach Design §7.2; `textarea` wächst mit (nie inneres Scrollen); Inline-Prüfung beim Tippen mit
+  `compareParams`/`compareTags` aus dem Kern.
+- Speichern schickt `edit` mit Ausgangswert und Revision; die Zelle zeigt den neuen Wert sofort, bei Fehler kommt der
+  alte zurück und eine Meldung erscheint (Live-Region). Geleerte Übersetzung: Rückfrage „Text löschen (Rückfall auf
+  <Referenz>)?".
+**Testfälle:** Tastenlogik; Integration: `edit` über den Router ändert in `fr.json` genau eine Zeile, der Befund
+`placeholder-mismatch` verschwindet nach Korrektur, Undo stellt den alten Stand her.
+**Commit:** `feat: edit texts in the table and list`
+
+### Task 2.13: Details-Leiste
+**Dateien:** Create `src/webview/components/details.tsx`; Test: `test/unit/webview/details.test.tsx`
+- Rechts (breit) oder unten (schmal): alle Sprachen des fokussierten Keys (bearbeitbar), Befunde mit Erklärung und
+  Lösungshinweis. Kontext und Review folgen in Phase 7.
+**Testfälle:** folgt dem Fokus; Befunde vollständig; axe 0 Verstöße.
+**Commit:** `feat(webview): show details of the focused key`
+
+### Task 2.14: Befehle für Keys und Sprachen
+**Dateien:** Create `src/extension/commands/addKey.ts`, `renameKey.ts`, `deleteKey.ts`, `addLanguage.ts`; Modify `package.json` (Befehle, Menüs in Seitenleiste und Editor); Test: `test/integration/keyCommands.test.ts`
+- Key hinzufügen: InputBox mit Prüfung über `checkKey`; Warnung „existiert in `common`" mit Rückfrage.
+- Umbenennen: InputBox, dann Umfang *„Nur in dieser Einheit" · „In allen Einheiten mit diesem Key (n)" ·
+  „Abbrechen"*, die betroffenen Einheiten werden genannt.
+- Löschen: modale Rückfrage mit denselben Umfängen.
+- Sprache hinzufügen: InputBox (Locale nach `localePattern`), legt `{}`-Dateien in allen Einheiten der Wurzel an.
+- Operationen über mehrere Einheiten legen vorher ein Backup an.
+**Testfälle:** Sprache `es` legt vier `{}`-Dateien an (danach aufräumen); Umbenennen in allen Einheiten; Abbrechen
+schreibt nichts.
+**Commit:** `feat: add, rename and delete keys and add languages`
+
+### Task 2.15: Externe Änderungen und Aktualisierung je Wurzel
+**Dateien:** Modify `src/extension/services/workspaceIndex.ts`, `src/extension/panels/editorPanel.ts`; Create `src/shared/patch.ts`; Test: `test/unit/shared/patch.test.ts`, `test/integration/externalChanges.test.ts`
+- `WorkspaceIndex.refreshRoot(folder, area, root)`: nur diese Wurzel neu lesen und prüfen (Watcher und `FileStore`
+  nutzen es); der volle Lauf bleibt für Konfigurationsänderungen und „Prüfen".
+- Offene Panels bekommen einen Patch (geänderte Zellen und Befunde); Fokus und Scrollposition bleiben.
+- Ändert sich die gerade bearbeitete Zelle extern, bleibt der Entwurf erhalten und die Zelle zeigt einen Konflikt mit
+  „Übernehmen" oder „Meinen behalten".
+**Testfälle:** Patch-Berechnung als reine Funktion; externe Änderung von `fr.json` erreicht das offene Panel.
+**Commit:** `feat: keep open editors in sync with external changes`
+
+### Task 2.16: Barrierefreiheit prüfen
+**Dateien:** Create `test/unit/webview/keyboardWalk.test.tsx`, `docs/verification/phase-2-a11y.md`
+- axe in allen Komponententests (0 Verstöße, CI-Gate); Tastatur-Durchlauf als Skript (Werkzeugleiste → Filter →
+  Tabelle → Editor → Details → zurück); NVDA-Protokoll; Sichtprüfung in Light+, Dark+, High Contrast und High
+  Contrast Light.
+**Commit:** `test: check the editor for accessibility`
+
+### Task 2.17: Leistung
+**Dateien:** Create `test/unit/webview/performance.test.tsx`, Messpunkte im Log
+- Erzeugte Einheit mit 2.000 Keys × 6 Sprachen: erster Aufbau unter 1 s (Messung in VS Code über Log-Zeitstempel);
+  Speichern einer Zelle unter 150 ms (Host-Messung); `common` des echten Repos (1.437 Keys) als Gegenprobe.
+**Commit:** `perf: measure the editor with large bundles`
+
+### Task 2.18: Abnahme Phase 2 dokumentieren
+**Dateien:** Create `docs/verification/phase-2.md`
+- Golden-Tests grün; eine Zelle im echten Repo (Kopie) geändert → `git diff` zeigt genau eine Zeile; Undo und Backup
+  wiederhergestellt; Screenshots der Ansichten in Light+ und Dark+; Tastatur- und NVDA-Protokoll; Messwerte aus 2.17.
+**Commit:** `docs: record phase 2 verification`
+
+---
+
+## Phasen 3–8 (Gliederung – Detailtasks folgen vor Phasenstart)
 
 **Phase 3 – Füllen (Übersetzungsspeicher und KI).**
 - Schritt 0: `/better-coding-workflow` und `/better-coding-frontend`.
