@@ -26,18 +26,27 @@ export const ISSUE_MESSAGES: Readonly<Record<RuleId, string>> = {
   'same-as-reference': '{key} in {locale} is identical to the reference text and may be untranslated.',
 };
 
-/** Several missing-key findings of one file, combined into one diagnostic. */
+/** Several missing-key findings of one file, combined into one diagnostic (always two or more keys). */
 export const MISSING_KEYS_MESSAGE = '{count} keys are missing in {locale}.';
 
+/** Every template a host shows to users and has to translate. */
+export const MESSAGE_TEMPLATES: readonly string[] = [...Object.values(ISSUE_MESSAGES), MISSING_KEYS_MESSAGE];
+
+/** Arguments as messages show them: lists joined with commas, an empty list as "–". */
+export function displayArgs(args: IssueArgs): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(args).map(([name, value]) => [
+      name,
+      typeof value === 'string' || typeof value === 'number'
+        ? String(value)
+        : value.length > 0
+          ? value.join(', ')
+          : '–',
+    ]),
+  );
+}
+
 export function formatMessage(template: string, args: IssueArgs): string {
-  return template.replace(/\{(\w+)\}/g, (placeholder, name: string) => {
-    const value = args[name];
-    if (value === undefined) {
-      return placeholder;
-    }
-    if (typeof value === 'string' || typeof value === 'number') {
-      return String(value);
-    }
-    return value.length > 0 ? value.join(', ') : '–';
-  });
+  const values = displayArgs(args);
+  return template.replace(/\{(\w+)\}/g, (placeholder, name: string) => values[name] ?? placeholder);
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ANGULAR_PRESET } from '../../../../src/core/area/presets';
-import { formatMessage, ISSUE_MESSAGES } from '../../../../src/core/checks/messages';
+import { displayArgs, formatMessage, ISSUE_MESSAGES } from '../../../../src/core/checks/messages';
 import { RULE_IDS } from '../../../../src/core/checks/types';
 import { compileVariants, DEFAULT_VARIANTS } from '../../../../src/core/checks/variants';
 import { analyzeRoot } from '../../../../src/core/pipeline/analyze';
@@ -20,6 +20,17 @@ describe('formatMessage', () => {
 
   it('keeps unknown placeholders visible', () => {
     expect(formatMessage('{known} {unknown}', { known: 1 })).toBe('1 {unknown}');
+  });
+});
+
+describe('displayArgs', () => {
+  it('turns every argument into display text, as formatMessage shows it', () => {
+    expect(displayArgs({ key: 'SAVE', count: 3, missing: ['date', 'time'], extra: [] })).toEqual({
+      key: 'SAVE',
+      count: '3',
+      missing: 'date, time',
+      extra: '–',
+    });
   });
 });
 
