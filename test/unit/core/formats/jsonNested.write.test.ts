@@ -100,6 +100,15 @@ describe('jsonNestedAdapter.applyOps and encode', () => {
       }
     });
 
+    it('escapes line and paragraph separators, which editors offer to remove', () => {
+      const [ls, ps] = [String.fromCharCode(0x2028), String.fromCharCode(0x2029)];
+      const after = apply(NESTED, { kind: 'set', key: key('B'), value: `a${ls}b${ps}c` });
+      expect(after).toContain('"B": "a\\u2028b\\u2029c"');
+      expect(valueOf(after, ['B'])).toBe(`a${ls}b${ps}c`);
+      const inserted = apply(NESTED, { kind: 'insert', key: keyFromSegments([`L${ls}S`]), value: 'v' });
+      expect(inserted).toContain('"L\\u2028S": "v"');
+    });
+
     it('changes the definition that applies when a key is duplicated', () => {
       expect(apply('{\n  "A": "1",\n  "A": "2"\n}\n', { kind: 'set', key: key('A'), value: '3' })).toBe(
         '{\n  "A": "1",\n  "A": "3"\n}\n',
@@ -275,6 +284,23 @@ describe('jsonNestedAdapter.applyOps and encode', () => {
     );
     expect([...bytes.slice(0, 3)]).toEqual([0xef, 0xbb, 0xbf]);
     expect(valueOf(jsonNestedAdapter.decode(bytes).text, ['A'])).toBe('ä');
+  });
+
+  it('writes characters beyond ISO-8859-1 as escapes in files that are not UTF-8', () => {
+    const original = Uint8Array.from('{\n  "A": "Größe",\n  "B": "x"\n}\n', (char) => char.charCodeAt(0));
+    const decoded = jsonNestedAdapter.decode(original);
+    expect(decoded.encoding).toBe('latin-1');
+    const value = '„Preis“ 5 € – 😀';
+    const bytes = jsonNestedAdapter.encode(
+      jsonNestedAdapter.applyOps(decoded, [{ kind: 'set', key: key('B'), value }]),
+    );
+    const reread = jsonNestedAdapter.decode(bytes);
+    expect(reread.encoding).toBe('latin-1');
+    expect(changedLines(decoded.text, reread.text)).toEqual({
+      removed: ['  "B": "x"'],
+      added: ['  "B": "\\u201ePreis\\u201c 5 \\u20ac \\u2013 \\ud83d\\ude00"'],
+    });
+    expect(valueOf(reread.text, ['B'])).toBe(value);
   });
 
   it('creates new files as an empty object in the given style', () => {

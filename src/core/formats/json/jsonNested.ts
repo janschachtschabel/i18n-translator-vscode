@@ -5,7 +5,7 @@ import { decodeText } from '../../text/decode';
 import { encodeText } from '../../text/encode';
 import { DEFAULT_STYLE } from '../../text/style';
 import type { FileProblem, FormatAdapter, ParsedEntry, ParsedFile, TextRange } from '../adapter';
-import { applyJsonOps, emptyJsonObject } from './jsonWrite';
+import { applyJsonOps, emptyJsonObject, escapeBeyondLatin1 } from './jsonWrite';
 
 /** Nested JSON objects with string leaves, as used by ngx-translate (edu-sharing Angular i18n). */
 export const jsonNestedAdapter: FormatAdapter = {
@@ -30,7 +30,8 @@ export const jsonNestedAdapter: FormatAdapter = {
     }
   },
   applyOps: (doc, ops) => ({ ...doc, text: applyJsonOps(doc.text, ops) }),
-  encode: encodeText,
+  encode: (doc) =>
+    encodeText(doc.encoding === 'latin-1' ? { ...doc, text: escapeBeyondLatin1(doc.text) } : doc),
   createEmpty: (style = DEFAULT_STYLE) => emptyJsonObject(style),
 };
 

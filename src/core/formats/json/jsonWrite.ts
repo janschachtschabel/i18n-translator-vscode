@@ -29,6 +29,33 @@ export function emptyJsonObject(style: TextStyle): string {
   return `{}${style.finalNewline ? style.eol : ''}`;
 }
 
+/**
+ * For a file read as ISO-8859-1: writes the characters it cannot hold as `\uXXXX`. The read text has none of
+ * them, so they can only come from string literals written here, where the escape is exact.
+ */
+export function escapeBeyondLatin1(text: string): string {
+  return escapeUnits(text, (unit) => unit > 0xff);
+}
+
+/** A JSON string literal. Line and paragraph separators are escaped, because editors offer to remove them. */
+function jsonString(value: string): string {
+  return escapeUnits(JSON.stringify(value), (unit) => unit === 0x2028 || unit === 0x2029);
+}
+
+/** Writes every UTF-16 code unit for which `escape` holds as `\uXXXX`. */
+function escapeUnits(text: string, escape: (unit: number) => boolean): string {
+  let result = '';
+  let start = 0;
+  for (let index = 0; index < text.length; index++) {
+    const unit = text.charCodeAt(index);
+    if (escape(unit)) {
+      result += `${text.slice(start, index)}\\u${unit.toString(16).padStart(4, '0')}`;
+      start = index + 1;
+    }
+  }
+  return result + text.slice(start);
+}
+
 function applyOp(text: string, op: FileOp, style: TextStyle): string {
   const root = parseObject(text);
   switch (op.kind) {
@@ -61,7 +88,7 @@ function setValue(text: string, root: Node, key: EntryKey, value: string): strin
     throw new EditError('path-conflict', `${displayKey(key)} is an object, not a text.`);
   }
   return applyEdits(text, [
-    { offset: property.value.offset, length: property.value.length, content: JSON.stringify(value) },
+    { offset: property.value.offset, length: property.value.length, content: jsonString(value) },
   ]);
 }
 
@@ -128,12 +155,12 @@ function insertProperty(
   if (!anchor) {
     const outer = indentationOfLine(text, object.offset);
     const inner = outer + style.indent;
-    const content = `${style.eol}${inner}${JSON.stringify(name)}: ${renderValue(inner)}${style.eol}${outer}`;
+    const content = `${style.eol}${inner}${jsonString(name)}: ${renderValue(inner)}${style.eol}${outer}`;
     return applyEdits(text, [{ offset: object.offset + 1, length: object.length - 2, content }]);
   }
   const prefix = text.slice(lineStart(text, anchor.node.offset), anchor.node.offset);
   const inline = /\S/.test(prefix);
-  const line = `${inline ? ' ' : style.eol + prefix}${JSON.stringify(name)}: ${renderValue(inline ? undefined : prefix)}`;
+  const line = `${inline ? ' ' : style.eol + prefix}${jsonString(name)}: ${renderValue(inline ? undefined : prefix)}`;
   const valueEnd = anchor.value.offset + anchor.value.length;
   const comma = nextNonSpace(text, valueEnd);
   return text[comma] === ','
@@ -150,13 +177,13 @@ function renderValue(
 ): string {
   const [name, ...below] = path;
   if (name === undefined) {
-    return JSON.stringify(value);
+    return jsonString(value);
   }
   if (indent === undefined) {
-    return `{${JSON.stringify(name)}: ${renderValue(below, value, undefined, style)}}`;
+    return `{${jsonString(name)}: ${renderValue(below, value, undefined, style)}}`;
   }
   const inner = indent + style.indent;
-  return `{${style.eol}${inner}${JSON.stringify(name)}: ${renderValue(below, value, inner, style)}${style.eol}${indent}}`;
+  return `{${style.eol}${inner}${jsonString(name)}: ${renderValue(below, value, inner, style)}${style.eol}${indent}}`;
 }
 
 /** Removes every definition of the key; objects that become empty go too, except the top level. */
@@ -228,7 +255,7 @@ function renameEntry(text: string, root: Node, from: EntryKey, to: EntryKey, sty
     if (lastNamed(parent, to.segments[to.segments.length - 1]!)) {
       throw new EditError('key-exists', `${displayKey(to)} already exists in this file.`);
     }
-    const content = JSON.stringify(to.segments[to.segments.length - 1]);
+    const content = jsonString(to.segments[to.segments.length - 1]!);
     return applyEdits(text, [{ offset: property.key.offset, length: property.key.length, content }]);
   }
   // Insert first: it checks the target path, and a shared parent object keeps its place.
