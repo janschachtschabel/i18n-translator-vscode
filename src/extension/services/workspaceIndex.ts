@@ -31,6 +31,14 @@ export interface IndexSnapshot {
 /** Saving several files in a row, or a branch switch, should cause one run. */
 const DEBOUNCE_MS = 300;
 
+/** Milliseconds per phase of one run, summed over all roots; logged to find slow steps. */
+interface Timings {
+  detect: number;
+  list: number;
+  read: number;
+  analyze: number;
+}
+
 /** Finds, reads and checks the translation files of every workspace folder and keeps the result current. */
 export class WorkspaceIndex implements vscode.Disposable {
   private readonly changed = new vscode.EventEmitter<IndexSnapshot>();
@@ -87,6 +95,15 @@ export class WorkspaceIndex implements vscode.Disposable {
 
   private async index(): Promise<IndexSnapshot> {
     const started = Date.now();
+    const timings: Timings = { detect: 0, list: 0, read: 0, analyze: 0 };
+    const timed = async <T>(phase: keyof Timings, work: () => T | Promise<T>): Promise<T> => {
+      const phaseStarted = Date.now();
+      try {
+        return await work();
+      } finally {
+        timings[phase] += Date.now() - phaseStarted;
+      }
+    };
     const roots: IndexedRoot[] = [];
     const errors: string[] = [];
     const patterns = new Map<string, vscode.RelativePattern>();
@@ -118,7 +135,7 @@ export class WorkspaceIndex implements vscode.Disposable {
         }
         let areaRoots: readonly string[];
         try {
-          areaRoots = fixed ?? (await this.detectRoots(folder, area, exclude));
+          areaRoots = fixed ?? (await timed('detect', () => this.detectRoots(folder, area, exclude)));
         } catch (error) {
           this.log.error(`Could not look for roots of ${area.id}.`, error);
           report(`The roots of ${area.label} could not be determined: ${messageOf(error)}`);
@@ -128,8 +145,10 @@ export class WorkspaceIndex implements vscode.Disposable {
           const base = vscode.Uri.joinPath(folder.uri, root);
           patterns.set(`${folder.uri}|root|${root}`, new vscode.RelativePattern(base, '**/*'));
           try {
-            const files = await this.readRoot(folder, area, root, exclude, report);
-            roots.push({ folder, analysis: analyzeRoot(area, root, files, options) });
+            const paths = await timed('list', () => this.listRoot(folder, area, root, exclude));
+            const files = await timed('read', () => this.readFiles(folder, paths, report));
+            const analysis = await timed('analyze', () => analyzeRoot(area, root, files, options));
+            roots.push({ folder, analysis });
           } catch (error) {
             this.log.error(`Could not index ${area.id} in ${root || '.'}.`, error);
             report(`${area.label} in ${root || '.'} could not be checked: ${messageOf(error)}`);
@@ -144,7 +163,7 @@ export class WorkspaceIndex implements vscode.Disposable {
     }
     this.watch(patterns);
     this.snapshot = snapshot;
-    this.logSummary(snapshot);
+    this.logSummary(snapshot, timings);
     this.changed.fire(snapshot);
     return snapshot;
   }
@@ -164,17 +183,24 @@ export class WorkspaceIndex implements vscode.Disposable {
     return rootsFromMarkers(relativePaths(folder, markers), area.detect.marker);
   }
 
-  /** Reads the files below `root` that belong to the area; unreadable files are reported and left out. */
-  private async readRoot(
+  /** The files below `root` that belong to the area. */
+  private async listRoot(
     folder: vscode.WorkspaceFolder,
     area: AreaDefinition,
     root: string,
     exclude: string | null,
-    report: (message: string) => void,
-  ): Promise<SourceFile[]> {
+  ): Promise<string[]> {
     const pattern = new vscode.RelativePattern(vscode.Uri.joinPath(folder.uri, root), '**/*');
     const found = await vscode.workspace.findFiles(pattern, exclude);
-    const paths = filesToRead(area, root, relativePaths(folder, found));
+    return filesToRead(area, root, relativePaths(folder, found));
+  }
+
+  /** Unreadable files (e.g. deleted since the listing) are reported and left out. */
+  private async readFiles(
+    folder: vscode.WorkspaceFolder,
+    paths: readonly string[],
+    report: (message: string) => void,
+  ): Promise<SourceFile[]> {
     const files = await Promise.all(
       paths.map(async (relPath) => {
         try {
@@ -216,11 +242,14 @@ export class WorkspaceIndex implements vscode.Disposable {
     }
   }
 
-  private logSummary({ roots, errors, durationMs }: IndexSnapshot): void {
+  private logSummary({ roots, errors, durationMs }: IndexSnapshot, timings: Timings): void {
     const bundles = roots.reduce((sum, root) => sum + root.analysis.bundles.length, 0);
     const issues = roots.reduce((sum, root) => sum + root.analysis.issues.length, 0);
+    const phases = Object.entries(timings)
+      .map(([phase, ms]) => `${phase} ${ms} ms`)
+      .join(', ');
     this.log.info(
-      `Indexed ${roots.length} roots, ${bundles} bundles, ${issues} findings in ${durationMs} ms.`,
+      `Indexed ${roots.length} roots, ${bundles} bundles, ${issues} findings in ${durationMs} ms (${phases}).`,
     );
     for (const warning of roots.flatMap((root) => root.analysis.warnings)) {
       this.log.warn(warning);
