@@ -36,7 +36,12 @@
   "capabilities": {
     "untrustedWorkspaces": {
       "supported": "limited",
-      "description": "%untrusted.description%"
+      "description": "%untrusted.description%",
+      "restrictedConfigurations": [
+        "eduI18n.areas",
+        "eduI18n.variants",
+        "eduI18n.roots"
+      ]
     }
   },
   "contributes": {

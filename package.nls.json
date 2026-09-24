@@ -6,7 +6,7 @@
   "view.areas.welcome": "No edu-sharing translation files were found in this workspace.\n[Configure folders](command:eduI18n.configureRoots)",
   "cmd.check": "Check translations",
   "cmd.configureRoots": "Configure translation folders…",
-  "untrusted.description": "In Restricted Mode, translations can only be viewed and checked; writing files and AI features are disabled.",
+  "untrusted.description": "In Restricted Mode, translations can only be viewed and checked; writing files and AI features are disabled, and the workspace settings for areas, variants and roots are ignored.",
   "config.title": "edu-sharing i18n",
   "config.referenceLanguage": "Language that translations are compared with. `de` also matches `de_DE`.",
   "config.baseFileLanguage": "Language of files without a locale suffix, such as `templates.xml` or `mds.properties`.",
