@@ -3,14 +3,19 @@ import { checkTranslations } from './commands/check';
 import { configureRoots } from './commands/configureRoots';
 import { DiagnosticsPublisher } from './diagnostics/diagnosticsPublisher';
 import { WorkspaceIndex } from './services/workspaceIndex';
-import { createAreasView, type AreasTreeProvider } from './views/areasTree';
+import { createAreasView, type AreaNode, type AreasTreeProvider } from './views/areasTree';
+import type { IssueDecorations } from './views/decorations';
 import { IndexStatusBar } from './views/statusBar';
 
-/** Returned by `activate`; the integration tests reach the index and the views through it. */
+/** Returned by `activate`; the integration tests reach the index and read what the views show through it. */
 export interface ExtensionApi {
   index: WorkspaceIndex;
-  areas: AreasTreeProvider;
-  statusBar: vscode.StatusBarItem;
+  views: {
+    areas: AreasTreeProvider;
+    areasView: vscode.TreeView<AreaNode>;
+    decorations: IssueDecorations;
+    statusBar: vscode.StatusBarItem;
+  };
 }
 
 export function activate(context: vscode.ExtensionContext): ExtensionApi {
@@ -30,5 +35,13 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
   );
   // Not awaited: activation stays fast, and the views update when the first run completes.
   index.refresh().catch((error: unknown) => log.error('Indexing failed.', error));
-  return { index, areas: areas.provider, statusBar: statusBar.item };
+  return {
+    index,
+    views: {
+      areas: areas.provider,
+      areasView: areas.view,
+      decorations: areas.decorations,
+      statusBar: statusBar.item,
+    },
+  };
 }

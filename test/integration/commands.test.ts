@@ -4,7 +4,8 @@ import { activateExtension } from './helpers';
 
 suite('commands', () => {
   test('"Check translations" re-indexes and updates the status bar (test/fixtures/README.md)', async () => {
-    const { index, statusBar } = await activateExtension();
+    const { index, views } = await activateExtension();
+    const { statusBar } = views;
     let runs = 0;
     const subscription = index.onDidChange(() => runs++);
     try {

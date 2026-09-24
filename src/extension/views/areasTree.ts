@@ -8,6 +8,7 @@ import {
 } from '../../core/report/summary';
 import type { IndexedRoot, IndexSnapshot, WorkspaceIndex } from '../services/workspaceIndex';
 import { bundleUri, IssueDecorations, rootUri } from './decorations';
+import { escapeMarkdown } from './viewText';
 
 export type AreaNode =
   | { kind: 'root'; root: IndexedRoot }
@@ -70,11 +71,22 @@ export class AreasTreeProvider implements vscode.TreeDataProvider<AreaNode>, vsc
   private rootItem(root: IndexedRoot): vscode.TreeItem {
     const multiRoot = (vscode.workspace.workspaceFolders?.length ?? 0) > 1;
     const location = `${multiRoot ? `${root.folder.name}/` : ''}${root.analysis.root}` || '.';
+    const counts = countBySeverity(root.analysis.issues);
     const item = new vscode.TreeItem(root.analysis.area.label, vscode.TreeItemCollapsibleState.Expanded);
     item.id = rootUri(root).toString();
     item.resourceUri = rootUri(root);
-    item.description = [location, ...this.countParts(countBySeverity(root.analysis.issues))].join(' · ');
+    item.description = [location, ...this.countParts(counts)].join(' · ');
     item.tooltip = `${root.analysis.area.label} · ${location}`;
+    // Without it, screen readers read the tooltip, which has no counts.
+    item.accessibilityInformation = {
+      label: vscode.l10n.t('{area} · {root}: errors {errors}, warnings {warnings}, infos {infos}', {
+        area: root.analysis.area.label,
+        root: location,
+        errors: this.numbers.format(counts.error),
+        warnings: this.numbers.format(counts.warning),
+        infos: this.numbers.format(counts.info),
+      }),
+    };
     item.iconPath = new vscode.ThemeIcon('globe');
     item.contextValue = 'eduI18n.root';
     return item;
@@ -159,11 +171,15 @@ export class AreasTreeProvider implements vscode.TreeDataProvider<AreaNode>, vsc
   }
 }
 
-/** The sidebar: tree, error badge, decorations and the context key for its welcome texts. */
-export function createAreasView(index: WorkspaceIndex): {
+export interface AreasView {
   provider: AreasTreeProvider;
+  view: vscode.TreeView<AreaNode>;
+  decorations: IssueDecorations;
   disposable: vscode.Disposable;
-} {
+}
+
+/** The sidebar: tree, error badge, decorations and the context key for its welcome texts. */
+export function createAreasView(index: WorkspaceIndex): AreasView {
   const provider = new AreasTreeProvider(index);
   const decorations = new IssueDecorations(index);
   const view = vscode.window.createTreeView('eduI18n.areas', {
@@ -178,6 +194,8 @@ export function createAreasView(index: WorkspaceIndex): {
   };
   return {
     provider,
+    view,
+    decorations,
     disposable: vscode.Disposable.from(
       provider,
       decorations,
@@ -205,9 +223,4 @@ function revealInExplorer(node: AreaNode | undefined): Thenable<unknown> | undef
       vscode.Uri.joinPath(node.root.folder.uri, file.relPath),
     )
   );
-}
-
-/** Bundle and locale names come from the workspace; they must not turn into Markdown. */
-function escapeMarkdown(text: string): string {
-  return text.replace(/[\\`*_{}[\]()#+\-.!|<>~]/g, '\\$&');
 }

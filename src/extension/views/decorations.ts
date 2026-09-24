@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import type { Bundle } from '../../core/model/bundle';
 import { countBySeverity, type SeverityCounts } from '../../core/report/summary';
 import type { IndexedRoot, IndexSnapshot, WorkspaceIndex } from '../services/workspaceIndex';
+import { badgeText } from './viewText';
 
 /** URIs of this scheme identify tree items for their decorations; they never refer to files. */
 const SCHEME = 'edu-i18n';
@@ -37,14 +38,14 @@ export class IssueDecorations implements vscode.FileDecorationProvider, vscode.D
     const counts = uri.scheme === SCHEME ? this.counts.get(uri.toString()) : undefined;
     if (counts && counts.error > 0) {
       return new vscode.FileDecoration(
-        badge(counts.error),
+        badgeText(counts.error),
         vscode.l10n.t('Errors: {0}', counts.error),
         new vscode.ThemeColor('list.errorForeground'),
       );
     }
     if (counts && counts.warning > 0) {
       return new vscode.FileDecoration(
-        badge(counts.warning),
+        badgeText(counts.warning),
         vscode.l10n.t('Warnings: {0}', counts.warning),
         new vscode.ThemeColor('list.warningForeground'),
       );
@@ -69,9 +70,4 @@ export class IssueDecorations implements vscode.FileDecorationProvider, vscode.D
     this.counts = counts;
     this.changed.fire(undefined);
   }
-}
-
-/** Decoration badges hold at most two characters. */
-function badge(count: number): string {
-  return count > 9 ? '9+' : String(count);
 }
