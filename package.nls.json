@@ -6,5 +6,18 @@
   "view.areas.welcome": "No edu-sharing translation files were found in this workspace.\n[Configure folders](command:eduI18n.configureRoots)",
   "cmd.check": "Check translations",
   "cmd.configureRoots": "Configure translation folders…",
-  "untrusted.description": "In Restricted Mode, translations can only be viewed and checked; writing files and AI features are disabled."
+  "untrusted.description": "In Restricted Mode, translations can only be viewed and checked; writing files and AI features are disabled.",
+  "config.title": "edu-sharing i18n",
+  "config.referenceLanguage": "Language that translations are compared with. `de` also matches `de_DE`.",
+  "config.baseFileLanguage": "Language of files without a locale suffix, such as `templates.xml` or `mds.properties`.",
+  "config.areas": "Additional translation areas, or the replacement of a built-in area with the same `id`. Example: `{ \"id\": \"customer\", \"format\": \"json-nested\", \"roots\": [\"customer/i18n\"], \"files\": \"{bundle}/{locale}.json\", \"localePattern\": \"[a-z]{2}\" }`.",
+  "config.roots": "Fixed root folders per area id, relative to the workspace folder. Areas without an entry are detected automatically.",
+  "config.exclude": "Glob patterns of folders that are never searched for translation files.",
+  "config.variants": "Sparse language variants. `base` is the locale a variant falls back to, `requiredWhen` a regular expression for base texts that need an own variant text, `forbidden` text the variant should not contain.",
+  "config.checks.severity": "Severity per check rule: `error`, `warning`, `info` or `off`.",
+  "config.checks.ignoreSameAsReference": "Texts that may be identical to the reference without being reported.",
+  "config.diagnostics.missing": "How missing keys appear in the Problems panel.",
+  "config.diagnostics.missing.aggregate": "One problem per file with the number of missing keys",
+  "config.diagnostics.missing.individual": "One problem per missing key",
+  "config.diagnostics.missing.off": "Not shown in the Problems panel"
 }

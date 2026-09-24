@@ -24,6 +24,19 @@ export interface Settings {
 /** Raw values of the `eduI18n.*` settings, keyed without the prefix (e.g. `checks.severity`). */
 export type RawSettings = Readonly<Record<string, unknown>>;
 
+/** Every setting {@link parseSettings} reads; the manifest declares exactly these (checked by a test). */
+export const SETTING_KEYS = [
+  'referenceLanguage',
+  'baseFileLanguage',
+  'areas',
+  'roots',
+  'exclude',
+  'variants',
+  'checks.severity',
+  'checks.ignoreSameAsReference',
+  'diagnostics.missing',
+] as const;
+
 export const DEFAULT_SETTINGS: Settings = {
   areas: [...PRESETS],
   roots: {},

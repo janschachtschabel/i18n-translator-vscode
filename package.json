@@ -84,6 +84,365 @@
           "group": "navigation"
         }
       ]
+    },
+    "configuration": {
+      "title": "%config.title%",
+      "properties": {
+        "eduI18n.referenceLanguage": {
+          "type": "string",
+          "default": "de",
+          "scope": "resource",
+          "markdownDescription": "%config.referenceLanguage%"
+        },
+        "eduI18n.baseFileLanguage": {
+          "type": "string",
+          "default": "en",
+          "scope": "resource",
+          "markdownDescription": "%config.baseFileLanguage%"
+        },
+        "eduI18n.areas": {
+          "type": "array",
+          "default": [],
+          "scope": "resource",
+          "markdownDescription": "%config.areas%",
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "format",
+              "files",
+              "localePattern"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              },
+              "format": {
+                "type": "string",
+                "enum": [
+                  "json-nested"
+                ]
+              },
+              "roots": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "files": {
+                "type": "string"
+              },
+              "localePattern": {
+                "type": "string"
+              },
+              "bundlePattern": {
+                "type": "string"
+              },
+              "bundleName": {
+                "type": "string"
+              },
+              "referenceLanguage": {
+                "type": "string"
+              },
+              "bundleOrder": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "mergeSemantics": {
+                "type": "string",
+                "enum": [
+                  "shallow-toplevel",
+                  "none"
+                ]
+              },
+              "detect": {
+                "type": "object",
+                "required": [
+                  "glob",
+                  "marker"
+                ],
+                "properties": {
+                  "glob": {
+                    "type": "string"
+                  },
+                  "marker": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "eduI18n.roots": {
+          "type": "object",
+          "default": {},
+          "scope": "resource",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "markdownDescription": "%config.roots%"
+        },
+        "eduI18n.exclude": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "**/node_modules/**",
+            "**/.git/**",
+            "**/dist/**",
+            "**/out/**",
+            "**/target/**",
+            "**/build/**"
+          ],
+          "scope": "resource",
+          "markdownDescription": "%config.exclude%"
+        },
+        "eduI18n.variants": {
+          "type": "object",
+          "default": {
+            "de-informal": {
+              "base": "de",
+              "requiredWhen": "\\b(?:Sie|Ihnen|Ihr|Ihre|Ihrem|Ihren|Ihrer|Ihres)\\b",
+              "forbidden": "\\b(?:Sie|Ihnen|Ihr|Ihre|Ihrem|Ihren|Ihrer|Ihres)\\b"
+            },
+            "de-no-binnen-i": {
+              "base": "de",
+              "requiredWhen": "\\{\\{\\s*GENDER_SEPARATOR\\s*\\}\\}|[*:_]innen\\b|[a-zäöüß]Innen\\b",
+              "forbidden": "\\{\\{\\s*GENDER_SEPARATOR\\s*\\}\\}"
+            }
+          },
+          "scope": "resource",
+          "markdownDescription": "%config.variants%",
+          "additionalProperties": {
+            "type": "object",
+            "required": [
+              "base",
+              "requiredWhen"
+            ],
+            "properties": {
+              "base": {
+                "type": "string"
+              },
+              "requiredWhen": {
+                "type": "string"
+              },
+              "forbidden": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "eduI18n.checks.severity": {
+          "type": "object",
+          "default": {},
+          "scope": "resource",
+          "additionalProperties": false,
+          "markdownDescription": "%config.checks.severity%",
+          "properties": {
+            "parse-error": {
+              "type": "string",
+              "enum": [
+                "error",
+                "warning",
+                "info",
+                "off"
+              ]
+            },
+            "non-string-value": {
+              "type": "string",
+              "enum": [
+                "error",
+                "warning",
+                "info",
+                "off"
+              ]
+            },
+            "duplicate-key": {
+              "type": "string",
+              "enum": [
+                "error",
+                "warning",
+                "info",
+                "off"
+              ]
+            },
+            "not-utf8": {
+              "type": "string",
+              "enum": [
+                "error",
+                "warning",
+                "info",
+                "off"
+              ]
+            },
+            "missing-file": {
+              "type": "string",
+              "enum": [
+                "error",
+                "warning",
+                "info",
+                "off"
+              ]
+            },
+            "missing-key": {
+              "type": "string",
+              "enum": [
+                "error",
+                "warning",
+                "info",
+                "off"
+              ]
+            },
+            "empty-value": {
+              "type": "string",
+              "enum": [
+                "error",
+                "warning",
+                "info",
+                "off"
+              ]
+            },
+            "orphan-key": {
+              "type": "string",
+              "enum": [
+                "error",
+                "warning",
+                "info",
+                "off"
+              ]
+            },
+            "misplaced-key": {
+              "type": "string",
+              "enum": [
+                "error",
+                "warning",
+                "info",
+                "off"
+              ]
+            },
+            "placeholder-malformed": {
+              "type": "string",
+              "enum": [
+                "error",
+                "warning",
+                "info",
+                "off"
+              ]
+            },
+            "placeholder-mismatch": {
+              "type": "string",
+              "enum": [
+                "error",
+                "warning",
+                "info",
+                "off"
+              ]
+            },
+            "html-mismatch": {
+              "type": "string",
+              "enum": [
+                "error",
+                "warning",
+                "info",
+                "off"
+              ]
+            },
+            "variant-needed": {
+              "type": "string",
+              "enum": [
+                "error",
+                "warning",
+                "info",
+                "off"
+              ]
+            },
+            "variant-inconsistent": {
+              "type": "string",
+              "enum": [
+                "error",
+                "warning",
+                "info",
+                "off"
+              ]
+            },
+            "variant-orphan": {
+              "type": "string",
+              "enum": [
+                "error",
+                "warning",
+                "info",
+                "off"
+              ]
+            },
+            "key-overridden": {
+              "type": "string",
+              "enum": [
+                "error",
+                "warning",
+                "info",
+                "off"
+              ]
+            },
+            "subtree-lost": {
+              "type": "string",
+              "enum": [
+                "error",
+                "warning",
+                "info",
+                "off"
+              ]
+            },
+            "same-as-reference": {
+              "type": "string",
+              "enum": [
+                "error",
+                "warning",
+                "info",
+                "off"
+              ]
+            }
+          }
+        },
+        "eduI18n.checks.ignoreSameAsReference": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "OK",
+            "E-Mail",
+            "CC-0",
+            "ID"
+          ],
+          "scope": "resource",
+          "markdownDescription": "%config.checks.ignoreSameAsReference%"
+        },
+        "eduI18n.diagnostics.missing": {
+          "type": "string",
+          "enum": [
+            "aggregate",
+            "individual",
+            "off"
+          ],
+          "default": "aggregate",
+          "markdownDescription": "%config.diagnostics.missing%",
+          "enumDescriptions": [
+            "%config.diagnostics.missing.aggregate%",
+            "%config.diagnostics.missing.individual%",
+            "%config.diagnostics.missing.off%"
+          ]
+        }
+      }
     }
   },
   "scripts": {
