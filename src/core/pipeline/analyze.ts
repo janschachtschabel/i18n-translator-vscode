@@ -29,6 +29,11 @@ export interface RootAnalysis {
   issues: Issue[];
 }
 
+/** The paths below `root` that belong to the area: the only files a host needs to read for {@link analyzeRoot}. */
+export function filesToRead(area: AreaDefinition, root: string, paths: readonly string[]): string[] {
+  return classifyFiles(paths, [{ area, roots: [root] }]).map((file) => file.relPath);
+}
+
 /**
  * Parses the files below one area root, builds its bundles and runs the check catalog. Each root is
  * analyzed on its own: two roots are two independent installations and must not be merged.
