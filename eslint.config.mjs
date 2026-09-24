@@ -1,6 +1,12 @@
 import js from '@eslint/js';
+import { builtinModules } from 'node:module';
 import { defineConfig } from 'eslint/config';
 import tseslint from 'typescript-eslint';
+
+// Node built-ins by bare name ('fs', 'path/posix', ...); 'node:*' imports are matched by pattern.
+const nodeBuiltins = (message) => builtinModules.map((name) => ({ name, message }));
+const CORE_NODE_MESSAGE = 'src/core must also run in the webview; keep Node APIs out.';
+const WEBVIEW_NODE_MESSAGE = 'The webview runs in a browser, not in Node.';
 
 export default defineConfig(
   { ignores: ['dist/', 'out/', 'coverage/', '.vscode-test/', 'node_modules/', 'test/fixtures/'] },
@@ -24,17 +30,35 @@ export default defineConfig(
       'no-restricted-imports': [
         'error',
         {
-          paths: [{ name: 'vscode', message: 'src/core must not depend on the VS Code API.' }],
+          paths: [
+            { name: 'vscode', message: 'src/core must not depend on the VS Code API.' },
+            ...nodeBuiltins(CORE_NODE_MESSAGE),
+          ],
           patterns: [
             {
               group: ['**/extension/**', '**/webview/**'],
               message: 'src/core must not depend on outer layers.',
             },
-            { group: ['node:*'], message: 'src/core must also run in the webview; keep Node APIs out.' },
+            { group: ['node:*'], message: CORE_NODE_MESSAGE },
           ],
         },
       ],
-      'no-restricted-globals': ['error', 'window', 'document', 'navigator'],
+      'no-restricted-globals': [
+        'error',
+        'window',
+        'document',
+        'navigator',
+        ...[
+          'Buffer',
+          'process',
+          'global',
+          'require',
+          'module',
+          '__dirname',
+          '__filename',
+          'setImmediate',
+        ].map((name) => ({ name, message: CORE_NODE_MESSAGE })),
+      ],
     },
   },
   {
@@ -46,10 +70,11 @@ export default defineConfig(
         {
           paths: [
             { name: 'vscode', message: 'The webview cannot use the VS Code API; post a message instead.' },
+            ...nodeBuiltins(WEBVIEW_NODE_MESSAGE),
           ],
           patterns: [
             { group: ['**/extension/**'], message: 'The webview must not import extension-host code.' },
-            { group: ['node:*'], message: 'The webview runs in a browser, not in Node.' },
+            { group: ['node:*'], message: WEBVIEW_NODE_MESSAGE },
           ],
         },
       ],
