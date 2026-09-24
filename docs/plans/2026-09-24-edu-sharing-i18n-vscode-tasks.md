@@ -148,21 +148,12 @@ suite('activation', () => {
 - vitest: `include: ['test/unit/**/*.test.{ts,tsx}']`, Coverage v8 über `src/core/**` mit Schwelle 90 % Zeilen (ab Phase 1 scharf).
 - `.vscode-test.mjs`: zwei Profile (`min` → `version: '1.90.0'`, `stable` → `version: 'stable'`), `workspaceFolder: 'test/fixtures/workspace-basic'`, `mocha.timeout: 20000`.
 
-**Fixture-Workspace** (synthetische Texte, **keine** Kopien aus dem GPL-Repo). Die erwarteten Befunde stehen in `test/fixtures/README.md`:
+**Fixture-Workspace** (synthetische Texte, **keine** Kopien aus dem GPL-Repo). Die Kategorien `common`, `admin`,
+`editorial` und `broken` enthalten bewusst eingebaute Befunde. **Maßgeblich ist `test/fixtures/README.md`**: Es listet
+alle 21 erwarteten Befunde (3 Fehler, 15 Warnungen, 3 Hinweise; 17 Diagnosen im Problems-Panel), die Regel-
+Wechselwirkungen, von denen die Summen abhängen, und was absichtlich *nicht* gemeldet wird.
 
-| Datei | Enthält bewusst |
-|---|---|
-| `Frontend/src/assets/i18n/common/de.json` | 12 Keys, u. a. `ERROR_TITLE: "Fehler ({{date}})"`, `PERSON: "Autor{{GENDER_SEPARATOR}}in"`, `ASK: "Möchten Sie fortfahren?"`, `MIME: { "application/vnd.ms-excel": "Excel" }`, `CCMAIL: { "mail.smtp.server": "SMTP-Server" }` |
-| `…/common/en.json` | vollständig, `ERROR_TITLE: "Error ({{ date }})"` (Leerraum → **kein** Befund) |
-| `…/common/fr.json` | 2 Keys fehlen, `ERROR_TITLE: "Erreur ({{data}})"` (Abweichung), ein Key `""` (leer) |
-| `…/common/it.json` | `COUNT: "Attivi {{{count}}"` (Syntaxfehler), 1 verwaister Key `OLD_KEY` |
-| `…/common/de-informal.json` | nur `ASK: "Möchtest Du fortfahren?"` |
-| `…/common/de-no-binnen-i.json` | `{}` → `PERSON` braucht eine Variante |
-| `…/admin/de.json`, `en.json` | Top-Level `ASK` mit **anderem** Text als in `common` (→ `key-overridden`) |
-| `…/editorial/de.json`, `en.json` | fr/it fehlen (→ `missing-file`) |
-| `…/broken/de.json` | `{"a": }` (→ `parse-error`) |
-
-**Verifikation:** `npm run test:unit` (smoke: `expect(1).toBe(1)`) und `npm run test:integration` → grün.
+**Verifikation:** `npm run test:unit` und `npm run test:integration` → grün.
 **Commit:** `test: add vitest, vscode-test and synthetic fixture workspace`
 
 ### Task 0.7: l10n-Gerüst
@@ -442,16 +433,19 @@ export function formatIssue(issue: Issue): { template: string; args: Record<stri
 - **Vollständige Sprachen** sind alle Sprachen außer den in `variants` konfigurierten.
 - **`missing-file`**: Eine vollständige Sprache, die im Bereich vorkommt, hat in der Einheit keine Datei.
 - **`missing-key`**: Der Key existiert in einer anderen vollständigen Sprache, fehlt aber in L. Fehlt er in der Referenz, wird stattdessen `orphan-key` bei den Sprachen gemeldet, die ihn haben.
-- **`misplaced-key`**: Ein verwaister Key teilt das letzte Segment mit einem in L fehlenden Key; `args.suggestion` enthält den Ziel-Key.
+  Berechnet wird das **nur für Sprachen, die in der Einheit eine Datei haben**; eine fehlende Datei ergibt genau einen `missing-file`-Befund.
+- **`misplaced-key`**: Ein verwaister Key teilt das letzte Segment mit einem in L fehlenden Key; `args.suggestion` enthält den Ziel-Key. Er **ersetzt** den `orphan-key`-Befund für diesen Eintrag.
+- Lässt sich die **Referenzdatei** einer Einheit nicht parsen, entfallen für die Einheit `missing-key`, `orphan-key`, `misplaced-key` und `empty-value`; es bleibt der `parse-error`.
 - **`fileProblems`**: Die Probleme aus dem Parser (`parse-error` usw.) werden durchgereicht.
 
 **Testfälle:** synthetische Einheiten (in-memory, gebaut mit `buildBundle`):
 - `fr` fehlt `b` → 1× `missing-key` (`locale fr`, `entryId ["b"]`).
 - `it` hat `OLD` zusätzlich → `orphan-key`.
-- `fr` hat `x.TITLE` statt `y.TITLE` → `misplaced-key` mit `suggestion 'y.TITLE'`.
-- Die Einheit `editorial` ohne `fr` in einem Bereich, in dem `fr` vorkommt → `missing-file`.
+- `fr` hat `x.TITLE` statt `y.TITLE` → `misplaced-key` mit `suggestion 'y.TITLE'` und **kein** `orphan-key` für `x.TITLE`.
+- Die Einheit `editorial` ohne `fr` in einem Bereich, in dem `fr` vorkommt → 1× `missing-file` und **kein** `missing-key` für `fr`.
 - `""` → `empty-value`.
 - `de-informal` ohne Key → **kein** `missing-key`.
+- Referenzdatei mit Parse-Fehler, `en` hat einen Key, den sonst niemand hat → nur `parse-error`, kein `orphan-key`/`missing-key`.
 
 **Commit:** `feat(core): add completeness rules`
 
@@ -568,7 +562,7 @@ Regeln:
 - Bereiche werden über `createLineIndex` bestimmt; `code` ist die Regel-ID; `source` ist `edu-sharing i18n`.
 - `relatedInformation` verweist auf die Referenzstelle.
 
-**Test:** Im Fixture-Workspace hat `common/fr.json` genau eine `placeholder-mismatch`-Diagnose in der Zeile von `ERROR_TITLE`, eine gebündelte `missing-key`-Diagnose und eine `empty-value`-Diagnose.
+**Test:** Im Fixture-Workspace hat `common/fr.json` genau **vier** Diagnosen: `placeholder-mismatch` in der Zeile von `ERROR_TITLE`, eine gebündelte `missing-key`-Diagnose, `empty-value` (`SAVE`) und `html-mismatch` (`BOLD_HINT`). Insgesamt sind es 17 Diagnosen (siehe `test/fixtures/README.md`).
 **Commit:** `feat: publish check results to the problems panel`
 
 ### Task 1.19: Seitenleiste mit Zählern

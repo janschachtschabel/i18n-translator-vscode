@@ -44,10 +44,18 @@ Totals: **3 errors, 15 warnings, 3 infos.**
 Problems panel (mode `aggregate`, infos excluded): **17 diagnostics** – the two `missing-key`
 findings for `common/fr.json` are combined into one.
 
+Rule interactions these totals depend on:
+- `missing-key` is only computed for locales that **have** a file in the bundle. A missing file is one
+  `missing-file` finding, not one `missing-key` per entry (otherwise `admin`/`editorial` would add 6).
+- `misplaced-key` **replaces** `orphan-key` for the same entry (`it` `FILE.TITLE` is reported once).
+- If the **reference file** of a bundle does not parse, the bundle gets its `parse-error` and no
+  completeness findings (`missing-key`, `orphan-key`, `misplaced-key`, `empty-value`).
+
 Not reported on purpose:
 - `en` `ERROR_TITLE` uses `{{ date }}` (whitespace is normalized).
 - `PERSON` in `en`/`fr`/`it` has no `{{GENDER_SEPARATOR}}` (German-only marker).
 - `de-informal` has no file in `admin`/`editorial`/`broken` (variants are sparse), but `admin` still
   needs a variant for `ASK` (finding 17).
-- `broken` has no completeness findings because its reference file does not parse.
+- `broken/en.json` contains `b`, which the other locales lack. Without the parse-error suppression above
+  it would show up as `orphan-key` (en) and `missing-key` (fr, it).
 - `CCMAIL.mail.smtp.server` and `MIME.application/vnd.ms-excel` keep their dotted/slashed segments.
