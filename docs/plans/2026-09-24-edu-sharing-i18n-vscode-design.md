@@ -265,13 +265,13 @@ Befunde vom Typ „Hinweis" erscheinen standardmäßig nur im Editor (Filter und
 | `missing-file` | Warnung | ja | Sprachdatei fehlt in einer Einheit | `editorial`, `topic-page`: fr, it |
 | `missing-key` | Warnung | **gebündelt** je Datei | Key fehlt in einer vollständigen Sprache (Rückfall auf die Default-Sprache) | 975 |
 | `missing-template` | Warnung | ja | Mail-Template oder -Feld fehlt (Rückfall auf `templates.xml`) | `added_inbox` in fr_FR, it_IT |
-| `empty-value` | Warnung | ja | `""` überschreibt den Fallback, die UI zeigt leeren Text | 12 |
+| `empty-value` | Warnung | ja | leerer Text, obwohl die Referenz (bei Varianten die Basis) einen Text hat: `""` überschreibt den Fallback, die UI zeigt leeren Text. In der Referenz ebenfalls leere Texte gelten als gewollt | 0 (alle 17 leeren Werte im Repo sind auch in der Referenz leer) |
 | `orphan-key` | Warnung | ja | Key existiert nur in der Zielsprache (veraltet oder falsch einsortiert) | 15 |
 | `misplaced-key` | Warnung | ja | verwaister Key, dessen letztes Segment zu einem fehlenden Key passt; Vorschlag „verschieben" | – |
 | `key-overridden` | Warnung | ja | gleicher Top-Level-Key in mehreren Kategorien mit anderem Text; die spätere Kategorie gewinnt app-weit | de 27 · en 3 · fr 1 · it 3 |
 | `duplicate-key` | Warnung | ja | Key doppelt in derselben Datei (der letzte gewinnt) | MDS: 14 |
 | `variant-needed` | Warnung | ja | `de` enthält die Sie-Form bzw. `{{GENDER_SEPARATOR}}`, die Variante hat keine eigene Fassung | `de-informal` 133 · `de-no-binnen-i` 6 |
-| `html-mismatch` | Warnung | ja | HTML-Tags weichen von der Referenz ab | – |
+| `html-mismatch` | Warnung | ja | HTML-Tags weichen von der Referenz ab; nur echte HTML-Elemente, Wörter in spitzen Klammern wie `<keine>` sind Text | 22 (z. B. fehlendes `<b>` in `WORKSPACE.SHARE.PUBLISH_ACTIVE_DOCUMENT`) |
 | `variant-inconsistent` | Hinweis | nein | informelle Variante enthält die Sie-Form (heuristisch) | 5 (teils „Sie" = „they") |
 | `variant-orphan` | Hinweis | nein | Varianten-Key ohne Basis-Key | 2 |
 | `same-as-reference` | Hinweis | nein | identisch mit der Referenz, evtl. unübersetzt (mind. 4 Buchstaben, Ignorierliste) | 338 |
