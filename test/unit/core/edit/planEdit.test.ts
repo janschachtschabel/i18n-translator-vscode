@@ -8,6 +8,7 @@ import {
   type PlanResult,
 } from '../../../../src/core/edit/planEdit';
 import type { FileOp } from '../../../../src/core/formats/adapter';
+import { jsonNestedAdapter } from '../../../../src/core/formats/json/jsonNested';
 import { displayKey, keyFromSegments } from '../../../../src/core/model/keys';
 import { analyzeFixtureWorkspace, analyzeTexts } from '../../support/fixtureWorkspace';
 
@@ -255,7 +256,30 @@ describe('planEdit: keys', () => {
     ]);
   });
 
+  it('deletes a nested key with the objects that become empty, but keeps parents with other keys', () => {
+    const result = planEdit(bundle('common'), { kind: 'deleteKey', entryId: id('WORKSPACE.FILE.TITLE') });
+    expect(summary(result)).toEqual([
+      'common/de.json: delete WORKSPACE.FILE.TITLE',
+      'common/en.json: delete WORKSPACE.FILE.TITLE',
+    ]);
+    // Applied the way the file store will apply it: FILE goes, WORKSPACE stays with its title.
+    const de = bundle('common').file('de')!;
+    const ops = result.ok
+      ? result.changes.flatMap((change) =>
+          change.kind === 'edit' && change.relPath === de.relPath ? change.ops : [],
+        )
+      : [];
+    expect(jsonNestedAdapter.applyOps(de.doc, ops).text).toContain(
+      '  "WORKSPACE": {\n    "TITLE": "Arbeitsbereich"\n  }\n}\n',
+    );
+  });
+
+  it('leaves a key alone that is renamed to its own name', () => {
+    expect(plan('common', { kind: 'renameKey', entryId: id('ASK'), to: key('ASK') })).toEqual([]);
+  });
+
   it('changes no key while a file of the bundle has a syntax error', () => {
+    expect(plan('broken', { kind: 'addKey', key: key('NEW'), values: { de: 'x' } })).toBe('unreadable-file');
     expect(plan('broken', { kind: 'deleteKey', entryId: id('b') })).toBe('unreadable-file');
     expect(plan('broken', { kind: 'renameKey', entryId: id('b'), to: key('c') })).toBe('unreadable-file');
   });
@@ -280,6 +304,18 @@ describe('planAddLanguage', () => {
   it('refuses invalid language codes and languages every bundle has', () => {
     expect(add('ES')).toBe('invalid-locale');
     expect(add('de')).toBe('locale-exists');
+  });
+
+  it('creates each file in the layout of the reference file', () => {
+    const { bundles } = analyzeTexts({ 'crlf/de.json': '{\r\n  "A": "a"\r\n}\r\n' });
+    expect(summary(planAddLanguage(bundles, ANGULAR_PRESET, 'fr'))).toEqual([
+      'create crlf/fr.json: "{}\\r\\n"',
+    ]);
+  });
+
+  it('refuses a language when the file pattern cannot write the path of a bundle', () => {
+    const onlyCommon = { ...ANGULAR_PRESET, bundlePattern: 'common' };
+    expect(summary(planAddLanguage(analysis.bundles, onlyCommon, 'es'))).toBe('invalid-locale');
   });
 
   it('refuses language codes that would turn into paths, whatever the pattern allows', () => {
