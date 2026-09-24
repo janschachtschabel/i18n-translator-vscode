@@ -1,0 +1,10 @@
+{
+  "displayName": "edu-sharing i18n",
+  "description": "Check, fill, import and export edu-sharing translation files (Angular JSON, metadataset .properties, mail templates).",
+  "view.container": "edu-sharing i18n",
+  "view.areas": "Areas",
+  "view.areas.welcome": "No edu-sharing translation files were found in this workspace.\n[Configure folders](command:eduI18n.configureRoots)",
+  "cmd.check": "Check translations",
+  "cmd.configureRoots": "Configure translation folders…",
+  "untrusted.description": "In Restricted Mode, translations can only be viewed and checked; writing files and AI features are disabled."
+}

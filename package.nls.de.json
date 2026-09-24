@@ -1,0 +1,10 @@
+{
+  "displayName": "edu-sharing i18n",
+  "description": "Übersetzungsdateien von edu-sharing prüfen, füllen, importieren und exportieren (Angular-JSON, Metadataset-.properties, Mail-Templates).",
+  "view.container": "edu-sharing i18n",
+  "view.areas": "Bereiche",
+  "view.areas.welcome": "In diesem Workspace wurden keine Übersetzungsdateien von edu-sharing gefunden.\n[Ordner festlegen](command:eduI18n.configureRoots)",
+  "cmd.check": "Übersetzungen prüfen",
+  "cmd.configureRoots": "Übersetzungsordner festlegen…",
+  "untrusted.description": "Im eingeschränkten Modus können Übersetzungen nur angezeigt und geprüft werden; Schreiben und KI-Funktionen sind deaktiviert."
+}

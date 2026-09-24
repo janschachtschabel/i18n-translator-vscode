@@ -1,0 +1,121 @@
+{
+  "name": "edu-sharing-i18n",
+  "displayName": "%displayName%",
+  "description": "%description%",
+  "version": "0.0.1",
+  "publisher": "janschachtschabel",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/janschachtschabel/i18n-translator-vscode"
+  },
+  "bugs": {
+    "url": "https://github.com/janschachtschabel/i18n-translator-vscode/issues"
+  },
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Linters",
+    "Other"
+  ],
+  "keywords": [
+    "i18n",
+    "translation",
+    "edu-sharing",
+    "ngx-translate",
+    "properties"
+  ],
+  "main": "./dist/extension.js",
+  "l10n": "./l10n",
+  "activationEvents": [
+    "workspaceContains:**/common/de.json",
+    "workspaceContains:**/mailtemplates/templates.xml",
+    "workspaceContains:**/metadatasets/i18n/mds.properties"
+  ],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": "limited",
+      "description": "%untrusted.description%"
+    }
+  },
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "eduI18n",
+          "title": "%view.container%",
+          "icon": "media/activity.svg"
+        }
+      ]
+    },
+    "views": {
+      "eduI18n": [
+        {
+          "id": "eduI18n.areas",
+          "name": "%view.areas%"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "eduI18n.areas",
+        "contents": "%view.areas.welcome%"
+      }
+    ],
+    "commands": [
+      {
+        "command": "eduI18n.check",
+        "title": "%cmd.check%",
+        "category": "edu-sharing i18n",
+        "icon": "$(checklist)"
+      },
+      {
+        "command": "eduI18n.configureRoots",
+        "title": "%cmd.configureRoots%",
+        "category": "edu-sharing i18n"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "eduI18n.check",
+          "when": "view == eduI18n.areas",
+          "group": "navigation"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "build": "node esbuild.mjs",
+    "watch": "node esbuild.mjs --watch",
+    "vscode:prepublish": "node esbuild.mjs --production",
+    "package": "vsce package --no-dependencies",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "test:unit": "vitest run",
+    "test:integration": "node esbuild.mjs && node esbuild.mjs --tests && vscode-test",
+    "check:repo": "tsx scripts/check-repo.ts"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^22.20.4",
+    "@types/vscode": "1.90.0",
+    "@vitest/coverage-v8": "^5.0.1",
+    "@vscode/test-cli": "^0.0.15",
+    "@vscode/test-electron": "^3.1.0",
+    "@vscode/vsce": "^4.0.0",
+    "esbuild": "^0.28.2",
+    "eslint": "^10.11.0",
+    "prettier": "^3.9.9",
+    "tsx": "^4.23.15",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.70.1",
+    "vitest": "^5.0.1"
+  },
+  "dependencies": {
+    "jsonc-parser": "^3.3.1"
+  }
+}
