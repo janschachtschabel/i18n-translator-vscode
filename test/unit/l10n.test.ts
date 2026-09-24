@@ -1,9 +1,12 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { MESSAGE_TEMPLATES } from '../../src/core/checks/messages';
 import { collectL10nCalls } from './support/l10nCollector';
 
 const root = join(__dirname, '..', '..');
+/** Localizes the templates of the core catalog, so its l10n.t() call cannot use a literal. */
+const CATALOG_MODULE = join('src', 'extension', 'localize.ts');
 
 function readJson(relPath: string): Record<string, string> {
   return JSON.parse(readFileSync(join(root, relPath), 'utf8')) as Record<string, string>;
@@ -18,8 +21,11 @@ function runtimeMessages(): { messages: string[]; problems: string[] } {
   for (const file of files) {
     const result = collectL10nCalls(readFileSync(file, 'utf8'), relative(root, file));
     result.messages.forEach((message) => messages.add(message));
-    problems.push(...result.problems);
+    if (relative(root, file) !== CATALOG_MODULE) {
+      problems.push(...result.problems);
+    }
   }
+  MESSAGE_TEMPLATES.forEach((template) => messages.add(template));
   return { messages: [...messages].sort(), problems };
 }
 
@@ -59,6 +65,14 @@ describe('localization', () => {
   it('translates every runtime message to German', () => {
     const german = readJson('l10n/bundle.l10n.de.json');
     expect(runtimeMessages().messages.filter((message) => !german[message])).toEqual([]);
+  });
+
+  it('uses the same arguments in German as in English', () => {
+    const names = (text: string) => [...text.matchAll(/\{(\w+)\}/g)].map((match) => match[1]).sort();
+    const german = readJson('l10n/bundle.l10n.de.json');
+    expect(
+      Object.entries(german).filter(([english, text]) => names(english).join() !== names(text).join()),
+    ).toEqual([]);
   });
 
   it('has no stale entries in the German runtime bundle', () => {

@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { DiagnosticsPublisher } from './diagnostics/diagnosticsPublisher';
 import { WorkspaceIndex } from './services/workspaceIndex';
 import { AreasTreeProvider } from './views/areasTree';
 
@@ -16,6 +17,7 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
   context.subscriptions.push(
     log,
     index,
+    new DiagnosticsPublisher(index),
     vscode.window.createTreeView('eduI18n.areas', { treeDataProvider: new AreasTreeProvider() }),
     vscode.commands.registerCommand('eduI18n.check', notYetAvailable),
     vscode.commands.registerCommand('eduI18n.configureRoots', notYetAvailable),

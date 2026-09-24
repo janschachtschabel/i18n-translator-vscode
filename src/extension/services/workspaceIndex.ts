@@ -17,6 +17,8 @@ import { relativeUriPath } from './uriPaths';
 export interface IndexedRoot {
   /** The workspace folder that the root and every path of the analysis are relative to. */
   folder: vscode.WorkspaceFolder;
+  /** The validated settings of that folder, as used for the analysis. */
+  settings: Settings;
   analysis: RootAnalysis;
 }
 
@@ -148,7 +150,7 @@ export class WorkspaceIndex implements vscode.Disposable {
             const paths = await timed('list', () => this.listRoot(folder, area, root, exclude));
             const files = await timed('read', () => this.readFiles(folder, paths, report));
             const analysis = await timed('analyze', () => analyzeRoot(area, root, files, options));
-            roots.push({ folder, analysis });
+            roots.push({ folder, settings, analysis });
           } catch (error) {
             this.log.error(`Could not index ${area.id} in ${root || '.'}.`, error);
             report(`${area.label} in ${root || '.'} could not be checked: ${messageOf(error)}`);
