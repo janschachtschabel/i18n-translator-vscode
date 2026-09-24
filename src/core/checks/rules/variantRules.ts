@@ -74,7 +74,10 @@ export const variantInconsistentRule: Rule = {
     ),
 };
 
-/** A variant key without a base key is never used: ngx-translate looks keys up in the base language first. */
+/**
+ * A key only the variant has: users of the base language lack it, so it is usually stale (removed from the
+ * base) or misplaced. Variant users do see it, as the variant file is loaded on its own.
+ */
 export const variantOrphanRule: Rule = {
   id: 'variant-orphan',
   defaultSeverity: 'info',
