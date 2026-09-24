@@ -90,6 +90,15 @@ describe('empty-value', () => {
       'empty-value common/fr b',
     ]);
   });
+
+  it('accepts texts that are intentionally empty in the reference (edu-sharing QUOTA.OVERALL)', () => {
+    const bundle = bundleOf('common', {
+      de: '{"PREFIX":"","QUOTA":""}',
+      en: '{"PREFIX":"by","QUOTA":""}',
+      'de-informal': '{"QUOTA":""}',
+    });
+    expect(run(emptyValueRule, [bundle])).toEqual([]);
+  });
 });
 
 describe('reference file with a syntax error', () => {
