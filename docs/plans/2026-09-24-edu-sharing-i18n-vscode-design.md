@@ -43,6 +43,22 @@ Die Prüfregeln leiten sich aus dem tatsächlichen Laufzeitverhalten ab, nicht a
 | **Metadatasets** | `config/defaults/src/main/resources/metadatasets/i18n/{gruppe}[_{locale}].properties` | `MetadataReader.getTranslation`: Reihenfolge `{i18n}_override_{locale}` → `{i18n}_{locale}` → `{i18n}_override` → `{i18n}`. Gelesen wird über `PropertyResourceBundle` (Java 9+: UTF-8 mit Rückfall auf ISO-8859-1, **je Datei**). | Das **Encoding bleibt je Datei erhalten**: Im Repo sind 12 Dateien UTF-8 und 13 ISO-8859-1. Die Basisdatei ohne Suffix ist Englisch („default"). |
 | **Mail** | `config/defaults/src/main/resources/mailtemplates/templates[_{locale}].xml` | `MailTemplate`: Ein Template wird über (`name`, `context`) identifiziert. Fehlt es in der Locale-Datei, greift `templates.xml`; zusätzlich sind `_override`-Dateien möglich. | XML wird **chirurgisch** bearbeitet: CDATA, `<style>`, Einrückung und `context` bleiben erhalten. Ein fehlendes Template bedeutet einen Rückfall auf Englisch. |
 
+**Nachtrag (Review Block B): Produktions-Builds führen anders zusammen.** Die Zeile „Angular" beschreibt den Loader
+im Frontend. Er gilt, wenn Übersetzungen lokal geladen werden (Entwicklung). Im Produktions-Build
+(`production: true`, Quelle `Auto`) holt `translation-loader.ts` die Texte stattdessen über
+`/config/v1/language/defaults` vom Backend. `I18nAngular.getLanguageStrings` führt dort **jeden** Ordner unter
+`assets/i18n` zusammen, und zwar in der Reihenfolge von `File.listFiles()`, die nicht festgelegt ist. Folgen:
+
+- Auch Kategorien außerhalb von `TRANSLATION_LIST` werden geladen.
+- Welcher Text bei einem Konflikt gewinnt, kann vom Entwicklungs-Build abweichen. Die Merge-Regeln melden den
+  Konflikt trotzdem richtig. Den Gewinner nennen sie nach der Reihenfolge der Bereichsdefinition („spätere in
+  der Merge-Reihenfolge"), nicht als Tatsache der Laufzeit.
+- Für Sprachen außer `de-*` liest das Backend `{sprache}.json`, ohne zu prüfen, ob die Datei existiert. Eine
+  fehlende Datei lässt deshalb vermutlich den ganzen Aufruf scheitern. Zur Laufzeit ist das nicht verifiziert;
+  `missing-file` bleibt vorerst eine Warnung.
+- Nur die exakte Schreibweise `{{GENDER_SEPARATOR}}` wird ersetzt (Frontend und Backend). Andere
+  Schreibweisen meldet `placeholder-malformed`.
+
 ### 2.3 Probelauf der geplanten Prüfregeln am echten Repo
 
 Ein nur lesender Python-Prototyp der Regeln lief gegen den lokalen Clone (`maven/fixes/11.0`):

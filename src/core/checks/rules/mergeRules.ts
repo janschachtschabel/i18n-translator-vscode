@@ -13,9 +13,10 @@ interface MergeConflict {
 }
 
 /**
- * Replays edu-sharing's translation loader: per locale, the bundles in `bundleOrder` are merged by
- * top-level key and a later bundle replaces the whole top-level value. Bundles outside the order are
- * not loaded at runtime and take no part.
+ * Replays the frontend's own translation loader: per locale, the bundles in `bundleOrder` are merged by
+ * top-level key and a later bundle replaces the whole top-level value. Bundles outside the order are not
+ * loaded and take no part. Production builds of edu-sharing merge in the backend instead, in directory
+ * order (design §2.2), so there the winner may differ, but the conflict is the same.
  */
 function simulateMerge(ctx: CheckContext): MergeConflict[] {
   if (ctx.area.mergeSemantics !== 'shallow-toplevel' || !ctx.area.bundleOrder) {
@@ -59,13 +60,13 @@ function conflictFindings(ctx: CheckContext, kind: MergeConflict['kind']): Findi
       finding(kind === 'lost' ? 'subtree-lost' : 'key-overridden', bundle, {
         locale,
         key,
-        args: { key: displayKey(key), winner: winner.name, topKey: key.segments[0]! },
+        args: { key: displayKey(key), locale, winner: winner.name, topKey: key.segments[0]! },
         location: keyLocation(bundle, locale, key),
       }),
     );
 }
 
-/** The same key with a different text in a later bundle: the later text applies to the whole app. */
+/** The same key with a different text in a later bundle: in this locale, the later text applies everywhere. */
 export const keyOverriddenRule: Rule = {
   id: 'key-overridden',
   defaultSeverity: 'warning',

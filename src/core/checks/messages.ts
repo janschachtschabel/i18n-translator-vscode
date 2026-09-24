@@ -1,9 +1,6 @@
 import type { IssueArgs, RuleId } from './types';
 
-/**
- * English message templates; the extension localizes them via vscode.l10n (German in l10n/bundle.l10n.de.json),
- * the CLI prints them as they are. `{name}` refers to an issue argument.
- */
+/** English message templates, shared by the CLI and the extension. `{name}` refers to an issue argument. */
 export const ISSUE_MESSAGES: Readonly<Record<RuleId, string>> = {
   'parse-error': 'The file cannot be read: {detail}.',
   'non-string-value': '{key} has a value that is not text.',
@@ -13,7 +10,7 @@ export const ISSUE_MESSAGES: Readonly<Record<RuleId, string>> = {
   'missing-key': '{key} is missing in {locale}.',
   'empty-value': '{key} is empty in {locale}; the empty text replaces the fallback.',
   'orphan-key': '{key} exists in {locale} but not in the reference {reference}.',
-  'misplaced-key': '{key} exists only in {locale}; it probably belongs at {suggestion}.',
+  'misplaced-key': '{key} in {locale} is not in the reference; it probably belongs at {suggestion}.',
   'placeholder-malformed': 'Malformed placeholder syntax "{text}" in {key}.',
   'placeholder-mismatch':
     'The placeholders of {key} differ from the reference {reference}: missing {missing}, extra {extra}.',
@@ -23,9 +20,9 @@ export const ISSUE_MESSAGES: Readonly<Record<RuleId, string>> = {
   'variant-inconsistent': 'The {locale} text of {key} still contains "{match}".',
   'variant-orphan': '{key} exists in {locale} but not in {base}.',
   'key-overridden':
-    '{key} is also defined in {winner}, which is loaded later: its text replaces this one in the whole app.',
+    '{key} is also defined in {winner}, which comes later in the merge order: its {locale} text replaces this one.',
   'subtree-lost':
-    '{key} is unreachable at runtime: {winner}, which is loaded later, replaces the top-level key {topKey}.',
+    '{key} is unreachable in {locale}: {winner}, which comes later in the merge order, replaces the whole top-level key {topKey}.',
   'same-as-reference': '{key} in {locale} is identical to the reference text and may be untranslated.',
 };
 
