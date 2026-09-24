@@ -50,7 +50,53 @@ describe('compileFilePattern', () => {
     });
   });
 
+  describe('literal characters', () => {
+    it('matches dots and other regex characters literally', () => {
+      const angular = compileFilePattern({ files: '{bundle}/{locale}.json', localePattern: '[a-z]{2}' });
+      expect(angular('common/deXjson')).toBeNull();
+      const mds = compileFilePattern({
+        files: '{bundle}[_{locale}].properties',
+        localePattern: '[a-z]{2}_[A-Z]{2}',
+      });
+      expect(mds('mds_de_DEXproperties')).toBeNull();
+      const odd = compileFilePattern({ files: '{bundle}/a+({locale}).json', localePattern: '[a-z]{2}' });
+      expect(odd('x/a+(de).json')).toEqual({ bundle: 'x', locale: 'de' });
+      expect(odd('x/aa(de).json')).toBeNull();
+    });
+  });
+
+  describe('optional bundle part', () => {
+    it('falls back to the bundle name when the bundle part is absent', () => {
+      const match = compileFilePattern({
+        files: '[{bundle}_]{locale}.json',
+        localePattern: '[a-z]{2}',
+        bundleName: 'main',
+      });
+      expect(match('de.json')).toEqual({ bundle: 'main', locale: 'de' });
+      expect(match('extra_de.json')).toEqual({ bundle: 'extra', locale: 'de' });
+    });
+
+    it('requires a bundle name as fallback', () => {
+      expect(() =>
+        compileFilePattern({ files: '[{bundle}_]{locale}.json', localePattern: '[a-z]{2}' }),
+      ).toThrow(/bundleName/);
+    });
+  });
+
   describe('invalid patterns', () => {
+    it('rejects anchors and backreferences in embedded expressions', () => {
+      const spec = { files: '{bundle}/{locale}.json' };
+      expect(() => compileFilePattern({ ...spec, localePattern: '^[a-z]{2}$' })).toThrow(/anchor/);
+      expect(() => compileFilePattern({ ...spec, localePattern: '([a-z])\\1' })).toThrow(/backreference/);
+      expect(() => compileFilePattern({ ...spec, localePattern: '(?<x>[a-z])\\k<x>' })).toThrow(
+        /backreference/,
+      );
+      expect(compileFilePattern({ ...spec, localePattern: '[^A-Z$]{2}' })('c/de.json')).toEqual({
+        bundle: 'c',
+        locale: 'de',
+      });
+    });
+
     it('rejects unbalanced optional parts', () => {
       expect(() =>
         compileFilePattern({ files: '{bundle}[_{locale}.json', localePattern: '[a-z]{2}' }),

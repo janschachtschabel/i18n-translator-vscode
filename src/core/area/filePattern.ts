@@ -25,18 +25,20 @@ const DEFAULT_BUNDLE_PATTERN = '[^/]+?';
 
 /** Compiles a file pattern; throws a SyntaxError with a user-readable message if it is invalid. */
 export function compileFilePattern(spec: FilePatternSpec): (relPath: string) => PatternMatch | null {
-  assertValidRegex(spec.localePattern, 'localePattern');
+  assertEmbeddableRegex(spec.localePattern, 'localePattern');
   if (spec.bundlePattern !== undefined) {
-    assertValidRegex(spec.bundlePattern, 'bundlePattern');
+    assertEmbeddableRegex(spec.bundlePattern, 'bundlePattern');
   }
-  const { source, hasBundle, hasLocale } = toRegexSource(spec);
+  const { source, bundle, hasLocale } = toRegexSource(spec);
   if (!hasLocale) {
     throw new SyntaxError(`File pattern "${spec.files}" needs a {locale} placeholder.`);
   }
   const bundleName = spec.bundleName;
-  if (!hasBundle && !bundleName) {
+  if (bundle !== 'required' && !bundleName) {
     throw new SyntaxError(
-      `File pattern "${spec.files}" has no {bundle} placeholder, so a bundleName is required.`,
+      bundle === 'absent'
+        ? `File pattern "${spec.files}" has no {bundle} placeholder, so a bundleName is required.`
+        : `File pattern "${spec.files}" has {bundle} in an optional part, so a bundleName is required as fallback.`,
     );
   }
 
@@ -51,31 +53,39 @@ export function compileFilePattern(spec: FilePatternSpec): (relPath: string) => 
 
   return (relPath) => {
     const groups = regex.exec(relPath)?.groups;
-    if (!groups) {
+    const bundle = groups?.['bundle'] ?? bundleName;
+    if (!groups || bundle === undefined) {
       return null;
     }
-    return { bundle: groups['bundle'] ?? bundleName!, locale: groups['locale'] ?? BASE_FILE_LOCALE };
+    return { bundle, locale: groups['locale'] ?? BASE_FILE_LOCALE };
   };
 }
 
-function toRegexSource(spec: FilePatternSpec): { source: string; hasBundle: boolean; hasLocale: boolean } {
+function toRegexSource(spec: FilePatternSpec): {
+  source: string;
+  bundle: 'required' | 'optional' | 'absent';
+  hasLocale: boolean;
+} {
   let source = '';
   let depth = 0;
-  let hasBundle = false;
+  let bundle: 'required' | 'optional' | 'absent' = 'absent';
   let hasLocale = false;
   let rest = spec.files;
 
   while (rest.length > 0) {
     if (rest.startsWith('{bundle}') || rest.startsWith('{locale}')) {
       const isBundle = rest.startsWith('{bundle}');
-      if (isBundle ? hasBundle : hasLocale) {
+      if (isBundle ? bundle !== 'absent' : hasLocale) {
         throw new SyntaxError(`File pattern "${spec.files}" may contain ${rest.slice(0, 8)} only once.`);
       }
       source += isBundle
         ? `(?<bundle>${spec.bundlePattern ?? DEFAULT_BUNDLE_PATTERN})`
         : `(?<locale>${spec.localePattern})`;
-      hasBundle ||= isBundle;
-      hasLocale ||= !isBundle;
+      if (isBundle) {
+        bundle = depth > 0 ? 'optional' : 'required';
+      } else {
+        hasLocale = true;
+      }
       rest = rest.slice(8);
       continue;
     }
@@ -97,15 +107,37 @@ function toRegexSource(spec: FilePatternSpec): { source: string; hasBundle: bool
   if (depth !== 0) {
     throw new SyntaxError(`File pattern "${spec.files}" has an unclosed bracket.`);
   }
-  return { source, hasBundle, hasLocale };
+  return { source, bundle, hasLocale };
 }
 
-function assertValidRegex(source: string, name: string): void {
+/**
+ * The expression is embedded into the whole-path pattern: anchors would never match there and numbered
+ * backreferences would point at the wrong group, so both are rejected along with invalid syntax.
+ */
+function assertEmbeddableRegex(source: string, name: string): void {
   try {
     new RegExp(source);
   } catch (error) {
     throw new SyntaxError(`${name} is not a valid regular expression: ${(error as Error).message}`, {
       cause: error,
     });
+  }
+  let inClass = false;
+  for (let i = 0; i < source.length; i++) {
+    const char = source[i];
+    if (char === '\\') {
+      if (/[1-9k]/.test(source[i + 1] ?? '')) {
+        throw new SyntaxError(`${name} must not contain a backreference ("${source}").`);
+      }
+      i++;
+    } else if (char === '[') {
+      inClass = true;
+    } else if (char === ']') {
+      inClass = false;
+    } else if (!inClass && (char === '^' || char === '$')) {
+      throw new SyntaxError(
+        `${name} must not contain an anchor (^ or $); it is embedded into the path pattern.`,
+      );
+    }
   }
 }
