@@ -1,5 +1,6 @@
 import * as assert from 'node:assert';
 import * as vscode from 'vscode';
+import { DiagnosticsPublisher } from '../../src/extension/diagnostics/diagnosticsPublisher';
 import { activateExtension, workspaceUri } from './helpers';
 
 const SOURCE = 'edu-sharing i18n';
@@ -29,6 +30,44 @@ suite('diagnostics', () => {
         ['html-mismatch', 7],
       ],
     );
+  });
+
+  test('publishes each file in its own call, as VS Code drops files beyond 1,100 diagnostics per call', async () => {
+    const { index } = await activateExtension();
+    const real = vscode.languages.createDiagnosticCollection('eduI18n.test');
+    const calls: string[] = [];
+    const recording: vscode.DiagnosticCollection = {
+      name: real.name,
+      set: ((
+        first: vscode.Uri | readonly [vscode.Uri, readonly vscode.Diagnostic[] | undefined][],
+        diagnostics?: readonly vscode.Diagnostic[],
+      ) => {
+        calls.push(first instanceof vscode.Uri ? 'one file' : `${first.length} files`);
+        if (first instanceof vscode.Uri) {
+          real.set(first, diagnostics);
+        } else {
+          real.set(first);
+        }
+      }) as vscode.DiagnosticCollection['set'],
+      delete: (uri) => real.delete(uri),
+      clear: () => real.clear(),
+      forEach: (callback, thisArg) => real.forEach(callback, thisArg),
+      get: (uri) => real.get(uri),
+      has: (uri) => real.has(uri),
+      dispose: () => real.dispose(),
+      [Symbol.iterator]: () => real[Symbol.iterator](),
+    };
+    const publisher = new DiagnosticsPublisher(index, recording);
+    try {
+      await index.refresh();
+      assert.ok(calls.length > 0, 'nothing was published');
+      assert.deepStrictEqual(new Set(calls), new Set(['one file']));
+      let published = 0;
+      recording.forEach((_uri, diagnostics) => (published += diagnostics.length));
+      assert.strictEqual(published, 17);
+    } finally {
+      publisher.dispose();
+    }
   });
 
   test('combines the missing keys of a file and links them to the reference', async () => {

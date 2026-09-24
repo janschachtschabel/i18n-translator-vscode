@@ -37,9 +37,19 @@ export class DiagnosticsPublisher implements vscode.Disposable {
         byFile.set(uri.toString(), entry);
       }
     }
-    // Replaces everything: files without problems in this run lose their old diagnostics.
-    this.collection.clear();
-    this.collection.set([...byFile.values()]);
+    const stale: vscode.Uri[] = [];
+    this.collection.forEach((uri) => {
+      if (!byFile.has(uri.toString())) {
+        stale.push(uri);
+      }
+    });
+    for (const uri of stale) {
+      this.collection.delete(uri);
+    }
+    // One call per file: VS Code syncs at most 1,100 diagnostics per call and silently drops the files after that.
+    for (const [uri, diagnostics] of byFile.values()) {
+      this.collection.set(uri, diagnostics);
+    }
   }
 }
 

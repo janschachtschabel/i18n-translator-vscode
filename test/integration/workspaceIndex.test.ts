@@ -33,6 +33,10 @@ suite('workspace index', () => {
     const spanish = workspaceUri('Frontend/src/assets/i18n/common/es.json');
     const hasSpanish = (snapshot: IndexSnapshot) =>
       snapshot.roots.some((root) => root.analysis.issues.some((issue) => issue.locale === 'es'));
+    const spanishDiagnostics = () =>
+      vscode.languages
+        .getDiagnostics(spanish)
+        .filter((diagnostic) => diagnostic.source === 'edu-sharing i18n');
 
     const added = waitFor(index.onDidChange, hasSpanish);
     await vscode.workspace.fs.writeFile(spanish, new TextEncoder().encode('{}\n'));
@@ -42,11 +46,17 @@ suite('workspace index', () => {
         (issue) => issue.locale === 'es' && issue.rule === 'missing-key',
       );
       assert.strictEqual(missing.length, 12);
+      assert.deepStrictEqual(
+        spanishDiagnostics().map((diagnostic) => diagnostic.message),
+        ['12 keys are missing in es.'],
+      );
     } finally {
       const removed = waitFor(index.onDidChange, (snapshot) => !hasSpanish(snapshot));
       await vscode.workspace.fs.delete(spanish);
       await removed;
     }
+    // The file has no problems any more, so its diagnostics must be gone.
+    assert.deepStrictEqual(spanishDiagnostics(), []);
   });
 
   test('re-indexes when a setting changes', async () => {
