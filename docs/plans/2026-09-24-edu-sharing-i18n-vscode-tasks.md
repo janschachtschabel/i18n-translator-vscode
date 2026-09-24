@@ -21,6 +21,15 @@
 
 **Schritt 0:** `/better-coding-workflow` aufrufen (Skills werden entladen, deshalb vor dem Coden neu laden).
 
+> **Umsetzungsnotizen (24.09.2026):**
+> - **TypeScript ist auf `~6.0.3` gepinnt,** nicht 7.x: `typescript-eslint` 8.70 unterstützt TypeScript nur bis < 6.1.
+> - **`@types/node@22`:** vitest 5 verlangt ≥ 22 als Peer. VS Code 1.90 läuft auf Node 20, deshalb keine Node-22-exklusiven APIs verwenden.
+> - **Webview-Bundle, `tsconfig.webview.json` und Preact kommen erst in Phase 2,** wo die erste Webview entsteht.
+> - **Presets für MDS und Mail** kommen mit ihren Adaptern in Phase 5/6. Phase 1 enthält nur das Angular-Preset.
+> - **Kein Smoke-Test:** vitest wird durch die echten Tests bestätigt (zuerst der l10n-Vollständigkeitstest).
+> - **Vitest-Konfiguration als `vitest.config.mts`,** weil das Paket CommonJS bleibt.
+> - **Zusätzlich:** `.gitattributes` (Fixtures byte-genau), `.vscode/launch.json` (F5) und ein l10n-Vollständigkeitstest.
+
 ### Task 0.1: Branch und Repo-Grunddateien
 **Dateien:** Create `.gitignore`, `.editorconfig`, `.nvmrc`, `.vscodeignore`, `.prettierrc.json`
 **Was:** Arbeitszweig `feat/scaffold`. `.gitignore`: `node_modules/ dist/ out/ coverage/ .vscode-test/ *.vsix`.
