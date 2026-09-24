@@ -162,9 +162,17 @@ describe('reference file with a syntax error', () => {
 
 describe('file problems', () => {
   it('reports non-string values, duplicate keys and invalid UTF-8 with their own rule ids', () => {
-    const bundle = bundleOf('common', { de: '{"a":1,"b":"x","b":"y"}' });
+    const bundle = bundleOf('common', {
+      de: '{"a":1,"b":"x","b":"y"}',
+      // ISO-8859-1 bytes: "ö" and "ß" as single bytes are not valid UTF-8.
+      fr: Uint8Array.from('{"a":"Größe"}', (char) => char.charCodeAt(0)),
+    });
     const findings = fileProblemRules.flatMap((rule) => run(rule, [bundle]));
-    expect(summarize(findings)).toEqual(['non-string-value common/de a', 'duplicate-key common/de b']);
+    expect(summarize(findings)).toEqual([
+      'non-string-value common/de a',
+      'duplicate-key common/de b',
+      'not-utf8 common/fr',
+    ]);
     expect(fileProblemRules.map((rule) => [rule.id, rule.defaultSeverity])).toEqual([
       ['parse-error', 'error'],
       ['non-string-value', 'warning'],

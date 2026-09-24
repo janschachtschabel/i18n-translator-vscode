@@ -6,18 +6,21 @@ import { jsonNestedAdapter } from '../../../../../src/core/formats/json/jsonNest
 import { buildBundle, parseBundleId, type Bundle } from '../../../../../src/core/model/bundle';
 import { displayKey, keyFromId } from '../../../../../src/core/model/keys';
 
-/** Builds a bundle of the Angular preset from `{ locale: jsonText }`. */
+/** Builds a bundle of the Angular preset from `{ locale: jsonText }`; bytes go through the decoder. */
 export function bundleOf(
   name: string,
-  files: Record<string, string>,
+  files: Record<string, string | Uint8Array>,
   area: AreaDefinition = ANGULAR_PRESET,
 ): Bundle {
   return buildBundle(
     area,
     'i18n',
     name,
-    Object.entries(files).map(([locale, text]) => {
-      const doc = { text, encoding: 'utf-8' as const, bom: false };
+    Object.entries(files).map(([locale, content]) => {
+      const doc =
+        typeof content === 'string'
+          ? { text: content, encoding: 'utf-8' as const, bom: false }
+          : jsonNestedAdapter.decode(content);
       return { locale, relPath: `i18n/${name}/${locale}.json`, doc, parsed: jsonNestedAdapter.parse(doc) };
     }),
     { referenceLanguage: 'de', baseFileLanguage: 'en' },
