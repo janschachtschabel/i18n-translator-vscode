@@ -65,7 +65,7 @@ function toDiagnostic(problem: Problem, uriOf: (location: ProblemLocation) => vs
     (related) =>
       new vscode.DiagnosticRelatedInformation(
         new vscode.Location(uriOf(related.location), toRange(related.location)),
-        localize(related.message),
+        related.label,
       ),
   );
   return diagnostic;

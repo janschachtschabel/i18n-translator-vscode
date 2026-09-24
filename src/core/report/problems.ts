@@ -27,8 +27,11 @@ export interface Problem {
   severity: 'error' | 'warning';
   location: ProblemLocation;
   message: MessageText;
-  /** Where the user finds the text to compare with: the reference text of the same key. */
-  related: { location: ProblemLocation; message: MessageText }[];
+  /**
+   * Where the user finds the text to compare with: the reference text of the same key. The label (`de: Text`,
+   * `KEY: Text`) needs no translation, so hosts show it as it is.
+   */
+  related: { location: ProblemLocation; label: string }[];
 }
 
 /** Related information is a one-line label, so longer texts are cut. */
@@ -94,10 +97,7 @@ function issueProblem(issue: Listed, bundle: Bundle, locate: Locate): Problem {
         ? [
             {
               location: locate(reference.relPath, reference.range),
-              message: {
-                template: '{locale}: {text}',
-                args: { locale: reference.locale, text: reference.text },
-              },
+              label: `${reference.locale}: ${reference.text}`,
             },
           ]
         : [],
@@ -118,7 +118,7 @@ function missingKeysProblem(group: readonly Listed[], bundle: Bundle, locate: Lo
         ? [
             {
               location: locate(reference.relPath, reference.range),
-              message: { template: '{key}: {text}', args: { key: reference.key, text: reference.text } },
+              label: `${reference.key}: ${reference.text}`,
             },
           ]
         : [];
@@ -145,12 +145,12 @@ function referenceText(
     range: field.valueRange,
     locale,
     key: displayKey(keyFromId(entryId)),
-    text: label(field.value),
+    text: oneLine(field.value),
   };
 }
 
 /** One line of at most {@link MAX_TEXT_LENGTH} characters (code points, so no emoji is cut in half). */
-function label(text: string): string {
+function oneLine(text: string): string {
   const chars = [...text.replace(/\s+/g, ' ')];
   return chars.length > MAX_TEXT_LENGTH ? `${chars.slice(0, MAX_TEXT_LENGTH - 1).join('')}…` : chars.join('');
 }

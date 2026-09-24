@@ -41,18 +41,10 @@ describe('toProblems', () => {
       end: { line: 0, character: 0 },
     });
     expect(
-      missing?.related.map(({ location, message }) => [location.relPath, location.start.line, message]),
+      missing?.related.map(({ location, label }) => [location.relPath, location.start.line, label]),
     ).toEqual([
-      [
-        `${ROOT}/common/de.json`,
-        5,
-        { template: '{key}: {text}', args: { key: 'CANCEL', text: 'Abbrechen' } },
-      ],
-      [
-        `${ROOT}/common/de.json`,
-        18,
-        { template: '{key}: {text}', args: { key: 'WORKSPACE.FILE.TITLE', text: 'Datei' } },
-      ],
+      [`${ROOT}/common/de.json`, 5, 'CANCEL: Abbrechen'],
+      [`${ROOT}/common/de.json`, 18, 'WORKSPACE.FILE.TITLE: Datei'],
     ]);
   });
 
@@ -66,15 +58,9 @@ describe('toProblems', () => {
 
   it('links a translation problem to the reference text', () => {
     const mismatch = problems.find((problem) => problem.rule === 'placeholder-mismatch');
-    expect(
-      mismatch?.related.map(({ location, message }) => [location.relPath, location.start, message]),
-    ).toEqual([
-      [
-        `${ROOT}/common/de.json`,
-        { line: 1, character: 17 },
-        { template: '{locale}: {text}', args: { locale: 'de', text: 'Fehler ({{date}})' } },
-      ],
-    ]);
+    expect(mismatch?.related.map(({ location, label }) => [location.relPath, location.start, label])).toEqual(
+      [[`${ROOT}/common/de.json`, { line: 1, character: 17 }, 'de: Fehler ({{date}})']],
+    );
   });
 
   it('does not link problems that already point at the reference text', () => {
@@ -124,6 +110,6 @@ describe('toProblems', () => {
       },
     );
     const [mismatch] = toProblems(root, 'aggregate');
-    expect(mismatch?.related[0]?.message.args['text']).toBe(`${'x'.repeat(79)}…`);
+    expect(mismatch?.related[0]?.label).toBe(`de: ${'x'.repeat(79)}…`);
   });
 });
