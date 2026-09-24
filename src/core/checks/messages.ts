@@ -1,5 +1,11 @@
 import type { IssueArgs, RuleId } from './types';
 
+/** An English message template with `{name}` arguments; the host localizes and fills it. */
+export interface MessageText {
+  template: string;
+  args: IssueArgs;
+}
+
 /** English message templates, shared by the CLI and the extension. `{name}` refers to an issue argument. */
 export const ISSUE_MESSAGES: Readonly<Record<RuleId, string>> = {
   'parse-error': 'The file cannot be read: {detail}.',

@@ -1,6 +1,5 @@
 import * as vscode from 'vscode';
-import { displayArgs } from '../core/checks/messages';
-import type { MessageText } from '../core/report/problems';
+import { displayArgs, type MessageText } from '../core/checks/messages';
 
 /**
  * Localizes a message of the core catalog. Its English template is the key in l10n/bundle.l10n.*.json;

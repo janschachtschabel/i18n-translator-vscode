@@ -1,5 +1,5 @@
-import { ISSUE_MESSAGES, MISSING_KEYS_MESSAGE } from '../checks/messages';
-import type { Issue, IssueArgs, IssueLocation, RuleId } from '../checks/types';
+import { ISSUE_MESSAGES, MISSING_KEYS_MESSAGE, type MessageText } from '../checks/messages';
+import type { Issue, IssueLocation, RuleId } from '../checks/types';
 import type { MissingDiagnostics } from '../config/settings';
 import type { TextRange } from '../formats/adapter';
 import type { Bundle } from '../model/bundle';
@@ -7,12 +7,6 @@ import { displayKey, keyFromId } from '../model/keys';
 import { VALUE_FIELD } from '../model/types';
 import type { RootAnalysis } from '../pipeline/analyze';
 import { createLineIndex, type LineIndex, type Position } from '../text/lineIndex';
-
-/** An English message template with `{name}` arguments; the host localizes and fills it. */
-export interface MessageText {
-  template: string;
-  args: IssueArgs;
-}
 
 export interface ProblemLocation {
   /** Workspace-relative path with `/` separators. */
