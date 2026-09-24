@@ -685,7 +685,8 @@ was nicht ausdrücklich geändert wurde.
 - **B4 Formatierung aus der Datei.** Zeilenende, Einrückung und Newline am Dateiende werden erkannt. Eingefügt wird
   mit eigener Textoperation direkt hinter dem Geschwister-Key und mit dessen Einrückung. `jsonc-parser.modify`
   formatiert sonst die Nachbarzeile neu, z. B. werden Tabs zu Leerzeichen oder `"A":"1" ,` zu `"A": "1",`
-  (Probelauf 24.09.2026). `modify` dient nur noch zum Anlegen fehlender Elternobjekte.
+  (Probelauf 24.09.2026). Fehlende Elternobjekte schreibt der Adapter ebenfalls selbst im Stil der Datei;
+  `jsonc-parser` dient nur noch zum Parsen.
 - **B5 Rebase statt Abbruch.** Jede Änderung trägt die Revision (Hash) der Datei, auf der sie beruht. Hat sich die
   Datei inzwischen geändert, werden die Operationen auf den neuen Stand angewandt. Ein Konflikt entsteht nur, wenn ein
   betroffener Key inzwischen fehlt oder einen anderen Text hat als der Ausgangswert der Änderung.
@@ -696,6 +697,41 @@ was nicht ausdrücklich geändert wurde.
   ohne zusätzliche Bibliothek.
 - **B7 Zustand der Ansicht** (Layout, sichtbare Sprachen, Filter, Zeilenmodus) gilt je Einheit und liegt in
   `workspaceState`; die Webview meldet Änderungen per `uiState`.
+
+> **Umsetzungsnotizen Block A (Tasks 2.1–2.3, 24.09.2026):**
+> - **2.1:** `detectStyle('{}')` ergibt `finalNewline: false`: Eine neue Sprachdatei übernimmt auch eine fehlende Newline der Referenzdatei. Den Standard (`DEFAULT_STYLE`) gibt es nur für das, was der Text nicht zeigt (Zeilenende, Einrückung). `applyEdits` weist zwei Einfügungen an derselben Stelle ab, weil ihre Reihenfolge sonst von der Reihenfolge der Edits abhinge.
+> - **2.2:**
+>   - `encode` schreibt auch Latin-1 schon jetzt (nicht erst in Phase 5), damit eine `not-utf8`-Datei byte-genau zurückgeschrieben wird. Zeichen jenseits von ISO-8859-1 schreibt der JSON-Adapter dort als `\uXXXX` (Design §6.4).
+>   - U+2028 und U+2029 schreibt der Adapter immer als Escape, sonst bietet VS Code beim Öffnen an, sie zu entfernen.
+>   - `encodeText` wirft bei unvollständigen Zeichen (einzelnen Surrogaten), statt sie durch U+FFFD zu ersetzen.
+>   - Eine Datei nur aus Leerraum ist wie beim Lesen ein Syntaxfehler (`unparsable`). Nur eine leere Datei gilt als `{}`.
+>   - Doppelte Keys: `set` ändert die gültige (letzte) Definition. `delete` und `rename` entfernen alle Definitionen, damit keine verdeckte wieder gilt.
+>   - Gemessen an einer Datei mit 3.000 Keys (225 KiB): `set` etwa 3 ms, `delete` etwa 2 ms, Umbenennen in ein anderes Objekt etwa 4 ms.
+> - **2.3, abweichende Schnittstellen:**
+>   - `before?: string | null` (`null`: Die Sprache hatte keinen Text).
+>   - `FileChange` hat ein Feld `kind`. `create` bringt den fertigen Inhalt im Layout der Referenzdatei mit.
+>   - Der Fehlerfall heißt `problem` statt `error`. `PlanResult` hat keine `warnings`: Warnungen liefert `checkNewKey` vor der Änderung (Dialoge); die Planung kennt weder die anderen Einheiten noch den Bereich.
+>   - `checkKey` heißt `checkNewKey`. Die Prüfung ohne Warnungen ist `newKeyProblem`, der Kollisionstest `collidingKey`.
+>   - Codes und englische Vorlagen stehen in `edit/editMessages.ts`, der Katalog aller Vorlagen für die Übersetzung in `report/catalog.ts`.
+>   - Die Pfade neuer Dateien bildet `formatFilePattern` (`area/filePattern.ts`) aus dem Dateimuster.
+> - **2.3, Regeln:**
+>   - Einfügeposition: hinter dem nächsten Key der Einheitenreihenfolge, den die Datei im tiefsten vorhandenen Elternobjekt des neuen Keys hat, gekürzt auf die Ebene des neuen Eintrags. Folgt ein Text in der Referenz auf `OBJ.X`, kommt er also hinter das Objekt `OBJ`. `addKey` sucht ab `after` selbst.
+>   - `setText` auf einen Key, den keine Datei der Einheit mehr hat, ergibt `missing-key` (B5).
+>   - Umbenennen in den eigenen Pfad (`A` → `A.B`) ist ein `path-conflict`.
+>   - Ein neuer Key ohne Referenztext ergibt `reference-required`, eine Einheit ohne Referenzdatei `no-reference`.
+>   - Sprachcodes mit `/`, `\`, `:` oder als `.`/`..` sind ungültig, gleich was das Muster erlaubt.
+> - **Review Block A (2.1–2.3), behoben:** 3 schwere und 11 mittlere Befunde sowie die Kleinigkeiten, siehe Regeln oben und die `fix`-Commits vom 24.09.2026. Zusätzlich:
+>   - Die Golden-Dateien laufen durch die ganze Operationstabelle von 2.2.
+>   - `keyCheck.test.ts` gibt es jetzt.
+>   - Der Löschfall `WORKSPACE.FILE.TITLE` ist getestet.
+> - **Folgen für 2.4 (aus dem Review):**
+>   - Rebase (B5) heißt: die Einheit aus den frischen Bytes neu aufbauen und `planEdit` mit derselben Änderung (samt `before`) erneut aufrufen. Operationen erneut anzuwenden reicht nicht, weil `set` den Ausgangswert nicht kennt. Der FileStore bekommt deshalb die `BundleEdit` (oder eine Funktion zum Neuplanen) statt fertiger `FileChange`s.
+>   - Konflikte, die nur der Schreiber sieht (leere Objekte `"X": {}`, Werte wie `"N": 5` am Pfad), meldet der FileStore als lokalisiertes `EditProblem`. `EditError` bekommt dafür den Key (Review-Befund 14, verschoben).
+>   - `create` scheitert, wenn die Datei inzwischen existiert, und jedes Schreibziel muss innerhalb der Wurzel liegen.
+> - **Offen (Beobachtungen, nicht behoben):**
+>   - 240 `set`-Operationen in einem Aufruf dauern auf 225 KiB etwa 1,2 s, weil nach jeder Operation neu geparst wird (B3). Für das Batch-Schreiben in 3.9 und 4.7 prüfen, ob ein Schnellpfad für `set` nötig ist.
+>   - Eine Datei mit mehr als 10.000 Ebenen Verschachtelung lässt `applyOps` mit `RangeError` statt `EditError` scheitern. Der FileStore fängt allgemeine Fehler ab.
+>   - Ein veralteter `before`-Wert ergibt `changed`, auch wenn der neue Text dem aktuellen gleicht.
 
 ### Task 2.1: Textbausteine für das Schreiben
 **Dateien:** Create `src/core/text/edits.ts`, `src/core/text/style.ts`; Test: `test/unit/core/text/edits.test.ts`, `style.test.ts`
@@ -729,7 +765,7 @@ interface FormatAdapter {
 Umsetzung:
 - `set` ersetzt den Wertbereich durch `JSON.stringify(value)`.
 - `insert` bei vorhandenem Elternobjekt: nach dem Wert des Geschwisters (mit Komma) bzw. als letztes Element, mit der
-  Einrückung der Geschwisterzeile; fehlt das Elternobjekt, legt `modify` es mit dem erkannten Stil an.
+  Einrückung der Geschwisterzeile; fehlt das Elternobjekt, schreibt der Adapter es im erkannten Stil.
 - `delete` entfernt die Zeile samt passendem Komma. Wird ein Objekt dadurch leer, wird es ebenfalls entfernt (bis
   zur obersten Ebene, die als `{}` bleibt).
 - `rename` im selben Objekt ersetzt nur den Key-Text; sonst `delete` plus `insert` am Ende des neuen Elternobjekts.

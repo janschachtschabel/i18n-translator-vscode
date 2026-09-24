@@ -261,6 +261,10 @@ export type FileOp =
 | `properties` | eigener zeilenerhaltender Parser: logische Zeilen, Fortsetzungen `\`, Escapes (`\uXXXX \: \= \t \n \\`), Kommentare `#`/`!`, Trennzeichen `:`/`=`/Leerraum | Nur der Wertbereich der Zeile wird ersetzt; Trennzeichen und Abstände bleiben. Encoding: strikt UTF-8, sonst ISO-8859-1. Zeichen außerhalb von Latin-1 werden als `\uXXXX` geschrieben |
 | `mail-xml` | eigener Tokenizer mit Positionen: `<template name context>`, Kindelemente, CDATA/Text, Entities | `subject` mit XML-Escaping; `message` als CDATA (enthaltenes `]]>` wird auf zwei CDATA-Abschnitte verteilt). Alles andere bleibt unberührt |
 
+> **Stand Phase 2 (Tasks, Entscheidungen B3/B4):** Der JSON-Adapter schreibt mit eigenen Textoperationen
+> (`applyOps` liefert den neuen Text statt `TextEdit[]`); `jsonc-parser` dient nur zum Parsen, weil `modify`
+> benachbarte Zeilen neu formatiert. `encode(doc)` nimmt das Dokument samt Encoding und BOM.
+
 **Golden-Regeln (Tests für jeden Adapter):**
 1. Laden und ohne Änderung schreiben ergibt **byte-identische** Dateien.
 2. Eine geänderte Zelle ergibt genau **eine** geänderte Zeile im Diff (bei mehrzeiligen Werten nur deren Zeilen).
