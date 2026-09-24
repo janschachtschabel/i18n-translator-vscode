@@ -1,6 +1,6 @@
 import type { AreaDefinition } from '../area/areaDefinition';
 import type { Bundle } from '../model/bundle';
-import { displayKey, type EntryKey } from '../model/keys';
+import { displayKey, isKeyPrefix, type EntryKey } from '../model/keys';
 import { editProblem, editWarning, type EditProblem, type EditWarning } from './editMessages';
 
 export interface KeyCheck {
@@ -27,7 +27,7 @@ export function newKeyProblem(key: EntryKey, bundle: Bundle): EditProblem | unde
 /** An existing text on the path of `key` (`A` for `A.B`) or below it (`A.B` for `A`). */
 export function collidingKey(existing: readonly EntryKey[], key: EntryKey): EntryKey | undefined {
   return existing.find(
-    (other) => isPrefix(other.segments, key.segments) || isPrefix(key.segments, other.segments),
+    (other) => isKeyPrefix(other.segments, key.segments) || isKeyPrefix(key.segments, other.segments),
   );
 }
 
@@ -66,9 +66,4 @@ export function checkNewKey(
           ]
         : [],
   };
-}
-
-/** `prefix` is a proper prefix of `path`. */
-function isPrefix(prefix: readonly string[], path: readonly string[]): boolean {
-  return prefix.length < path.length && prefix.every((segment, index) => segment === path[index]);
 }

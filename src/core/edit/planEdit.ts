@@ -3,7 +3,7 @@ import { formatFilePattern } from '../area/filePattern';
 import { hasSyntaxError, type FileOp } from '../formats/adapter';
 import { ADAPTERS } from '../formats/registry';
 import type { Bundle, LoadedFile } from '../model/bundle';
-import { displayKey, keyFromId, type EntryKey } from '../model/keys';
+import { displayKey, isKeyPrefix, keyFromId, keyFromSegments, type EntryKey } from '../model/keys';
 import type { LocaleCode } from '../model/types';
 import { detectStyle } from '../text/style';
 import { editProblem, type EditProblem, type EditWarning } from './editMessages';
@@ -87,8 +87,9 @@ function planSetText(
   if (blocker) {
     return fail(editProblem('path-conflict', { key: displayKey(key), other: displayKey(blocker) }));
   }
-  const sibling = precedingSibling(bundle, file, key);
-  return edit({ kind: 'insert', key, value, ...(sibling ? { after: sibling } : {}) });
+  const position = bundle.keys.findIndex((candidate) => candidate.id === entryId);
+  const after = insertAnchor(bundle.keys, position - 1, file, key);
+  return edit({ kind: 'insert', key, value, ...(after ? { after } : {}) });
 }
 
 function planAddKey(
@@ -108,7 +109,8 @@ function planAddKey(
   if (withoutFile !== undefined) {
     return fail(editProblem('missing-file', { bundle: bundle.name, locale: withoutFile }));
   }
-  const after = afterId !== undefined ? keyFromId(afterId) : undefined;
+  // Without `after` (or with a key that is gone) the new key goes last.
+  const from = bundle.keys.findIndex((candidate) => candidate.id === afterId);
   const changes: FileChange[] = [];
   for (const locale of bundle.locales) {
     const value = values[locale];
@@ -119,12 +121,11 @@ function planAddKey(
     if (hasSyntaxError(file.parsed)) {
       return fail(editProblem('unreadable-file', { file: file.relPath }));
     }
-    const sibling =
-      after && file.parsed.entries.some((entry) => entry.key.id === after.id) ? after : undefined;
+    const after = insertAnchor(bundle.keys, from, file, key);
     changes.push({
       kind: 'edit',
       relPath: file.relPath,
-      ops: [{ kind: 'insert', key, value, ...(sibling ? { after: sibling } : {}) }],
+      ops: [{ kind: 'insert', key, value, ...(after ? { after } : {}) }],
     });
   }
   return done(changes);
@@ -192,18 +193,30 @@ export function planAddLanguage(
   return done(changes);
 }
 
-/** The nearest key before `key` in the bundle's order that has the same parent and exists in the file. */
-function precedingSibling(bundle: Bundle, file: LoadedFile, key: EntryKey): EntryKey | undefined {
-  const inFile = new Set(file.parsed.entries.map((entry) => entry.key.id));
-  const parent = key.segments.slice(0, -1);
-  const index = bundle.keys.findIndex((candidate) => candidate.id === key.id);
-  for (let position = index - 1; position >= 0; position--) {
-    const candidate = bundle.keys[position]!;
-    const sameParent =
-      candidate.segments.length === key.segments.length &&
-      parent.every((segment, depth) => candidate.segments[depth] === segment);
-    if (sameParent && inFile.has(candidate.id)) {
-      return candidate;
+/**
+ * Where a new key goes in a file, so that the file keeps the order of the reference: after the nearest key at
+ * or before position `from` of `keys` that the file has inside the key's deepest parent object in that file.
+ * The anchor is cut to the level where the new entry starts, so a text that follows `OBJ.X` goes after the
+ * object `OBJ`, and a missing parent object goes after its predecessor. Undefined: the entry goes last.
+ */
+function insertAnchor(
+  keys: readonly EntryKey[],
+  from: number,
+  file: LoadedFile,
+  key: EntryKey,
+): EntryKey | undefined {
+  const present = file.parsed.entries.map((entry) => entry.key);
+  // The parent objects that the file has are those that contain one of its texts.
+  let depth = key.segments.length - 1;
+  while (depth > 0 && !present.some((other) => isKeyPrefix(key.segments.slice(0, depth), other.segments))) {
+    depth--;
+  }
+  const parent = key.segments.slice(0, depth);
+  const inFile = new Set(present.map((other) => other.id));
+  for (let position = from; position >= 0; position--) {
+    const candidate = keys[position]!;
+    if (inFile.has(candidate.id) && isKeyPrefix(parent, candidate.segments)) {
+      return keyFromSegments(candidate.segments.slice(0, depth + 1));
     }
   }
   return undefined;

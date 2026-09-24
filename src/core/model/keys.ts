@@ -37,3 +37,8 @@ export function keyFromId(id: string): EntryKey {
 export function displayKey(key: EntryKey): string {
   return key.segments.join('.');
 }
+
+/** `prefix` is a proper prefix of `path`: the object `A` contains the key `A.B`. */
+export function isKeyPrefix(prefix: readonly string[], path: readonly string[]): boolean {
+  return prefix.length < path.length && prefix.every((segment, index) => segment === path[index]);
+}

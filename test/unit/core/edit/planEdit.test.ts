@@ -11,7 +11,6 @@ import type { FileOp } from '../../../../src/core/formats/adapter';
 import { displayKey, keyFromSegments } from '../../../../src/core/model/keys';
 import { analyzeFixtureWorkspace, analyzeTexts } from '../../support/fixtureWorkspace';
 
-const ROOT = 'Frontend/src/assets/i18n/';
 const { analysis } = analyzeFixtureWorkspace();
 const bundle = (name: string) => analysis.bundles.find((candidate) => candidate.name === name)!;
 const key = (dotted: string) => keyFromSegments(dotted.split('.'));
@@ -30,7 +29,7 @@ function describeOp(op: FileOp): string {
   }
 }
 
-/** The planned changes as `file: operation` lines, or the code of the problem. */
+/** The planned changes as `file: operation` lines with paths below the i18n root, or the code of the problem. */
 function summary(result: PlanResult): string[] | string {
   if (!result.ok) {
     // Every problem must fill its message template.
@@ -39,11 +38,12 @@ function summary(result: PlanResult): string[] | string {
     );
     return result.problem.code;
   }
-  return result.changes.map((change) =>
-    change.kind === 'create'
-      ? `create ${change.relPath.slice(ROOT.length)}: ${JSON.stringify(change.content)}`
-      : `${change.relPath.slice(ROOT.length)}: ${change.ops.map(describeOp).join(', ')}`,
-  );
+  return result.changes.map((change) => {
+    const path = change.relPath.replace(/^(.*\/)?i18n\//, '');
+    return change.kind === 'create'
+      ? `create ${path}: ${JSON.stringify(change.content)}`
+      : `${path}: ${change.ops.map(describeOp).join(', ')}`;
+  });
 }
 
 const plan = (name: string, edit: BundleEdit) => summary(planEdit(bundle(name), edit));
@@ -61,7 +61,7 @@ describe('planEdit: setText', () => {
     ).toEqual(['common/fr.json: insert CANCEL after SAVE = Annuler']);
   });
 
-  it('adds a text whose parent objects are missing', () => {
+  it('adds a text whose parent objects are missing after the key before them', () => {
     expect(
       plan('common', {
         kind: 'setText',
@@ -69,7 +69,17 @@ describe('planEdit: setText', () => {
         locale: 'fr',
         value: 'Fichier',
       }),
-    ).toEqual(['common/fr.json: insert WORKSPACE.FILE.TITLE = Fichier']);
+    ).toEqual(['common/fr.json: insert WORKSPACE.FILE.TITLE after WORKSPACE.TITLE = Fichier']);
+  });
+
+  it('adds a text after an object that precedes it in the reference', () => {
+    const [order] = analyzeTexts({
+      'order/de.json': '{\n  "A": "a",\n  "OBJ": {\n    "X": "x"\n  },\n  "NEW": "n"\n}\n',
+      'order/fr.json': '{\n  "A": "a",\n  "OBJ": {\n    "X": "x"\n  }\n}\n',
+    }).bundles;
+    expect(
+      summary(planEdit(order!, { kind: 'setText', entryId: id('NEW'), locale: 'fr', value: 'n' })),
+    ).toEqual(['order/fr.json: insert NEW after OBJ = n']);
   });
 
   it('deletes a cleared translation, so that the fallback applies', () => {
@@ -152,6 +162,32 @@ describe('planEdit: keys', () => {
         after: id('SAVE'),
       }),
     ).toEqual(['common/de.json: insert NEW after SAVE = Neu', 'common/en.json: insert NEW after SAVE = New']);
+  });
+
+  it('puts a new key after the nearest key at or before `after` that each file has', () => {
+    expect(
+      plan('common', {
+        kind: 'addKey',
+        key: key('NEW'),
+        values: { de: 'Neu', en: 'New', fr: 'Nouveau' },
+        after: id('CANCEL'),
+      }),
+    ).toEqual([
+      'common/de.json: insert NEW after CANCEL = Neu',
+      'common/en.json: insert NEW after CANCEL = New',
+      'common/fr.json: insert NEW after SAVE = Nouveau',
+    ]);
+    expect(
+      plan('common', {
+        kind: 'addKey',
+        key: key('WORKSPACE.FILE.NAME'),
+        values: { de: 'Name', fr: 'Nom' },
+        after: id('WORKSPACE.FILE.TITLE'),
+      }),
+    ).toEqual([
+      'common/de.json: insert WORKSPACE.FILE.NAME after WORKSPACE.FILE.TITLE = Name',
+      'common/fr.json: insert WORKSPACE.FILE.NAME after WORKSPACE.TITLE = Nom',
+    ]);
   });
 
   it('needs a reference text for a new key', () => {
