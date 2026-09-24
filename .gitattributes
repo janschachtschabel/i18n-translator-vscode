@@ -1,0 +1,5 @@
+# Normalize line endings for source files.
+* text=auto eol=lf
+
+# Test fixtures must stay byte-exact (CRLF, ISO-8859-1, missing final newline are intentional).
+test/fixtures/** -text
