@@ -64,7 +64,7 @@ function applyOp(text: string, op: FileOp, style: TextStyle): string {
     case 'insert':
       return insertEntry(text, root, op.key, op.value, op.after, style);
     case 'delete':
-      return deleteEntry(text, op.key);
+      return deleteEntry(text, root, op.key);
     case 'rename':
       return renameEntry(text, root, op.from, op.to, style);
   }
@@ -183,8 +183,8 @@ function renderValue(
 }
 
 /** Removes every definition of the key; objects that become empty go too, except the top level. */
-function deleteEntry(text: string, key: EntryKey): string {
-  const property = findProperty(parseObject(text), key.segments);
+function deleteEntry(text: string, root: Node, key: EntryKey): string {
+  const property = findProperty(root, key.segments);
   if (!property) {
     throw new EditError('missing-key', `${displayKey(key)} does not exist in this file.`);
   }
@@ -194,25 +194,31 @@ function deleteEntry(text: string, key: EntryKey): string {
   // The highest level at which the path would leave an empty object behind.
   let level = key.segments.length - 1;
   while (level > 0) {
-    const parent = objectAt(parseObject(text), key.segments.slice(0, level))!;
+    const parent = objectAt(root, key.segments.slice(0, level))!;
     if (!propertiesOf(parent).every((candidate) => candidate.key.value === key.segments[level])) {
       break;
     }
     level--;
   }
-  return removeEvery(text, key.segments.slice(0, level), key.segments[level]!);
+  return removeEvery(text, root, key.segments.slice(0, level), key.segments[level]!);
 }
 
-/** Removes every definition of `name` from the object at `path`. */
-function removeEvery(text: string, path: readonly string[], name: string): string {
+/** Removes every definition of `name` from the object at `path`; `root` is the tree of `text`. */
+function removeEvery(text: string, root: Node, path: readonly string[], name: string): string {
   let current = text;
+  let object = objectAt(root, path)!;
   for (;;) {
-    const object = objectAt(parseObject(current), path)!;
-    const doomed = lastNamed(object, name);
+    const named = propertiesOf(object).filter((property) => property.key.value === name);
+    const doomed = named.at(-1);
     if (!doomed) {
       return current;
     }
     current = removeProperty(current, object, doomed);
+    if (named.length === 1) {
+      return current;
+    }
+    // The offsets have changed: read the text again for the next definition.
+    object = objectAt(parseObject(current), path)!;
   }
 }
 
@@ -258,11 +264,16 @@ function renameEntry(text: string, root: Node, from: EntryKey, to: EntryKey, sty
     const content = jsonString(to.segments[to.segments.length - 1]!);
     const renamed = applyEdits(text, [{ offset: property.key.offset, length: property.key.length, content }]);
     // Earlier definitions of the old name were hidden by the renamed one; they must not come back.
-    return removeEvery(renamed, from.segments.slice(0, -1), from.segments[from.segments.length - 1]!);
+    return removeEvery(
+      renamed,
+      parseObject(renamed),
+      from.segments.slice(0, -1),
+      from.segments[from.segments.length - 1]!,
+    );
   }
   // Insert first: it checks the target path, and a shared parent object keeps its place.
   const inserted = insertEntry(text, root, to, property.value.value as string, undefined, style);
-  return deleteEntry(inserted, from);
+  return deleteEntry(inserted, parseObject(inserted), from);
 }
 
 /** A new text cannot replace an object (a path conflict) nor any other value (the key exists). */
