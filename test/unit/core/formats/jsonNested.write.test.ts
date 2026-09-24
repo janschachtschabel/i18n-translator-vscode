@@ -170,7 +170,7 @@ describe('jsonNestedAdapter.applyOps and encode', () => {
 
     it('uses the line ending and indentation of the file', () => {
       const tabs = golden('tabs.json').toString('utf8');
-      const after = apply(tabs, { kind: 'insert', key: key('A.NEW'), value: 'n' });
+      const after = apply(tabs, { kind: 'insert', key: key('B.NEW'), value: 'n' });
       expect(changedLines(tabs, after).added).toContain('\t\t"NEW": "n"');
       expect(
         apply('{\r\n  "A": "1"\r\n}\r\n', { kind: 'insert', key: key('NEW'), value: 'n', after: key('A') }),
