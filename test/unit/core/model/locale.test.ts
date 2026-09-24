@@ -18,8 +18,18 @@ describe('parseLocale', () => {
   });
 
   it('parses Java-style and BCP 47 regions', () => {
-    expect(parseLocale('de_DE', opts)).toEqual({ code: 'de_DE', language: 'de', region: 'DE', isBaseFile: false });
-    expect(parseLocale('pt-BR', opts)).toEqual({ code: 'pt-BR', language: 'pt', region: 'BR', isBaseFile: false });
+    expect(parseLocale('de_DE', opts)).toEqual({
+      code: 'de_DE',
+      language: 'de',
+      region: 'DE',
+      isBaseFile: false,
+    });
+    expect(parseLocale('pt-BR', opts)).toEqual({
+      code: 'pt-BR',
+      language: 'pt',
+      region: 'BR',
+      isBaseFile: false,
+    });
   });
 
   it('maps the base file to the configured language', () => {
