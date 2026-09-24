@@ -18,5 +18,15 @@
   "{key} is also defined in {winner}, which comes later in the merge order: its {locale} text replaces this one.": "{key} ist auch in {winner} definiert, das in der Merge-Reihenfolge später kommt: Dessen {locale}-Text ersetzt diesen.",
   "{key} is unreachable in {locale}: {winner}, which comes later in the merge order, replaces the whole top-level key {topKey}.": "{key} ist in {locale} nicht erreichbar: {winner} kommt in der Merge-Reihenfolge später und ersetzt den ganzen Top-Level-Key {topKey}.",
   "{key} in {locale} is identical to the reference text and may be untranslated.": "{key} in {locale} gleicht dem Referenztext und ist vielleicht nicht übersetzt.",
-  "{count} keys are missing in {locale}.": "In {locale} fehlen {count} Keys."
+  "{count} keys are missing in {locale}.": "In {locale} fehlen {count} Keys.",
+  "Errors": "Fehler",
+  "Errors: {0}": "Fehler: {0}",
+  "Infos": "Hinweise",
+  "Keys": "Keys",
+  "Language": "Sprache",
+  "Problems while indexing": "Probleme beim Indizieren",
+  "Warnings": "Warnungen",
+  "Warnings: {0}": "Warnungen: {0}",
+  "reference": "Referenz",
+  "{name}: keys {keys}, errors {errors}, warnings {warnings}, infos {infos}": "{name}: Keys {keys}, Fehler {errors}, Warnungen {warnings}, Hinweise {infos}"
 }

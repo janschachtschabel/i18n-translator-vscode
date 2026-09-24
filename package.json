@@ -65,7 +65,13 @@
     "viewsWelcome": [
       {
         "view": "eduI18n.areas",
-        "contents": "%view.areas.welcome%"
+        "contents": "%view.areas.searching%",
+        "when": "!eduI18n.indexed"
+      },
+      {
+        "view": "eduI18n.areas",
+        "contents": "%view.areas.welcome%",
+        "when": "eduI18n.indexed"
       }
     ],
     "commands": [
@@ -79,14 +85,37 @@
         "command": "eduI18n.configureRoots",
         "title": "%cmd.configureRoots%",
         "category": "edu-sharing i18n"
+      },
+      {
+        "command": "eduI18n.revealInExplorer",
+        "title": "%cmd.revealInExplorer%",
+        "category": "edu-sharing i18n"
       }
     ],
     "menus": {
+      "commandPalette": [
+        {
+          "command": "eduI18n.revealInExplorer",
+          "when": "false"
+        }
+      ],
       "view/title": [
         {
           "command": "eduI18n.check",
           "when": "view == eduI18n.areas",
           "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "eduI18n.check",
+          "when": "view == eduI18n.areas && viewItem =~ /^eduI18n\\.(root|bundle)$/",
+          "group": "1_check"
+        },
+        {
+          "command": "eduI18n.revealInExplorer",
+          "when": "view == eduI18n.areas && viewItem == eduI18n.bundle",
+          "group": "2_files"
         }
       ]
     },
