@@ -28,6 +28,16 @@ describe('decodeText', () => {
     });
   });
 
+  it('decodes ISO-8859-1 files larger than one conversion chunk', () => {
+    const decoded = decodeText(new Uint8Array(0x8000 + 10).fill(0xe4));
+    expect(decoded.encoding).toBe('latin-1');
+    expect(decoded.text).toBe('ä'.repeat(0x8000 + 10));
+  });
+
+  it('keeps the byte order mark flag when the rest is not UTF-8', () => {
+    expect(decodeText(bytes(0xef, 0xbb, 0xbf, 0xf6))).toEqual({ text: 'ö', encoding: 'latin-1', bom: true });
+  });
+
   it('maps every byte to the same code point, unlike windows-1252', () => {
     expect(decodeText(bytes(0x80, 0x9f)).text).toBe('\u0080\u009f');
   });
