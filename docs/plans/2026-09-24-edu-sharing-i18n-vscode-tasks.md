@@ -201,6 +201,13 @@ CONTRIBUTING: Entwicklungsumgebung (`npm ci`, F5), Tests, Architekturregeln (Ebe
 
 **Schritt 0:** `/better-coding-workflow` aufrufen.
 
+> **Umsetzungsnotizen Block A (Tasks 1.1–1.7, 24.09.2026):**
+> - **1.1:** Nur der Zeilenindex. `applyEdits`, `detectEol` und `detectIndent` braucht erst das Schreiben in Phase 2. Der Testfall `positionAt(5)` im Plan war falsch (Offset 5 ist das `\n` von `\r\n`) und ist korrigiert. Wie VS Code beendet auch ein einzelnes `\r` eine Zeile.
+> - **1.4:** Zusätzlich `parseAreaDefinition` (`src/core/area/parseArea.ts`), das eigene Bereiche aus `eduI18n.areas` validiert und alle Fehler gesammelt meldet. `FormatId` enthält nur Formate mit Adapter (Phase 1: `json-nested`).
+> - **1.5:** Kein eigener Glob-Matcher im Kern. Der Host findet Markerdateien (VS Code `findFiles`, CLI `fs.glob`), `rootsFromMarkers` leitet daraus die Wurzeln ab.
+> - **1.6:** Die Dekodierung liegt als `src/core/text/decode.ts` bei allen Formaten. Sie liest exaktes ISO-8859-1 statt `TextDecoder('latin1')`, das in Wahrheit Windows-1252 ist. Dateien mit Syntaxfehler liefern keine Einträge, weil ein teilweises Parsen nicht vertrauenswürdig ist. Doppelte Keys verhalten sich wie `JSON.parse`. Ein `DecodedText.eol` kommt erst mit dem Schreiben.
+> - **1.7:** `Bundle` bietet `file()`, `entry()` und `value()` statt `location()`; die Position ergibt sich aus `entry().fields.value.valueRange` und `file().relPath`. Locales werden deterministisch nach Codepunkten sortiert.
+
 ### Task 1.1: Textänderungen und Zeilenindex
 **Dateien:** Create `src/core/text/edits.ts`, `src/core/text/lineIndex.ts`; Test: `test/unit/core/text/edits.test.ts`, `lineIndex.test.ts`
 **Interfaces:**
