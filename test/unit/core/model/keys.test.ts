@@ -23,6 +23,10 @@ describe('entry keys', () => {
     expect(() => keyFromId('[1]')).toThrow();
   });
 
+  it('rejects ids that are not in canonical form', () => {
+    expect(() => keyFromId('[ "a" ]')).toThrow();
+  });
+
   it('rejects keys without segments', () => {
     expect(() => keyFromSegments([])).toThrow();
   });

@@ -26,7 +26,12 @@ export function keyFromId(id: string): EntryKey {
   if (!Array.isArray(segments) || !segments.every((segment) => typeof segment === 'string')) {
     throw new RangeError(`Not an entry key id: ${id}`);
   }
-  return keyFromSegments(segments);
+  const key = keyFromSegments(segments);
+  // Ids are compared as strings, so '[ "a" ]' must not pass for the id of ["a"].
+  if (key.id !== id) {
+    throw new RangeError(`Not an entry key id: ${id}`);
+  }
+  return key;
 }
 
 export function displayKey(key: EntryKey): string {
