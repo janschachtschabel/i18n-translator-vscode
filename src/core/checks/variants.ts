@@ -21,7 +21,8 @@ export interface CompiledVariant {
 }
 
 const FORMAL_ADDRESS = '\\b(?:Sie|Ihnen|Ihr|Ihre|Ihrem|Ihren|Ihrer|Ihres)\\b';
-const GENDER_MARKER = '\\{\\{\\s*GENDER_SEPARATOR\\s*\\}\\}';
+// Only the exact token is replaced at runtime; placeholder-malformed reports other spellings.
+const GENDER_MARKER = '\\{\\{GENDER_SEPARATOR\\}\\}';
 
 /** The variants of the edu-sharing frontend (translations.service.ts: de-informal, de-no-binnen-i). */
 export const DEFAULT_VARIANTS: VariantSettings = {

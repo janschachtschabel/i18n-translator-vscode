@@ -32,6 +32,16 @@ describe('scanPlaceholders', () => {
     });
   });
 
+  it('reports a gender marker with spaces, which edu-sharing would show unreplaced', () => {
+    expect(scanPlaceholders('Autor{{ GENDER_SEPARATOR }}in')).toEqual({
+      params: [],
+      conditions: [],
+      endifs: 0,
+      genderSeparators: 0,
+      malformed: [{ index: 5, text: '{{ GENDER_SEPARATOR }}' }],
+    });
+  });
+
   it('recognizes mail template conditions', () => {
     expect(scanPlaceholders('{{if message}}Nachricht: {{message}}{{endif}}')).toMatchObject({
       params: ['message'],

@@ -222,8 +222,8 @@
             },
             "de-no-binnen-i": {
               "base": "de",
-              "requiredWhen": "\\{\\{\\s*GENDER_SEPARATOR\\s*\\}\\}|[*:_]innen\\b|[a-zäöüß]Innen\\b",
-              "forbidden": "\\{\\{\\s*GENDER_SEPARATOR\\s*\\}\\}"
+              "requiredWhen": "\\{\\{GENDER_SEPARATOR\\}\\}|[*:_]innen\\b|[a-zäöüß]Innen\\b",
+              "forbidden": "\\{\\{GENDER_SEPARATOR\\}\\}"
             }
           },
           "scope": "resource",

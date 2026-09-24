@@ -23,6 +23,7 @@ describe('compileVariants', () => {
     expect(neutral.required?.exec('alle Lehrer*innen')?.[0]).toBe('*innen');
     expect(neutral.required?.exec('alle LehrerInnen')?.[0]).toBe('rInnen');
     expect(neutral.required?.test('alle Lehrerinnen und Lehrer')).toBe(false);
+    expect(neutral.forbidden?.test('Autor{{ GENDER_SEPARATOR }}in')).toBe(false);
   });
 
   it('reports invalid expressions instead of throwing', () => {

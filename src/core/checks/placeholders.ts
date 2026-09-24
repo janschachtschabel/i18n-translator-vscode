@@ -17,7 +17,8 @@ export interface MalformedPlaceholder {
 }
 
 const TOKEN = /\{\{([^{}]*)\}\}/g;
-const GENDER_SEPARATOR = 'GENDER_SEPARATOR';
+// edu-sharing replaces exactly this token (translation-loader.ts, I18nAngular.java); other spellings stay visible.
+const GENDER_MARKER = '{{GENDER_SEPARATOR}}';
 
 export function scanPlaceholders(text: string): PlaceholderScan {
   const params = new Set<string>();
@@ -35,10 +36,10 @@ export function scanPlaceholders(text: string): PlaceholderScan {
     residual += text.slice(last, index) + ' '.repeat(match[0].length);
     last = index + match[0].length;
 
-    if (name === '') {
-      malformed.push({ index, text: match[0] });
-    } else if (name === GENDER_SEPARATOR) {
+    if (match[0] === GENDER_MARKER) {
       genderSeparators++;
+    } else if (name === '' || name === 'GENDER_SEPARATOR') {
+      malformed.push({ index, text: match[0] });
     } else if (name === 'endif') {
       endifs++;
     } else if (name.startsWith('if ')) {
