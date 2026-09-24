@@ -43,8 +43,9 @@ Die Regeln für `src/core` erzwingt ESLint (`no-restricted-imports`, keine DOM-G
 - Integrationstests liegen unter `test/integration` und laufen gegen `test/fixtures/workspace-basic`.
 - Die Fixtures sind **synthetisch** (edu-sharing steht unter GPL-3.0) und **byte-genau**: `.gitattributes`
   schließt sie von der Zeilenende-Konvertierung aus. Die erwarteten Befunde stehen in `test/fixtures/README.md`.
-- Jeder Laufzeittext geht durch `vscode.l10n.t('…')` mit einem einfachen String-Literal. Ein Unit-Test prüft,
-  dass es für jeden Text eine deutsche Übersetzung in `l10n/bundle.l10n.de.json` gibt.
+- Jeder Laufzeittext geht durch `vscode.l10n.t(…)` mit einem String-Literal als erstem Argument (keine Variable,
+  nicht die Objektform). Ein Unit-Test sammelt diese Texte über den TypeScript-Syntaxbaum und prüft, dass es für
+  jeden eine deutsche Übersetzung in `l10n/bundle.l10n.de.json` gibt.
 
 ## Commits
 

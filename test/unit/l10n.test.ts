@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, relative } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { collectL10nCalls } from './support/l10nCollector';
 
 const root = join(__dirname, '..', '..');
 
@@ -8,34 +9,59 @@ function readJson(relPath: string): Record<string, string> {
   return JSON.parse(readFileSync(join(root, relPath), 'utf8')) as Record<string, string>;
 }
 
-function sourceFiles(dir: string): string[] {
-  return readdirSync(join(root, dir), { withFileTypes: true, recursive: true })
+function runtimeMessages(): { messages: string[]; problems: string[] } {
+  const messages = new Set<string>();
+  const problems: string[] = [];
+  const files = readdirSync(join(root, 'src/extension'), { withFileTypes: true, recursive: true })
     .filter((entry) => entry.isFile() && entry.name.endsWith('.ts'))
     .map((entry) => join(entry.parentPath, entry.name));
+  for (const file of files) {
+    const result = collectL10nCalls(readFileSync(file, 'utf8'), relative(root, file));
+    result.messages.forEach((message) => messages.add(message));
+    problems.push(...result.problems);
+  }
+  return { messages: [...messages].sort(), problems };
 }
 
-/** Runtime strings must be passed to l10n.t() as a single-quoted literal so they can be collected here. */
-function runtimeMessages(): string[] {
-  const messages = new Set<string>();
-  for (const file of sourceFiles('src/extension')) {
-    for (const match of readFileSync(file, 'utf8').matchAll(/l10n\.t\(\s*'((?:\\.|[^'\\])*)'/g)) {
-      messages.add(match[1]!.replace(/\\(.)/g, '$1'));
-    }
-  }
-  return [...messages].sort();
-}
+describe('collectL10nCalls', () => {
+  it('collects single-quoted, double-quoted and plain template literals', () => {
+    const source = `vscode.l10n.t('Hello {0}', name); l10n.t("Don't show again"); l10n.t(\`Plain\`);`;
+    expect(collectL10nCalls(source, 'a.ts').messages).toEqual(['Hello {0}', "Don't show again", 'Plain']);
+  });
+
+  it('returns the cooked string value of escape sequences', () => {
+    expect(collectL10nCalls(String.raw`l10n.t('Line one\nLine two')`, 'a.ts').messages).toEqual([
+      'Line one\nLine two',
+    ]);
+  });
+
+  it('ignores calls inside comments', () => {
+    expect(collectL10nCalls(`// l10n.t('commented out')\n/* l10n.t('block') */`, 'a.ts').messages).toEqual([]);
+  });
+
+  it('reports calls whose first argument is not a string literal', () => {
+    const result = collectL10nCalls(`l10n.t({ message: 'x', args: [] });\nl10n.t(template);`, 'a.ts');
+    expect(result.messages).toEqual([]);
+    expect(result.problems).toEqual([
+      'a.ts:1: l10n.t() needs a string literal as its first argument',
+      'a.ts:2: l10n.t() needs a string literal as its first argument',
+    ]);
+  });
+});
 
 describe('localization', () => {
+  it('passes only string literals to l10n.t()', () => {
+    expect(runtimeMessages().problems).toEqual([]);
+  });
+
   it('translates every runtime message to German', () => {
     const german = readJson('l10n/bundle.l10n.de.json');
-    const untranslated = runtimeMessages().filter((message) => !german[message]);
-    expect(untranslated).toEqual([]);
+    expect(runtimeMessages().messages.filter((message) => !german[message])).toEqual([]);
   });
 
   it('has no stale entries in the German runtime bundle', () => {
-    const used = new Set(runtimeMessages());
-    const stale = Object.keys(readJson('l10n/bundle.l10n.de.json')).filter((key) => !used.has(key));
-    expect(stale).toEqual([]);
+    const used = new Set(runtimeMessages().messages);
+    expect(Object.keys(readJson('l10n/bundle.l10n.de.json')).filter((key) => !used.has(key))).toEqual([]);
   });
 
   it('defines every %key% of package.json in both manifest bundles', () => {
