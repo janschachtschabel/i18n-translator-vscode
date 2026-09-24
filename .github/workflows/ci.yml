@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run test:unit
+      - run: npm run build
+      # Integration tests need a display; they run once, on Linux, against VS Code 1.90.0 and stable.
+      - name: Integration tests
+        if: runner.os == 'Linux'
+        run: xvfb-run -a npm run test:integration
+      - name: Package VSIX
+        if: runner.os == 'Linux'
+        run: npm run package
+      - uses: actions/upload-artifact@v7
+        if: runner.os == 'Linux'
+        with:
+          name: vsix
+          path: '*.vsix'
+          if-no-files-found: error
