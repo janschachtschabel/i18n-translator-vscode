@@ -240,6 +240,16 @@ describe('jsonNestedAdapter.applyOps and encode', () => {
       );
     });
 
+    it('renames every definition of a duplicated key, so that no hidden text comes back', () => {
+      const duplicated = '{\n  "A": "1",\n  "B": "2",\n  "A": "3"\n}\n';
+      expect(apply(duplicated, { kind: 'rename', from: key('A'), to: key('C') })).toBe(
+        '{\n  "B": "2",\n  "C": "3"\n}\n',
+      );
+      expect(apply(duplicated, { kind: 'rename', from: key('A'), to: key('X.C') })).toBe(
+        '{\n  "B": "2",\n  "X": {\n    "C": "3"\n  }\n}\n',
+      );
+    });
+
     it('leaves the file alone when the name does not change', () => {
       expect(apply(NESTED, { kind: 'rename', from: key('B'), to: key('B') })).toBe(NESTED);
     });

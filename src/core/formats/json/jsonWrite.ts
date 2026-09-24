@@ -204,8 +204,11 @@ function deleteEntry(text: string, key: EntryKey): string {
     }
     level--;
   }
-  const path = key.segments.slice(0, level);
-  const name = key.segments[level]!;
+  return removeEvery(text, key.segments.slice(0, level), key.segments[level]!);
+}
+
+/** Removes every definition of `name` from the object at `path`. */
+function removeEvery(text: string, path: readonly string[], name: string): string {
   let current = text;
   for (;;) {
     const object = objectAt(parseObject(current), path)!;
@@ -256,7 +259,9 @@ function renameEntry(text: string, root: Node, from: EntryKey, to: EntryKey, sty
       throw new EditError('key-exists', `${displayKey(to)} already exists in this file.`);
     }
     const content = jsonString(to.segments[to.segments.length - 1]!);
-    return applyEdits(text, [{ offset: property.key.offset, length: property.key.length, content }]);
+    const renamed = applyEdits(text, [{ offset: property.key.offset, length: property.key.length, content }]);
+    // Earlier definitions of the old name were hidden by the renamed one; they must not come back.
+    return removeEvery(renamed, from.segments.slice(0, -1), from.segments[from.segments.length - 1]!);
   }
   // Insert first: it checks the target path, and a shared parent object keeps its place.
   const inserted = insertEntry(text, root, to, property.value.value as string, undefined, style);
