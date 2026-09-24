@@ -1,0 +1,22 @@
+{
+  "ERROR_TITLE": "Error ({{ date }})",
+  "PERSON": "Author",
+  "ASK": "Do you want to continue?",
+  "SAVE": "Save",
+  "CANCEL": "Cancel",
+  "MINUTE": "Minute",
+  "OK": "OK",
+  "BOLD_HINT": "Please be <b>careful</b>",
+  "MIME": {
+    "application/vnd.ms-excel": "Excel spreadsheet"
+  },
+  "CCMAIL": {
+    "mail.smtp.server": "SMTP server"
+  },
+  "WORKSPACE": {
+    "TITLE": "Workspace",
+    "FILE": {
+      "TITLE": "File"
+    }
+  }
+}

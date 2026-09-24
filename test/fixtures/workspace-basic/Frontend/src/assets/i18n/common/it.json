@@ -1,0 +1,23 @@
+{
+  "ERROR_TITLE": "Errore ({{{date}})",
+  "PERSON": "Autore",
+  "ASK": "Vuoi continuare?",
+  "SAVE": "Salva",
+  "CANCEL": "Annulla",
+  "MINUTE": "Minuto",
+  "OK": "OK",
+  "BOLD_HINT": "Fai <b>attenzione</b>",
+  "MIME": {
+    "application/vnd.ms-excel": "Foglio Excel"
+  },
+  "CCMAIL": {
+    "mail.smtp.server": "Server SMTP"
+  },
+  "WORKSPACE": {
+    "TITLE": "Area di lavoro"
+  },
+  "FILE": {
+    "TITLE": "File"
+  },
+  "OLD_KEY": "Vecchio"
+}
