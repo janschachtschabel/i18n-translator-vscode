@@ -26,5 +26,15 @@ describe('encodeText', () => {
 
   it('refuses characters that ISO-8859-1 cannot hold', () => {
     expect(() => encodeText({ text: 'a€b', encoding: 'latin-1', bom: false })).toThrow(RangeError);
+    expect(() => encodeText({ text: 'a😀', encoding: 'latin-1', bom: false })).toThrow(
+      '"😀" cannot be written in ISO-8859-1.',
+    );
+  });
+
+  it('refuses incomplete characters instead of replacing them', () => {
+    for (const encoding of ['utf-8', 'latin-1'] as const) {
+      expect(() => encodeText({ text: 'a\uD800b', encoding, bom: false })).toThrow(RangeError);
+    }
+    expect([...encodeText({ text: '😀', encoding: 'utf-8', bom: false })]).toEqual([0xf0, 0x9f, 0x98, 0x80]);
   });
 });

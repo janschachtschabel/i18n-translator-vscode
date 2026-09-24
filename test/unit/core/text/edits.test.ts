@@ -23,6 +23,22 @@ describe('applyEdits', () => {
     expect(applyEdits('abcdefg', edits)).toBe('Xbcdg');
   });
 
+  it('puts an insertion before a replacement at the same offset, in any order', () => {
+    const insert = { offset: 1, length: 0, content: 'I' };
+    const replace = { offset: 1, length: 1, content: 'R' };
+    expect(applyEdits('xyz', [insert, replace])).toBe('xIRz');
+    expect(applyEdits('xyz', [replace, insert])).toBe('xIRz');
+  });
+
+  it('rejects two insertions at the same offset, whose order would be ambiguous', () => {
+    expect(() =>
+      applyEdits('xy', [
+        { offset: 1, length: 0, content: 'A' },
+        { offset: 1, length: 0, content: 'B' },
+      ]),
+    ).toThrow(RangeError);
+  });
+
   it('allows adjacent edits', () => {
     expect(
       applyEdits('abcd', [
@@ -41,5 +57,6 @@ describe('applyEdits', () => {
     ).toThrow(RangeError);
     expect(() => applyEdits('abcd', [{ offset: 3, length: 2, content: 'x' }])).toThrow(RangeError);
     expect(() => applyEdits('abcd', [{ offset: -1, length: 0, content: 'x' }])).toThrow(RangeError);
+    expect(() => applyEdits('abcd', [{ offset: 2, length: -1, content: 'x' }])).toThrow(RangeError);
   });
 });
