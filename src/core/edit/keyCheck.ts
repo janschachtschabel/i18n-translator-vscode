@@ -10,17 +10,17 @@ export interface KeyCheck {
 
 /**
  * Whether `key` can be added to the bundle: every segment named, not there yet, and no text on its path or
- * below it (a key is either a text or an object). `ignore` skips one existing key, e.g. the one being renamed.
+ * below it (a key is either a text or an object). For a rename, the renamed key counts as well: moving `A` to
+ * `A.B` would need `A` as a text and as an object at once.
  */
-export function newKeyProblem(key: EntryKey, bundle: Bundle, ignore?: EntryKey): EditProblem | undefined {
-  if (key.segments.some((segment) => segment.trim() === '')) {
+export function newKeyProblem(key: EntryKey, bundle: Bundle): EditProblem | undefined {
+  if (key.segments.length === 0 || key.segments.some((segment) => segment.trim() === '')) {
     return editProblem('invalid-key', {});
   }
-  const others = bundle.keys.filter((existing) => existing.id !== ignore?.id);
-  if (others.some((existing) => existing.id === key.id)) {
+  if (bundle.keys.some((existing) => existing.id === key.id)) {
     return editProblem('key-exists', { key: displayKey(key), bundle: bundle.name });
   }
-  const blocker = collidingKey(others, key);
+  const blocker = collidingKey(bundle.keys, key);
   return blocker && editProblem('path-conflict', { key: displayKey(key), other: displayKey(blocker) });
 }
 

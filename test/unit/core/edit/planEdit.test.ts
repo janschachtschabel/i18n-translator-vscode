@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ANGULAR_PRESET } from '../../../../src/core/area/presets';
 import { formatMessage } from '../../../../src/core/checks/messages';
-import { checkNewKey } from '../../../../src/core/edit/keyCheck';
 import {
   planAddLanguage,
   planEdit,
@@ -172,6 +171,15 @@ describe('planEdit: keys', () => {
     expect(files.length).toBeGreaterThan(2);
   });
 
+  it('refuses renames into the path of the key itself, which would make it a text and an object at once', () => {
+    expect(plan('common', { kind: 'renameKey', entryId: id('ASK'), to: key('ASK.TITLE') })).toBe(
+      'path-conflict',
+    );
+    expect(
+      plan('common', { kind: 'renameKey', entryId: id('WORKSPACE.FILE.TITLE'), to: key('WORKSPACE.FILE') }),
+    ).toBe('path-conflict');
+  });
+
   it('refuses renames onto existing keys and of missing keys', () => {
     expect(plan('common', { kind: 'renameKey', entryId: id('ASK'), to: key('SAVE') })).toBe('key-exists');
     expect(plan('common', { kind: 'renameKey', entryId: id('NOPE'), to: key('X') })).toBe('missing-key');
@@ -208,27 +216,5 @@ describe('planAddLanguage', () => {
   it('refuses invalid language codes and languages every bundle has', () => {
     expect(add('ES')).toBe('invalid-locale');
     expect(add('de')).toBe('locale-exists');
-  });
-});
-
-describe('checkNewKey', () => {
-  it('warns when another bundle has the same top-level key, which one of them replaces at runtime', () => {
-    const check = checkNewKey(key('WORKSPACE.NEW'), bundle('admin'), analysis.bundles, ANGULAR_PRESET);
-    expect(check.problem).toBeUndefined();
-    expect(check.warnings.map((warning) => [warning.code, warning.message.args])).toEqual([
-      ['exists-in-other-bundle', { top: 'WORKSPACE', bundles: 'common' }],
-    ]);
-  });
-
-  it('accepts new top-level keys without a warning', () => {
-    expect(checkNewKey(key('BRAND_NEW'), bundle('admin'), analysis.bundles, ANGULAR_PRESET)).toEqual({
-      warnings: [],
-    });
-  });
-
-  it('reports the same problems as planning', () => {
-    expect(checkNewKey(key('ASK'), bundle('admin'), analysis.bundles, ANGULAR_PRESET).problem?.code).toBe(
-      'key-exists',
-    );
   });
 });

@@ -138,7 +138,7 @@ function planForEveryFile(
     if (renameTo.id === key.id) {
       return done([]);
     }
-    const problem = newKeyProblem(renameTo, bundle, key);
+    const problem = newKeyProblem(renameTo, bundle);
     if (problem) {
       return fail(problem);
     }
