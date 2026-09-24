@@ -176,7 +176,9 @@ export function planAddLanguage(
   locale: LocaleCode,
 ): PlanResult {
   const invalid = fail(editProblem('invalid-locale', { locale, area: area.label }));
-  if (!new RegExp(`^(?:${area.localePattern})$`).test(locale)) {
+  // The code is typed by the user; with a permissive custom pattern it could otherwise become a path.
+  const pathLike = /[\\/:]/.test(locale) || locale === '.' || locale === '..';
+  if (pathLike || !new RegExp(`^(?:${area.localePattern})$`).test(locale)) {
     return invalid;
   }
   const lacking = bundles.filter((bundle) => !bundle.file(locale));

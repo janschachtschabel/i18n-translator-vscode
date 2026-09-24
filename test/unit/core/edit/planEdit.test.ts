@@ -281,4 +281,11 @@ describe('planAddLanguage', () => {
     expect(add('ES')).toBe('invalid-locale');
     expect(add('de')).toBe('locale-exists');
   });
+
+  it('refuses language codes that would turn into paths, whatever the pattern allows', () => {
+    const permissive = { ...ANGULAR_PRESET, localePattern: '.+' };
+    for (const locale of ['../x', 'de/x', 'de\\x', 'c:x', '.', '..']) {
+      expect(summary(planAddLanguage(analysis.bundles, permissive, locale)), locale).toBe('invalid-locale');
+    }
+  });
 });
