@@ -36,7 +36,9 @@ describe('collectL10nCalls', () => {
   });
 
   it('ignores calls inside comments', () => {
-    expect(collectL10nCalls(`// l10n.t('commented out')\n/* l10n.t('block') */`, 'a.ts').messages).toEqual([]);
+    expect(collectL10nCalls(`// l10n.t('commented out')\n/* l10n.t('block') */`, 'a.ts').messages).toEqual(
+      [],
+    );
   });
 
   it('reports calls whose first argument is not a string literal', () => {

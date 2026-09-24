@@ -19,7 +19,10 @@ export default defineConfig(
         {
           paths: [{ name: 'vscode', message: 'src/core must not depend on the VS Code API.' }],
           patterns: [
-            { group: ['**/extension/**', '**/webview/**'], message: 'src/core must not depend on outer layers.' },
+            {
+              group: ['**/extension/**', '**/webview/**'],
+              message: 'src/core must not depend on outer layers.',
+            },
           ],
         },
       ],
