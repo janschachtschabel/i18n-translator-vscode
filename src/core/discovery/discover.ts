@@ -1,5 +1,6 @@
 import type { AreaDefinition } from '../area/areaDefinition';
 import { compileFilePattern } from '../area/filePattern';
+import { normalizeRoot } from '../area/rootPath';
 import type { AreaId, LocaleCode } from '../model/types';
 
 export interface DiscoveredFile {
@@ -18,7 +19,8 @@ export interface AreaWithRoots {
 }
 
 /** Derives area roots from found marker files: `Frontend/src/assets/i18n/common/de.json` → `Frontend/src/assets/i18n`. */
-export function rootsFromMarkers(markerPaths: readonly string[], marker: string): string[] {
+export function rootsFromMarkers(markerPaths: readonly string[], markerPath: string): string[] {
+  const marker = toPosix(markerPath);
   const roots = new Set<string>();
   for (const path of markerPaths.map(toPosix)) {
     if (path === marker) {
@@ -34,7 +36,8 @@ export function rootsFromMarkers(markerPaths: readonly string[], marker: string)
 export function classifyFiles(paths: readonly string[], areas: readonly AreaWithRoots[]): DiscoveredFile[] {
   const matchers = areas.map(({ area, roots }) => ({
     areaId: area.id,
-    roots: roots.map((root) => toPosix(root).replace(/\/+$/, '')),
+    // Equivalent spellings collapse to one root; roots outside the workspace folder are skipped.
+    roots: [...new Set(roots.map(normalizeRoot).filter((root) => root !== undefined))],
     match: compileFilePattern(area),
   }));
   const files: DiscoveredFile[] = [];

@@ -6,6 +6,7 @@ import {
   type MergeSemantics,
 } from './areaDefinition';
 import { compileFilePattern } from './filePattern';
+import { normalizeRoot } from './rootPath';
 
 export type ParseAreaResult = { ok: true; area: AreaDefinition } | { ok: false; errors: string[] };
 
@@ -67,11 +68,7 @@ export function parseAreaDefinition(raw: unknown): ParseAreaResult {
     `"mergeSemantics" must be one of: ${MERGE_SEMANTICS.join(', ')}.`,
   );
   const detect = check(raw.detect, raw.detect === undefined || isDetect(raw.detect), detectMessage());
-  const roots = check(
-    raw.roots,
-    raw.roots === undefined ? raw.detect !== undefined : isStringArray(raw.roots),
-    '"roots" must list the area folders (workspace-relative) unless "detect" is set.',
-  );
+  const roots = parseRoots(raw.roots, raw.detect !== undefined, errors);
 
   if (typeof files === 'string' && typeof localePattern === 'string') {
     try {
@@ -95,7 +92,7 @@ export function parseAreaDefinition(raw: unknown): ParseAreaResult {
       id: id as string,
       label: (label as string | undefined) ?? (id as string),
       format: format as FormatId,
-      roots: (roots as string[] | undefined) ?? [],
+      roots,
       files: files as string,
       localePattern: localePattern as string,
       bundlePattern: bundlePattern as string | undefined,
@@ -106,6 +103,30 @@ export function parseAreaDefinition(raw: unknown): ParseAreaResult {
       detect: detect as AreaDefinition['detect'],
     }),
   };
+}
+
+/** Normalized, de-duplicated roots; an area without roots must be detectable. */
+function parseRoots(value: unknown, hasDetect: boolean, errors: string[]): string[] {
+  if (value === undefined || (Array.isArray(value) && value.length === 0)) {
+    if (!hasDetect) {
+      errors.push('"roots" must list the area folders (workspace-relative) unless "detect" is set.');
+    }
+    return [];
+  }
+  if (!isStringArray(value)) {
+    errors.push('"roots" must be a list of folders relative to the workspace.');
+    return [];
+  }
+  const roots: string[] = [];
+  for (const root of value) {
+    const normalized = normalizeRoot(root);
+    if (normalized === undefined) {
+      errors.push(`"roots" entry "${root}" must be a folder inside the workspace (relative, without "..").`);
+    } else if (!roots.includes(normalized)) {
+      roots.push(normalized);
+    }
+  }
+  return roots;
 }
 
 function idMessage(): string {

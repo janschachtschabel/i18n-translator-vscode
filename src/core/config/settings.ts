@@ -1,6 +1,7 @@
 import type { AreaDefinition } from '../area/areaDefinition';
 import { parseAreaDefinition } from '../area/parseArea';
 import { PRESETS } from '../area/presets';
+import { normalizeRoot } from '../area/rootPath';
 import { RULE_IDS, type RuleId, type SeverityOverrides } from '../checks/types';
 import { DEFAULT_VARIANTS, type VariantConfig, type VariantSettings } from '../checks/variants';
 
@@ -69,7 +70,7 @@ export function parseSettings(raw: RawSettings): { settings: Settings; errors: s
 
   const settings: Settings = {
     areas: parseAreas(raw['areas'], errors),
-    roots: pick('roots', isRootsMap, DEFAULT_SETTINGS.roots),
+    roots: normalizeRoots(pick('roots', isRootsMap, DEFAULT_SETTINGS.roots), errors),
     exclude: pick('exclude', isStringArray, DEFAULT_SETTINGS.exclude),
     referenceLanguage: pick('referenceLanguage', isNonEmptyString, DEFAULT_SETTINGS.referenceLanguage),
     baseFileLanguage: pick('baseFileLanguage', isNonEmptyString, DEFAULT_SETTINGS.baseFileLanguage),
@@ -112,6 +113,26 @@ function parseAreas(value: unknown, errors: string[]): AreaDefinition[] {
     ...PRESETS.map((preset) => custom.find((area) => area.id === preset.id) ?? preset),
     ...custom.filter((area) => !PRESETS.some((preset) => preset.id === area.id)),
   ];
+}
+
+function normalizeRoots(
+  roots: Readonly<Record<string, string[]>>,
+  errors: string[],
+): Record<string, string[]> {
+  return Object.fromEntries(
+    Object.entries(roots).map(([areaId, paths]) => {
+      const normalized: string[] = [];
+      for (const path of paths) {
+        const root = normalizeRoot(path);
+        if (root === undefined) {
+          errors.push(`eduI18n.roots.${areaId}: "${path}" must be a folder inside the workspace.`);
+        } else if (!normalized.includes(root)) {
+          normalized.push(root);
+        }
+      }
+      return [areaId, normalized];
+    }),
+  );
 }
 
 function parseSeverities(value: unknown, errors: string[]): SeverityOverrides {

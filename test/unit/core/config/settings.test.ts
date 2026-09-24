@@ -62,6 +62,12 @@ describe('parseSettings', () => {
     expect(errors).toHaveLength(3);
   });
 
+  it('normalizes configured roots and drops roots outside the workspace', () => {
+    const { settings, errors } = parseSettings({ roots: { a: ['./x/', '../y'], b: ['/etc'] } });
+    expect(settings.roots).toEqual({ a: ['x'], b: [] });
+    expect(errors).toHaveLength(2);
+  });
+
   it('accepts roots per area', () => {
     expect(
       parseSettings({ roots: { 'edu-sharing.angular': ['Frontend/src/assets/i18n'] } }).settings.roots,

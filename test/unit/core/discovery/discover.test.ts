@@ -59,6 +59,18 @@ describe('classifyFiles', () => {
     ]);
   });
 
+  it('treats equivalent spellings of a root as one root', () => {
+    const files = classifyFiles(
+      ['a/common/de.json'],
+      [{ area: ANGULAR_PRESET, roots: ['a', 'a/', './a', 'a\\'] }],
+    );
+    expect(files).toHaveLength(1);
+  });
+
+  it('skips roots outside the workspace folder', () => {
+    expect(classifyFiles(['common/de.json'], [{ area: ANGULAR_PRESET, roots: ['../x', '/x'] }])).toEqual([]);
+  });
+
   it('supports a root at the workspace folder itself', () => {
     expect(classifyFiles(['common/de.json'], [{ area: ANGULAR_PRESET, roots: [''] }])[0]?.bundle).toBe(
       'common',

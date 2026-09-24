@@ -58,6 +58,17 @@ describe('parseAreaDefinition', () => {
     ).toBe(true);
   });
 
+  it('normalizes roots and rejects roots outside the workspace', () => {
+    const normalized = parseAreaDefinition({ ...customArea, roots: ['./customer/i18n/'] });
+    expect(normalized.ok && normalized.area.roots).toEqual(['customer/i18n']);
+    const outside = parseAreaDefinition({ ...customArea, roots: ['../elsewhere', '/etc'] });
+    expect(outside.ok ? [] : outside.errors).toHaveLength(2);
+  });
+
+  it('rejects an empty root list without detection', () => {
+    expect(parseAreaDefinition({ ...customArea, roots: [] }).ok).toBe(false);
+  });
+
   it('requires the detection glob to end with the marker', () => {
     const result = parseAreaDefinition({
       ...customArea,
