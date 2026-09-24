@@ -12,6 +12,9 @@ const common = {
   platform: 'node',
   format: 'cjs',
   target: 'node20', // VS Code 1.90 ships Node 20
+  // Prefer ESM entry points: jsonc-parser's "main" is a UMD build whose internal require() calls
+  // esbuild cannot follow, which would leave them unbundled (the VSIX ships without node_modules).
+  mainFields: ['module', 'main'],
   sourcemap: production ? false : 'linked',
   minify: production,
   logLevel: 'info',
