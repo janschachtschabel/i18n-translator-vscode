@@ -136,6 +136,17 @@ describe('formatFilePattern', () => {
     expect(formatFilePattern(mds, 'mds', 'default')).toBe('mds.properties');
   });
 
+  it('leaves out an optional bundle part for the fallback bundle, whose files have none', () => {
+    const nested = { files: '[{bundle}/]{locale}.json', localePattern: '[a-z]{2}', bundleName: 'main' };
+    expect(formatFilePattern(nested, 'main', 'fr')).toBe('fr.json');
+    expect(formatFilePattern(nested, 'extra', 'fr')).toBe('extra/fr.json');
+  });
+
+  it('treats only the placeholders themselves as placeholders', () => {
+    const odd = { files: '{bundle}/toString/{locale}.json', localePattern: '[a-z]{2}' };
+    expect(formatFilePattern(odd, 'common', 'es')).toBe('common/toString/es.json');
+  });
+
   it('refuses paths the area would not recognise as that bundle and locale', () => {
     expect(formatFilePattern(angular, 'common', 'ES')).toBeUndefined();
     expect(formatFilePattern(angular, 'common', 'default')).toBeUndefined();

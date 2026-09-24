@@ -11,7 +11,7 @@ export interface FilePatternSpec {
   localePattern: string;
   /** Regular expression source for `{bundle}`; default: a single path segment, as short as possible. */
   bundlePattern?: string;
-  /** Bundle name to use when `files` has no `{bundle}` placeholder. */
+  /** Bundle name of files without a bundle part: `files` has no `{bundle}`, or it is optional and absent. */
   bundleName?: string;
 }
 
@@ -71,18 +71,34 @@ export function formatFilePattern(
   bundle: string,
   locale: LocaleCode,
 ): string | undefined {
-  const values: Record<string, string | undefined> = {
-    '{bundle}': bundle,
-    '{locale}': locale === BASE_FILE_LOCALE ? undefined : locale,
-  };
+  const localeValue = locale === BASE_FILE_LOCALE ? undefined : locale;
+  // The fallback bundle's files leave out an optional bundle part, so that path is tried first.
+  const bundleValues = bundle === spec.bundleName ? [undefined, bundle] : [bundle];
+  for (const bundleValue of bundleValues) {
+    const path = fillPattern(
+      spec.files,
+      new Map([
+        ['{bundle}', bundleValue],
+        ['{locale}', localeValue],
+      ]),
+    );
+    if (path !== undefined && readsBack(spec, path, bundle, locale)) {
+      return path;
+    }
+  }
+  return undefined;
+}
+
+/** The pattern with its placeholders filled in; undefined if a required placeholder has no value. */
+function fillPattern(files: string, values: ReadonlyMap<string, string | undefined>): string | undefined {
   // One entry per open bracket level: the text so far and whether every placeholder in it had a value.
   const parts = [{ text: '', complete: true }];
-  let rest = spec.files;
+  let rest = files;
   while (rest.length > 0) {
     const part = parts[parts.length - 1]!;
     const placeholder = rest.slice(0, 8);
-    if (placeholder in values) {
-      const value = values[placeholder];
+    if (values.has(placeholder)) {
+      const value = values.get(placeholder);
       part.text += value ?? '';
       part.complete &&= value !== undefined;
       rest = rest.slice(8);
@@ -99,13 +115,18 @@ export function formatFilePattern(
     rest = rest.slice(1);
   }
   const [path] = parts;
+  return path!.complete ? path!.text : undefined;
+}
+
+/** Whether the area reads `path` back as this bundle and locale. */
+function readsBack(spec: FilePatternSpec, path: string, bundle: string, locale: LocaleCode): boolean {
   let match: PatternMatch | null = null;
   try {
-    match = path!.complete ? compileFilePattern(spec)(path!.text) : null;
+    match = compileFilePattern(spec)(path);
   } catch {
     // An invalid pattern cannot describe any file.
   }
-  return match?.bundle === bundle && match.locale === locale ? path!.text : undefined;
+  return match?.bundle === bundle && match.locale === locale;
 }
 
 function toRegexSource(spec: FilePatternSpec): {
