@@ -20,7 +20,7 @@ interface Completeness {
 
 /**
  * Compares every readable full locale with the reference. A key only a translation has is an orphan,
- * unless a missing key ends with the same segment: then it is probably misplaced (and reported only as such).
+ * unless a missing key ends with the same segments: then it is probably misplaced (and reported only as such).
  */
 function analyze(bundle: Bundle, ctx: CheckContext): Completeness {
   const result: Completeness = { missing: [], orphans: [], misplaced: [] };
@@ -35,11 +35,11 @@ function analyze(bundle: Bundle, ctx: CheckContext): Completeness {
     }
     const ids = entryIds(bundle, locale);
     const missing = bundle.keys.filter((key) => referenceIds.has(key.id) && !ids.has(key.id));
+    const extra = bundle.keys.filter((key) => ids.has(key.id) && !referenceIds.has(key.id));
     result.missing.push(...missing.map((key) => ({ locale, key })));
-    for (const key of bundle.keys.filter(
-      (candidate) => ids.has(candidate.id) && !referenceIds.has(candidate.id),
-    )) {
-      const suggestion = likelyTarget(key, missing);
+    const targets = likelyTargets(extra, missing);
+    for (const key of extra) {
+      const suggestion = targets.get(key.id);
       if (suggestion) {
         result.misplaced.push({ locale, key, suggestion });
       } else {
@@ -50,18 +50,43 @@ function analyze(bundle: Bundle, ctx: CheckContext): Completeness {
   return result;
 }
 
-/** The missing key with the same last segment and the longest common segment suffix, if any. */
-function likelyTarget(orphan: EntryKey, missing: readonly EntryKey[]): EntryKey | undefined {
-  let best: EntryKey | undefined;
-  let bestLength = 0;
-  for (const candidate of missing) {
-    const length = commonSuffixLength(orphan.segments, candidate.segments);
-    if (length > bestLength) {
-      best = candidate;
-      bestLength = length;
+/**
+ * Pairs extra keys with missing keys that end in the same segments, the longest common ending first and
+ * ties in key order. Each missing key is suggested once, so moving every key as suggested never collides.
+ */
+function likelyTargets(extra: readonly EntryKey[], missing: readonly EntryKey[]): Map<string, EntryKey> {
+  const missingByLast = new Map<string, EntryKey[]>();
+  for (const key of missing) {
+    const group = missingByLast.get(lastSegment(key));
+    if (group) {
+      group.push(key);
+    } else {
+      missingByLast.set(lastSegment(key), [key]);
     }
   }
-  return best;
+  const pairs = extra.flatMap((key, keyIndex) =>
+    (missingByLast.get(lastSegment(key)) ?? []).map((target, targetIndex) => ({
+      key,
+      target,
+      length: commonSuffixLength(key.segments, target.segments),
+      keyIndex,
+      targetIndex,
+    })),
+  );
+  pairs.sort((a, b) => b.length - a.length || a.keyIndex - b.keyIndex || a.targetIndex - b.targetIndex);
+  const targets = new Map<string, EntryKey>();
+  const taken = new Set<string>();
+  for (const { key, target } of pairs) {
+    if (!targets.has(key.id) && !taken.has(target.id)) {
+      targets.set(key.id, target);
+      taken.add(target.id);
+    }
+  }
+  return targets;
+}
+
+function lastSegment(key: EntryKey): string {
+  return key.segments[key.segments.length - 1]!;
 }
 
 function commonSuffixLength(a: readonly string[], b: readonly string[]): number {
@@ -72,8 +97,23 @@ function commonSuffixLength(a: readonly string[], b: readonly string[]): number 
   return length;
 }
 
+// The three rules share one analysis per bundle; a context lives for one runChecks call.
+const analyses = new WeakMap<CheckContext, Map<Bundle, Completeness>>();
+
 function eachBundle(ctx: CheckContext, map: (bundle: Bundle, result: Completeness) => Finding[]): Finding[] {
-  return ctx.bundles.flatMap((bundle) => map(bundle, analyze(bundle, ctx)));
+  let cache = analyses.get(ctx);
+  if (!cache) {
+    cache = new Map();
+    analyses.set(ctx, cache);
+  }
+  return ctx.bundles.flatMap((bundle) => {
+    let result = cache.get(bundle);
+    if (!result) {
+      result = analyze(bundle, ctx);
+      cache.set(bundle, result);
+    }
+    return map(bundle, result);
+  });
 }
 
 export const missingKeyRule: Rule = {

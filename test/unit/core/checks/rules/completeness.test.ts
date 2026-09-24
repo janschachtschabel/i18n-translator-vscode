@@ -63,6 +63,38 @@ describe('orphan-key and misplaced-key', () => {
     expect(summarize(run(missingKeyRule, [bundle]))).toEqual(['missing-key common/fr y.TITLE']);
   });
 
+  it('prefers the missing key with the longest common ending', () => {
+    const bundle = bundleOf('common', {
+      de: '{"A":{"TITLE":"a"},"WORKSPACE":{"FILE":{"TITLE":"t"}}}',
+      fr: '{"X":{"FILE":{"TITLE":"t"}}}',
+    });
+    expect(summarize(run(misplacedKeyRule, [bundle]), 'suggestion')).toEqual([
+      'misplaced-key common/fr X.FILE.TITLE suggestion="WORKSPACE.FILE.TITLE"',
+    ]);
+  });
+
+  it('suggests each missing key for one key only', () => {
+    const bundle = bundleOf('common', {
+      de: '{"SEARCH":{"TITLE":"s"},"UPLOAD":{"TITLE":"u"}}',
+      fr: '{"OLD_A":{"TITLE":"a"},"OLD_B":{"TITLE":"b"}}',
+    });
+    expect(summarize(run(misplacedKeyRule, [bundle]), 'suggestion')).toEqual([
+      'misplaced-key common/fr OLD_A.TITLE suggestion="SEARCH.TITLE"',
+      'misplaced-key common/fr OLD_B.TITLE suggestion="UPLOAD.TITLE"',
+    ]);
+  });
+
+  it('gives a contested missing key to the closest match and keeps the others as orphans', () => {
+    const bundle = bundleOf('common', {
+      de: '{"WORKSPACE":{"FILE":{"TITLE":"t"}}}',
+      fr: '{"X":{"TITLE":"x"},"OLD":{"FILE":{"TITLE":"t"}}}',
+    });
+    expect(summarize(run(misplacedKeyRule, [bundle]), 'suggestion')).toEqual([
+      'misplaced-key common/fr OLD.FILE.TITLE suggestion="WORKSPACE.FILE.TITLE"',
+    ]);
+    expect(summarize(run(orphanKeyRule, [bundle]))).toEqual(['orphan-key common/fr X.TITLE']);
+  });
+
   it('points to the key in the translation', () => {
     const [finding] = run(orphanKeyRule, [bundleOf('common', { de: '{}', it: '{"OLD":"x"}' })]);
     expect(finding?.location).toEqual({ relPath: 'i18n/common/it.json', range: [1, 6] });
