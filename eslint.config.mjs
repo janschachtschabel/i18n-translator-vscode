@@ -7,6 +7,12 @@ export default defineConfig(
   js.configs.recommended,
   tseslint.configs.recommended,
   {
+    rules: {
+      // Omitting a property via rest destructuring (`const { a, ...rest } = obj`) is intentional.
+      '@typescript-eslint/no-unused-vars': ['error', { ignoreRestSiblings: true }],
+    },
+  },
+  {
     files: ['**/*.mjs'],
     languageOptions: { globals: { process: 'readonly', console: 'readonly' } },
   },
