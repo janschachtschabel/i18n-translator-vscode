@@ -6,7 +6,7 @@ import type { Bundle, LoadedFile } from '../model/bundle';
 import { displayKey, isKeyPrefix, keyFromId, keyFromSegments, type EntryKey } from '../model/keys';
 import type { LocaleCode } from '../model/types';
 import { detectStyle } from '../text/style';
-import { editProblem, type EditProblem, type EditWarning } from './editMessages';
+import { editProblem, type EditProblem } from './editMessages';
 import { collidingKey, newKeyProblem } from './keyCheck';
 
 export type BundleEdit =
@@ -20,10 +20,10 @@ export type BundleEdit =
 export type FileChange =
   { kind: 'edit'; relPath: string; ops: FileOp[] } | { kind: 'create'; relPath: string; content: string };
 
-export type PlanResult =
-  { ok: true; changes: FileChange[]; warnings: EditWarning[] } | { ok: false; problem: EditProblem };
+/** Warnings for the user come from `checkNewKey` before an edit, not from planning. */
+export type PlanResult = { ok: true; changes: FileChange[] } | { ok: false; problem: EditProblem };
 
-const done = (changes: FileChange[]): PlanResult => ({ ok: true, changes, warnings: [] });
+const done = (changes: FileChange[]): PlanResult => ({ ok: true, changes });
 const fail = (problem: EditProblem): PlanResult => ({ ok: false, problem });
 
 /** Turns an edit of a bundle into operations per file, or explains why it is not possible. Writes nothing. */
