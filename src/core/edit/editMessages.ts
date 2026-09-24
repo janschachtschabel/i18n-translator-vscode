@@ -39,11 +39,11 @@ export const EDIT_MESSAGES: Readonly<Record<EditProblemCode | EditWarningCode, s
   'key-exists': '{key} already exists in {bundle}.',
   'path-conflict': '{key} collides with {other}: a key cannot be a text and contain other keys.',
   'invalid-key': 'Every part of a key needs a name, e.g. SECTION.TITLE.',
-  'invalid-locale': '{locale} is not a language code of {area}.',
+  'invalid-locale': '{locale} is not a valid language code for {area}.',
   'locale-exists': 'Every bundle already has a file for {locale}.',
   changed: '{key} in {locale} was changed in the meantime.',
   'exists-in-other-bundle':
-    "{top} also exists in {bundles}. At runtime, one bundle replaces the other's {top} as a whole.",
+    '{top} also exists in {bundles}. At runtime, the bundle that comes last in the merge order replaces {top} of the others as a whole.',
 };
 
 export function editProblem(code: EditProblemCode, args: Record<string, string>): EditProblem {
