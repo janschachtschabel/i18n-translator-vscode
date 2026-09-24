@@ -9,7 +9,7 @@ import {
 } from '../../../../src/core/edit/planEdit';
 import type { FileOp } from '../../../../src/core/formats/adapter';
 import { displayKey, keyFromSegments } from '../../../../src/core/model/keys';
-import { analyzeFixtureWorkspace } from '../../support/fixtureWorkspace';
+import { analyzeFixtureWorkspace, analyzeTexts } from '../../support/fixtureWorkspace';
 
 const ROOT = 'Frontend/src/assets/i18n/';
 const { analysis } = analyzeFixtureWorkspace();
@@ -101,7 +101,7 @@ describe('planEdit: setText', () => {
   });
 
   it('leaves files with a syntax error alone', () => {
-    expect(plan('broken', { kind: 'setText', entryId: id('a'), locale: 'de', value: 'x' })).toBe(
+    expect(plan('broken', { kind: 'setText', entryId: id('b'), locale: 'de', value: 'x' })).toBe(
       'unreadable-file',
     );
   });
@@ -122,10 +122,23 @@ describe('planEdit: setText', () => {
     ).toEqual(['common/fr.json: insert CANCEL after SAVE = Annuler']);
   });
 
-  it('refuses a text where the file already has an object', () => {
-    expect(plan('common', { kind: 'setText', entryId: id('FILE'), locale: 'it', value: 'x' })).toBe(
-      'path-conflict',
+  it('refuses texts for keys the bundle no longer has, instead of creating them again', () => {
+    expect(
+      plan('common', { kind: 'setText', entryId: id('GONE'), locale: 'fr', value: 'x', before: null }),
+    ).toBe('missing-key');
+    expect(plan('common', { kind: 'setText', entryId: id('GONE'), locale: 'de', value: 'x' })).toBe(
+      'missing-key',
     );
+  });
+
+  it('refuses a text where the file has an object with the same path', () => {
+    const [mixed] = analyzeTexts({
+      'mixed/de.json': '{\n  "FILE": "Datei"\n}\n',
+      'mixed/fr.json': '{\n  "FILE": {\n    "TITLE": "Fichier"\n  }\n}\n',
+    }).bundles;
+    expect(
+      summary(planEdit(mixed!, { kind: 'setText', entryId: id('FILE'), locale: 'fr', value: 'x' })),
+    ).toBe('path-conflict');
   });
 });
 

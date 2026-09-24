@@ -60,6 +60,10 @@ function planSetText(
   if (hasSyntaxError(file.parsed)) {
     return fail(editProblem('unreadable-file', { file: file.relPath }));
   }
+  if (!bundle.keys.some((existing) => existing.id === entryId)) {
+    // Renamed or deleted in the meantime: a text for it would bring the key back (B5).
+    return fail(editProblem('missing-key', { key: displayKey(key), bundle: bundle.name }));
+  }
   const current = bundle.value(entryId, locale);
   if (before !== undefined && (current ?? null) !== before) {
     return fail(editProblem('changed', { key: displayKey(key), locale }));
