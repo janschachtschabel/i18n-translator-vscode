@@ -30,12 +30,13 @@ Mit **F5** („Run Extension") startet ein Extension Development Host mit dem Be
 
 | Ordner | Inhalt | Darf importieren |
 |---|---|---|
-| `src/core` | Formate, Modell, Prüfregeln, Füllen, Import/Export – reines TypeScript | nur `src/core` |
-| `src/extension` | Anbindung an VS Code (Befehle, Ansichten, Dateizugriff) | `src/core`, `src/shared`, `vscode` |
+| `src/core` | Formate, Modell, Prüfregeln, Füllen, Import/Export – reines TypeScript ohne VS-Code-, Node- oder DOM-APIs | nur `src/core` |
+| `src/extension` | Anbindung an VS Code (Befehle, Ansichten, Dateizugriff) | `src/core`, `src/shared`, `vscode`, Node |
 | `src/shared` | Nachrichtentypen zwischen Extension und Webview (ab Phase 2) | nur `src/shared` |
-| `src/webview` | Oberfläche der Webview (ab Phase 2) | `src/shared` |
+| `src/webview` | Oberfläche der Webview (ab Phase 2) | `src/shared`, `src/core` |
+| `scripts` | Kommandozeilen-Werkzeuge wie `check-repo` | `src/core`, Node |
 
-Die Regeln für `src/core` erzwingt ESLint (`no-restricted-imports`, keine DOM-Globals).
+Die Regeln für `src/core` und `src/webview` erzwingt ESLint (`no-restricted-imports`, keine DOM-Globals im Kern).
 
 ## Tests
 

@@ -125,7 +125,7 @@ Heuristische Befunde (zum Beispiel „identisch mit Referenz") landen deshalb ni
 ## 5. Globale Vorgaben
 
 - TypeScript `strict`. Extension Host mit Node ≥ 20 (global `fetch`). **VS Code ≥ 1.90**, damit auch Forks laufen (Windsurf/Devin 1.126, Antigravity 1.107); keine Proposed APIs.
-- `src/core/**` und `src/webview/**` dürfen **nicht** `vscode` importieren, `src/core/**` auch keine DOM-APIs. Das erzwingt ESLint über `no-restricted-imports`. So bleibt der Kern mit vitest testbar und später als CLI oder CI-Prüfung nutzbar.
+- `src/core/**` und `src/webview/**` dürfen **nicht** `vscode` importieren. `src/core/**` nutzt außerdem weder Node-APIs (`node:*`) noch DOM-Globals, damit Extension Host, Webview und CLI-Skripte ihn gleichermaßen verwenden können. Die Webview darf den Kern importieren (z. B. für die Sofortprüfung von Platzhaltern), aber nie Extension-Code. Das erzwingt ESLint über `no-restricted-imports`. So bleibt der Kern mit vitest testbar und später als CLI oder CI-Prüfung nutzbar.
 - Bezeichner, Code-Kommentare und Commit-Messages auf Englisch; die Dokumentation für Nutzer auf Deutsch (README zusätzlich auf Englisch).
 - **Byte-Treue:** Beim Schreiben bleiben unveränderte Bytes identisch. Encoding, BOM, Zeilenenden, Einrückung, Trennzeichen, Kommentare und Reihenfolge bleiben erhalten.
 - **Keine leeren Werte automatisch anlegen.** Leeren ist nur als ausdrückliche Aktion „Wert entfernen" möglich (entfernt den Key und stellt damit den Fallback wieder her).

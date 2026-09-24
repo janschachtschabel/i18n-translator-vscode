@@ -29,6 +29,18 @@
 > - **Kein Smoke-Test:** vitest wird durch die echten Tests bestätigt (zuerst der l10n-Vollständigkeitstest).
 > - **Vitest-Konfiguration als `vitest.config.mts`,** weil das Paket CommonJS bleibt.
 > - **Zusätzlich:** `.gitattributes` (Fixtures byte-genau), `.vscode/launch.json` (F5) und ein l10n-Vollständigkeitstest.
+> - **Ebenenregeln geschärft:** Der Kern verbietet zusätzlich `node:*`. Die Webview darf den Kern importieren, aber weder `vscode`, `node:*` noch Extension-Code (Design §5/§6.1).
+> - **Kein `deactivate()`:** VS Code verlangt es nicht; alle Ressourcen hängen an `context.subscriptions`.
+> - **`src/extension/l10n.ts`** (Texte für die Webview) sowie `happy-dom`, `@testing-library/preact` und `axe-core` kommen mit der ersten Webview in Phase 2.
+>
+> **Review Phase 0 (unabhängiger Reviewer, 24.09.2026): 0 kritisch, 0 major, 4 minor, 3 Nits – alle behoben:**
+> - esbuild bündelte den UMD-Build von `jsonc-parser` unvollständig (latenter Laufzeitfehler, reproduziert und behoben).
+> - Der l10n-Test sammelt jetzt über den TypeScript-Syntaxbaum.
+> - Die Abdeckungsschwelle wird wirklich geprüft.
+> - Die Regel-Wechselwirkungen hinter den Fixture-Summen sind festgeschrieben.
+> - Prettier wird erzwungen.
+> - Die CI läuft ohne Doppelläufe.
+> - Die Ebenenregeln sind vollständig.
 
 ### Task 0.1: Branch und Repo-Grunddateien
 **Dateien:** Create `.gitignore`, `.editorconfig`, `.nvmrc`, `.vscodeignore`, `.prettierrc.json`
@@ -508,7 +520,7 @@ export function compileVariants(cfg: VariantConfig): { rules: Map<LocaleCode, { 
 **Commit:** `feat(core): add hint rules and rule registry`
 
 ### Task 1.16: CLI `check-repo` (Abnahme gegen den echten Repo-Clone)
-**Dateien:** Create `scripts/check-repo.ts`, `src/core/node/fsScan.ts` (Node-Dateisystemzugriff, nur für Skripte); Test: `test/unit/core/cli.test.ts` (gegen den Fixture-Workspace)
+**Dateien:** Create `scripts/check-repo.ts`, `scripts/lib/fsScan.ts` (Node-Dateisystemzugriff, nur für Skripte; der Kern bleibt frei von `node:*`); Test: `test/unit/scripts/checkRepo.test.ts` (gegen den Fixture-Workspace)
 **Aufruf:**
 ```bash
 npm run check:repo -- "C:/Users/jan/staging/Windsurf/edu-sharing-community-repository-maven-fixes-11.0/edu-sharing-community-repository-maven-fixes-11.0"
