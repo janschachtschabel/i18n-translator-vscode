@@ -94,7 +94,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "test:unit": "vitest run",
+    "test:unit": "vitest run --coverage",
     "test:integration": "node esbuild.mjs && node esbuild.mjs --tests && vscode-test",
     "check:repo": "tsx scripts/check-repo.ts"
   },
