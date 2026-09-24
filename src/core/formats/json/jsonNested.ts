@@ -9,54 +9,92 @@ export const jsonNestedAdapter: FormatAdapter = {
   id: 'json-nested',
   decode: decodeText,
   parse(doc): ParsedFile {
-    const problems: FileProblem[] = [];
-    if (doc.encoding !== 'utf-8') {
-      problems.push({ code: 'not-utf8', range: [0, 0] });
-    }
-
-    const errors: ParseError[] = [];
-    const root = parseTree(doc.text, errors, { disallowComments: true, allowTrailingComma: false });
-    for (const error of errors) {
-      problems.push({
-        code: 'parse-error',
-        range: [error.offset, error.offset + error.length],
-        detail: printParseErrorCode(error.error),
-      });
-    }
-    if (errors.length > 0) {
+    const problems: FileProblem[] = doc.encoding === 'utf-8' ? [] : [{ code: 'not-utf8', range: [0, 0] }];
+    // Angular's HttpClient yields null for an empty body instead of failing, so the file adds nothing.
+    if (doc.text === '') {
       return { entries: [], problems, topLevelKeys: [] };
     }
-    if (root?.type !== 'object') {
-      problems.push({ code: 'parse-error', range: root ? rangeOf(root) : [0, 0], detail: 'ObjectExpected' });
+    try {
+      const parsed = parseObject(doc.text);
+      return { ...parsed, problems: [...problems, ...parsed.problems] };
+    } catch (error) {
+      if (!(error instanceof RangeError)) {
+        throw error;
+      }
+      // The call stack overflowed on nesting far deeper than any translation file: report, don't crash.
+      problems.push({ code: 'parse-error', range: [0, 0], detail: 'TooDeep' });
       return { entries: [], problems, topLevelKeys: [] };
     }
-
-    const entries = new Map<string, ParsedEntry>();
-    collect(root, [], entries, problems);
-    const topLevelKeys = [...new Set(properties(root).map(([keyNode]) => keyNode.value as string))];
-    return { entries: [...entries.values()], problems, topLevelKeys };
   },
 };
 
-function collect(
+function parseObject(text: string): ParsedFile {
+  const errors: ParseError[] = [];
+  const root = parseTree(text, errors, { disallowComments: true, allowTrailingComma: false });
+  const [firstError] = errors;
+  if (firstError) {
+    // Like JSON.parse, report the first error only: the errors after it come from the parser's recovery.
+    const range: TextRange = [firstError.offset, firstError.offset + firstError.length];
+    return {
+      entries: [],
+      problems: [{ code: 'parse-error', range, detail: printParseErrorCode(firstError.error) }],
+      topLevelKeys: [],
+    };
+  }
+  if (root?.type !== 'object') {
+    const range: TextRange = root ? rangeOf(root) : [0, 0];
+    return {
+      entries: [],
+      problems: [{ code: 'parse-error', range, detail: 'ObjectExpected' }],
+      topLevelKeys: [],
+    };
+  }
+
+  const entries = new Map<string, ParsedEntry>();
+  const problems: FileProblem[] = [];
+  const topLevel = effectiveProperties(root, [], problems);
+  collect(topLevel, [], entries, problems);
+  return { entries: [...entries.values()], problems, topLevelKeys: [...topLevel.keys()] };
+}
+
+/**
+ * The properties of an object as JSON.parse sees them: a repeated key takes the last value
+ * but keeps the position of its first occurrence. Every repetition is reported.
+ */
+function effectiveProperties(
   object: Node,
-  path: string[],
+  path: readonly string[],
+  problems: FileProblem[],
+): Map<string, [Node, Node]> {
+  const effective = new Map<string, [Node, Node]>();
+  for (const property of object.children ?? []) {
+    const [keyNode, valueNode] = property.children ?? [];
+    if (!keyNode || !valueNode) {
+      continue;
+    }
+    const name = keyNode.value as string;
+    if (effective.has(name)) {
+      problems.push({
+        code: 'duplicate-key',
+        range: rangeOf(keyNode),
+        key: keyFromSegments([...path, name]),
+      });
+    }
+    effective.set(name, [keyNode, valueNode]);
+  }
+  return effective;
+}
+
+function collect(
+  properties: Map<string, [Node, Node]>,
+  path: readonly string[],
   entries: Map<string, ParsedEntry>,
   problems: FileProblem[],
 ): void {
-  const seen = new Set<string>();
-  for (const [keyNode, valueNode] of properties(object)) {
-    const name = keyNode.value as string;
+  for (const [name, [keyNode, valueNode]] of properties) {
     const segments = [...path, name];
-    if (seen.has(name)) {
-      // JSON.parse keeps the last value, so the earlier value (or whole subtree) is gone at runtime.
-      problems.push({ code: 'duplicate-key', range: rangeOf(keyNode), key: keyFromSegments(segments) });
-      removeSubtree(entries, segments);
-    }
-    seen.add(name);
-
     if (valueNode.type === 'object') {
-      collect(valueNode, segments, entries, problems);
+      collect(effectiveProperties(valueNode, segments, problems), segments, entries, problems);
     } else if (valueNode.type === 'string') {
       const key = keyFromSegments(segments);
       entries.set(key.id, {
@@ -71,26 +109,6 @@ function collect(
       });
     } else {
       problems.push({ code: 'non-string-value', range: rangeOf(valueNode), key: keyFromSegments(segments) });
-    }
-  }
-}
-
-/** Key and value node of every property of an object node. */
-function properties(object: Node): [Node, Node][] {
-  const pairs: [Node, Node][] = [];
-  for (const property of object.children ?? []) {
-    const [keyNode, valueNode] = property.children ?? [];
-    if (keyNode && valueNode) {
-      pairs.push([keyNode, valueNode]);
-    }
-  }
-  return pairs;
-}
-
-function removeSubtree(entries: Map<string, ParsedEntry>, prefix: readonly string[]): void {
-  for (const [id, entry] of entries) {
-    if (prefix.every((segment, index) => entry.key.segments[index] === segment)) {
-      entries.delete(id);
     }
   }
 }

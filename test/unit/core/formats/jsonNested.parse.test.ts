@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { hasSyntaxError } from '../../../../src/core/formats/adapter';
 import { jsonNestedAdapter } from '../../../../src/core/formats/json/jsonNested';
 import { VALUE_FIELD } from '../../../../src/core/model/types';
 
@@ -64,6 +65,60 @@ describe('jsonNestedAdapter.parse', () => {
     expect(problems).toHaveLength(1);
     expect(problems[0]).toMatchObject({ code: 'parse-error', detail: 'ValueExpected' });
     expect(problems[0]?.range[0]).toBe(6);
+  });
+
+  it('detects duplicates per object only', () => {
+    expect(parse('{"a":{"x":"1"},"b":{"x":"2"}}').problems).toEqual([]);
+    expect(parse('{"a":{"b":"x","b":"y"}}').problems.map((p) => [p.code, p.key?.segments])).toEqual([
+      ['duplicate-key', ['a', 'b']],
+    ]);
+  });
+
+  it('keeps the first position of a duplicated key, like JSON.parse', () => {
+    expect(summary('{"a":"x","b":"y","a":"z"}')).toEqual([
+      [['a'], 'z'],
+      [['b'], 'y'],
+    ]);
+    expect(summary('{"a":{"c":"x"},"b":"y","a":"z"}')).toEqual([
+      [['a'], 'z'],
+      [['b'], 'y'],
+    ]);
+  });
+
+  it('ignores problems inside a value that a later duplicate replaces', () => {
+    const parsed = parse('{"a":1,"b":{"c":2,"c":"x"},"a":"y","b":"z"}');
+    expect(parsed.problems.map((p) => [p.code, p.key?.segments])).toEqual([
+      ['duplicate-key', ['a']],
+      ['duplicate-key', ['b']],
+    ]);
+    expect(parsed.topLevelKeys).toEqual(['a', 'b']);
+  });
+
+  it('reports only the first syntax error and returns no entries', () => {
+    for (const text of ['{"a":"x","b": }', '{"a":"x",}', '{"a":"say "hi""}']) {
+      const parsed = parse(text);
+      expect(
+        parsed.problems.map((p) => p.code),
+        text,
+      ).toEqual(['parse-error']);
+      expect(parsed.entries, text).toEqual([]);
+      expect(parsed.topLevelKeys, text).toEqual([]);
+    }
+  });
+
+  it('treats an empty file as having no content, like the Angular HTTP client', () => {
+    expect(parse('')).toEqual({ entries: [], problems: [], topLevelKeys: [] });
+  });
+
+  it('reports extremely deep nesting instead of overflowing the stack', () => {
+    const depth = 20000;
+    const parsed = parse(`${'{"a":'.repeat(depth)}"x"${'}'.repeat(depth)}`);
+    expect(parsed.problems.map((p) => [p.code, p.detail])).toEqual([['parse-error', 'TooDeep']]);
+  });
+
+  it('marks files with syntax errors', () => {
+    expect(hasSyntaxError(parse('{"a": }'))).toBe(true);
+    expect(hasSyntaxError(parse('{"a":1}'))).toBe(false);
   });
 
   it('requires an object at the top level', () => {
