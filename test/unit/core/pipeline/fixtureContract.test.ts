@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { ANGULAR_PRESET } from '../../../../src/core/area/presets';
 import { compileVariants, DEFAULT_VARIANTS } from '../../../../src/core/checks/variants';
 import { rootsFromMarkers } from '../../../../src/core/discovery/discover';
+import { parseBundleId } from '../../../../src/core/model/bundle';
 import { displayKey, keyFromId } from '../../../../src/core/model/keys';
 import { analyzeRoot, type SourceFile } from '../../../../src/core/pipeline/analyze';
 
@@ -67,7 +68,7 @@ describe('fixture workspace contract (test/fixtures/README.md)', () => {
 
   it('reports exactly the expected findings', () => {
     const actual = analysis.issues.map((issue) => {
-      const bundle = issue.bundleId.split('/').pop();
+      const bundle = parseBundleId(issue.bundleId).name;
       const key = issue.entryId ? displayKey(keyFromId(issue.entryId)) : '-';
       return `${issue.rule} ${issue.severity} ${bundle}/${issue.locale} ${key}`;
     });

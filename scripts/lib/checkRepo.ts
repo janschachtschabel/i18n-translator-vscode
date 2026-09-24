@@ -24,6 +24,8 @@ export interface RootReport {
   bundles: number;
   rules: Partial<Record<RuleId, number>>;
   issues: ReportIssue[];
+  /** Configuration problems of the area, e.g. two files for one locale. */
+  warnings: string[];
 }
 
 export interface Report {
@@ -80,6 +82,7 @@ function toRootReport(analysis: RootAnalysis): RootReport {
     bundles: analysis.bundles.length,
     rules,
     issues: analysis.issues.map((issue) => toReportIssue(issue, lineIndexes)),
+    warnings: analysis.warnings,
   };
 }
 
@@ -101,6 +104,7 @@ export function formatReport(report: Report, examplesPerRule = 3): string {
   const lines: string[] = [];
   for (const root of report.roots) {
     lines.push(`${root.areaId} · ${root.root || '.'} · ${root.bundles} bundles`);
+    lines.push(...root.warnings.map((warning) => `  ! ${warning}`));
     const rules = (Object.keys(root.rules) as RuleId[]).map((rule) => ({
       rule,
       severity: root.issues.find((issue) => issue.rule === rule)!.severity,

@@ -51,6 +51,16 @@ describe('pickReference', () => {
     expect(pickReference(['de_DE', 'default'], 'en', opts)).toBe('default');
   });
 
+  it('prefers the main region of the language, then code order', () => {
+    expect(pickReference(['de_AT', 'de_DE'], 'de', opts)).toBe('de_DE');
+    expect(pickReference(['de_DE', 'de_AT'], 'de', opts)).toBe('de_DE');
+    expect(pickReference(['de_CH', 'de_AT'], 'de', opts)).toBe('de_AT');
+  });
+
+  it('never makes a variant the reference, even when configured', () => {
+    expect(pickReference(['de-informal', 'de'], 'de-informal', opts)).toBeUndefined();
+  });
+
   it('returns undefined when no locale matches', () => {
     expect(pickReference(['en', 'fr'], 'de', opts)).toBeUndefined();
   });

@@ -27,6 +27,8 @@ export interface RootAnalysis {
   /** Sorted by name. */
   bundles: Bundle[];
   issues: Issue[];
+  /** Problems of the area configuration, e.g. a file pattern that maps two files to one locale. */
+  warnings: string[];
 }
 
 /** The paths below `root` that belong to the area: the only files a host needs to read for {@link analyzeRoot}. */
@@ -47,20 +49,31 @@ export function analyzeRoot(
   const adapter = ADAPTERS[area.format];
   const byPath = new Map(files.map((file) => [file.relPath.replace(/\\/g, '/'), file]));
   const groups = new Map<string, LoadedFile[]>();
-  for (const found of classifyFiles([...byPath.keys()], [{ area, roots: [root] }])) {
-    const doc = adapter.decode(byPath.get(found.relPath)!.bytes);
-    const group = groups.get(found.bundle) ?? [];
-    group.push({ locale: found.locale, relPath: found.relPath, doc, parsed: adapter.parse(doc) });
-    groups.set(found.bundle, group);
+  const warnings: string[] = [];
+  const found = classifyFiles([...byPath.keys()], [{ area, roots: [root] }]).sort((a, b) =>
+    a.relPath < b.relPath ? -1 : a.relPath > b.relPath ? 1 : 0,
+  );
+  for (const { bundle, locale, relPath } of found) {
+    const group = groups.get(bundle) ?? [];
+    const existing = group.find((file) => file.locale === locale);
+    if (existing) {
+      warnings.push(
+        `${relPath} is ignored: ${existing.relPath} already provides ${locale} for "${bundle}" (check the file pattern of ${area.id}).`,
+      );
+      continue;
+    }
+    const doc = adapter.decode(byPath.get(relPath)!.bytes);
+    group.push({ locale, relPath, doc, parsed: adapter.parse(doc) });
+    groups.set(bundle, group);
   }
 
   const bundles = [...groups.keys()]
     .sort()
-    .map((name) => buildBundle(area, name, groups.get(name)!, options));
+    .map((name) => buildBundle(area, root, name, groups.get(name)!, options));
   const issues = runChecks(
     { area, bundles, variants: options.variants, ignoreSameAsReference: options.ignoreSameAsReference },
     ALL_RULES,
     options.severityOverrides,
   );
-  return { area, root, bundles, issues };
+  return { area, root, bundles, issues, warnings };
 }

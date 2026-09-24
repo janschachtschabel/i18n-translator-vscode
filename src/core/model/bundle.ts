@@ -16,7 +16,10 @@ export interface LoadedFile {
 /** All locale files of one bundle (an Angular category, a metadataset group, the mail templates). */
 export interface Bundle {
   readonly areaId: AreaId;
+  /** Unique across areas and roots, see {@link parseBundleId}. */
   readonly id: BundleId;
+  /** Area root the bundle lies below; two roots are two separate installations. */
+  readonly root: string;
   readonly name: string;
   /** Reference locale first, then the others sorted. */
   readonly locales: readonly LocaleCode[];
@@ -34,26 +37,39 @@ export interface BundleOptions extends LocaleOptions {
   referenceLanguage: string;
 }
 
+/** The parts of a bundle id: the JSON-encoded tuple of area id, root and name. */
+export function parseBundleId(id: BundleId): { areaId: AreaId; root: string; name: string } {
+  const [areaId, root, name] = JSON.parse(id) as [string, string, string];
+  return { areaId, root, name };
+}
+
+/** Joins the locale files of one bundle; throws if two files provide the same locale. */
 export function buildBundle(
   area: AreaDefinition,
+  root: string,
   name: string,
   files: readonly LoadedFile[],
   opts: BundleOptions,
 ): Bundle {
-  const byLocale = new Map(files.map((file) => [file.locale, file]));
-  const reference = pickReference(
-    [...byLocale.keys()],
-    area.referenceLanguage ?? opts.referenceLanguage,
-    opts,
-  );
+  const byLocale = new Map<LocaleCode, LoadedFile>();
+  for (const file of files) {
+    const existing = byLocale.get(file.locale);
+    if (existing) {
+      throw new RangeError(`Both ${existing.relPath} and ${file.relPath} provide locale ${file.locale}.`);
+    }
+    byLocale.set(file.locale, file);
+  }
+  const codes = [...byLocale.keys()].sort();
+  const reference = pickReference(codes, area.referenceLanguage ?? opts.referenceLanguage, opts);
   // Code-unit order (not localeCompare) keeps output identical on every machine.
-  const locales = [...byLocale.keys()].sort((a, b) =>
-    a === reference ? -1 : b === reference ? 1 : a < b ? -1 : a > b ? 1 : 0,
-  );
+  const locales = [
+    ...codes.filter((code) => code === reference),
+    ...codes.filter((code) => code !== reference),
+  ];
   const entries = new Map(
     locales.map((locale) => [
       locale,
-      new Map(byLocale.get(locale)!.parsed.entries.map((e) => [e.key.id, e])),
+      new Map(byLocale.get(locale)!.parsed.entries.map((entry) => [entry.key.id, entry])),
     ]),
   );
 
@@ -68,7 +84,8 @@ export function buildBundle(
 
   return {
     areaId: area.id,
-    id: `${area.id}/${name}`,
+    id: JSON.stringify([area.id, root, name]),
+    root,
     name,
     locales,
     reference,

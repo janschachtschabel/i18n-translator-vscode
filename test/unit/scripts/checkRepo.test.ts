@@ -8,8 +8,8 @@ describe('checkRepository', () => {
   const report = checkRepository(workspace);
 
   it('finds the Angular root of the fixture workspace', () => {
-    expect(report.roots.map((root) => [root.areaId, root.root, root.bundles])).toEqual([
-      ['edu-sharing.angular', 'Frontend/src/assets/i18n', 4],
+    expect(report.roots.map((root) => [root.areaId, root.root, root.bundles, root.warnings])).toEqual([
+      ['edu-sharing.angular', 'Frontend/src/assets/i18n', 4, []],
     ]);
   });
 

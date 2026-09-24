@@ -36,7 +36,9 @@ export function parseLocale(code: LocaleCode, opts: LocaleOptions): LocaleInfo {
 
 /**
  * Picks the locale that serves as reference for `referenceLanguage` (`de` matches `de` and `de_DE`).
- * An exact code match wins; variants never become the reference.
+ * An exact code match wins; variants never become the reference. Among regional locales the main
+ * region of the language (`de_DE`) comes first, then code order; the base file comes last. The result
+ * does not depend on the order of `codes`.
  */
 export function pickReference(
   codes: readonly LocaleCode[],
@@ -47,9 +49,10 @@ export function pickReference(
     return parseLocale(referenceLanguage, opts).variant ? undefined : referenceLanguage;
   }
   const wanted = referenceLanguage.toLowerCase();
-  const candidates = codes
+  const rank = (info: LocaleInfo): number =>
+    info.isBaseFile ? 2 : info.region === wanted.toUpperCase() ? 0 : 1;
+  return codes
     .map((code) => parseLocale(code, opts))
-    .filter((info) => info.language === wanted && !info.variant);
-  // A plain or regional locale is a better reference than the base file that happens to share the language.
-  return (candidates.find((info) => !info.isBaseFile) ?? candidates[0])?.code;
+    .filter((info) => info.language === wanted && !info.variant)
+    .sort((a, b) => rank(a) - rank(b) || (a.code < b.code ? -1 : a.code > b.code ? 1 : 0))[0]?.code;
 }
