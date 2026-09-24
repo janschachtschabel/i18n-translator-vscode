@@ -1,4 +1,3 @@
-import { EDIT_MESSAGES } from '../edit/editMessages';
 import type { IssueArgs, RuleId } from './types';
 
 /** An English message template with `{name}` arguments; the host localizes and fills it. */
@@ -35,13 +34,6 @@ export const ISSUE_MESSAGES: Readonly<Record<RuleId, string>> = {
 
 /** Several missing-key findings of one file, combined into one diagnostic (always two or more keys). */
 export const MISSING_KEYS_MESSAGE = '{count} keys are missing in {locale}.';
-
-/** Every template a host shows to users and has to translate. */
-export const MESSAGE_TEMPLATES: readonly string[] = [
-  ...Object.values(ISSUE_MESSAGES),
-  MISSING_KEYS_MESSAGE,
-  ...Object.values(EDIT_MESSAGES),
-];
 
 /** Arguments as messages show them: lists joined with commas, an empty list as "–". */
 export function displayArgs(args: IssueArgs): Record<string, string> {

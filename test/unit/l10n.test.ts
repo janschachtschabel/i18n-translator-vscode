@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { MESSAGE_TEMPLATES } from '../../src/core/checks/messages';
+import { MESSAGE_TEMPLATES } from '../../src/core/report/catalog';
 import { collectL10nCalls } from './support/l10nCollector';
 
 const root = join(__dirname, '..', '..');
