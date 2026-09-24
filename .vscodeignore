@@ -14,7 +14,7 @@ test/**
 tsconfig*.json
 eslint.config.mjs
 esbuild.mjs
-vitest.config.ts
+vitest.config.mts
 .editorconfig
 .gitattributes
 .gitignore
