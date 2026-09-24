@@ -23,6 +23,13 @@ export function tagSignature(text: string): string[] {
     .sort();
 }
 
+/** The text with its HTML tags blanked out; other words in angle brackets stay, as they are text. */
+export function withoutTags(text: string): string {
+  return text.replace(TAG, (tag, _closing, name: string) =>
+    HTML_ELEMENTS.has(name.toLowerCase()) ? ' ' : tag,
+  );
+}
+
 /** Tags of the reference that the translation lacks, and tags only the translation has (counted). */
 export function compareTags(reference: string, translation: string): { missing: string[]; extra: string[] } {
   const remaining = tagSignature(translation);

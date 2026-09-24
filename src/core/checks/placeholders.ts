@@ -62,6 +62,11 @@ export function scanPlaceholders(text: string): PlaceholderScan {
   };
 }
 
+/** The text with its `{{…}}` placeholders blanked out. */
+export function withoutPlaceholders(text: string): string {
+  return text.replace(TOKEN, ' ');
+}
+
 /** Parameters of the reference that the translation lacks, and parameters only the translation has. */
 export function compareParams(
   reference: PlaceholderScan,

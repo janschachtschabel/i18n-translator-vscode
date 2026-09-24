@@ -23,6 +23,12 @@ describe('same-as-reference', () => {
     const bundle = bundleOf('common', { de: '{"G":"Größe"}', it: '{"G":"Größe"}' });
     expect(run(sameAsReferenceRule, [bundle])).toHaveLength(1);
   });
+
+  it('counts only letters outside placeholders and HTML tags', () => {
+    const texts = '{"COUNT":"{{count}}","NAME":"<b>{{name}}</b>","LABEL":"<keine>"}';
+    const bundle = bundleOf('common', { de: texts, fr: texts });
+    expect(summarize(run(sameAsReferenceRule, [bundle]))).toEqual(['same-as-reference common/fr LABEL']);
+  });
 });
 
 describe('ALL_RULES', () => {
