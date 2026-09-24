@@ -207,6 +207,13 @@ CONTRIBUTING: Entwicklungsumgebung (`npm ci`, F5), Tests, Architekturregeln (Ebe
 > - **1.5:** Kein eigener Glob-Matcher im Kern. Der Host findet Markerdateien (VS Code `findFiles`, CLI `fs.glob`), `rootsFromMarkers` leitet daraus die Wurzeln ab.
 > - **1.6:** Die Dekodierung liegt als `src/core/text/decode.ts` bei allen Formaten. Sie liest exaktes ISO-8859-1 statt `TextDecoder('latin1')`, das in Wahrheit Windows-1252 ist. Dateien mit Syntaxfehler liefern keine Einträge, weil ein teilweises Parsen nicht vertrauenswürdig ist. Doppelte Keys verhalten sich wie `JSON.parse`. Ein `DecodedText.eol` kommt erst mit dem Schreiben.
 > - **1.7:** `Bundle` bietet `file()`, `entry()` und `value()` statt `location()`; die Position ergibt sich aus `entry().fields.value.valueRange` und `file().relPath`. Locales werden deterministisch nach Codepunkten sortiert.
+>
+> **Umsetzungsnotizen Block B (Tasks 1.8–1.15):**
+> - **1.10:** Die Varianten-Konfiguration (`variants.ts`: `DEFAULT_VARIANTS`, `compileVariants`) ist aus 1.13 vorgezogen, weil schon die Vollständigkeitsregeln die dünn besetzten Sprachen kennen müssen. Englische Meldungsvorlagen liegen als Katalog im Kern (`messages.ts`, `{name}`-Argumente, gemeinsam für CLI und Extension). Die Argumente einer Meldung enthalten den Anzeige-Key (`args.key`).
+> - **Regeldateien:** `missingKeys.ts` (missing, orphan und misplaced teilen sich eine Analyse), `variantRules.ts`, `mergeRules.ts`, gemeinsame Hilfen in `support.ts`, Registry `rules/index.ts`.
+> - **Positionen:** Key-bezogene Befunde (orphan, misplaced, duplicate, Merge-Regeln) zeigen auf den Key, Text-bezogene (leer, Platzhalter, HTML, Variante) auf den Wert. `missing-key` zeigt auf die Datei, `missing-file` auf den Anfang der Referenzdatei.
+> - **`variant-needed`** nennt den konkreten Treffer (z. B. „Sie") und gilt auch für Einheiten ohne Variantendatei, sobald der Bereich die Variante nutzt.
+> - **Zusätzlich:** `src/core/pipeline/analyze.ts` (`analyzeRoot`: Dateien → Einheiten → Prüfungen, gemeinsam für CLI und Extension), die Adapter-Registry `formats/registry.ts` und ein Vertragstest gegen den Fixture-Workspace (alle 21 Befunde aus `test/fixtures/README.md`).
 
 ### Task 1.1: Textänderungen und Zeilenindex
 **Dateien:** Create `src/core/text/edits.ts`, `src/core/text/lineIndex.ts`; Test: `test/unit/core/text/edits.test.ts`, `lineIndex.test.ts`
