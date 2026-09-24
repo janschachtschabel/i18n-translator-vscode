@@ -7,7 +7,8 @@ import {
   missingKeyRule,
   orphanKeyRule,
 } from '../../../../../src/core/checks/rules/missingKeys';
-import { bundleOf, run, summarize } from './helpers';
+import { compileVariants } from '../../../../../src/core/checks/variants';
+import { bundleOf, contextOf, run, summarize } from './helpers';
 
 describe('missing-key', () => {
   it('reports keys of the reference that a full locale lacks', () => {
@@ -24,6 +25,15 @@ describe('missing-key', () => {
 
   it('ignores sparse variants', () => {
     expect(run(missingKeyRule, [bundleOf('common', { de: '{"a":"A"}', 'de-informal': '{}' })])).toEqual([]);
+  });
+
+  it('still ignores a variant whose configured expression is invalid', () => {
+    const bundle = bundleOf('common', { de: '{"a":"A"}', 'de-informal': '{"b":"B"}' });
+    const { variants } = compileVariants({ 'de-informal': { base: 'de', requiredWhen: '(' } });
+    const ctx = { ...contextOf([bundle]), variants };
+    for (const rule of [missingKeyRule, orphanKeyRule, misplacedKeyRule, missingFileRule]) {
+      expect(rule.run(ctx)).toEqual([]);
+    }
   });
 
   it('is not computed for locales without a file', () => {

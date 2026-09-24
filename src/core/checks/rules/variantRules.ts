@@ -21,11 +21,11 @@ export const variantNeededRule: Rule = {
   run: (ctx) =>
     variantFindings(ctx, (variant) =>
       ctx.bundles
-        .filter((bundle) => isReadable(bundle, variant.base))
+        .filter((bundle) => variant.required && isReadable(bundle, variant.base))
         .filter((bundle) => !bundle.file(variant.locale) || isReadable(bundle, variant.locale))
         .flatMap((bundle) =>
           (bundle.file(variant.base)?.parsed.entries ?? []).flatMap((entry) => {
-            const match = variant.required.exec(entry.fields[VALUE_FIELD]?.value ?? '');
+            const match = variant.required?.exec(entry.fields[VALUE_FIELD]?.value ?? '');
             if (!match || bundle.value(entry.key.id, variant.locale) !== undefined) {
               return [];
             }

@@ -4,7 +4,8 @@ import {
   variantNeededRule,
   variantOrphanRule,
 } from '../../../../../src/core/checks/rules/variantRules';
-import { bundleOf, run, summarize } from './helpers';
+import { compileVariants } from '../../../../../src/core/checks/variants';
+import { bundleOf, contextOf, run, summarize } from './helpers';
 
 describe('variant-needed', () => {
   it('reports base texts with a formal address that the informal variant does not override', () => {
@@ -42,6 +43,21 @@ describe('variant-needed', () => {
     const unused = bundleOf('other', { de: '{"ASK":"Möchten Sie?"}' });
     expect(run(variantNeededRule, [overridden])).toEqual([]);
     expect(run(variantNeededRule, [unused])).toEqual([]);
+  });
+});
+
+describe('variant rules with an invalid expression', () => {
+  it('skip the check whose expression did not compile', () => {
+    const bundle = bundleOf('common', {
+      de: '{"ASK":"Möchten Sie?"}',
+      'de-informal': '{"ASK":"Möchten Sie?"}',
+    });
+    const { variants } = compileVariants({
+      'de-informal': { base: 'de', requiredWhen: '(', forbidden: '(' },
+    });
+    const ctx = { ...contextOf([bundle]), variants };
+    expect(variantNeededRule.run(ctx)).toEqual([]);
+    expect(variantInconsistentRule.run(ctx)).toEqual([]);
   });
 });
 

@@ -15,8 +15,8 @@ export type VariantSettings = Readonly<Record<LocaleCode, VariantConfig>>;
 export interface CompiledVariant {
   locale: LocaleCode;
   base: LocaleCode;
-  /** Non-global, so `test`/`exec` carry no state between calls. */
-  required: RegExp;
+  /** Non-global, so `test`/`exec` carry no state between calls. Undefined if the expression is invalid. */
+  required?: RegExp;
   forbidden?: RegExp;
 }
 
@@ -33,24 +33,36 @@ export const DEFAULT_VARIANTS: VariantSettings = {
   },
 };
 
-/** Compiles variant settings; invalid entries are skipped and reported, so one typo does not stop all checks. */
+/**
+ * Compiles variant settings. An invalid expression is reported and only its check is skipped: the locale
+ * stays a sparse variant, or every key it leaves to its base would count as missing.
+ */
 export function compileVariants(settings: VariantSettings): {
   variants: Map<LocaleCode, CompiledVariant>;
   errors: string[];
 } {
   const variants = new Map<LocaleCode, CompiledVariant>();
   const errors: string[] = [];
-  for (const [locale, config] of Object.entries(settings)) {
+  const compile = (locale: LocaleCode, source: string | undefined): RegExp | undefined => {
+    if (!source) {
+      return undefined;
+    }
     try {
-      variants.set(locale, {
-        locale,
-        base: config.base,
-        required: new RegExp(config.requiredWhen),
-        ...(config.forbidden ? { forbidden: new RegExp(config.forbidden) } : {}),
-      });
+      return new RegExp(source);
     } catch (error) {
       errors.push(`Variant ${locale}: ${(error as Error).message}`);
+      return undefined;
     }
+  };
+  for (const [locale, config] of Object.entries(settings)) {
+    const required = compile(locale, config.requiredWhen);
+    const forbidden = compile(locale, config.forbidden);
+    variants.set(locale, {
+      locale,
+      base: config.base,
+      ...(required ? { required } : {}),
+      ...(forbidden ? { forbidden } : {}),
+    });
   }
   return { variants, errors };
 }
