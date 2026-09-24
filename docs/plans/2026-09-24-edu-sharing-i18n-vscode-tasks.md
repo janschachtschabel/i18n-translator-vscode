@@ -207,6 +207,11 @@ CONTRIBUTING: Entwicklungsumgebung (`npm ci`, F5), Tests, Architekturregeln (Ebe
 > - **1.5:** Kein eigener Glob-Matcher im Kern. Der Host findet Markerdateien (VS Code `findFiles`, CLI `fs.glob`), `rootsFromMarkers` leitet daraus die Wurzeln ab.
 > - **1.6:** Die Dekodierung liegt als `src/core/text/decode.ts` bei allen Formaten. Sie liest exaktes ISO-8859-1 statt `TextDecoder('latin1')`, das in Wahrheit Windows-1252 ist. Dateien mit Syntaxfehler liefern keine Einträge, weil ein teilweises Parsen nicht vertrauenswürdig ist. Doppelte Keys verhalten sich wie `JSON.parse`. Ein `DecodedText.eol` kommt erst mit dem Schreiben.
 > - **1.7:** `Bundle` bietet `file()`, `entry()` und `value()` statt `location()`; die Position ergibt sich aus `entry().fields.value.valueRange` und `file().relPath`. Locales werden deterministisch nach Codepunkten sortiert.
+> - **Verschoben (YAGNI, Review Block A):**
+>   - `AreaDefinition.ignoredKeys` samt Abnahmefall aus 1.7 kommt in **Phase 5**; einziger Anwendungsfall ist die Wächterzeile der MDS-`.properties`.
+>   - `FormatAdapter.fieldMode` kommt in **Phase 6** mit den dynamischen Mail-Feldern.
+>   - `isVariant()` aus 1.3 entfällt; die Regeln fragen `ctx.variants.has(locale)` ab.
+>   - `classifyFiles(paths, areas)` nimmt Bereiche samt aufgelösten Wurzeln (`{ area, roots }[]`), weil der Host die Wurzeln ermittelt.
 >
 > **Umsetzungsnotizen Block B (Tasks 1.8–1.15):**
 > - **1.10:** Die Varianten-Konfiguration (`variants.ts`: `DEFAULT_VARIANTS`, `compileVariants`) ist aus 1.13 vorgezogen, weil schon die Vollständigkeitsregeln die dünn besetzten Sprachen kennen müssen. Englische Meldungsvorlagen liegen als Katalog im Kern (`messages.ts`, `{name}`-Argumente, gemeinsam für CLI und Extension). Die Argumente einer Meldung enthalten den Anzeige-Key (`args.key`).
