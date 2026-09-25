@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { RULE_IDS } from '../../../src/core/checks/types';
-import { statusWord } from '../../../src/webview/components/table/cellStatus';
+import { statusWord } from '../../../src/webview/components/cellStatus';
 import { setTranslations } from '../../../src/webview/l10n';
 import { GERMAN } from './support';
 

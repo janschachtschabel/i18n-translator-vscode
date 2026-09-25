@@ -1,5 +1,5 @@
-import type { Severity } from '../../../core/checks/types';
-import { l10n } from '../../l10n';
+import type { Severity } from '../../core/checks/types';
+import { l10n } from '../l10n';
 
 /** Shown in front of the word of a finding; the word carries the meaning, the symbol and its color help scanning. */
 export const SEVERITY_SYMBOLS: Readonly<Record<Severity, string>> = { error: '✖', warning: '⚠', info: 'ℹ' };

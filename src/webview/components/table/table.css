@@ -58,12 +58,11 @@
   background-color: var(--vscode-editor-background);
 }
 
-.grid-mark,
 .cell-status {
   color: var(--vscode-descriptionForeground);
 }
 
-.grid-head .grid-mark {
+.grid-head .locale-mark {
   font-weight: normal;
 }
 

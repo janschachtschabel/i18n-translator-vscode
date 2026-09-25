@@ -103,6 +103,7 @@ suite('editor panel', () => {
       wrap: true,
       hiddenLocales: ['it'],
       filter: { ...DEFAULT_FILTER, query: 'Speichern', status: 'missing' },
+      compactLocale: 'fr',
     };
 
     const first = editors.open(root, common);

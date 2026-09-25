@@ -1,8 +1,8 @@
 import { effect } from '@preact/signals';
 import { useEffect, useLayoutEffect, useRef, type MutableRef } from 'preact/hooks';
-import type { UiState } from '../../../shared/protocol';
-import type { EditorStore } from '../../state/store';
-import { anchoredScrollTop, captureAnchor, type RowBox, type ScrollAnchor } from '../../state/scrollAnchor';
+import type { UiState } from '../../shared/protocol';
+import type { EditorStore } from '../state/store';
+import { anchoredScrollTop, captureAnchor, type RowBox, type ScrollAnchor } from '../state/scrollAnchor';
 
 /**
  * Keeps the top key in place when languages are shown or hidden or wrapping changes (design §7.1): the rows
@@ -47,6 +47,14 @@ function restore(scroller: HTMLElement, anchor: ScrollAnchor): void {
   if (top !== undefined) {
     scroller.scrollTop = Math.max(0, top - headerHeight(scroller));
   }
+}
+
+/**
+ * The `data-entry` of a row or card, by which the anchor finds it again. Encoded, since quotes in the JSON of
+ * an entry id make attribute selectors hard to write (and happy-dom, under axe, rejects them).
+ */
+export function entryAttribute(entryId: string): string {
+  return encodeURIComponent(entryId);
 }
 
 function layoutKey(state: UiState): string {

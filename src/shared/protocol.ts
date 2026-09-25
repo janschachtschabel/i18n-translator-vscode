@@ -9,6 +9,8 @@ export interface UiState {
   wrap: boolean;
   hiddenLocales: readonly string[];
   filter: RowFilter;
+  /** The language the compact list shows next to the reference; null: the first visible full language. */
+  compactLocale: string | null;
 }
 
 export const DEFAULT_UI_STATE: UiState = {
@@ -16,6 +18,7 @@ export const DEFAULT_UI_STATE: UiState = {
   wrap: false,
   hiddenLocales: [],
   filter: DEFAULT_FILTER,
+  compactLocale: null,
 };
 
 /** What the webview keeps (`setState`) so that VS Code can restore the editor after a restart. */
@@ -108,7 +111,8 @@ export function isUiState(value: unknown): value is UiState {
     Array.isArray(hidden) &&
     hidden.length <= MAX_HIDDEN_LOCALES &&
     hidden.every(isId) &&
-    isRowFilter(value['filter'])
+    isRowFilter(value['filter']) &&
+    (value['compactLocale'] === null || isId(value['compactLocale']))
   );
 }
 

@@ -131,15 +131,20 @@ describe('isUiState', () => {
       matchCase: true,
       status: 'missing',
     };
-    expect(isUiState({ layout: 'list', wrap: true, hiddenLocales: ['fr'], filter })).toBe(true);
+    expect(
+      isUiState({ layout: 'list', wrap: true, hiddenLocales: ['fr'], filter, compactLocale: 'it' }),
+    ).toBe(true);
     for (const state of [
       undefined,
       null,
       {},
       { ...DEFAULT_UI_STATE, layout: 'grid' },
       { layout: 'auto' },
-      // A view state of 2.8, before the filter was part of it.
+      // View states of 2.8 and 2.9, before the filter and the language of the compact list were part of it.
       { layout: 'list', wrap: true, hiddenLocales: ['fr'] },
+      { layout: 'list', wrap: true, hiddenLocales: ['fr'], filter },
+      { ...DEFAULT_UI_STATE, compactLocale: '' },
+      { ...DEFAULT_UI_STATE, compactLocale: 3 },
       { ...DEFAULT_UI_STATE, filter: { ...filter, status: 'open' } },
       { ...DEFAULT_UI_STATE, filter: { ...filter, scope: 'values' } },
       { ...DEFAULT_UI_STATE, filter: { ...filter, locale: '' } },

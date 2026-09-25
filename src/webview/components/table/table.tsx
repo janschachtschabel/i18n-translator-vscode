@@ -4,8 +4,8 @@ import { moveInGrid, type GridPosition } from '../../a11y/gridKeys';
 import type { EditorStore } from '../../state/store';
 import './table.css';
 import { cellSelector, HeaderRow, TableRow } from './tableRow';
-import { useIncrementalCount } from './useIncrementalCount';
-import { useScrollAnchor } from './useScrollAnchor';
+import { useIncrementalCount } from '../useIncrementalCount';
+import { useScrollAnchor } from '../useScrollAnchor';
 
 /** The grid's tab stop by what it shows, so it stays on its key when rows come and go: null is the header row or the key column. */
 interface ActiveCell {

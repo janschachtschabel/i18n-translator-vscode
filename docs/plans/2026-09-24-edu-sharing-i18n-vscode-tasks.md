@@ -907,6 +907,24 @@ was nicht ausdrücklich geändert wurde.
 >   - Die Wirkung in echter Darstellung prüft 2.16 in VS Code. Im ausgeblendeten Browser-Bereich rendert Chromium nicht.
 > - **Bis 2.11** zeigt jede Ansicht die Tabelle.
 > - **Beobachtung für 2.11 und 2.16:** Bei 560 px Höhe nehmen Werkzeugleiste, Chips und Filter drei Viertel ein, und die Tabelle behält nur ihre Mindesthöhe. Der Kopfbereich sollte kompakter werden, etwa mit Rückgängig in der Werkzeugzeile und einer kleineren Überschrift.
+>
+> **Umsetzungsnotizen Task 2.11 (25.09.2026):**
+> - **Umschaltung:**
+>   - `layoutFor(Wahl, Breite)` ist eine reine Funktion. Automatisch gilt: ab 900 px Tabelle, von 481 bis 899 px Liste, bis 480 px die kompakte Liste.
+>   - Eine selbst gewählte Ansicht gilt bei jeder Breite. „Liste“ zeigt dann auch schmal alle sichtbaren Sprachen.
+>   - Die Breite kommt aus `window.innerWidth` und dem Ereignis `resize`.
+> - **Liste:**
+>   - Ein `<ol>`, benannt von der Überschrift, enthält eine Karte je Key: `<h2>` mit dem Key und ein `<dl>` mit der Sprache (samt Referenz- oder Variantenmarke) und ihrem Text.
+>   - Befunde stehen sichtbar da, als Symbol und ganze Meldung.
+>   - Unter 480 px steht die Sprache über ihrem Text. Schrittweises Rendern und `content-visibility` wie in der Tabelle.
+> - **Kompakt:**
+>   - Die kompakte Liste zeigt die Referenz und eine Sprache. Ohne Wahl ist es die erste sichtbare volle Sprache, denn eine Variante überlässt die meisten Texte ihrer Basis.
+>   - Die Auswahl „Zweite Sprache“ speichert die Wahl als `compactLocale` im Ansichtszustand.
+> - **Scrollen:** In der Liste scrollt die ganze Seite; ein Scrollbereich passt zu schmalen Editoren besser als zwei. Der Scroll-Anker arbeitet dort mit `document.scrollingElement`.
+> - **Gemeinsam genutzt:**
+>   - Statussymbole, schrittweises Rendern, Scroll-Anker und die Sprachbeschriftung liegen jetzt in `components/` statt in `table/`.
+>   - `data-entry` trägt die Kennung des Keys kodiert (`encodeURIComponent`). Mit den Anführungszeichen des JSON scheiterte axe unter happy-dom beim Bauen von Selektoren.
+> - **In Chromium geprüft (Vorschau):** Bei 320 px scrollt nichts waagerecht, weder kompakt noch mit allen sechs Sprachen, und kein Element ragt über den Rand.
 
 ### Task 2.1: Textbausteine für das Schreiben
 **Dateien:** Create `src/core/text/edits.ts`, `src/core/text/style.ts`; Test: `test/unit/core/text/edits.test.ts`, `style.test.ts`

@@ -3,77 +3,8 @@ import { act, cleanup, fireEvent, screen, waitFor, within } from '@testing-libra
 import axe from 'axe-core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_FILTER } from '../../../src/shared/filter';
-import { DEFAULT_UI_STATE, type UiState } from '../../../src/shared/protocol';
-import type { BundleViewModel, CellView, LocaleView, RowView } from '../../../src/shared/viewModel';
-import { renderEditor } from './support';
+import { findingsModel as model, openWith as open, row, text } from './support';
 
-const locale = (code: string, flags: Partial<LocaleView> = {}): LocaleView => ({
-  code,
-  reference: false,
-  variant: false,
-  hasFile: true,
-  missing: 0,
-  findings: 0,
-  issues: [],
-  ...flags,
-});
-const text = (value: string | undefined, issue?: { rule: string; message: string; severity?: 'error' }) => ({
-  value,
-  issues: issue ? [{ severity: 'warning' as const, ...issue }] : [],
-});
-const row = (key: string, cells: Record<string, CellView>): RowView => ({
-  entryId: JSON.stringify(key.split('.')),
-  key,
-  cells,
-});
-
-const model: BundleViewModel = {
-  bundleId: JSON.stringify(['angular', '', 'common']),
-  name: 'common',
-  locales: [
-    locale('de', { reference: true }),
-    locale('de-informal', { variant: true }),
-    locale('fr'),
-    locale('it'),
-  ],
-  rows: [
-    row('SAVE', {
-      de: text('Speichern'),
-      'de-informal': text(undefined),
-      fr: text('Enregistrer'),
-      it: text('Salva'),
-    }),
-    row('CANCEL', {
-      de: text('Abbrechen'),
-      'de-informal': text(undefined),
-      fr: text(undefined, { rule: 'missing-key', message: 'CANCEL fehlt in fr.' }),
-      it: text('Annulla'),
-    }),
-    row('WORKSPACE.TITLE', {
-      de: text('Arbeitsbereich'),
-      'de-informal': text(undefined),
-      fr: text('Espace de travail'),
-      it: text('', { rule: 'empty-value', message: 'WORKSPACE.TITLE ist in it leer.' }),
-    }),
-    row('ERROR_TITLE', {
-      de: text('Fehler ({{date}})'),
-      'de-informal': text(undefined),
-      fr: text('Erreur ({{data}})', {
-        rule: 'placeholder-mismatch',
-        severity: 'error',
-        message: 'Die Platzhalter von ERROR_TITLE weichen ab.',
-      }),
-      it: text(undefined, { rule: 'missing-key', message: 'ERROR_TITLE fehlt in it.' }),
-    }),
-  ],
-  issues: [],
-};
-
-function open(uiState: Partial<UiState> = {}, bundle: BundleViewModel = model) {
-  const editor = renderEditor();
-  editor.open({ ...DEFAULT_UI_STATE, ...uiState }, bundle);
-  return editor;
-}
 const grid = () => screen.getByRole('grid', { name: 'common' });
 const rowOf = (key: string) => within(grid()).getByRole('rowheader', { name: key }).parentElement!;
 /** The cell of a key in a language column: columns are de, de-informal, fr, it unless hidden. */

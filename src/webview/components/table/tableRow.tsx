@@ -1,6 +1,8 @@
 import type { CellView, LocaleView, RowView } from '../../../shared/viewModel';
 import { l10n } from '../../l10n';
-import { SEVERITY_SYMBOLS, statusWord } from './cellStatus';
+import { SEVERITY_SYMBOLS, statusWord } from '../cellStatus';
+import { LocaleLabel } from '../localeLabel';
+import { entryAttribute } from '../useScrollAnchor';
 
 /** Where the grid's keys move the focus to: row 0 is the header row, column 0 the key column. */
 export function cellSelector(row: number, column: number): string {
@@ -29,13 +31,7 @@ export function HeaderRow({ locales, activeColumn }: RowProps) {
           class="grid-cell"
           {...focusable(0, index + 1, activeColumn)}
         >
-          {locale.code}
-          {(locale.reference || locale.variant) && (
-            <>
-              {' '}
-              <span class="grid-mark">{locale.reference ? l10n.t('reference') : l10n.t('variant')}</span>
-            </>
-          )}
+          <LocaleLabel locale={locale} />
         </div>
       ))}
     </div>
@@ -46,7 +42,7 @@ export function HeaderRow({ locales, activeColumn }: RowProps) {
 export function TableRow({ row, index, locales, activeColumn }: RowProps & { row: RowView; index: number }) {
   const cells = locales.map((locale) => row.cells[locale.code] ?? { value: undefined, issues: [] });
   return (
-    <div role="row" aria-rowindex={index + 1} class="grid-row" data-entry={row.entryId}>
+    <div role="row" aria-rowindex={index + 1} class="grid-row" data-entry={entryAttribute(row.entryId)}>
       <div role="rowheader" aria-colindex={1} class="grid-key" {...focusable(index, 0, activeColumn)}>
         {row.key}
       </div>
