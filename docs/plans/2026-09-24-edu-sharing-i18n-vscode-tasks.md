@@ -746,6 +746,24 @@ was nicht ausdrücklich geändert wurde.
 > - **Warteschlange:** eine für alle Dateien statt einer je Datei (`simplify:`). Schreibvorgänge sind selten und kurz, und eine Änderung über mehrere Dateien braucht so keine Sperrreihenfolge.
 > - **Index:** Nach dem Schreiben wird noch der ganze Index neu aufgebaut; nur die betroffene Wurzel folgt mit 2.15.
 > - **Tests:** Die Integrationstests laufen je Profil auf einer frischen Kopie des Fixture-Workspace unter `out/test-workspace/`, damit `test/fixtures` unberührt bleibt. „Ganz oder gar nicht“ ist mit einer schreibgeschützten Datei getestet; ohne das Wiederherstellen schlägt der Test fehl.
+>
+> **Umsetzungsnotizen Task 2.5 (25.09.2026):**
+> - **Wann gesichert wird:**
+>   - Der FileStore ruft den Dienst direkt vor dem Schreiben.
+>   - Gesichert wird vor dem ersten Schreiben einer Sitzung, vor Änderungen **mehrerer Dateien** (der Store sieht Dateien, keine Einheiten; so sind auch Umbenennen und Löschen eines Keys über alle Sprachen gesichert) und vor einem Wiederherstellen.
+>   - Nach `intervalMinutes` sichert das **nächste** Schreiben, statt dass ein Timer läuft. Die Sicherung hält dann genau den Stand vor der Änderung, und im Hintergrund läuft nichts.
+>   - Eine fehlgeschlagene Sicherung wird gemeldet, hält das Schreiben aber nicht auf, weil das Schreiben selbst „ganz oder gar nicht“ ist und sich rückgängig machen lässt.
+> - **Inhalt und Ablage:**
+>   - Gesichert werden alle indizierten Übersetzungsdateien aller Wurzeln.
+>   - Ablage: `storageUri/backups/<Zeitstempel>/<Ordnernummer>/<Pfad>` und zuletzt `manifest.json`. Ein Ordner ohne Manifest gilt als abgebrochen und erscheint nicht in der Liste.
+>   - Manifeste werden beim Lesen geprüft (Form, Pfade ohne `..`).
+> - **Wiederherstellen:**
+>   - Nur die Dateien der Sicherung werden wiederhergestellt; neuere Dateien bleiben.
+>   - `FileStore.restore` ist ein Schreibvorgang mit denselben Schutzprüfungen und lässt sich rückgängig machen.
+>   - Dateien von Ordnern, die nicht mehr geöffnet sind, bleiben unberührt.
+> - **Einstellungen:** `backup.intervalMinutes` und `backup.keep` prüft `parseSettings` wie alle anderen (ungültig ergibt den Standard und eine Meldung).
+> - **Befehle:** „Wiederherstellen“ ist nur in vertrauenswürdigen Arbeitsbereichen aktiv. `writeFeedback.ts` erklärt fehlgeschlagene Schreibvorgänge (mit „Datei anzeigen“ und „Arbeitsbereichsvertrauen verwalten“) für alle Aufrufer.
+> - **Nicht automatisch getestet:** Auswahl und Rückfrage des Befehls „Wiederherstellen“, weil sich die Dialoge im Testhost nicht bedienen lassen. Die Schritte darunter sind getestet: Sichern, Lesen, `FileStore.restore` und Undo. Die Dialoge prüft die Abnahme 2.18 von Hand.
 
 ### Task 2.1: Textbausteine für das Schreiben
 **Dateien:** Create `src/core/text/edits.ts`, `src/core/text/style.ts`; Test: `test/unit/core/text/edits.test.ts`, `style.test.ts`
