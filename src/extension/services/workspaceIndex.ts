@@ -11,6 +11,7 @@ import {
   type SourceFile,
 } from '../../core/pipeline/analyze';
 import { excludeGlob, readSettings } from '../config';
+import { messageOf } from './errors';
 import { SerialRunner } from './serialRunner';
 import { relativeUriPath } from './uriPaths';
 
@@ -291,8 +292,4 @@ function fixedRoots(area: AreaDefinition, settings: Settings): readonly string[]
 /** Workspace-relative paths of search results; results outside the folder cannot occur and are dropped. */
 function relativePaths(folder: vscode.WorkspaceFolder, uris: readonly vscode.Uri[]): string[] {
   return uris.map((uri) => relativeUriPath(folder.uri.path, uri.path)).filter((path) => path !== undefined);
-}
-
-function messageOf(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
 }
