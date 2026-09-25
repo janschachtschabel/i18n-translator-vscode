@@ -209,11 +209,42 @@ suite('FileStore', () => {
     assert.deepEqual(order, ['write', 'exclusive']);
   });
 
+  test('keeps an undo after a read error, for another try', async () => {
+    let failReads = false;
+    const store = new FileStore(api.index, log, {
+      files: {
+        readFile: (uri) =>
+          failReads ? Promise.reject(new Error('busy')) : vscode.workspace.fs.readFile(uri),
+        writeFile: (uri, bytes) => vscode.workspace.fs.writeFile(uri, bytes),
+        delete: (uri) => vscode.workspace.fs.delete(uri),
+      },
+    });
+    const fr = uriOf('common', 'fr');
+    const before = await vscode.workspace.fs.readFile(fr);
+    assert.deepEqual(await store.write(ref, setAsk('Continuer ?')), { ok: true });
+    failReads = true;
+    const failed = await store.undo();
+    assert.ok(failed && !failed.ok && failed.reason === 'error', JSON.stringify(failed));
+    failReads = false;
+    assert.deepEqual(await store.undo(), { ok: true });
+    assert.deepEqual(await vscode.workspace.fs.readFile(fr), before);
+  });
+
+  test('keeps undo entries within a memory limit, but always the newest', async () => {
+    const store = new FileStore(api.index, log, { limits: { undoEntries: 100, undoBytes: 1 } });
+    assert.deepEqual(await store.write(ref, setAsk('Un')), { ok: true });
+    assert.deepEqual(await store.write(ref, setAsk('Deux')), { ok: true });
+    assert.deepEqual(await store.undo(), { ok: true });
+    assert.equal(await store.undo(), undefined);
+    assert.ok((await read(uriOf('common', 'fr'))).includes('"ASK": "Un"'));
+  });
+
   test('restores a file whose write failed half-way, as writeFile empties it first', async () => {
     const fr = uriOf('common', 'fr');
     const before = await vscode.workspace.fs.readFile(fr);
     const store = new FileStore(api.index, log, {
       files: {
+        readFile: (uri) => vscode.workspace.fs.readFile(uri),
         writeFile: async (uri, bytes) => {
           if (uri.toString() === fr.toString() && !sameBytes(bytes, before)) {
             await vscode.workspace.fs.writeFile(uri, new Uint8Array());
@@ -233,6 +264,7 @@ suite('FileStore', () => {
     const fr = uriOf('common', 'fr');
     const store = new FileStore(api.index, log, {
       files: {
+        readFile: (uri) => vscode.workspace.fs.readFile(uri),
         writeFile: async (uri, bytes) => {
           if (uri.toString() === fr.toString()) {
             throw new Error('disk full');

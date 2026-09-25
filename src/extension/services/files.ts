@@ -8,13 +8,14 @@ export interface Put {
   bytes: Uint8Array | undefined;
 }
 
-/** Where files are written: `vscode.workspace.fs`, or a stand-in that fails on purpose in tests. */
-export interface FileWriter {
+/** How files are read and written: `vscode.workspace.fs`, or a stand-in that fails on purpose in tests. */
+export interface FileAccess {
+  readFile(uri: vscode.Uri): Thenable<Uint8Array>;
   writeFile(uri: vscode.Uri, content: Uint8Array): Thenable<void>;
   delete(uri: vscode.Uri): Thenable<void>;
 }
 
-export async function put(files: FileWriter, { uri, bytes }: Put): Promise<void> {
+export async function put(files: FileAccess, { uri, bytes }: Put): Promise<void> {
   if (bytes) {
     await files.writeFile(uri, bytes);
   } else {
@@ -42,9 +43,12 @@ export function holds(
 }
 
 /** The bytes of a file, or undefined if it does not exist; other errors are thrown. */
-export async function readIfExists(uri: vscode.Uri): Promise<Uint8Array | undefined> {
+export async function readIfExists(
+  uri: vscode.Uri,
+  files: Pick<FileAccess, 'readFile'> = vscode.workspace.fs,
+): Promise<Uint8Array | undefined> {
   try {
-    return await vscode.workspace.fs.readFile(uri);
+    return await files.readFile(uri);
   } catch (error) {
     if (isFileNotFound(error)) {
       return undefined;

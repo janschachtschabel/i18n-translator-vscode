@@ -15,7 +15,7 @@ import {
   readIfExists,
   relative,
   sameBytes,
-  type FileWriter,
+  type FileAccess,
   type Put,
 } from './files';
 import { insideRoot } from './uriPaths';
@@ -54,8 +54,16 @@ export type WriteResult =
   /** Reading or writing failed. The files got their old bytes back, except `notRestored` (may be damaged). */
   | { ok: false; reason: 'error'; message: string; notRestored?: vscode.Uri[] };
 
-/** Writes that can be undone in a session; each keeps the previous bytes of its files. */
-const UNDO_LIMIT = 100;
+/**
+ * How much undo a session keeps: each entry holds the previous bytes of its files, and a restore or a batch
+ * write holds many. The oldest entries go first; the newest always stays.
+ */
+export interface UndoLimits {
+  undoEntries: number;
+  undoBytes: number;
+}
+
+const UNDO_LIMITS: UndoLimits = { undoEntries: 100, undoBytes: 32 * 1024 * 1024 };
 /** Plans per write: when files change on disk between planning and writing, the edit is planned again. */
 const PLAN_ATTEMPTS = 3;
 
@@ -78,15 +86,17 @@ export class FileStore {
   private readonly undoStack: UndoEntry[] = [];
 
   private readonly beforeWrite: BeforeWrite;
-  private readonly files: FileWriter;
+  private readonly files: FileAccess;
+  private readonly limits: UndoLimits;
 
   constructor(
     private readonly index: WorkspaceIndex,
     private readonly log: vscode.LogOutputChannel,
-    options: { beforeWrite?: BeforeWrite; files?: FileWriter } = {},
+    options: { beforeWrite?: BeforeWrite; files?: FileAccess; limits?: UndoLimits } = {},
   ) {
     this.beforeWrite = options.beforeWrite ?? (async () => undefined);
     this.files = options.files ?? vscode.workspace.fs;
+    this.limits = options.limits ?? UNDO_LIMITS;
   }
 
   /** Plans the edit on the current files and writes the result. Never throws; failures are results. */
@@ -174,7 +184,7 @@ export class FileStore {
         await this.beforeWrite('write', targets.length);
         backedUp = true;
       }
-      const onDisk = await Promise.all(targets.map((target) => readIfExists(target.uri)));
+      const onDisk = await Promise.all(targets.map((target) => readIfExists(target.uri, this.files)));
       const changed = targets.filter((target, i) => !holds(onDisk[i], target.write.before, adapter));
       if (changed.length === 0) {
         return this.commit(
@@ -196,19 +206,33 @@ export class FileStore {
     if (!entry) {
       return undefined;
     }
+    let result: WriteResult;
+    try {
+      result = await this.undoEntry(entry);
+    } catch (error) {
+      // A read or write error says nothing about the state the write left: the undo stays for another try.
+      this.undoStack.push(entry);
+      throw error;
+    }
+    // Only a changed file ends an undo for good: the state the write left is gone. Unsaved editors and
+    // failed writes leave it for another try.
+    if (!result.ok && result.reason !== 'changed') {
+      this.undoStack.push(entry);
+    }
+    return result;
+  }
+
+  private async undoEntry(entry: UndoEntry): Promise<WriteResult> {
     const dirty = entry.files.filter((file) => isDirty(file.uri)).map((file) => file.uri);
     if (dirty.length > 0) {
-      // Once the editor is saved or reverted, the undo can be tried again.
-      this.undoStack.push(entry);
       return { ok: false, reason: 'dirty', files: dirty };
     }
-    const onDisk = await Promise.all(entry.files.map((file) => readIfExists(file.uri)));
+    const onDisk = await Promise.all(entry.files.map((file) => readIfExists(file.uri, this.files)));
     const changed = entry.files.filter((file, i) => {
       const bytes = onDisk[i];
       return bytes === undefined || revisionOf(bytes) !== file.afterRevision;
     });
     if (changed.length > 0) {
-      // The state the write left is gone, so this write cannot be undone any more.
       return { ok: false, reason: 'changed', files: changed.map((file) => file.uri) };
     }
     const failure = await this.putAll(
@@ -216,12 +240,22 @@ export class FileStore {
       entry.files.map((file, i) => ({ uri: file.uri, bytes: onDisk[i] })),
     );
     if (failure) {
-      this.undoStack.push(entry);
       return failure;
     }
     this.log.info(`Undid the write of ${entry.files.map((file) => relative(file.uri)).join(', ')}`);
     await this.reindex();
     return { ok: true };
+  }
+
+  /** Drops the oldest undo entries beyond the limits; the newest stays, however large. */
+  private trimUndo(): void {
+    const size = (entry: UndoEntry) =>
+      entry.files.reduce((sum, file) => sum + (file.before?.byteLength ?? 0), 0);
+    let bytes = this.undoStack.reduce((sum, entry) => sum + size(entry), 0);
+    const { undoEntries, undoBytes } = this.limits;
+    while (this.undoStack.length > 1 && (this.undoStack.length > undoEntries || bytes > undoBytes)) {
+      bytes -= size(this.undoStack.shift()!);
+    }
   }
 
   private async restoreNow(files: readonly RestoredFile[]): Promise<WriteResult> {
@@ -245,7 +279,7 @@ export class FileStore {
       );
       return { ok: false, reason: 'error', message };
     }
-    const onDisk = await Promise.all(files.map((file) => readIfExists(file.uri)));
+    const onDisk = await Promise.all(files.map((file) => readIfExists(file.uri, this.files)));
     const differing = files
       .map((file, i) => ({ ...file, before: onDisk[i] }))
       .filter((file) => file.before === undefined || !sameBytes(file.before, file.bytes));
@@ -271,9 +305,7 @@ export class FileStore {
         afterRevision: revisionOf(file.bytes),
       })),
     });
-    if (this.undoStack.length > UNDO_LIMIT) {
-      this.undoStack.shift();
-    }
+    this.trimUndo();
     this.log.info(
       `${kind === 'write' ? 'Wrote' : 'Restored'} ${files.map((file) => relative(file.uri)).join(', ')}`,
     );
