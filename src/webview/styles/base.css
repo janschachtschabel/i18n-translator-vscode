@@ -86,3 +86,11 @@ button:hover {
 .option :focus-visible {
   outline: none;
 }
+
+/* The editor fills the panel; the table scrolls in the space that is left. */
+main {
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  block-size: 100vh;
+}

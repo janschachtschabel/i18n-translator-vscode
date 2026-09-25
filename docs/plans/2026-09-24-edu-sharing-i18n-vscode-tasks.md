@@ -883,6 +883,30 @@ was nicht ausdrücklich geändert wurde.
 >   - `Alt+M` schaltet zwischen „fehlend“ und „alle“. Am Mac geht das nicht, weil die Taste nach `key` erkannt wird und Option+M dort „µ“ tippt.
 > - **Rahmen:** Suchfeld und Auswahllisten nehmen `dropdown.border`, wenn das Theme `input.border` nicht setzt (etwa Light+). Sonst stünde ein weißes Feld auf Weiß (in der Vorschau gefunden).
 > - **Anzeige:** Die gefilterten Zeilen zeigt ab 2.10 die Tabelle, bis dahin nur ihre Zahl.
+>
+> **Umsetzungsnotizen Task 2.10 (25.09.2026):**
+> - **Aufbau:**
+>   - Die Zeilen sind `div`s mit eigenem CSS-Grid und gemeinsamer Spaltenvorlage (`--columns`), keine `<table>`: `content-visibility: auto` wirkt nicht auf Tabellenzeilen.
+>   - Die Rollen stehen ausdrücklich da (`grid`, `rowgroup`, `row`, `columnheader`, `rowheader`, `gridcell`). `aria-rowcount` und `aria-colcount` zählen alle Zeilen, auch die noch nicht gerenderten. Den Namen gibt die Überschrift (`aria-labelledby`).
+> - **Tastatur:**
+>   - `moveInGrid` ist eine reine Funktion nach dem Datengrid der APG; die Kopfzeile gehört zur Navigation. Es gibt eine Tab-Station (roving `tabindex`).
+>   - Die aktive Zelle merkt sich Key und Sprache statt Indizes. So bleibt sie auf ihrem Key, wenn Filter oder Index-Läufe Zeilen verschieben.
+>   - Verschwindet ihr Key, rückt sie auf die erste Zelle. Der Fokus folgt, wenn er in der Tabelle war, aber nicht nach einem Klick daneben.
+> - **Status:**
+>   - Jeder Befund zeigt ein Symbol je Schwere (farbig, `aria-hidden`) und ein Wort je Regel („fehlt“, „leer“, „Platzhalter“ …). Ein Test verlangt für jede Regel, die einzelne Texte betrifft, ein eigenes Wort.
+>   - Die ganze Meldung beschreibt die Zelle über `aria-describedby`. Die Beschreibungstexte liegen `hidden` in der Zeile, damit sie nicht zum Namen der Zelle gehören.
+>   - Texte tragen `lang` und `dir="auto"`.
+> - **Scrollen:** Die Tabelle scrollt in einem eigenen Bereich über die restliche Höhe (mindestens 12em). Kopfzeile und Key-Spalte sind `sticky`, und `scroll-padding` hält die fokussierte Zelle frei (WCAG 2.4.11, in Chromium geprüft).
+> - **Rendern:**
+>   - Zuerst kommen 200 Zeilen, dann 200 je Task; die Zahl wächst nur. Tastensprünge rendern bis zur Zielzeile.
+>   - 420 Zeilen × 6 Sprachen laufen in der Vorschau flüssig. Die Messung mit 2.000 Keys folgt in 2.17.
+>   - Das Bundle hat 35,9 KB (gzip 13,4 KB).
+> - **Scroll-Anker angewandt:**
+>   - Beim Ein- und Ausblenden einer Sprache und beim Umbruch nimmt ein Signal-`effect` den Anker, solange noch das alte Layout steht. `useSignalEffect` taugt dafür nicht: Es läuft erst im nächsten Frame, dann ist es zu spät (im Test gefunden).
+>   - Angewandt wird der Anker nach dem Rendern und noch einmal im nächsten Frame, weil `content-visibility` Zeilen nahe der Sicht erst dann neu legt. Die Höhe der Kopfzeile wird dabei abgezogen (ebenfalls im Test gefunden).
+>   - Die Wirkung in echter Darstellung prüft 2.16 in VS Code. Im ausgeblendeten Browser-Bereich rendert Chromium nicht.
+> - **Bis 2.11** zeigt jede Ansicht die Tabelle.
+> - **Beobachtung für 2.11 und 2.16:** Bei 560 px Höhe nehmen Werkzeugleiste, Chips und Filter drei Viertel ein, und die Tabelle behält nur ihre Mindesthöhe. Der Kopfbereich sollte kompakter werden, etwa mit Rückgängig in der Werkzeugzeile und einer kleineren Überschrift.
 
 ### Task 2.1: Textbausteine für das Schreiben
 **Dateien:** Create `src/core/text/edits.ts`, `src/core/text/style.ts`; Test: `test/unit/core/text/edits.test.ts`, `style.test.ts`

@@ -64,9 +64,9 @@ export function renderEditor() {
   render(<App store={store} />);
   const send = (message: HostToWebview) => act(() => store.receive(message));
   /** What the host sends when the editor opens: German texts, the view state it kept, the bundle. */
-  const open = (uiState: UiState = DEFAULT_UI_STATE) => {
+  const open = (uiState: UiState = DEFAULT_UI_STATE, bundle: BundleViewModel = model) => {
     send({ type: 'init', l10n: GERMAN, uiState, panelState });
-    send({ type: 'bundle', model });
+    send({ type: 'bundle', model: bundle });
   };
   return { store, posted, kept, send, open };
 }
