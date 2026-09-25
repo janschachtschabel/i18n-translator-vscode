@@ -9,6 +9,7 @@ import {
   isUiState,
   isWebviewToHost,
   readableEditRequestId,
+  type EditorCommand,
   type HostToWebview,
   type PanelState,
   type UiState,
@@ -35,6 +36,8 @@ export interface EditorServices {
   log: vscode.LogOutputChannel;
   /** Undoes the last change to the translation files and tells the user how it went. */
   undo: () => Promise<void>;
+  /** Runs a key or language command on the editor's bundle, starting from the key it names. */
+  command: (command: EditorCommand, target: PanelState, entryId: string | undefined) => Promise<void>;
 }
 
 /** The editors of the bundles: one per bundle, restored after a restart, updated after every index run. */
@@ -89,6 +92,11 @@ export class EditorPanels implements vscode.Disposable {
       return open;
     }
     return this.add(panel, copyPanelState(state));
+  }
+
+  /** The editor in front, e.g. the one whose context menu was opened. */
+  active(): EditorPanel | undefined {
+    return [...this.panels].find((editor) => editor.panel.active);
   }
 
   /** Leaves the panels open: VS Code restores them in the next session. */
@@ -162,6 +170,7 @@ export class EditorPanel implements vscode.Disposable {
           await this.services.workspaceState.update(this.stateKey(), copyUiState(state));
         },
         undo: () => this.services.undo(),
+        command: ({ command, entryId }) => this.services.command(command, this.target, entryId),
       },
       this.services.log,
     );

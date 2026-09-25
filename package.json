@@ -112,6 +112,35 @@
         "command": "eduI18n.undoLastChange",
         "title": "%cmd.undoLastChange%",
         "category": "edu-sharing i18n"
+      },
+      {
+        "command": "eduI18n.openEditor",
+        "title": "%cmd.openEditor%",
+        "category": "edu-sharing i18n"
+      },
+      {
+        "command": "eduI18n.addKey",
+        "title": "%cmd.addKey%",
+        "category": "edu-sharing i18n",
+        "enablement": "isWorkspaceTrusted"
+      },
+      {
+        "command": "eduI18n.renameKey",
+        "title": "%cmd.renameKey%",
+        "category": "edu-sharing i18n",
+        "enablement": "isWorkspaceTrusted"
+      },
+      {
+        "command": "eduI18n.deleteKey",
+        "title": "%cmd.deleteKey%",
+        "category": "edu-sharing i18n",
+        "enablement": "isWorkspaceTrusted"
+      },
+      {
+        "command": "eduI18n.addLanguage",
+        "title": "%cmd.addLanguage%",
+        "category": "edu-sharing i18n",
+        "enablement": "isWorkspaceTrusted"
       }
     ],
     "menus": {
@@ -122,6 +151,14 @@
         },
         {
           "command": "eduI18n.openBundle",
+          "when": "false"
+        },
+        {
+          "command": "eduI18n.renameKey",
+          "when": "false"
+        },
+        {
+          "command": "eduI18n.deleteKey",
           "when": "false"
         }
       ],
@@ -147,6 +184,50 @@
           "command": "eduI18n.revealInExplorer",
           "when": "view == eduI18n.areas && viewItem == eduI18n.bundle",
           "group": "2_files"
+        },
+        {
+          "command": "eduI18n.addKey",
+          "when": "view == eduI18n.areas && viewItem == eduI18n.bundle",
+          "group": "3_edit@1"
+        },
+        {
+          "command": "eduI18n.addLanguage",
+          "when": "view == eduI18n.areas && viewItem =~ /^eduI18n\\.(root|bundle)$/",
+          "group": "3_edit@2"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "eduI18n.addKey",
+          "when": "activeWebviewPanelId == 'eduI18n.editor'",
+          "group": "1_edit@1"
+        },
+        {
+          "command": "eduI18n.addLanguage",
+          "when": "activeWebviewPanelId == 'eduI18n.editor'",
+          "group": "1_edit@2"
+        }
+      ],
+      "webview/context": [
+        {
+          "command": "eduI18n.addKey",
+          "when": "webviewId == 'eduI18n.editor' && webviewSection == 'key'",
+          "group": "1_key@1"
+        },
+        {
+          "command": "eduI18n.renameKey",
+          "when": "webviewId == 'eduI18n.editor' && webviewSection == 'key'",
+          "group": "1_key@2"
+        },
+        {
+          "command": "eduI18n.deleteKey",
+          "when": "webviewId == 'eduI18n.editor' && webviewSection == 'key'",
+          "group": "1_key@3"
+        },
+        {
+          "command": "eduI18n.addLanguage",
+          "when": "webviewId == 'eduI18n.editor'",
+          "group": "2_language@1"
         }
       ]
     },
