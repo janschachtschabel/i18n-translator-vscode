@@ -20,6 +20,10 @@ export interface Settings {
   severityOverrides: SeverityOverrides;
   ignoreSameAsReference: string[];
   missingDiagnostics: MissingDiagnostics;
+  /** Minutes after which the next write backs up the translation files again; 0 turns this off. */
+  backupIntervalMinutes: number;
+  /** Backups to keep. */
+  backupKeep: number;
 }
 
 /** Raw values of the `eduI18n.*` settings, keyed without the prefix (e.g. `checks.severity`). */
@@ -36,6 +40,8 @@ export const SETTING_KEYS = [
   'checks.severity',
   'checks.ignoreSameAsReference',
   'diagnostics.missing',
+  'backup.intervalMinutes',
+  'backup.keep',
 ] as const;
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -48,6 +54,8 @@ export const DEFAULT_SETTINGS: Settings = {
   severityOverrides: {},
   ignoreSameAsReference: ['OK', 'E-Mail', 'CC-0', 'ID'],
   missingDiagnostics: 'aggregate',
+  backupIntervalMinutes: 10,
+  backupKeep: 10,
 };
 
 const SEVERITY_VALUES = ['error', 'warning', 'info', 'off'] as const;
@@ -85,6 +93,16 @@ export function parseSettings(raw: RawSettings): { settings: Settings; errors: s
       'diagnostics.missing',
       (value) => MISSING_DIAGNOSTICS.includes(value as MissingDiagnostics),
       DEFAULT_SETTINGS.missingDiagnostics,
+    ),
+    backupIntervalMinutes: pick(
+      'backup.intervalMinutes',
+      (value) => typeof value === 'number' && Number.isFinite(value) && value >= 0,
+      DEFAULT_SETTINGS.backupIntervalMinutes,
+    ),
+    backupKeep: pick(
+      'backup.keep',
+      (value) => Number.isInteger(value) && (value as number) >= 1 && (value as number) <= 100,
+      DEFAULT_SETTINGS.backupKeep,
     ),
   };
   return { settings, errors };

@@ -8,6 +8,8 @@
   "cmd.check": "Übersetzungen prüfen",
   "cmd.configureRoots": "Übersetzungsordner festlegen…",
   "cmd.revealInExplorer": "Im Explorer zeigen",
+  "cmd.backupNow": "Übersetzungsdateien jetzt sichern",
+  "cmd.restoreBackup": "Übersetzungsdateien aus einer Sicherung wiederherstellen…",
   "untrusted.description": "Im eingeschränkten Modus können Übersetzungen nur angezeigt und geprüft werden; Schreiben und KI-Funktionen sind deaktiviert, und die Arbeitsbereichseinstellungen für Bereiche, Varianten und Wurzeln werden ignoriert.",
   "config.title": "edu-sharing i18n",
   "config.referenceLanguage": "Sprache, mit der Übersetzungen verglichen werden. `de` passt auch auf `de_DE`.",
@@ -21,5 +23,7 @@
   "config.diagnostics.missing": "Wie fehlende Keys in der Ansicht „Probleme“ erscheinen.",
   "config.diagnostics.missing.aggregate": "Ein Problem je Datei mit der Anzahl fehlender Keys",
   "config.diagnostics.missing.individual": "Ein Problem je fehlendem Key",
-  "config.diagnostics.missing.off": "Nicht in der Ansicht „Probleme“ anzeigen"
+  "config.diagnostics.missing.off": "Nicht in der Ansicht „Probleme“ anzeigen",
+  "config.backup.intervalMinutes": "Minuten, nach denen die nächste Änderung die Übersetzungsdateien erneut sichert. `0` schaltet das ab; die Sicherungen vor der ersten Änderung einer Sitzung und vor Änderungen mehrerer Dateien bleiben.",
+  "config.backup.keep": "Anzahl der aufbewahrten Sicherungen. Sicherungen liegen im Speicher der Erweiterung für diesen Arbeitsbereich, nie im Repository."
 }

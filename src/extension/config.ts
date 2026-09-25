@@ -2,10 +2,11 @@ import * as vscode from 'vscode';
 import { parseSettings, SETTING_KEYS, type Settings } from '../core/config/settings';
 
 /**
- * Reads and validates the `eduI18n.*` settings that apply to `scope` (a workspace folder). In Restricted
- * Mode, VS Code leaves out workspace values of the settings listed in `restrictedConfigurations`.
+ * Reads and validates the `eduI18n.*` settings that apply to `scope` (a workspace folder; without one, the
+ * values of the window and the workspace). In Restricted Mode, VS Code leaves out workspace values of the
+ * settings listed in `restrictedConfigurations`.
  */
-export function readSettings(scope: vscode.Uri): { settings: Settings; errors: string[] } {
+export function readSettings(scope?: vscode.Uri): { settings: Settings; errors: string[] } {
   const config = vscode.workspace.getConfiguration('eduI18n', scope);
   return parseSettings(Object.fromEntries(SETTING_KEYS.map((key) => [key, config.get(key)])));
 }

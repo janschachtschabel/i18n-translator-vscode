@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { readSettings } from '../config';
 import { messageOf } from './errors';
 import type { RestoredFile } from './fileStore';
 import { readIfExists } from './files';
@@ -37,13 +38,10 @@ const REASONS: readonly BackupReason[] = ['first-write', 'several-files', 'inter
 /** An ISO timestamp with `-` for `:` and `.`, plus a counter for backups in the same millisecond. */
 const ID = /^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z(?:-\d+)?$/;
 
+/** The validated backup settings; invalid values fall back to the defaults (the index reports them). */
 export function readBackupSettings(): BackupSettings {
-  const config = vscode.workspace.getConfiguration('eduI18n.backup');
-  const number = (name: string, fallback: number, minimum: number) => {
-    const value = config.get<unknown>(name);
-    return typeof value === 'number' && Number.isFinite(value) ? Math.max(minimum, value) : fallback;
-  };
-  return { keep: Math.floor(number('keep', 10, 1)), intervalMinutes: number('intervalMinutes', 10, 0) };
+  const { settings } = readSettings();
+  return { keep: settings.backupKeep, intervalMinutes: settings.backupIntervalMinutes };
 }
 
 /**

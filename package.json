@@ -90,6 +90,17 @@
         "command": "eduI18n.revealInExplorer",
         "title": "%cmd.revealInExplorer%",
         "category": "edu-sharing i18n"
+      },
+      {
+        "command": "eduI18n.backupNow",
+        "title": "%cmd.backupNow%",
+        "category": "edu-sharing i18n"
+      },
+      {
+        "command": "eduI18n.restoreBackup",
+        "title": "%cmd.restoreBackup%",
+        "category": "edu-sharing i18n",
+        "enablement": "isWorkspaceTrusted"
       }
     ],
     "menus": {
@@ -475,6 +486,19 @@
             "%config.diagnostics.missing.individual%",
             "%config.diagnostics.missing.off%"
           ]
+        },
+        "eduI18n.backup.intervalMinutes": {
+          "type": "number",
+          "default": 10,
+          "minimum": 0,
+          "markdownDescription": "%config.backup.intervalMinutes%"
+        },
+        "eduI18n.backup.keep": {
+          "type": "integer",
+          "default": 10,
+          "minimum": 1,
+          "maximum": 100,
+          "markdownDescription": "%config.backup.keep%"
         }
       }
     }

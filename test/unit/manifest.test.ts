@@ -33,6 +33,8 @@ describe('package.json configuration', () => {
     expect(setting('checks.severity').default).toEqual({});
     expect(setting('checks.ignoreSameAsReference').default).toEqual(DEFAULT_SETTINGS.ignoreSameAsReference);
     expect(setting('diagnostics.missing').default).toBe(DEFAULT_SETTINGS.missingDiagnostics);
+    expect(setting('backup.intervalMinutes').default).toBe(DEFAULT_SETTINGS.backupIntervalMinutes);
+    expect(setting('backup.keep').default).toBe(DEFAULT_SETTINGS.backupKeep);
   });
 
   it('offers every rule id for severity overrides', () => {

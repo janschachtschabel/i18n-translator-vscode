@@ -54,6 +54,16 @@ describe('parseSettings', () => {
     expect(errors[0]).toMatch(/de-x/);
   });
 
+  it('reads the backup interval and how many backups to keep', () => {
+    expect(parseSettings({ 'backup.intervalMinutes': 0, 'backup.keep': 3 }).settings).toMatchObject({
+      backupIntervalMinutes: 0,
+      backupKeep: 3,
+    });
+    const invalid = parseSettings({ 'backup.intervalMinutes': -1, 'backup.keep': 0.5 });
+    expect(invalid.settings).toMatchObject({ backupIntervalMinutes: 10, backupKeep: 10 });
+    expect(invalid.errors).toHaveLength(2);
+  });
+
   it('falls back to the default for values of the wrong type', () => {
     const { settings, errors } = parseSettings({ referenceLanguage: 42, exclude: 'node_modules', roots: [] });
     expect(settings.referenceLanguage).toBe('de');

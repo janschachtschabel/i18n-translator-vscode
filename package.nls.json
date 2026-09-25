@@ -8,6 +8,8 @@
   "cmd.check": "Check translations",
   "cmd.configureRoots": "Configure translation folders…",
   "cmd.revealInExplorer": "Reveal in Explorer",
+  "cmd.backupNow": "Back up translation files now",
+  "cmd.restoreBackup": "Restore translation files from a backup…",
   "untrusted.description": "In Restricted Mode, translations can only be viewed and checked; writing files and AI features are disabled, and the workspace settings for areas, variants and roots are ignored.",
   "config.title": "edu-sharing i18n",
   "config.referenceLanguage": "Language that translations are compared with. `de` also matches `de_DE`.",
@@ -21,5 +23,7 @@
   "config.diagnostics.missing": "How missing keys appear in the Problems panel.",
   "config.diagnostics.missing.aggregate": "One problem per file with the number of missing keys",
   "config.diagnostics.missing.individual": "One problem per missing key",
-  "config.diagnostics.missing.off": "Not shown in the Problems panel"
+  "config.diagnostics.missing.off": "Not shown in the Problems panel",
+  "config.backup.intervalMinutes": "Minutes after which the next change backs up the translation files again. `0` turns this off; the backups before the first change of a session and before changes of several files stay.",
+  "config.backup.keep": "Number of backups to keep. Backups lie in the extension's storage for this workspace, never in the repository."
 }

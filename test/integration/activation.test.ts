@@ -10,8 +10,14 @@ suite('activation', () => {
 
     await extension.activate();
 
-    const commands = await vscode.commands.getCommands(true);
-    assert.ok(commands.includes('eduI18n.check'), 'eduI18n.check is not registered');
-    assert.ok(commands.includes('eduI18n.configureRoots'), 'eduI18n.configureRoots is not registered');
+    // Every command of the manifest, so that a declared but unregistered command cannot slip through.
+    const declared = (extension.packageJSON as { contributes: { commands: { command: string }[] } })
+      .contributes.commands;
+    const registered = new Set(await vscode.commands.getCommands(true));
+    assert.ok(declared.length >= 5, 'the manifest declares the commands');
+    assert.deepStrictEqual(
+      declared.map(({ command }) => command).filter((command) => !registered.has(command)),
+      [],
+    );
   });
 });
