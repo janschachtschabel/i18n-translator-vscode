@@ -15,7 +15,8 @@ export interface FileWrite {
 export type ApplyResult = { ok: true; writes: FileWrite[] } | { ok: false; problem: EditProblem };
 
 /**
- * Applies planned changes, in memory, to the files of the bundles they were planned on. Writes nothing. The
+ * Applies planned changes, in memory, to the files of the bundles they were planned on, one write per file:
+ * later changes of a file apply to the text the earlier ones left (plans can be joined). Writes nothing. The
  * writer can still refuse an operation for something the model does not show (an empty object or a value that
  * is not a text in the way); that becomes a problem like the ones of planning.
  */
@@ -24,27 +25,46 @@ export function applyChanges(
   bundles: readonly Bundle[],
   adapter: FormatAdapter,
 ): ApplyResult {
-  const writes: FileWrite[] = [];
+  const writes = new Map<string, FileWrite>();
   for (const change of changes) {
+    const earlier = writes.get(change.relPath);
     if (change.kind === 'create') {
+      if (earlier) {
+        throw new RangeError(`${change.relPath} is created after it was changed.`);
+      }
       const after: DecodedText = { text: change.content, encoding: 'utf-8', bom: false };
-      writes.push({ relPath: change.relPath, before: undefined, after });
+      writes.set(change.relPath, { relPath: change.relPath, before: undefined, after });
       continue;
     }
-    const { bundle, file } = fileAt(bundles, change.relPath);
+    const found = findFile(bundles, change.relPath);
+    const before = earlier ? earlier.before : found?.file.doc;
+    const current = earlier ? earlier.after : found?.file.doc;
+    if (!current) {
+      throw new RangeError(`${change.relPath} is not a file of the bundles the changes were planned on.`);
+    }
     try {
-      writes.push({ relPath: file.relPath, before: file.doc, after: adapter.applyOps(file.doc, change.ops) });
+      writes.set(change.relPath, {
+        relPath: change.relPath,
+        before,
+        after: adapter.applyOps(current, change.ops),
+      });
     } catch (error) {
       if (!(error instanceof EditError)) {
         throw error;
       }
-      return { ok: false, problem: writerProblem(error, file.relPath, bundle.name) };
+      return {
+        ok: false,
+        problem: writerProblem(error, change.relPath, found?.bundle.name ?? change.relPath),
+      };
     }
   }
-  return { ok: true, writes };
+  return { ok: true, writes: [...writes.values()] };
 }
 
-function fileAt(bundles: readonly Bundle[], relPath: string): { bundle: Bundle; file: LoadedFile } {
+function findFile(
+  bundles: readonly Bundle[],
+  relPath: string,
+): { bundle: Bundle; file: LoadedFile } | undefined {
   for (const bundle of bundles) {
     const file = bundle.locales
       .map((locale) => bundle.file(locale))
@@ -53,7 +73,7 @@ function fileAt(bundles: readonly Bundle[], relPath: string): { bundle: Bundle; 
       return { bundle, file };
     }
   }
-  throw new RangeError(`${relPath} is not a file of the bundles the changes were planned on.`);
+  return undefined;
 }
 
 function writerProblem(error: EditError, file: string, bundle: string): EditProblem {

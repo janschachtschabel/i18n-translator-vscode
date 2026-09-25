@@ -43,6 +43,42 @@ describe('applyChanges', () => {
     );
   });
 
+  it('combines several changes of one file, also of a file created in the same list', () => {
+    const [bundle] = analyzeTexts({
+      'c/de.json': '{\n  "A": "a",\n  "B": "b"\n}\n',
+      'c/fr.json': '{\n  "A": "a-fr",\n  "B": "b-fr"\n}\n',
+    }).bundles;
+    const fr = bundle!.file('fr')!;
+    const key = (name: string) => keyFromSegments([name]);
+    const result = applyChanges(
+      [
+        { kind: 'edit', relPath: fr.relPath, ops: [{ kind: 'set', key: key('A'), value: 'A neu' }] },
+        { kind: 'create', relPath: 'i18n/c/es.json', content: '{}\n' },
+        { kind: 'edit', relPath: fr.relPath, ops: [{ kind: 'set', key: key('B'), value: 'B neu' }] },
+        { kind: 'edit', relPath: 'i18n/c/es.json', ops: [{ kind: 'insert', key: key('A'), value: 'a-es' }] },
+      ],
+      [bundle!],
+      jsonNestedAdapter,
+    );
+    expect(
+      result.ok && result.writes.map(({ relPath, before, after }) => [relPath, before, after.text]),
+    ).toEqual([
+      [fr.relPath, fr.doc, '{\n  "A": "A neu",\n  "B": "B neu"\n}\n'],
+      ['i18n/c/es.json', undefined, '{\n  "A": "a-es"\n}\n'],
+    ]);
+    const setA = { kind: 'set', key: key('A'), value: 'x' } as const;
+    expect(() =>
+      applyChanges(
+        [
+          { kind: 'edit', relPath: fr.relPath, ops: [setA] },
+          { kind: 'create', relPath: fr.relPath, content: '{}\n' },
+        ],
+        [bundle!],
+        jsonNestedAdapter,
+      ),
+    ).toThrow(RangeError);
+  });
+
   it('explains other refusals of the writer with the problems of planning', () => {
     const common = analysis.bundles.find((bundle) => bundle.name === 'common')!;
     const broken = analysis.bundles.find((bundle) => bundle.name === 'broken')!;
