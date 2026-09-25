@@ -1,10 +1,12 @@
 import { keyFromId } from '../core/model/keys';
-import { DEFAULT_FILTER, MAX_QUERY_LENGTH, type RowFilter } from './filter';
+import { DEFAULT_FILTER, FILTER_SCOPES, MAX_QUERY_LENGTH, STATUS_FILTERS, type RowFilter } from './filter';
 import type { BundleViewModel } from './viewModel';
+
+export const LAYOUT_CHOICES = ['auto', 'table', 'list'] as const;
 
 /** How the editor shows a bundle; the host keeps it per bundle in workspaceState (B7). */
 export interface UiState {
-  layout: 'auto' | 'table' | 'list';
+  layout: (typeof LAYOUT_CHOICES)[number];
   /** Long texts wrap onto several lines instead of being cut off. */
   wrap: boolean;
   hiddenLocales: readonly string[];
@@ -28,7 +30,8 @@ export interface PanelState {
   bundleId: string;
 }
 
-export type EditorCommand = 'addKey' | 'renameKey' | 'deleteKey' | 'addLanguage';
+export const EDITOR_COMMANDS = ['addKey', 'renameKey', 'deleteKey', 'addLanguage'] as const;
+export type EditorCommand = (typeof EDITOR_COMMANDS)[number];
 
 /** What the webview asks of the host. The host checks every message with {@link isWebviewToHost}. */
 export type WebviewToHost =
@@ -57,11 +60,6 @@ const MAX_ID_LENGTH = 200;
 const MAX_LONG_ID_LENGTH = 10_000;
 const MAX_HIDDEN_LOCALES = 200;
 
-const LAYOUTS: readonly string[] = ['auto', 'table', 'list'];
-const SCOPES: readonly string[] = ['all', 'keys', 'texts'];
-const STATUSES: readonly string[] = ['all', 'missing', 'findings', 'empty'];
-const COMMANDS: readonly string[] = ['addKey', 'renameKey', 'deleteKey', 'addLanguage'];
-
 /**
  * Whether a message from the webview has a known type and valid fields. The webview is a separate context:
  * nothing it sends is trusted, so unknown or malformed messages are dropped by the caller.
@@ -80,11 +78,12 @@ export function isWebviewToHost(value: unknown): value is WebviewToHost {
         isEntryId(value['entryId']) &&
         isId(value['locale']) &&
         isText(value['value']) &&
-        (value['before'] === null || isText(value['before']))
+        // The text the cell showed comes from the file, which may hold a cut-off character; it is only compared.
+        (value['before'] === null || isBounded(value['before']))
       );
     case 'command':
       return (
-        COMMANDS.includes(value['command'] as string) &&
+        isOneOf(EDITOR_COMMANDS, value['command']) &&
         (value['entryId'] === undefined || isEntryId(value['entryId']))
       );
     case 'uiState':
@@ -92,6 +91,25 @@ export function isWebviewToHost(value: unknown): value is WebviewToHost {
     default:
       return false;
   }
+}
+
+/**
+ * The fields of a checked view state and nothing else, for the host to keep: the checks bound the known fields,
+ * and anything else the webview added must not be stored.
+ */
+export function copyUiState(state: UiState): UiState {
+  const { query, scope, locale, regex, matchCase, status } = state.filter;
+  return {
+    layout: state.layout,
+    wrap: state.wrap,
+    hiddenLocales: [...state.hiddenLocales],
+    filter: { query, scope, locale, regex, matchCase, status },
+    compactLocale: state.compactLocale,
+  };
+}
+
+export function copyPanelState(state: PanelState): PanelState {
+  return { folder: state.folder, bundleId: state.bundleId };
 }
 
 /** Whether a state that VS Code kept for a webview is one the host gave it; it comes back from the webview. */
@@ -106,7 +124,7 @@ export function isUiState(value: unknown): value is UiState {
   }
   const hidden = value['hiddenLocales'];
   return (
-    LAYOUTS.includes(value['layout'] as string) &&
+    isOneOf(LAYOUT_CHOICES, value['layout']) &&
     typeof value['wrap'] === 'boolean' &&
     Array.isArray(hidden) &&
     hidden.length <= MAX_HIDDEN_LOCALES &&
@@ -121,11 +139,11 @@ function isRowFilter(value: unknown): value is RowFilter {
     isRecord(value) &&
     typeof value['query'] === 'string' &&
     value['query'].length <= MAX_QUERY_LENGTH &&
-    SCOPES.includes(value['scope'] as string) &&
+    isOneOf(FILTER_SCOPES, value['scope']) &&
     (value['locale'] === null || isId(value['locale'])) &&
     typeof value['regex'] === 'boolean' &&
     typeof value['matchCase'] === 'boolean' &&
-    STATUSES.includes(value['status'] as string)
+    isOneOf(STATUS_FILTERS, value['status'])
   );
 }
 
@@ -139,7 +157,15 @@ function isId(value: unknown): value is string {
 
 /** Text a user typed: bounded, and without incomplete characters, which no file could store faithfully. */
 function isText(value: unknown): value is string {
-  return typeof value === 'string' && value.length <= MAX_TEXT_LENGTH && !/\p{Cs}/u.test(value);
+  return isBounded(value) && !/\p{Cs}/u.test(value);
+}
+
+function isBounded(value: unknown): value is string {
+  return typeof value === 'string' && value.length <= MAX_TEXT_LENGTH;
+}
+
+function isOneOf<T extends string>(values: readonly T[], value: unknown): value is T {
+  return (values as readonly unknown[]).includes(value);
 }
 
 function isEntryId(value: unknown): value is string {

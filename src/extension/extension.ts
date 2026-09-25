@@ -52,7 +52,8 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
     statusBar,
     vscode.commands.registerCommand('eduI18n.check', () => checkTranslations(index)),
     vscode.commands.registerCommand('eduI18n.configureRoots', () => configureRoots()),
-    vscode.commands.registerCommand('eduI18n.openBundle', (node?: unknown) => openBundle(editors, node)),
+    // Returns nothing: VS Code would send a result to the workbench on every click in the tree.
+    vscode.commands.registerCommand('eduI18n.openBundle', (node?: unknown) => void openBundle(editors, node)),
     vscode.commands.registerCommand('eduI18n.backupNow', () => backUpNow(backups, fileStore, log)),
     vscode.commands.registerCommand('eduI18n.restoreBackup', () => restoreBackup(backups, fileStore, log)),
     vscode.commands.registerCommand('eduI18n.undoLastChange', () => undoLastChange(fileStore)),

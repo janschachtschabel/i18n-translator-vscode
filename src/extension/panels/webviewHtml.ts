@@ -45,3 +45,11 @@ const ENTITIES: Readonly<Record<string, string>> = { '&': '&amp;', '<': '&lt;', 
 function escapeHtml(text: string): string {
   return text.replace(/[&<>"]/g, (char) => ENTITIES[char]!);
 }
+
+/**
+ * The language of the page: VS Code's, if the extension has texts in it; otherwise the texts are English, and a
+ * screen reader must read them as English.
+ */
+export function pageLanguage(language: string, translations: object | undefined): string {
+  return translations ? language : 'en';
+}

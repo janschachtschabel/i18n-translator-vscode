@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { keyFromSegments } from '../../../src/core/model/keys';
 import {
+  copyPanelState,
+  copyUiState,
   DEFAULT_UI_STATE,
   isPanelState,
   isUiState,
@@ -80,7 +82,10 @@ describe('isWebviewToHost', () => {
     expect(isWebviewToHost({ ...edit, value: 'x'.repeat(MAX_TEXT_LENGTH + 1) })).toBe(false);
     const lone = String.fromCharCode(0xd800);
     expect(isWebviewToHost({ ...edit, value: `a${lone}b` })).toBe(false);
-    expect(isWebviewToHost({ ...edit, before: lone })).toBe(false);
+    // The text the cell showed may come from a file that stores a cut-off character as a JSON escape:
+    // the edit that repairs it must go through.
+    expect(isWebviewToHost({ ...edit, before: `x${lone}` })).toBe(true);
+    expect(isWebviewToHost({ ...edit, before: 'x'.repeat(MAX_TEXT_LENGTH + 1) })).toBe(false);
     expect(isWebviewToHost({ ...edit, value: 'Emoji 😀' })).toBe(true);
   });
 
@@ -153,5 +158,21 @@ describe('isUiState', () => {
     ]) {
       expect(isUiState(state), JSON.stringify(state)).toBe(false);
     }
+  });
+});
+
+describe('copyUiState and copyPanelState', () => {
+  it('keep the known fields only, so that nothing else the webview adds is stored', () => {
+    const state = {
+      ...DEFAULT_UI_STATE,
+      filter: { ...DEFAULT_UI_STATE.filter, extra: 'x'.repeat(10) },
+      extra: 1,
+    };
+    expect(copyUiState(state)).toEqual(DEFAULT_UI_STATE);
+    expect(Object.keys(copyUiState(state).filter)).toEqual(Object.keys(DEFAULT_UI_STATE.filter));
+    expect(copyPanelState({ folder: 'file:///repo', bundleId: '["a","","b"]', extra: 1 } as never)).toEqual({
+      folder: 'file:///repo',
+      bundleId: '["a","","b"]',
+    });
   });
 });

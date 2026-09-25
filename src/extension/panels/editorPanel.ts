@@ -2,6 +2,8 @@ import { randomBytes } from 'node:crypto';
 import * as vscode from 'vscode';
 import { parseBundleId, type Bundle } from '../../core/model/bundle';
 import {
+  copyPanelState,
+  copyUiState,
   DEFAULT_UI_STATE,
   isPanelState,
   isUiState,
@@ -13,7 +15,7 @@ import { buildBundleViewModel } from '../../shared/viewModel';
 import { localize } from '../localize';
 import type { IndexedRoot, IndexSnapshot, WorkspaceIndex } from '../services/workspaceIndex';
 import { routeMessage } from './messageRouter';
-import { webviewHtml } from './webviewHtml';
+import { pageLanguage, webviewHtml } from './webviewHtml';
 
 export const EDITOR_VIEW_TYPE = 'eduI18n.editor';
 
@@ -51,9 +53,7 @@ export class EditorPanels implements vscode.Disposable {
   /** Shows the editor of a bundle; if it is open, it comes to the front. */
   open(root: IndexedRoot, bundle: Bundle): EditorPanel {
     const target: PanelState = { folder: root.folder.uri.toString(), bundleId: bundle.id };
-    const open = [...this.panels].find(
-      (panel) => panel.target.folder === target.folder && panel.target.bundleId === target.bundleId,
-    );
+    const open = this.find(target);
     if (open) {
       open.panel.reveal();
       return open;
@@ -64,14 +64,24 @@ export class EditorPanels implements vscode.Disposable {
     return this.add(panel, target);
   }
 
-  /** Takes over a panel VS Code restored after a restart; one whose state is not readable is closed. */
+  /**
+   * Takes over a panel VS Code restored after a restart. One whose state is not readable is closed, and so is one
+   * whose bundle got its editor meanwhile: VS Code restores a tab only when it is first shown, which may be
+   * after the bundle was opened from the tree.
+   */
   restore(panel: vscode.WebviewPanel, state: unknown): EditorPanel | undefined {
     if (!isPanelState(state)) {
       this.services.log.warn('Closed a restored editor whose saved state is not readable.');
       panel.dispose();
       return undefined;
     }
-    return this.add(panel, state);
+    const open = this.find(state);
+    if (open) {
+      panel.dispose();
+      open.panel.reveal();
+      return open;
+    }
+    return this.add(panel, copyPanelState(state));
   }
 
   /** Leaves the panels open: VS Code restores them in the next session. */
@@ -80,6 +90,12 @@ export class EditorPanels implements vscode.Disposable {
       panel.dispose();
     }
     vscode.Disposable.from(...this.subscriptions).dispose();
+  }
+
+  private find(target: PanelState): EditorPanel | undefined {
+    return [...this.panels].find(
+      (panel) => panel.target.folder === target.folder && panel.target.bundleId === target.bundleId,
+    );
   }
 
   private add(panel: vscode.WebviewPanel, target: PanelState): EditorPanel {
@@ -116,7 +132,7 @@ export class EditorPanel implements vscode.Disposable {
       nonce: randomBytes(16).toString('base64'),
       scriptUri: panel.webview.asWebviewUri(vscode.Uri.joinPath(files, 'main.js')).toString(),
       styleUri: panel.webview.asWebviewUri(vscode.Uri.joinPath(files, 'main.css')).toString(),
-      language: vscode.env.language,
+      language: pageLanguage(vscode.env.language, vscode.l10n.bundle),
       title: name,
     });
     this.subscriptions = [
@@ -132,7 +148,7 @@ export class EditorPanel implements vscode.Disposable {
       {
         ready: () => this.start(),
         uiState: async ({ state }) => {
-          await this.services.workspaceState.update(this.stateKey(), state);
+          await this.services.workspaceState.update(this.stateKey(), copyUiState(state));
         },
         undo: () => this.services.undo(),
       },
@@ -186,7 +202,7 @@ export class EditorPanel implements vscode.Disposable {
   /** The view state the bundle had when its editor was last used; a state of an older version is ignored. */
   private storedUiState(): UiState {
     const stored = this.services.workspaceState.get<unknown>(this.stateKey());
-    return isUiState(stored) ? stored : DEFAULT_UI_STATE;
+    return isUiState(stored) ? copyUiState(stored) : DEFAULT_UI_STATE;
   }
 
   private stateKey(): string {

@@ -120,7 +120,7 @@ suite('FileStore', () => {
     const fr = uriOf('common', 'fr');
     const before = await vscode.workspace.fs.readFile(fr);
     assert.deepEqual(await api.fileStore.write(ref, setAsk('Continuer ?')), { ok: true });
-    assert.deepEqual(await api.fileStore.undo(), { ok: true });
+    assert.equal((await api.fileStore.undo())?.ok, true);
     assert.deepEqual(await vscode.workspace.fs.readFile(fr), before);
   });
 
@@ -140,7 +140,7 @@ suite('FileStore', () => {
     );
     assert.deepEqual(result, { ok: true });
     assert.equal(await read(es), '{}\n');
-    assert.deepEqual(await api.fileStore.undo(), { ok: true });
+    assert.equal((await api.fileStore.undo())?.ok, true);
     assert.equal(await exists(es), false);
   });
 
@@ -189,7 +189,7 @@ suite('FileStore', () => {
     const refused = await api.fileStore.undo();
     assert.ok(refused && !refused.ok && refused.reason === 'dirty');
     await vscode.commands.executeCommand('workbench.action.revertAndCloseActiveEditor');
-    assert.deepEqual(await api.fileStore.undo(), { ok: true });
+    assert.equal((await api.fileStore.undo())?.ok, true);
     assert.deepEqual(await vscode.workspace.fs.readFile(fr), before);
   });
 
@@ -233,7 +233,7 @@ suite('FileStore', () => {
     const failed = await store.undo();
     assert.ok(failed && !failed.ok && failed.reason === 'error', JSON.stringify(failed));
     failReads = false;
-    assert.deepEqual(await store.undo(), { ok: true });
+    assert.equal((await store.undo())?.ok, true);
     assert.deepEqual(await vscode.workspace.fs.readFile(fr), before);
   });
 
@@ -241,7 +241,7 @@ suite('FileStore', () => {
     const store = new FileStore(api.index, log, { limits: { undoEntries: 100, undoBytes: 1 } });
     assert.deepEqual(await store.write(ref, setAsk('Un')), { ok: true });
     assert.deepEqual(await store.write(ref, setAsk('Deux')), { ok: true });
-    assert.deepEqual(await store.undo(), { ok: true });
+    assert.equal((await store.undo())?.ok, true);
     assert.equal(await store.undo(), undefined);
     assert.ok((await read(uriOf('common', 'fr'))).includes('"ASK": "Un"'));
   });

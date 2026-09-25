@@ -1,7 +1,9 @@
 import type { BundleViewModel, CellView, RowView } from './viewModel';
 
-export type FilterScope = 'all' | 'keys' | 'texts';
-export type StatusFilter = 'all' | 'missing' | 'findings' | 'empty';
+export const FILTER_SCOPES = ['all', 'keys', 'texts'] as const;
+export type FilterScope = (typeof FILTER_SCOPES)[number];
+export const STATUS_FILTERS = ['all', 'missing', 'findings', 'empty'] as const;
+export type StatusFilter = (typeof STATUS_FILTERS)[number];
 
 /** Which rows of a bundle the editor shows; part of the view state the host keeps per bundle (B7). */
 export interface RowFilter {

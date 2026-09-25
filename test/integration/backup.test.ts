@@ -197,7 +197,7 @@ suite('Backups', () => {
     assert.deepEqual(await vscode.workspace.fs.readFile(fr()), before);
     assert.equal((await backups.list())[0]!.reason, 'restore');
     // A restore is one write: undo brings the state before it back.
-    assert.deepEqual(await store.undo(), { ok: true });
+    assert.equal((await store.undo())?.ok, true);
     assert.ok(new TextDecoder().decode(await vscode.workspace.fs.readFile(fr())).includes('Autre chose ?'));
   });
 

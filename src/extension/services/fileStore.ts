@@ -56,6 +56,12 @@ export type WriteResult =
   /** Reading or writing failed. The files got their old bytes back, except `notRestored` (may be damaged). */
   | { ok: false; reason: 'error'; message: string; notRestored?: vscode.Uri[] };
 
+/** A failure to read or write, the only result a step can end with before it has a result of its own. */
+type WriteError = Extract<WriteResult, { reason: 'error' }>;
+
+/** What an undo did: which files got their bytes back, or why none did. */
+export type UndoResult = { ok: true; files: vscode.Uri[] } | Exclude<WriteResult, { ok: true }>;
+
 /** Plans per write: when files change on disk between planning and writing, the edit is planned again. */
 const PLAN_ATTEMPTS = 3;
 
@@ -96,7 +102,7 @@ export class FileStore {
   }
 
   /** Restores the files of the last write, if they still have the bytes it wrote. Undefined: nothing to undo. */
-  undo(): Promise<WriteResult | undefined> {
+  undo(): Promise<UndoResult | undefined> {
     return this.enqueue(() => this.undoNow());
   }
 
@@ -111,8 +117,8 @@ export class FileStore {
   }
 
   /** One write or undo at a time, in call order; unexpected errors become results. */
-  private enqueue<T>(task: () => Promise<T>): Promise<T | WriteResult> {
-    return this.exclusive(async (): Promise<T | WriteResult> => {
+  private enqueue<T>(task: () => Promise<T>): Promise<T | WriteError> {
+    return this.exclusive(async (): Promise<T | WriteError> => {
       try {
         return await task();
       } catch (error) {
@@ -193,12 +199,12 @@ export class FileStore {
     }
   }
 
-  private async undoNow(): Promise<WriteResult | undefined> {
+  private async undoNow(): Promise<UndoResult | undefined> {
     const entry = this.history.pop();
     if (!entry) {
       return undefined;
     }
-    let result: WriteResult;
+    let result: UndoResult;
     try {
       result = await this.undoEntry(entry);
     } catch (error) {
@@ -214,7 +220,7 @@ export class FileStore {
     return result;
   }
 
-  private async undoEntry(entry: UndoEntry): Promise<WriteResult> {
+  private async undoEntry(entry: UndoEntry): Promise<UndoResult> {
     const dirty = entry.files.filter((file) => isDirty(file.uri)).map((file) => file.uri);
     if (dirty.length > 0) {
       return { ok: false, reason: 'dirty', files: dirty };
@@ -236,7 +242,7 @@ export class FileStore {
     }
     this.log.info(`Undid the write of ${entry.files.map((file) => relative(file.uri)).join(', ')}`);
     await this.reindex();
-    return { ok: true };
+    return { ok: true, files: entry.files.map((file) => file.uri) };
   }
 
   private async restoreNow(files: readonly RestoredFile[]): Promise<WriteResult> {
@@ -303,7 +309,7 @@ export class FileStore {
   }
 
   /** Writes all files or none; the failure, if any, as a result. */
-  private async putAll(files: Put[], restore: Put[]): Promise<WriteResult | undefined> {
+  private async putAll(files: Put[], restore: Put[]): Promise<WriteError | undefined> {
     const failure = await putAllOrNone(this.files, files, restore, this.log);
     if (!failure) {
       return undefined;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { webviewHtml, type WebviewPage } from '../../../src/extension/panels/webviewHtml';
+import { pageLanguage, webviewHtml, type WebviewPage } from '../../../src/extension/panels/webviewHtml';
 
 const page: WebviewPage = {
   cspSource: 'https://*.vscode-cdn.net',
@@ -63,5 +63,13 @@ describe('webviewHtml', () => {
     expect(html).toContain('src="https://x/&quot;&gt;&lt;script&gt;alert(1)&lt;/script&gt;"');
     expect(html).toContain('<html lang="de&quot; onload=&quot;x">');
     expect([...html.matchAll(/<script\b/g)]).toHaveLength(1);
+  });
+});
+
+describe('pageLanguage', () => {
+  it('is the language of VS Code only when the extension has texts in it; otherwise the texts are English', () => {
+    expect(pageLanguage('de', { Search: 'Suchen' })).toBe('de');
+    expect(pageLanguage('fr', undefined)).toBe('en');
+    expect(pageLanguage('en', undefined)).toBe('en');
   });
 });

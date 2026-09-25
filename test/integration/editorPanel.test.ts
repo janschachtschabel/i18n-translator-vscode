@@ -32,31 +32,30 @@ suite('editor panel', () => {
   teardown(() => vscode.commands.executeCommand('workbench.action.closeAllEditors'));
 
   test('opens one editor per bundle from the areas view; its webview loads and gets the bundle', async () => {
-    const { index, views } = await activateExtension();
+    const { index, views, editors } = await activateExtension();
     await index.refresh();
     const [root] = await views.areas.getChildren();
     const common = (await views.areas.getChildren(root)).find(
       (node) => node.kind === 'bundle' && node.bundle.name === 'common',
     );
-    assert.ok(common);
+    assert.ok(common?.kind === 'bundle');
     const { command } = views.areas.getTreeItem(common);
     assert.strictEqual(command?.command, 'eduI18n.openBundle');
 
-    const panel = await vscode.commands.executeCommand<EditorPanel>(
-      command.command,
-      ...(command.arguments ?? []),
+    // The command returns nothing (a result would travel to the workbench); the tests take the panel from the API.
+    assert.strictEqual(
+      await vscode.commands.executeCommand(command.command, ...(command.arguments ?? [])),
+      undefined,
     );
+    const panel = editors.open(common.root, common.bundle);
     // Only the webview's script (allowed by the CSP) sends `ready`; the host answers with init and the bundle.
     const [init, bundle] = await Promise.all([nextPost(panel, 'init'), nextPost(panel, 'bundle')]);
     assert.strictEqual(init.panelState.bundleId, bundle.model.bundleId);
     assert.strictEqual(bundle.model.name, 'common');
     assert.strictEqual(bundle.model.rows.length, 14);
 
-    const again = await vscode.commands.executeCommand<EditorPanel>(
-      command.command,
-      ...(command.arguments ?? []),
-    );
-    assert.strictEqual(again, panel);
+    await vscode.commands.executeCommand(command.command, ...(command.arguments ?? []));
+    assert.strictEqual(editors.open(common.root, common.bundle), panel);
     assert.deepStrictEqual(editorTabs(), ['common']);
   });
 
@@ -84,6 +83,56 @@ suite('editor panel', () => {
     );
     assert.ok(gone);
     assert.deepStrictEqual(await nextPost(gone, 'missing'), { type: 'missing', name: 'gone' });
+  });
+
+  test('leads a restored editor of a bundle that is open already to the open one', async () => {
+    const { index, editors } = await activateExtension();
+    const root = (await index.refresh()).roots[0]!;
+    const common = root.analysis.bundles.find((bundle) => bundle.name === 'common')!;
+    const open = editors.open(root, common);
+    // VS Code restores a tab only when it is shown, which may be after the tree opened the bundle.
+    const late = vscode.window.createWebviewPanel('eduI18n.editor', '', vscode.ViewColumn.One);
+    const disposed = new Promise<void>((resolve) => late.onDidDispose(() => resolve()));
+    assert.strictEqual(
+      editors.restore(late, { folder: root.folder.uri.toString(), bundleId: common.id }),
+      open,
+    );
+    await disposed;
+    // The tab list reaches the extension host later; the open panel is still there (a closed one would throw).
+    assert.strictEqual(open.panel.title, 'common');
+  });
+
+  test('follows index runs: missing while its files are gone, a new model when they are back', async () => {
+    const { index, editors } = await activateExtension();
+    const root = (await index.refresh()).roots[0]!;
+    const files = vscode.Uri.joinPath(root.folder.uri, root.analysis.root, 'zzz');
+    const bundleId = JSON.stringify([root.analysis.area.id, root.analysis.root, 'zzz']);
+    const editor = editors.restore(
+      vscode.window.createWebviewPanel('eduI18n.editor', '', vscode.ViewColumn.One),
+      {
+        folder: root.folder.uri.toString(),
+        bundleId,
+      },
+    );
+    assert.ok(editor);
+    assert.deepStrictEqual(await nextPost(editor, 'missing'), { type: 'missing', name: 'zzz' });
+    try {
+      const appeared = nextPost(editor, 'bundle');
+      await vscode.workspace.fs.writeFile(
+        vscode.Uri.joinPath(files, 'de.json'),
+        new TextEncoder().encode('{"A": "a"}\n'),
+      );
+      await index.refresh();
+      assert.deepStrictEqual(
+        (await appeared).model.rows.map((row) => row.key),
+        ['A'],
+      );
+    } finally {
+      const vanished = nextPost(editor, 'missing');
+      await vscode.workspace.fs.delete(files, { recursive: true });
+      await index.refresh();
+      await vanished;
+    }
   });
 
   test('closes a restored editor whose state it cannot read', async () => {
