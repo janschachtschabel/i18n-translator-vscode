@@ -144,6 +144,13 @@ suite('FileStore', () => {
     assert.equal(await exists(es), false);
   });
 
+  test('restores only files inside an indexed translation folder', async () => {
+    const outside = workspaceUri('restored.json');
+    const result = await api.fileStore.restore([{ uri: outside, bytes: encoder.encode('{}\n') }]);
+    assert.ok(!result.ok && result.reason === 'error', JSON.stringify(result));
+    assert.equal(await exists(outside), false);
+  });
+
   test('refuses a plan that would write outside its root', async () => {
     const result = await api.fileStore.write(ref, () => ({
       ok: true,

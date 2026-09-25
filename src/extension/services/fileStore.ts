@@ -18,7 +18,7 @@ import {
   type Put,
 } from './files';
 import { UndoHistory, type UndoEntry, type UndoLimits } from './undoHistory';
-import { insideRoot } from './uriPaths';
+import { insideRoot, relativeUriPath } from './uriPaths';
 import type { IndexedRoot, IndexSnapshot, WorkspaceIndex } from './workspaceIndex';
 
 /** One area root of a workspace folder: where an edit is planned and written. */
@@ -235,6 +235,15 @@ export class FileStore {
     if (!vscode.workspace.isTrusted) {
       return { ok: false, reason: 'untrusted' };
     }
+    // Like a write, a restore stays in the translation folders, whatever the backup it came from says.
+    const snapshot = this.index.current() ?? (await this.index.refresh());
+    const outside = files.find((file) => !snapshot.roots.some((indexed) => inRoot(file.uri, indexed)));
+    if (outside) {
+      const message = vscode.l10n.t('{file} lies outside the translation folders.', {
+        file: relative(outside.uri),
+      });
+      return { ok: false, reason: 'error', message };
+    }
     const dirty = files.filter((file) => isDirty(file.uri)).map((file) => file.uri);
     if (dirty.length > 0) {
       return { ok: false, reason: 'dirty', files: dirty };
@@ -315,4 +324,16 @@ export class FileStore {
       this.log.error('Indexing after writing failed.', error);
     }
   }
+}
+
+/** Whether a file lies inside the area root of an indexed workspace folder. */
+function inRoot(uri: vscode.Uri, indexed: IndexedRoot): boolean {
+  const folder = indexed.folder.uri;
+  const relPath = relativeUriPath(folder.path, uri.path);
+  return (
+    uri.scheme === folder.scheme &&
+    uri.authority === folder.authority &&
+    relPath !== undefined &&
+    insideRoot(relPath, indexed.analysis.root)
+  );
 }

@@ -8,6 +8,7 @@
   "{file} has a syntax error; fix it before changing texts in this bundle.": "{file} hat einen Syntaxfehler; beheben Sie ihn, bevor Sie Texte in dieser Einheit ändern.",
   "{file} has a value at {key} that is not a text; correct the file first.": "{file} hat bei {key} einen Wert, der kein Text ist; korrigieren Sie zuerst die Datei.",
   "{file} lies outside the translation folder {root}.": "{file} liegt außerhalb des Übersetzungsordners {root}.",
+  "{file} lies outside the translation folders.": "{file} liegt außerhalb der Übersetzungsordner.",
   "{key} already exists in {bundle}.": "{key} gibt es in {bundle} bereits.",
   "{key} collides with {other}: a key cannot be a text and contain other keys.": "{key} kollidiert mit {other}: Ein Key kann nicht zugleich Text sein und weitere Keys enthalten.",
   "{key} does not exist in {bundle}.": "{key} gibt es in {bundle} nicht.",
