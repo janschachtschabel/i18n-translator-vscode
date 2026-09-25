@@ -20,13 +20,16 @@ describe('revisionOf', () => {
     expect(revisionOf(bytes('foobar'))).toBe('85944171f73967e8');
   });
 
-  it('agrees with the plain algorithm on arbitrary bytes', () => {
+  it('agrees with the plain algorithm on arbitrary bytes and on every byte value', () => {
+    // A 32-bit linear congruential generator in integer arithmetic; its high bits vary best.
     let seed = 42;
-    const next = () => (seed = (seed * 1103515245 + 12345) % 2147483648);
+    const next = () => (seed = (Math.imul(seed, 1103515245) + 12345) >>> 0);
     for (let run = 0; run < 200; run++) {
-      const data = Uint8Array.from({ length: next() % 300 }, () => next() % 256);
+      const data = Uint8Array.from({ length: (next() >>> 16) % 300 }, () => next() >>> 24);
       expect(revisionOf(data)).toBe(reference(data));
     }
+    const everyByte = Uint8Array.from({ length: 256 }, (_, value) => value);
+    expect(revisionOf(everyByte)).toBe(reference(everyByte));
   });
 
   it('tells files apart that differ in one byte', () => {
