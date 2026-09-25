@@ -94,6 +94,16 @@ export function isWebviewToHost(value: unknown): value is WebviewToHost {
 }
 
 /**
+ * The request id of a message that claims to be an edit, if the id is readable: the host answers an invalid edit
+ * all the same, so that its cell does not wait for an answer forever.
+ */
+export function readableEditRequestId(value: unknown): string | undefined {
+  return isRecord(value) && value['type'] === 'edit' && isId(value['requestId'])
+    ? value['requestId']
+    : undefined;
+}
+
+/**
  * The fields of a checked view state and nothing else, for the host to keep: the checks bound the known fields,
  * and anything else the webview added must not be stored.
  */

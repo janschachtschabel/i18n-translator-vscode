@@ -14,7 +14,8 @@ export type EditProblemCode =
   | 'invalid-key'
   | 'invalid-locale'
   | 'locale-exists'
-  | 'changed';
+  | 'changed'
+  | 'missing-bundle';
 
 /** What the user should know before an edit that is possible. */
 export type EditWarningCode = 'exists-in-other-bundle';
@@ -44,6 +45,7 @@ export const EDIT_MESSAGES: Readonly<Record<EditProblemCode | EditWarningCode, s
   'invalid-locale': '{locale} is not a valid language code for {area}.',
   'locale-exists': 'Every bundle already has a file for {locale}.',
   changed: '{key} in {locale} was changed in the meantime.',
+  'missing-bundle': '{bundle} is no longer in the workspace; nothing was written.',
   'exists-in-other-bundle':
     '{top} also exists in {bundles}. At runtime, the bundle that comes last in the merge order replaces {top} of the others as a whole.',
 };

@@ -2,12 +2,11 @@ import * as assert from 'node:assert';
 import * as vscode from 'vscode';
 import { planEdit } from '../../src/core/edit/planEdit';
 import { keyFromSegments } from '../../src/core/model/keys';
-import type { EditorPanel } from '../../src/extension/panels/editorPanel';
 import { rootRef } from '../../src/extension/services/fileStore';
 import { sameBytes } from '../../src/extension/services/files';
 import { DEFAULT_FILTER } from '../../src/shared/filter';
-import { DEFAULT_UI_STATE, type HostToWebview, type UiState } from '../../src/shared/protocol';
-import { activateExtension, waitFor } from './helpers';
+import { DEFAULT_UI_STATE, type UiState } from '../../src/shared/protocol';
+import { activateExtension, nextPost } from './helpers';
 
 function editorTabs(): string[] {
   return vscode.window.tabGroups.all
@@ -16,16 +15,6 @@ function editorTabs(): string[] {
       (tab) => tab.input instanceof vscode.TabInputWebview && tab.input.viewType.endsWith('eduI18n.editor'),
     )
     .map((tab) => tab.label);
-}
-
-/** The next message of `type` the host sends to the webview. */
-function nextPost<T extends HostToWebview['type']>(
-  panel: EditorPanel,
-  type: T,
-): Promise<Extract<HostToWebview, { type: T }>> {
-  return waitFor(panel.onDidPost, (message) => message.type === type) as Promise<
-    Extract<HostToWebview, { type: T }>
-  >;
 }
 
 suite('editor panel', () => {

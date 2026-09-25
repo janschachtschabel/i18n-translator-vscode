@@ -8,6 +8,7 @@ import {
   isUiState,
   isWebviewToHost,
   MAX_TEXT_LENGTH,
+  readableEditRequestId,
 } from '../../../src/shared/protocol';
 
 const entryId = keyFromSegments(['WORKSPACE', 'TITLE']).id;
@@ -95,6 +96,29 @@ describe('isWebviewToHost', () => {
     expect(isWebviewToHost({ type: 'uiState', state: { ...uiState, hiddenLocales: codes(201) } })).toBe(
       false,
     );
+  });
+});
+
+describe('readableEditRequestId', () => {
+  it('reads the request of an edit even if the rest is invalid, so that the host can answer it', () => {
+    expect(readableEditRequestId(edit)).toBe('r1');
+    expect(readableEditRequestId({ ...edit, entryId: 'WORKSPACE.TITLE', value: 42 })).toBe('r1');
+    expect(readableEditRequestId({ type: 'edit', requestId: 'r2' })).toBe('r2');
+  });
+
+  it('reads nothing from other messages or from a request that is not readable itself', () => {
+    for (const message of [
+      undefined,
+      null,
+      'edit',
+      { type: 'undo', requestId: 'r1' },
+      { ...edit, requestId: '' },
+      { ...edit, requestId: 1 },
+      { ...edit, requestId: 'x'.repeat(201) },
+      { requestId: 'r1' },
+    ]) {
+      expect(readableEditRequestId(message), JSON.stringify(message)).toBeUndefined();
+    }
   });
 });
 

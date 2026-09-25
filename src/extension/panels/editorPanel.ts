@@ -7,13 +7,18 @@ import {
   DEFAULT_UI_STATE,
   isPanelState,
   isUiState,
+  isWebviewToHost,
+  readableEditRequestId,
   type HostToWebview,
   type PanelState,
   type UiState,
 } from '../../shared/protocol';
 import { buildBundleViewModel } from '../../shared/viewModel';
 import { localize } from '../localize';
+import type { FileStore } from '../services/fileStore';
 import type { IndexedRoot, IndexSnapshot, WorkspaceIndex } from '../services/workspaceIndex';
+import { findBundle } from './bundleTarget';
+import { applyEdit } from './editHandler';
 import { routeMessage } from './messageRouter';
 import { pageLanguage, webviewHtml } from './webviewHtml';
 
@@ -25,6 +30,8 @@ export interface EditorServices {
   /** Keeps the view state of each bundle (B7). */
   workspaceState: vscode.Memento;
   index: WorkspaceIndex;
+  /** Writes the edits (B1). */
+  fileStore: FileStore;
   log: vscode.LogOutputChannel;
   /** Undoes the last change to the translation files and tells the user how it went. */
   undo: () => Promise<void>;
@@ -142,11 +149,15 @@ export class EditorPanel implements vscode.Disposable {
   }
 
   /** Handles a message from the webview; anything invalid is logged and dropped. */
-  receive(message: unknown): Promise<void> {
-    return routeMessage(
+  async receive(message: unknown): Promise<void> {
+    await routeMessage(
       message,
       {
         ready: () => this.start(),
+        edit: async (request) => {
+          const answer = await applyEdit(request, this.target, this.services);
+          await this.post({ type: 'writeResult', requestId: request.requestId, ...answer });
+        },
         uiState: async ({ state }) => {
           await this.services.workspaceState.update(this.stateKey(), copyUiState(state));
         },
@@ -154,6 +165,16 @@ export class EditorPanel implements vscode.Disposable {
       },
       this.services.log,
     );
+    // The router dropped an edit it could not read; its cell still gets an answer, so that it does not wait.
+    const requestId = isWebviewToHost(message) ? undefined : readableEditRequestId(message);
+    if (requestId !== undefined) {
+      await this.post({
+        type: 'writeResult',
+        requestId,
+        ok: false,
+        message: vscode.l10n.t('The change could not be read; nothing was written.'),
+      });
+    }
   }
 
   /** Shows the bundle as an index run found it, or that it is gone. */
@@ -214,20 +235,4 @@ export class EditorPanel implements vscode.Disposable {
     this.posted.fire(message);
     await this.panel.webview.postMessage(message);
   }
-}
-
-function findBundle(
-  snapshot: IndexSnapshot,
-  target: PanelState,
-): { root: IndexedRoot; bundle: Bundle } | undefined {
-  for (const root of snapshot.roots) {
-    const bundle =
-      root.folder.uri.toString() === target.folder
-        ? root.analysis.bundles.find((candidate) => candidate.id === target.bundleId)
-        : undefined;
-    if (bundle) {
-      return { root, bundle };
-    }
-  }
-  return undefined;
 }

@@ -37,6 +37,7 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
     extensionUri: context.extensionUri,
     workspaceState: context.workspaceState,
     index,
+    fileStore,
     log,
     undo: () => undoLastChange(fileStore),
   });

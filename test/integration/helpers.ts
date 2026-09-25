@@ -1,5 +1,7 @@
 import * as vscode from 'vscode';
 import type { ExtensionApi } from '../../src/extension/extension';
+import type { EditorPanel } from '../../src/extension/panels/editorPanel';
+import type { HostToWebview } from '../../src/shared/protocol';
 
 export const EXTENSION_ID = 'janschachtschabel.edu-sharing-i18n';
 
@@ -38,4 +40,14 @@ export function waitFor<T>(
       }
     });
   });
+}
+
+/** The next message of `type` the host sends to the webview. */
+export function nextPost<T extends HostToWebview['type']>(
+  panel: EditorPanel,
+  type: T,
+): Promise<Extract<HostToWebview, { type: T }>> {
+  return waitFor(panel.onDidPost, (message) => message.type === type) as Promise<
+    Extract<HostToWebview, { type: T }>
+  >;
 }
