@@ -10,7 +10,7 @@ import {
   type RootAnalysis,
   type SourceFile,
 } from '../../core/pipeline/analyze';
-import { excludeGlob, readSettings } from '../config';
+import { excludeGlob, readBackupSettings, readSettings } from '../config';
 import { messageOf } from './errors';
 import { SerialRunner } from './serialRunner';
 import { relativeUriPath } from './uriPaths';
@@ -111,6 +111,7 @@ export class WorkspaceIndex implements vscode.Disposable {
     const errors: string[] = [];
     const patterns = new Map<string, vscode.RelativePattern>();
     const folders = vscode.workspace.workspaceFolders ?? [];
+    errors.push(...readBackupSettings().errors);
 
     for (const folder of folders) {
       const report = (message: string) =>

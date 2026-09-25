@@ -20,16 +20,23 @@ export interface Settings {
   severityOverrides: SeverityOverrides;
   ignoreSameAsReference: string[];
   missingDiagnostics: MissingDiagnostics;
+}
+
+/** Validated `eduI18n.backup.*` settings. Unlike {@link Settings}, they apply to the window, not to a folder. */
+export interface BackupSettings {
   /** Minutes after which the next write backs up the translation files again; 0 turns this off. */
-  backupIntervalMinutes: number;
+  intervalMinutes: number;
   /** Backups to keep. */
-  backupKeep: number;
+  keep: number;
 }
 
 /** Raw values of the `eduI18n.*` settings, keyed without the prefix (e.g. `checks.severity`). */
 export type RawSettings = Readonly<Record<string, unknown>>;
 
-/** Every setting {@link parseSettings} reads; the manifest declares exactly these (checked by a test). */
+/**
+ * Every setting {@link parseSettings} reads, per workspace folder (scope `resource` in the manifest). The
+ * manifest declares exactly these and {@link BACKUP_SETTING_KEYS} (checked by a test).
+ */
 export const SETTING_KEYS = [
   'referenceLanguage',
   'baseFileLanguage',
@@ -40,9 +47,15 @@ export const SETTING_KEYS = [
   'checks.severity',
   'checks.ignoreSameAsReference',
   'diagnostics.missing',
-  'backup.intervalMinutes',
-  'backup.keep',
 ] as const;
+
+/** The settings {@link parseBackupSettings} reads, for the window (scope `window`). */
+export const BACKUP_SETTING_KEYS = ['backup.intervalMinutes', 'backup.keep'] as const;
+
+/** Allowed values of `backup.keep`, as declared in the manifest. */
+export const BACKUP_KEEP_LIMITS = { minimum: 1, maximum: 100 } as const;
+
+export const DEFAULT_BACKUP_SETTINGS: BackupSettings = { intervalMinutes: 10, keep: 10 };
 
 export const DEFAULT_SETTINGS: Settings = {
   areas: [...PRESETS],
@@ -54,8 +67,6 @@ export const DEFAULT_SETTINGS: Settings = {
   severityOverrides: {},
   ignoreSameAsReference: ['OK', 'E-Mail', 'CC-0', 'ID'],
   missingDiagnostics: 'aggregate',
-  backupIntervalMinutes: 10,
-  backupKeep: 10,
 };
 
 const SEVERITY_VALUES = ['error', 'warning', 'info', 'off'] as const;
@@ -64,18 +75,7 @@ const MISSING_DIAGNOSTICS: readonly MissingDiagnostics[] = ['aggregate', 'indivi
 /** Validates user settings; invalid values fall back to the default and are reported, never thrown. */
 export function parseSettings(raw: RawSettings): { settings: Settings; errors: string[] } {
   const errors: string[] = [];
-  const pick = <T>(key: string, valid: (value: unknown) => boolean, fallback: T): T => {
-    const value = raw[key];
-    if (value === undefined) {
-      return fallback;
-    }
-    if (valid(value)) {
-      return value as T;
-    }
-    errors.push(`eduI18n.${key} has an invalid value; the default is used.`);
-    return fallback;
-  };
-
+  const pick = picker(raw, errors);
   const settings: Settings = {
     areas: parseAreas(raw['areas'], errors),
     roots: normalizeRoots(pick('roots', isRootsMap, DEFAULT_SETTINGS.roots), errors),
@@ -94,18 +94,43 @@ export function parseSettings(raw: RawSettings): { settings: Settings; errors: s
       (value) => MISSING_DIAGNOSTICS.includes(value as MissingDiagnostics),
       DEFAULT_SETTINGS.missingDiagnostics,
     ),
-    backupIntervalMinutes: pick(
+  };
+  return { settings, errors };
+}
+
+/** Validates the backup settings like {@link parseSettings} does the others. */
+export function parseBackupSettings(raw: RawSettings): { settings: BackupSettings; errors: string[] } {
+  const errors: string[] = [];
+  const pick = picker(raw, errors);
+  const { minimum, maximum } = BACKUP_KEEP_LIMITS;
+  const settings: BackupSettings = {
+    intervalMinutes: pick(
       'backup.intervalMinutes',
       (value) => typeof value === 'number' && Number.isFinite(value) && value >= 0,
-      DEFAULT_SETTINGS.backupIntervalMinutes,
+      DEFAULT_BACKUP_SETTINGS.intervalMinutes,
     ),
-    backupKeep: pick(
+    keep: pick(
       'backup.keep',
-      (value) => Number.isInteger(value) && (value as number) >= 1 && (value as number) <= 100,
-      DEFAULT_SETTINGS.backupKeep,
+      (value) => Number.isInteger(value) && (value as number) >= minimum && (value as number) <= maximum,
+      DEFAULT_BACKUP_SETTINGS.keep,
     ),
   };
   return { settings, errors };
+}
+
+/** Takes a raw value if it is valid; otherwise reports it and takes the fallback. */
+function picker(raw: RawSettings, errors: string[]) {
+  return <T>(key: string, valid: (value: unknown) => boolean, fallback: T): T => {
+    const value = raw[key];
+    if (value === undefined) {
+      return fallback;
+    }
+    if (valid(value)) {
+      return value as T;
+    }
+    errors.push(`eduI18n.${key} has an invalid value; the default is used.`);
+    return fallback;
+  };
 }
 
 function parseAreas(value: unknown, errors: string[]): AreaDefinition[] {

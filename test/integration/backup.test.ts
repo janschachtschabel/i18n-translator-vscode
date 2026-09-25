@@ -6,7 +6,8 @@ import * as vscode from 'vscode';
 import { planEdit, type BundleEdit } from '../../src/core/edit/planEdit';
 import { keyFromSegments } from '../../src/core/model/keys';
 import type { ExtensionApi } from '../../src/extension/extension';
-import { BackupService, type BackupSettings } from '../../src/extension/services/backupService';
+import type { BackupSettings } from '../../src/core/config/settings';
+import { BackupService } from '../../src/extension/services/backupService';
 import { FileStore, rootRef, type Planner, type RootRef } from '../../src/extension/services/fileStore';
 import { activateExtension, workspaceUri } from './helpers';
 

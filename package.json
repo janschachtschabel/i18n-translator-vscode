@@ -480,6 +480,7 @@
             "off"
           ],
           "default": "aggregate",
+          "scope": "resource",
           "markdownDescription": "%config.diagnostics.missing%",
           "enumDescriptions": [
             "%config.diagnostics.missing.aggregate%",

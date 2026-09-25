@@ -3,13 +3,22 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { FORMAT_IDS, MERGE_SEMANTICS } from '../../src/core/area/areaDefinition';
 import { RULE_IDS } from '../../src/core/checks/types';
-import { DEFAULT_SETTINGS, SETTING_KEYS } from '../../src/core/config/settings';
+import {
+  BACKUP_KEEP_LIMITS,
+  BACKUP_SETTING_KEYS,
+  DEFAULT_BACKUP_SETTINGS,
+  DEFAULT_SETTINGS,
+  SETTING_KEYS,
+} from '../../src/core/config/settings';
 
 interface SettingSchema {
   default?: unknown;
   enum?: unknown[];
   properties?: Record<string, SettingSchema>;
   items?: SettingSchema;
+  scope?: string;
+  minimum?: number;
+  maximum?: number;
 }
 
 const manifest = JSON.parse(readFileSync(join(__dirname, '..', '..', 'package.json'), 'utf8')) as {
@@ -20,7 +29,21 @@ const setting = (key: string): SettingSchema => properties[`eduI18n.${key}`]!;
 
 describe('package.json configuration', () => {
   it('declares exactly the settings the extension reads', () => {
-    expect(Object.keys(properties).sort()).toEqual(SETTING_KEYS.map((key) => `eduI18n.${key}`).sort());
+    expect(Object.keys(properties).sort()).toEqual(
+      [...SETTING_KEYS, ...BACKUP_SETTING_KEYS].map((key) => `eduI18n.${key}`).sort(),
+    );
+  });
+
+  it('gives folder settings the resource scope and backup settings the window scope', () => {
+    // VS Code logs a warning for every read with the wrong scope: folder settings are read per folder,
+    // backup settings without one.
+    expect(SETTING_KEYS.filter((key) => setting(key).scope !== 'resource')).toEqual([]);
+    expect(BACKUP_SETTING_KEYS.filter((key) => (setting(key).scope ?? 'window') !== 'window')).toEqual([]);
+  });
+
+  it('limits the backup settings as the code does', () => {
+    expect(setting('backup.intervalMinutes').minimum).toBe(0);
+    expect(setting('backup.keep')).toMatchObject(BACKUP_KEEP_LIMITS);
   });
 
   it('uses the same defaults as the code', () => {
@@ -33,8 +56,8 @@ describe('package.json configuration', () => {
     expect(setting('checks.severity').default).toEqual({});
     expect(setting('checks.ignoreSameAsReference').default).toEqual(DEFAULT_SETTINGS.ignoreSameAsReference);
     expect(setting('diagnostics.missing').default).toBe(DEFAULT_SETTINGS.missingDiagnostics);
-    expect(setting('backup.intervalMinutes').default).toBe(DEFAULT_SETTINGS.backupIntervalMinutes);
-    expect(setting('backup.keep').default).toBe(DEFAULT_SETTINGS.backupKeep);
+    expect(setting('backup.intervalMinutes').default).toBe(DEFAULT_BACKUP_SETTINGS.intervalMinutes);
+    expect(setting('backup.keep').default).toBe(DEFAULT_BACKUP_SETTINGS.keep);
   });
 
   it('offers every rule id for severity overrides', () => {

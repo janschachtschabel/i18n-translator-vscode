@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { ANGULAR_PRESET } from '../../../../src/core/area/presets';
 import { DEFAULT_VARIANTS } from '../../../../src/core/checks/variants';
-import { DEFAULT_SETTINGS, parseSettings } from '../../../../src/core/config/settings';
+import {
+  DEFAULT_BACKUP_SETTINGS,
+  DEFAULT_SETTINGS,
+  parseBackupSettings,
+  parseSettings,
+} from '../../../../src/core/config/settings';
 
 describe('parseSettings', () => {
   it('uses the defaults when nothing is configured', () => {
@@ -54,16 +59,6 @@ describe('parseSettings', () => {
     expect(errors[0]).toMatch(/de-x/);
   });
 
-  it('reads the backup interval and how many backups to keep', () => {
-    expect(parseSettings({ 'backup.intervalMinutes': 0, 'backup.keep': 3 }).settings).toMatchObject({
-      backupIntervalMinutes: 0,
-      backupKeep: 3,
-    });
-    const invalid = parseSettings({ 'backup.intervalMinutes': -1, 'backup.keep': 0.5 });
-    expect(invalid.settings).toMatchObject({ backupIntervalMinutes: 10, backupKeep: 10 });
-    expect(invalid.errors).toHaveLength(2);
-  });
-
   it('falls back to the default for values of the wrong type', () => {
     const { settings, errors } = parseSettings({ referenceLanguage: 42, exclude: 'node_modules', roots: [] });
     expect(settings.referenceLanguage).toBe('de');
@@ -84,5 +79,31 @@ describe('parseSettings', () => {
     ).toEqual({
       'edu-sharing.angular': ['Frontend/src/assets/i18n'],
     });
+  });
+});
+
+describe('parseBackupSettings', () => {
+  it('uses the defaults when nothing is configured', () => {
+    expect(parseBackupSettings({})).toEqual({ settings: DEFAULT_BACKUP_SETTINGS, errors: [] });
+    expect(DEFAULT_BACKUP_SETTINGS).toEqual({ intervalMinutes: 10, keep: 10 });
+  });
+
+  it('reads the interval and how many backups to keep', () => {
+    expect(parseBackupSettings({ 'backup.intervalMinutes': 0, 'backup.keep': 100 })).toEqual({
+      settings: { intervalMinutes: 0, keep: 100 },
+      errors: [],
+    });
+  });
+
+  it('falls back to the defaults for values out of range or of the wrong type', () => {
+    for (const [intervalMinutes, keep] of [
+      [-1, 0],
+      ['10', 101],
+      [Number.NaN, 0.5],
+    ] as const) {
+      const result = parseBackupSettings({ 'backup.intervalMinutes': intervalMinutes, 'backup.keep': keep });
+      expect(result.settings).toEqual(DEFAULT_BACKUP_SETTINGS);
+      expect(result.errors).toHaveLength(2);
+    }
   });
 });

@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
-import { readSettings } from '../config';
+import type { BackupSettings } from '../../core/config/settings';
+import { readBackupSettings } from '../config';
 import { messageOf } from './errors';
 import type { RestoredFile } from './fileStore';
 import { readIfExists } from './files';
@@ -7,13 +8,6 @@ import { isPlainRelativePath } from './uriPaths';
 import type { IndexSnapshot, WorkspaceIndex } from './workspaceIndex';
 
 export type BackupReason = 'first-write' | 'several-files' | 'interval' | 'manual' | 'restore';
-
-export interface BackupSettings {
-  /** Backups to keep; older ones are deleted. */
-  keep: number;
-  /** Minutes after which the next write backs up again; 0 turns this off. */
-  intervalMinutes: number;
-}
 
 export interface BackupInfo {
   /** Folder name below `backups/`; sorts by creation time. */
@@ -38,12 +32,6 @@ const REASONS: readonly BackupReason[] = ['first-write', 'several-files', 'inter
 /** An ISO timestamp with `-` for `:` and `.`, plus a counter for backups in the same millisecond. */
 const ID = /^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z(?:-\d+)?$/;
 
-/** The validated backup settings; invalid values fall back to the defaults (the index reports them). */
-export function readBackupSettings(): BackupSettings {
-  const { settings } = readSettings();
-  return { keep: settings.backupKeep, intervalMinutes: settings.backupIntervalMinutes };
-}
-
 /**
  * Copies every indexed translation file into the extension's storage for this workspace, never into the
  * repository: before the first write of a session, before writes of several files, at the next write once
@@ -58,7 +46,8 @@ export class BackupService {
     private readonly storage: vscode.Uri | undefined,
     private readonly index: WorkspaceIndex,
     private readonly log: vscode.LogOutputChannel,
-    private readonly settings: () => BackupSettings = readBackupSettings,
+    // Invalid values fall back to the defaults; the index reports them.
+    private readonly settings: () => BackupSettings = () => readBackupSettings().settings,
     private readonly now: () => number = Date.now,
   ) {}
 
