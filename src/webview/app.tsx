@@ -1,5 +1,6 @@
 import type { BundleViewModel } from '../shared/viewModel';
 import { LiveRegion } from './a11y/liveRegion';
+import { FilterBar } from './components/filterBar';
 import { LanguageChips } from './components/languageChips';
 import { Toolbar } from './components/toolbar';
 import { formatNumber, l10n } from './l10n';
@@ -49,6 +50,7 @@ function BundleView({ store, model }: { store: EditorStore; model: BundleViewMod
       </p>
       <Toolbar store={store} />
       <LanguageChips store={store} locales={model.locales} />
+      <FilterBar store={store} model={model} />
     </>
   );
 }

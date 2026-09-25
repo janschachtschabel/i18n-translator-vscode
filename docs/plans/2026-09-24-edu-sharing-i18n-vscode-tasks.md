@@ -864,6 +864,25 @@ was nicht ausdrücklich geändert wurde.
 >   - Die Kontraste mit den echten Theme-Farben prüft 2.16.
 > - **Tests:** Die Webview-Tests nutzen den echten deutschen Katalog (`test/unit/webview/support.tsx`).
 > - **Für 2.14:** Design §10 sieht `eduI18n.openEditor` mit Auswahl der Einheit in der Befehlspalette vor. Bisher öffnet nur die Seitenleiste den Editor.
+>
+> **Umsetzungsnotizen Task 2.9 (25.09.2026):**
+> - **`filterRows(model, filter, hiddenLocales)`** (`src/shared/filter.ts`):
+>   - Gesucht wird in Keys und Texten, nur in Keys oder nur in Texten. Texte heißt: die der sichtbaren Sprachen oder die einer gewählten Sprache, auch wenn diese ausgeblendet ist.
+>   - Als Text oder als regulärer Ausdruck (Flag `u`, ohne Groß-/Kleinschreibung zusätzlich `i`). Ein ungültiger Ausdruck filtert nicht; `invalidPattern` nennt den Grund der JavaScript-Engine (englisch).
+>   - Status „fehlend“ heißt `missing-key` in einer sichtbaren vollen Sprache, wie bei den Zählern der Chips. Sprachen ohne Datei zeigen `missing-file` am Chip.
+>   - „Befunde“ heißt ein Befund in einer sichtbaren Zelle, „leer“ ein leerer Text in einer sichtbaren Sprache.
+> - **Ansichtszustand:**
+>   - Der Filter gehört zum Ansichtszustand (B7) und wird mit ihm gespeichert. `isUiState` prüft ihn; die Suche hat höchstens 1.000 Zeichen, und das Eingabefeld begrenzt sie ebenso.
+>   - Zustände aus 2.8 ohne Filter ersetzt der Standard.
+> - **Filterleiste:**
+>   - Sie ist ein `role="search"`. Das `<search>`-Element kennen die Testbibliothek und ältere Hilfsmittel nicht.
+>   - Enthalten sind ein beschriftetes Suchfeld, „Suchen in“, „Regulärer Ausdruck“, „Groß-/Kleinschreibung beachten“ und „Zeigen“.
+>   - Darunter steht eine Statuszeile (`role="status"`): „3 von 14 Keys“ oder der Grund, warum der Ausdruck ungültig ist. Das Feld ist dann `aria-invalid` und verweist mit `aria-describedby` auf diese Zeile.
+> - **Tasten:**
+>   - `Strg+F` bzw. `Cmd+F` setzt den Cursor in die Suche, auch aus Textfeldern.
+>   - `Alt+M` schaltet zwischen „fehlend“ und „alle“. Am Mac geht das nicht, weil die Taste nach `key` erkannt wird und Option+M dort „µ“ tippt.
+> - **Rahmen:** Suchfeld und Auswahllisten nehmen `dropdown.border`, wenn das Theme `input.border` nicht setzt (etwa Light+). Sonst stünde ein weißes Feld auf Weiß (in der Vorschau gefunden).
+> - **Anzeige:** Die gefilterten Zeilen zeigt ab 2.10 die Tabelle, bis dahin nur ihre Zahl.
 
 ### Task 2.1: Textbausteine für das Schreiben
 **Dateien:** Create `src/core/text/edits.ts`, `src/core/text/style.ts`; Test: `test/unit/core/text/edits.test.ts`, `style.test.ts`

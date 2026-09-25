@@ -1,0 +1,50 @@
+.filter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  margin-block: 16px 8px;
+}
+
+.field {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.filter input[type='search'],
+.filter select {
+  min-block-size: 26px;
+  padding: 2px 6px;
+  /* input.border is unset in many themes (e.g. Light+), which would leave a white field on white. */
+  border: 1px solid var(--vscode-input-border, var(--vscode-dropdown-border));
+  border-radius: 2px;
+  font: inherit;
+}
+
+.filter input[type='search'] {
+  inline-size: 16em;
+  max-inline-size: 100%;
+  color: var(--vscode-input-foreground);
+  background-color: var(--vscode-input-background);
+}
+
+.filter input[aria-invalid='true'] {
+  border-color: var(--vscode-inputValidation-errorBorder);
+}
+
+.filter select {
+  color: var(--vscode-dropdown-foreground);
+  background-color: var(--vscode-dropdown-background);
+  border-color: var(--vscode-dropdown-border);
+}
+
+/* Its own line: the count, or why the search is off. */
+.filter-result {
+  flex-basis: 100%;
+  margin: 0;
+}
+
+.filter-result.invalid {
+  color: var(--vscode-errorForeground);
+}

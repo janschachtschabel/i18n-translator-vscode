@@ -1,11 +1,25 @@
 import { useEffect } from 'preact/hooks';
+import { SEARCH_FIELD_ID } from './components/filterBar';
 import type { EditorStore } from './state/store';
 
-/** Keys of the whole editor: Ctrl+Z (Cmd+Z) outside text fields undoes the last change to the files. */
+/**
+ * Keys of the whole editor (design §7.2): Ctrl+F (Cmd+F) goes to the search, Alt+M shows the keys with missing
+ * texts or all again, Ctrl+Z (Cmd+Z) outside text fields undoes the last change to the files.
+ */
 export function useShortcuts(store: EditorStore): void {
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (isUndo(event) && !isTextField(event.target)) {
+      if (isCommand(event, 'f')) {
+        event.preventDefault();
+        const field = document.getElementById(SEARCH_FIELD_ID);
+        if (field instanceof HTMLInputElement) {
+          field.focus();
+          field.select();
+        }
+      } else if (event.altKey && !event.ctrlKey && !event.metaKey && event.key.toLowerCase() === 'm') {
+        event.preventDefault();
+        store.toggleMissing();
+      } else if (isCommand(event, 'z') && !isTextField(event.target)) {
         event.preventDefault();
         store.undo();
       }
@@ -15,9 +29,10 @@ export function useShortcuts(store: EditorStore): void {
   }, [store]);
 }
 
-function isUndo(event: KeyboardEvent): boolean {
+/** Ctrl (Cmd on macOS) with `key` and nothing else. */
+function isCommand(event: KeyboardEvent, key: string): boolean {
   return (
-    (event.ctrlKey || event.metaKey) && !event.shiftKey && !event.altKey && event.key.toLowerCase() === 'z'
+    (event.ctrlKey || event.metaKey) && !event.shiftKey && !event.altKey && event.key.toLowerCase() === key
   );
 }
 

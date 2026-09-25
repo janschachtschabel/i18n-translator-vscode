@@ -1,4 +1,5 @@
 import { keyFromId } from '../core/model/keys';
+import { DEFAULT_FILTER, MAX_QUERY_LENGTH, type RowFilter } from './filter';
 import type { BundleViewModel } from './viewModel';
 
 /** How the editor shows a bundle; the host keeps it per bundle in workspaceState (B7). */
@@ -7,9 +8,15 @@ export interface UiState {
   /** Long texts wrap onto several lines instead of being cut off. */
   wrap: boolean;
   hiddenLocales: readonly string[];
+  filter: RowFilter;
 }
 
-export const DEFAULT_UI_STATE: UiState = { layout: 'auto', wrap: false, hiddenLocales: [] };
+export const DEFAULT_UI_STATE: UiState = {
+  layout: 'auto',
+  wrap: false,
+  hiddenLocales: [],
+  filter: DEFAULT_FILTER,
+};
 
 /** What the webview keeps (`setState`) so that VS Code can restore the editor after a restart. */
 export interface PanelState {
@@ -48,6 +55,8 @@ const MAX_LONG_ID_LENGTH = 10_000;
 const MAX_HIDDEN_LOCALES = 200;
 
 const LAYOUTS: readonly string[] = ['auto', 'table', 'list'];
+const SCOPES: readonly string[] = ['all', 'keys', 'texts'];
+const STATUSES: readonly string[] = ['all', 'missing', 'findings', 'empty'];
 const COMMANDS: readonly string[] = ['addKey', 'renameKey', 'deleteKey', 'addLanguage'];
 
 /**
@@ -98,7 +107,21 @@ export function isUiState(value: unknown): value is UiState {
     typeof value['wrap'] === 'boolean' &&
     Array.isArray(hidden) &&
     hidden.length <= MAX_HIDDEN_LOCALES &&
-    hidden.every(isId)
+    hidden.every(isId) &&
+    isRowFilter(value['filter'])
+  );
+}
+
+function isRowFilter(value: unknown): value is RowFilter {
+  return (
+    isRecord(value) &&
+    typeof value['query'] === 'string' &&
+    value['query'].length <= MAX_QUERY_LENGTH &&
+    SCOPES.includes(value['scope'] as string) &&
+    (value['locale'] === null || isId(value['locale'])) &&
+    typeof value['regex'] === 'boolean' &&
+    typeof value['matchCase'] === 'boolean' &&
+    STATUSES.includes(value['status'] as string)
   );
 }
 

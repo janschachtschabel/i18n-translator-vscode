@@ -17,7 +17,7 @@ const edit = {
   value: 'Espace de travail',
   before: null,
 };
-const uiState = { layout: 'auto', wrap: false, hiddenLocales: ['de-informal'] };
+const uiState = { ...DEFAULT_UI_STATE, hiddenLocales: ['de-informal'] };
 
 describe('isWebviewToHost', () => {
   it('accepts every message the webview sends', () => {
@@ -123,8 +123,29 @@ describe('isPanelState', () => {
 describe('isUiState', () => {
   it('accepts a complete view state only, as the host reads it back from the workspace state', () => {
     expect(isUiState(DEFAULT_UI_STATE)).toBe(true);
-    expect(isUiState({ layout: 'list', wrap: true, hiddenLocales: ['fr'] })).toBe(true);
-    for (const state of [undefined, null, {}, { ...DEFAULT_UI_STATE, layout: 'grid' }, { layout: 'auto' }]) {
+    const filter = {
+      query: 'Speichern',
+      scope: 'texts',
+      locale: 'de',
+      regex: false,
+      matchCase: true,
+      status: 'missing',
+    };
+    expect(isUiState({ layout: 'list', wrap: true, hiddenLocales: ['fr'], filter })).toBe(true);
+    for (const state of [
+      undefined,
+      null,
+      {},
+      { ...DEFAULT_UI_STATE, layout: 'grid' },
+      { layout: 'auto' },
+      // A view state of 2.8, before the filter was part of it.
+      { layout: 'list', wrap: true, hiddenLocales: ['fr'] },
+      { ...DEFAULT_UI_STATE, filter: { ...filter, status: 'open' } },
+      { ...DEFAULT_UI_STATE, filter: { ...filter, scope: 'values' } },
+      { ...DEFAULT_UI_STATE, filter: { ...filter, locale: '' } },
+      { ...DEFAULT_UI_STATE, filter: { ...filter, regex: 'yes' } },
+      { ...DEFAULT_UI_STATE, filter: { ...filter, query: 'x'.repeat(1001) } },
+    ]) {
       expect(isUiState(state), JSON.stringify(state)).toBe(false);
     }
   });

@@ -17,7 +17,7 @@ afterEach(cleanup);
 describe('toolbar', () => {
   it('shows the view state the host kept', () => {
     const { open } = renderEditor();
-    open({ layout: 'list', wrap: true, hiddenLocales: ['fr'] });
+    open({ ...DEFAULT_UI_STATE, layout: 'list', wrap: true, hiddenLocales: ['fr'] });
     expect((view().getByRole('radio', { name: 'Liste' }) as HTMLInputElement).checked).toBe(true);
     expect(
       (screen.getByRole('checkbox', { name: 'Lange Texte umbrechen' }) as HTMLInputElement).checked,
@@ -101,7 +101,7 @@ describe('language chips', () => {
 
 it('has no accessibility violations with the toolbar and the chips', async () => {
   const { open } = renderEditor();
-  open({ layout: 'table', wrap: true, hiddenLocales: ['de-informal'] });
+  open({ ...DEFAULT_UI_STATE, layout: 'table', wrap: true, hiddenLocales: ['de-informal'] });
   const results = await axe.run(document);
   expect(results.violations.map(({ id, nodes }) => `${id}: ${nodes.length}`)).toEqual([]);
 });

@@ -5,6 +5,7 @@ import { keyFromSegments } from '../../src/core/model/keys';
 import type { EditorPanel } from '../../src/extension/panels/editorPanel';
 import { rootRef } from '../../src/extension/services/fileStore';
 import { sameBytes } from '../../src/extension/services/files';
+import { DEFAULT_FILTER } from '../../src/shared/filter';
 import { DEFAULT_UI_STATE, type HostToWebview, type UiState } from '../../src/shared/protocol';
 import { activateExtension, waitFor } from './helpers';
 
@@ -97,7 +98,12 @@ suite('editor panel', () => {
     const { index, editors } = await activateExtension();
     const root = (await index.refresh()).roots[0]!;
     const common = root.analysis.bundles.find((bundle) => bundle.name === 'common')!;
-    const state: UiState = { layout: 'list', wrap: true, hiddenLocales: ['it'] };
+    const state: UiState = {
+      layout: 'list',
+      wrap: true,
+      hiddenLocales: ['it'],
+      filter: { ...DEFAULT_FILTER, query: 'Speichern', status: 'missing' },
+    };
 
     const first = editors.open(root, common);
     await first.receive({ type: 'uiState', state });

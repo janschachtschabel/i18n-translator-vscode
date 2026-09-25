@@ -1,4 +1,5 @@
-import { signal } from '@preact/signals';
+import { computed, signal } from '@preact/signals';
+import { filterRows, type FilterResult, type RowFilter } from '../../shared/filter';
 import {
   DEFAULT_UI_STATE,
   type HostToWebview,
@@ -33,6 +34,12 @@ export class EditorStore {
   readonly view = signal<View>({ kind: 'starting' });
   readonly uiState = signal<UiState>(DEFAULT_UI_STATE);
   readonly announcement = signal<Announcement>({ text: '', id: 0 });
+  /** The rows the filter lets through; undefined without a bundle. */
+  readonly filtered = computed((): FilterResult | undefined => {
+    const view = this.view.value;
+    const { filter, hiddenLocales } = this.uiState.value;
+    return view.kind === 'bundle' ? filterRows(view.model, filter, hiddenLocales) : undefined;
+  });
 
   constructor(private readonly host: HostApi) {}
 
@@ -74,6 +81,15 @@ export class EditorStore {
     this.updateUiState({
       hiddenLocales: hidden.includes(code) ? hidden.filter((other) => other !== code) : [...hidden, code],
     });
+  }
+
+  updateFilter(change: Partial<RowFilter>): void {
+    this.updateUiState({ filter: { ...this.uiState.value.filter, ...change } });
+  }
+
+  /** Only the keys with missing texts, or all again (Alt+M). */
+  toggleMissing(): void {
+    this.updateFilter({ status: this.uiState.value.filter.status === 'missing' ? 'all' : 'missing' });
   }
 
   /** Undoes the last change of this session to the translation files, in whichever bundle it was. */

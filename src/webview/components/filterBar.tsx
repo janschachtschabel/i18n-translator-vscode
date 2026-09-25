@@ -1,0 +1,105 @@
+import { MAX_QUERY_LENGTH, type FilterScope, type StatusFilter } from '../../shared/filter';
+import type { BundleViewModel } from '../../shared/viewModel';
+import { formatNumber, l10n } from '../l10n';
+import type { EditorStore } from '../state/store';
+import './filterBar.css';
+
+/** Ctrl+F puts the cursor here (shortcuts.ts). */
+export const SEARCH_FIELD_ID = 'filter-query';
+const RESULT_ID = 'filter-result';
+
+/** Search and status filter, and how many keys they let through. */
+export function FilterBar({ store, model }: { store: EditorStore; model: BundleViewModel }) {
+  const { filter } = store.uiState.value;
+  const result = store.filtered.value;
+  const invalid = result?.invalidPattern;
+  const scope = filter.scope === 'texts' && filter.locale !== null ? `texts:${filter.locale}` : filter.scope;
+  const statuses: [StatusFilter, string][] = [
+    ['all', l10n.t('all keys')],
+    ['missing', l10n.t('keys with missing texts')],
+    ['findings', l10n.t('keys with findings')],
+    ['empty', l10n.t('keys with empty texts')],
+  ];
+  return (
+    <div role="search" class="filter">
+      <span class="field">
+        <label for={SEARCH_FIELD_ID}>{l10n.t('Search')}</label>
+        <input
+          id={SEARCH_FIELD_ID}
+          type="search"
+          value={filter.query}
+          maxLength={MAX_QUERY_LENGTH}
+          aria-keyshortcuts="Control+F Meta+F"
+          aria-invalid={invalid !== undefined}
+          aria-describedby={invalid !== undefined ? RESULT_ID : undefined}
+          onInput={(event) => store.updateFilter({ query: event.currentTarget.value })}
+        />
+      </span>
+      <label class="field">
+        {l10n.t('Search in')}
+        <select
+          value={scope}
+          onChange={(event) => {
+            const value = event.currentTarget.value;
+            store.updateFilter(
+              value.startsWith('texts:')
+                ? { scope: 'texts', locale: value.slice('texts:'.length) }
+                : { scope: value as FilterScope, locale: null },
+            );
+          }}
+        >
+          <option value="all">{l10n.t('keys and texts')}</option>
+          <option value="keys">{l10n.t('keys')}</option>
+          <option value="texts">{l10n.t('texts')}</option>
+          {model.locales.map(({ code }) => (
+            <option key={code} value={`texts:${code}`}>
+              {l10n.t('texts in {locale}', { locale: code })}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label class="option">
+        <input
+          type="checkbox"
+          checked={filter.regex}
+          onChange={() => store.updateFilter({ regex: !filter.regex })}
+        />
+        {l10n.t('Regular expression')}
+      </label>
+      <label class="option">
+        <input
+          type="checkbox"
+          checked={filter.matchCase}
+          onChange={() => store.updateFilter({ matchCase: !filter.matchCase })}
+        />
+        {l10n.t('Match case')}
+      </label>
+      <label class="field">
+        {l10n.t('Show')}
+        <select
+          value={filter.status}
+          aria-keyshortcuts="Alt+M"
+          onChange={(event) => store.updateFilter({ status: event.currentTarget.value as StatusFilter })}
+        >
+          {statuses.map(([value, label]) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
+          ))}
+        </select>
+      </label>
+      <p
+        id={RESULT_ID}
+        role="status"
+        class={invalid !== undefined ? 'filter-result invalid' : 'filter-result'}
+      >
+        {invalid !== undefined
+          ? l10n.t('The regular expression is invalid: {reason}', { reason: invalid })
+          : l10n.t('{shown} of {total} keys', {
+              shown: formatNumber(result?.rows.length ?? 0),
+              total: formatNumber(model.rows.length),
+            })}
+      </p>
+    </div>
+  );
+}
