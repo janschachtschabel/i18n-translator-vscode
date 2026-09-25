@@ -964,6 +964,41 @@ was nicht ausdrücklich geändert wurde.
 >   - Ein katastrophaler regulärer Ausdruck hält die Webview beim Tippen weiterhin auf, wird aber nicht mehr gespeichert. Vollen Schutz gäbe erst ein Worker mit Zeitlimit.
 >   - Texte nur aus Leerzeichen bekommen keine eigene Marke.
 >   - Statt Codicons (B6) stehen Unicode-Symbole; Codicons kommen mit dem ersten echten Symbol.
+>
+> **Umsetzungsnotizen Task 2.12 (26.09.2026):**
+> - **Host (`editHandler.ts`):**
+>   - `edit` plant mit dem Text, den die Zelle zeigte (B5), und schreibt über den FileStore (B1). Bei einem Fehler trägt `writeResult` die fertig übersetzte Meldung (`describeWriteFailure`, dieselbe wie in der Benachrichtigung).
+>   - Probleme der Planung (Konflikt, leere Referenz, fehlender Key …) meldet nur die Zelle. Was einen Schritt des Nutzers braucht (Datei speichern, Vertrauen), meldet zusätzlich eine Benachrichtigung mit Aktion.
+>   - Leeren löscht den Text (B2); vorher fragt ein modaler Dialog. Wer ablehnt, bekommt `ok: false` ohne Meldung, und die Zelle zeigt still wieder den alten Text.
+>   - Eine verschwundene Einheit ist ein eigenes Problem (`missing-bundle`). Eine unlesbare `edit`-Nachricht mit lesbarer `requestId` wird mit `ok: false` beantwortet.
+> - **Webview:**
+>   - Tasten nach §7.2:
+>     - Öffnen: Enter, F2 oder Doppelklick in der Tabelle, Klick auf den Text in der Liste.
+>     - Speichern: Enter bei einem einzeiligen Text, Strg+Enter bei einem mehrzeiligen. Das wird beim Öffnen festgelegt; Umschalt+Enter beginnt eine neue Zeile.
+>     - Tab und Umschalt+Tab speichern und öffnen die nächste bzw. vorige Zelle in Lesereihenfolge. Esc bricht ab.
+>     - Während eine Eingabemethode komponiert, speichert Enter nicht.
+>   - Verlassen des Feldes speichert. Nimmt VS Code der Seite den Fokus, bleibt das Feld aktives Element und offen.
+>   - Das Feld wächst mit und scrollt nie. Darunter stehen die Prüfung (`compareParams`/`compareTags`, als Status für Screenreader) und die Tasten.
+>   - Ein gesendeter Text ersetzt die Zelle ohne die alten Befunde, bis das Modell ihn hat, gleich ob `bundle` oder `writeResult` zuerst kommt. „Gespeichert.“ wird angesagt (§7.4).
+>   - Scheitert das Schreiben:
+>     - Der alte Text kommt zurück, die Zelle zeigt „✖ nicht gespeichert“ mit der Meldung, und eine Ansage folgt.
+>     - Enter öffnet den Editor wieder mit dem getippten Text; Esc verwirft ihn.
+>   - In der Liste ist der Text jedes Feldes eine Schaltfläche, benannt nach Sprache und Text.
+>   - Eine Änderung der Ansicht (Filter, Sprachen) speichert den offenen Editor zuerst. Beim Wechsel zwischen Tabelle und Liste bleibt der Editor mit seinem Text offen.
+> - **Fokus:**
+>   - Verschwindet die aktive Zeile, etwa im Filter „fehlend“, sobald ihr Text da ist, bleibt das Grid an seiner Stelle, und die nachrückende Zeile bekommt den Fokus. Die Liste macht es mit der nachrückenden Karte ebenso.
+>   - Enter öffnet die Zelle, in der die Taste gedrückt wurde, auch wenn das Grid den Fokus noch nicht übernommen hat (in Chromium gefunden).
+> - **In Chromium geprüft (Vorschau):**
+>   - Das Feld wächst von einer Zeile (23 px) auf 108 px bei langem Text, ohne zu scrollen. Prüfung und Hinweis stehen darunter, und nach einem Fehler steht die Markierung in der Zelle.
+>   - Im ausgeblendeten Browser-Bereich feuern keine Fokusereignisse. Die Rückkehr des Fokus decken deshalb die Komponententests ab.
+> - **Für 2.16 (Sichtprüfung):**
+>   - Im einzeiligen Modus verdrängen zwei Statusmarken (z. B. „nicht gespeichert“ und „Platzhalter“) den Text einer schmalen Spalte ganz.
+>   - In VS Code prüfen: die Rückkehr des Fokus nach Enter und Esc, das Feld in High Contrast und die Rückfrage beim Leeren.
+> - **Bewusst offen:**
+>   - Tippen auf einer Zelle öffnet keinen Editor; das tun nur Enter, F2 und Doppelklick.
+>   - Die Prüfung beim Tippen nutzt die Standardschwere der Regeln, nicht `checks.severity`.
+>   - Ein leerer Text, der den Rückfall verdeckt (`empty-value`), lässt sich im Editor nicht löschen, denn ohne Änderung wird nichts gesendet. Die Lösung kommt mit den Details (2.13).
+>   - Eine gespeicherte Zeile, die nicht mehr zum Filter passt, verschwindet, sobald das Modell kommt (etwa 300 ms). Die Alternative wäre, solche Zeilen bis zum nächsten Filterwechsel stehen zu lassen.
 
 ### Task 2.1: Textbausteine für das Schreiben
 **Dateien:** Create `src/core/text/edits.ts`, `src/core/text/style.ts`; Test: `test/unit/core/text/edits.test.ts`, `style.test.ts`

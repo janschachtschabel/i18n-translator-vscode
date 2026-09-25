@@ -1,0 +1,31 @@
+/* The field fills its cell or card and grows with its text; the notes below it wrap. */
+.cell-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-inline-size: 0;
+  white-space: normal;
+}
+
+.cell-input {
+  box-sizing: border-box;
+  inline-size: 100%;
+  padding: 2px 4px;
+  overflow: hidden;
+  resize: none;
+  border: 1px solid var(--vscode-input-border, var(--vscode-panel-border));
+  border-radius: 2px;
+  color: var(--vscode-input-foreground);
+  background-color: var(--vscode-input-background);
+  font: inherit;
+  overflow-wrap: anywhere;
+}
+
+.editor-note {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.editor-hint {
+  color: var(--vscode-descriptionForeground);
+}

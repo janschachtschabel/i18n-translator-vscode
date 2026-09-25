@@ -42,10 +42,13 @@ describe('list', () => {
   it('shows each finding with a symbol and its message', () => {
     setWidth(600);
     open();
-    expect(definitionOf('CANCEL', 2).textContent).toBe('⚠ Warnung: CANCEL fehlt in fr.');
-    expect(definitionOf('ERROR_TITLE', 2).textContent).toBe(
-      'Erreur ({{data}})✖ Fehler: Die Platzhalter von ERROR_TITLE weichen ab.',
-    );
+    const findings = (key: string, position: number) =>
+      [...definitionOf(key, position).querySelectorAll('.card-finding')].map(
+        (finding) => finding.textContent,
+      );
+    expect(findings('CANCEL', 2)).toEqual(['⚠ Warnung: CANCEL fehlt in fr.']);
+    expect(findings('ERROR_TITLE', 2)).toEqual(['✖ Fehler: Die Platzhalter von ERROR_TITLE weichen ab.']);
+    expect(within(definitionOf('ERROR_TITLE', 2)).getByText('Erreur ({{data}})')).toBeTruthy();
     expect(within(definitionOf('CANCEL', 2)).getByText('⚠').getAttribute('aria-hidden')).toBe('true');
   });
 

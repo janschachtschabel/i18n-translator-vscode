@@ -116,3 +116,9 @@
 .status-symbol.info {
   color: var(--vscode-editorInfo-foreground);
 }
+
+/* While its text is edited, a cell shows the whole field and the notes below it. */
+.table-scroller .grid-body .grid-cell.editing {
+  display: block;
+  white-space: normal;
+}

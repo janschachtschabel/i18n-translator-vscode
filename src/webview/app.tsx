@@ -48,9 +48,10 @@ function Content({ store, view }: { store: EditorStore; view: View }) {
 const TITLE_ID = 'bundle-title';
 
 function BundleView({ store, model }: { store: EditorStore; model: BundleViewModel }) {
-  const rows = store.filtered.value?.rows ?? [];
+  const rows = store.rows.value;
   const layout = store.layout.value;
   const shown = store.shownLocales.value;
+  const reference = model.locales.find((locale) => locale.reference)?.code;
   return (
     <div class={layout === 'table' ? 'bundle fill' : 'bundle'}>
       <SkipLinks layout={layout} />
@@ -80,11 +81,12 @@ function BundleView({ store, model }: { store: EditorStore; model: BundleViewMod
           store={store}
           rows={rows}
           locales={shown}
+          reference={reference}
           wrap={store.uiState.value.wrap}
           labelledBy={TITLE_ID}
         />
       ) : rows.length > 0 ? (
-        <List store={store} rows={rows} locales={shown} labelledBy={TITLE_ID} />
+        <List store={store} rows={rows} locales={shown} reference={reference} labelledBy={TITLE_ID} />
       ) : null}
     </div>
   );

@@ -1,5 +1,9 @@
-import type { CellView, LocaleView, RowView } from '../../../shared/viewModel';
+import type { ComponentChildren } from 'preact';
+import type { LocaleView } from '../../../shared/viewModel';
 import { l10n } from '../../l10n';
+import type { OpenEditor, ShownCell, ShownRow } from '../../state/edits';
+import type { EditorStore } from '../../state/store';
+import { CellEditor } from '../cellEditor';
 import { SEVERITY_SYMBOLS, severityWord, statusWord } from '../cellStatus';
 import { EmptyValue } from '../emptyValue';
 import { LocaleLabel } from '../localeLabel';
@@ -12,6 +16,8 @@ export function cellSelector(row: number, column: number): string {
 }
 
 const describedBy = (row: number, column: number) => `grid-finding-${row}-${column}`;
+
+const NO_TEXT: ShownCell = { value: undefined, issues: [] };
 
 interface RowProps {
   locales: readonly LocaleView[];
@@ -40,77 +46,125 @@ export const HeaderRow = memo(({ locales, activeColumn }: RowProps) => {
   );
 });
 
+interface TableRowProps extends RowProps {
+  row: ShownRow;
+  index: number;
+  store: EditorStore;
+  /** The code of the reference language. */
+  reference: string | undefined;
+  /** The open editor, if it is in this row. */
+  editor: OpenEditor | undefined;
+}
+
 /**
  * A key and its texts; `index` counts from 1, as the header is row 0. Memoized: moving the focus renders only
  * the two rows it leaves and enters, not all 2,000.
  */
 export const TableRow = memo(
-  ({ row, index, locales, activeColumn }: RowProps & { row: RowView; index: number }) => {
-    const cells = locales.map((locale) => row.cells[locale.code] ?? { value: undefined, issues: [] });
+  ({ row, index, locales, activeColumn, store, reference, editor }: TableRowProps) => {
+    const cells = locales.map((locale) => row.cells[locale.code] ?? NO_TEXT);
+    const referenceText = reference === undefined ? undefined : row.cells[reference]?.value;
     return (
       <div role="row" aria-rowindex={index + 1} class="grid-row" data-entry={entryAttribute(row.entryId)}>
         <div role="rowheader" aria-colindex={1} class="grid-key" {...focusable(index, 0, activeColumn)}>
           {row.key}
         </div>
-        {cells.map((cell, position) => (
-          <Cell
-            key={locales[position]!.code}
-            cell={cell}
-            locale={locales[position]!}
-            row={index}
-            column={position + 1}
-            activeColumn={activeColumn}
-          />
-        ))}
+        {cells.map((cell, position) => {
+          const locale = locales[position]!;
+          return (
+            <Cell
+              key={locale.code}
+              cell={cell}
+              locale={locale}
+              row={index}
+              column={position + 1}
+              activeColumn={activeColumn}
+            >
+              {editor?.locale === locale.code && (
+                <CellEditor
+                  store={store}
+                  editor={editor}
+                  locale={locale}
+                  keyText={row.key}
+                  referenceText={locale.code === reference ? undefined : referenceText}
+                />
+              )}
+            </Cell>
+          );
+        })}
         {/* Hidden, so that they describe their cell without being part of its name. */}
-        {cells.map(
-          (cell, position) =>
-            cell.issues.length > 0 && (
+        {cells.map((cell, position) => {
+          const text = description(cell);
+          return (
+            text !== undefined && (
               <span key={`finding-${position}`} id={describedBy(index, position + 1)} hidden>
-                {cell.issues.map((issue) => `${severityWord(issue.severity)}: ${issue.message}`).join(' ')}
+                {text}
               </span>
-            ),
-        )}
+            )
+          );
+        })}
       </div>
     );
   },
 );
 
 interface CellProps {
-  cell: CellView;
+  cell: ShownCell;
   locale: LocaleView;
   row: number;
   column: number;
   activeColumn: number | undefined;
+  /** The editor, while the text is edited: it takes the place of the text in the same cell. */
+  children: ComponentChildren;
 }
 
-function Cell({ cell, locale, row, column, activeColumn }: CellProps) {
+function Cell({ cell, locale, row, column, activeColumn, children }: CellProps) {
+  const editing = Boolean(children);
+  const statuses = [
+    ...(cell.notSaved !== undefined ? [{ severity: 'error' as const, word: l10n.t('not saved') }] : []),
+    ...cell.issues.map((issue) => ({ severity: issue.severity, word: statusWord(issue.rule) })),
+  ];
   return (
     <div
       role="gridcell"
       aria-colindex={column + 1}
-      class="grid-cell"
-      aria-describedby={cell.issues.length > 0 ? describedBy(row, column) : undefined}
+      class={editing ? 'grid-cell editing' : 'grid-cell'}
+      aria-describedby={description(cell) !== undefined ? describedBy(row, column) : undefined}
       {...focusable(row, column, activeColumn)}
     >
-      {cell.value !== undefined && cell.value !== '' ? (
-        <span class="cell-text" lang={locale.lang} dir="auto">
-          {cell.value}
-        </span>
+      {editing ? (
+        children
       ) : (
-        cell.issues.length === 0 && <EmptyValue value={cell.value} variant={locale.variant} />
+        <>
+          {cell.value !== undefined && cell.value !== '' ? (
+            <span class="cell-text" lang={locale.lang} dir="auto">
+              {cell.value}
+            </span>
+          ) : (
+            statuses.length === 0 && <EmptyValue value={cell.value} variant={locale.variant} />
+          )}
+          {statuses.map((status, index) => (
+            <span key={index} class="cell-status">
+              {(index > 0 || (cell.value ?? '') !== '') && ' '}
+              <span aria-hidden="true" class={`status-symbol ${status.severity}`}>
+                {SEVERITY_SYMBOLS[status.severity]}
+              </span>{' '}
+              {status.word}
+            </span>
+          ))}
+        </>
       )}
-      {cell.issues.map((issue, index) => (
-        <span key={index} class="cell-status">
-          {(index > 0 || (cell.value ?? '') !== '') && ' '}
-          <span aria-hidden="true" class={`status-symbol ${issue.severity}`}>
-            {SEVERITY_SYMBOLS[issue.severity]}
-          </span>{' '}
-          {statusWord(issue.rule)}
-        </span>
-      ))}
     </div>
   );
+}
+
+/** What describes a cell: why its text was not saved, and its findings. */
+function description(cell: ShownCell): string | undefined {
+  const lines = [
+    ...(cell.notSaved !== undefined ? [l10n.t('Not saved: {message}', { message: cell.notSaved })] : []),
+    ...cell.issues.map((issue) => `${severityWord(issue.severity)}: ${issue.message}`),
+  ];
+  return lines.length > 0 ? lines.join(' ') : undefined;
 }
 
 /** Every cell can take the focus; only the active one is in the tab order (roving tabindex). */

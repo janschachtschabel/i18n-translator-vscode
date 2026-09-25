@@ -62,3 +62,22 @@
     margin-block-end: 6px;
   }
 }
+
+/* The text of a field opens its editor: it reads as text, and shows when the pointer or the focus is on it. */
+.field-value {
+  display: block;
+  box-sizing: border-box;
+  inline-size: 100%;
+  min-block-size: 24px;
+  padding: 2px 4px;
+  border: 1px solid transparent;
+  color: inherit;
+  background: none;
+  text-align: start;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.field-value:hover {
+  background-color: var(--vscode-list-hoverBackground);
+}

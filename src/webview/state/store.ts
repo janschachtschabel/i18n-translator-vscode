@@ -8,6 +8,7 @@ import {
 } from '../../shared/protocol';
 import type { BundleViewModel, LocaleView } from '../../shared/viewModel';
 import { l10n, setTranslations } from '../l10n';
+import { Edits, nextCell, showEdits, type ShownRow } from './edits';
 import { compactLocales, layoutFor } from './layout';
 
 /** The part of the webview API (`acquireVsCodeApi()`) the editor uses. */
@@ -65,6 +66,14 @@ export class EditorStore {
     const hidden = view.model.locales.map((locale) => locale.code).filter((code) => !shown.has(code));
     return filterRows(view.model, this.uiState.value.filter, hidden);
   });
+  readonly edits = new Edits(
+    (message) => this.host.postMessage(message),
+    (text) => this.announce(text),
+  );
+  /** The rows the filter lets through, as the editor shows them: with the texts on their way to the files. */
+  readonly rows = computed((): readonly ShownRow[] =>
+    showEdits(this.filtered.value?.rows ?? [], this.edits.pending.value, this.edits.rejected.value),
+  );
 
   /** The key whose card takes the focus when the list replaces a table that had it; null: the first card. */
   private focusHandoff: string | null | undefined;
@@ -77,6 +86,7 @@ export class EditorStore {
         setTranslations(message.l10n);
         this.uiState.value = message.uiState;
         this.host.setState(message.panelState);
+        this.edits.reset();
         // The host follows up with the bundle, or with it once the first index run is done.
         this.view.value = { kind: 'loading' };
         break;
@@ -85,6 +95,7 @@ export class EditorStore {
           // "The bundle is gone" is no longer true; browsing screen reader users would still find it.
           this.announce('');
         }
+        this.edits.update(message.model);
         this.view.value = { kind: 'bundle', model: message.model };
         break;
       case 'missing':
@@ -92,7 +103,11 @@ export class EditorStore {
         if (this.view.value.kind === 'bundle') {
           this.announce(missingNotice(message.name));
         }
+        this.edits.reset();
         this.view.value = { kind: 'missing', name: message.name };
+        break;
+      case 'writeResult':
+        this.edits.answer(message);
         break;
     }
   }
@@ -111,6 +126,8 @@ export class EditorStore {
     if (this.view.value.kind === 'starting') {
       return;
     }
+    // Its row may go with the change.
+    this.edits.commit();
     this.uiState.value = { ...this.uiState.value, ...change };
     void this.filtered.value;
     this.host.postMessage({ type: 'uiState', state: this.uiState.value });
@@ -145,6 +162,27 @@ export class EditorStore {
     const entryId = this.focusHandoff;
     this.focusHandoff = undefined;
     return entryId;
+  }
+
+  /** Opens the editor of a cell, with the text it shows. */
+  edit(entryId: string, locale: string): void {
+    const row = this.rows.value.find((candidate) => candidate.entryId === entryId);
+    this.edits.start({ entryId, locale }, row?.cells[locale]?.value);
+  }
+
+  /**
+   * Saves the open editor and opens the one of the next (1) or the previous (-1) cell shown, in reading order;
+   * false if there is none.
+   */
+  editNext(direction: 1 | -1): boolean {
+    const open = this.edits.open.value;
+    const next = open ? nextCell(this.rows.value, this.shownLocales.value, open, direction) : undefined;
+    this.edits.commit();
+    if (!next) {
+      return false;
+    }
+    this.edit(next.entryId, next.locale);
+    return true;
   }
 
   /** Undoes the last change of this session to the translation files, in whichever bundle it was. */
