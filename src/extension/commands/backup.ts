@@ -12,10 +12,10 @@ const REASONS: Readonly<Record<BackupReason, () => string>> = {
   restore: () => vscode.l10n.t('Before restoring a backup'),
 };
 
-/** "Back up translation files now". */
-export async function backUpNow(backups: BackupService): Promise<void> {
+/** "Back up translation files now", between writes, so that no change is caught half-written. */
+export async function backUpNow(backups: BackupService, store: FileStore): Promise<void> {
   try {
-    const backup = await backups.create('manual');
+    const backup = await store.exclusive(() => backups.create('manual'));
     void vscode.window.showInformationMessage(
       backup
         ? vscode.l10n.t('Backup created. Files: {count}', { count: backup.files })

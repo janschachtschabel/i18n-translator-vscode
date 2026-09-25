@@ -51,7 +51,10 @@ export class BackupService {
     private readonly now: () => number = Date.now,
   ) {}
 
-  /** For the file store, before it writes. A failed backup is reported but does not stop the write. */
+  /**
+   * For the file store, before it writes. A failed backup is reported but does not stop a change; before a
+   * restore, it throws, and the restore does not happen.
+   */
   async beforeWrite(kind: 'write' | 'restore', files: number): Promise<void> {
     const reason = this.reasonFor(kind, files);
     if (!reason) {
@@ -60,6 +63,10 @@ export class BackupService {
     try {
       await this.create(reason);
     } catch (error) {
+      // A restore replaces files wholesale, so it stops; a change can go ahead, since it can be undone.
+      if (kind === 'restore') {
+        throw error;
+      }
       this.log.error('Backing up the translation files failed.', error);
       void vscode.window.showWarningMessage(
         vscode.l10n.t('The translation files could not be backed up: {error}', { error: messageOf(error) }),

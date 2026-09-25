@@ -40,7 +40,7 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
     statusBar,
     vscode.commands.registerCommand('eduI18n.check', () => checkTranslations(index)),
     vscode.commands.registerCommand('eduI18n.configureRoots', () => configureRoots()),
-    vscode.commands.registerCommand('eduI18n.backupNow', () => backUpNow(backups)),
+    vscode.commands.registerCommand('eduI18n.backupNow', () => backUpNow(backups, fileStore)),
     vscode.commands.registerCommand('eduI18n.restoreBackup', () => restoreBackup(backups, fileStore)),
   );
   // Not awaited: activation stays fast, and the views update when the first run completes.

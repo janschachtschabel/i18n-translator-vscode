@@ -31,7 +31,10 @@ export interface RootRef {
 /** Plans an edit on the current state of a root. The store plans again when files changed on disk (B5). */
 export type Planner = (analysis: RootAnalysis) => PlanResult;
 
-/** Runs right before files are written, e.g. to back them up; `files` is the number about to change. */
+/**
+ * Runs before the files are checked and written, e.g. to back them up; `files` is the number about to change.
+ * It runs inside the store's queue, so it must not call write, restore, undo or exclusive.
+ */
 export type BeforeWrite = (kind: 'write' | 'restore', files: number) => Promise<void>;
 
 /** A file and the bytes it gets back, e.g. from a backup. */
@@ -101,25 +104,33 @@ export class FileStore {
     return this.enqueue(() => this.undoNow());
   }
 
+  /**
+   * Runs a task between writes, in call order, e.g. a backup that must not see a change half-written. The
+   * task must not call write, restore, undo or exclusive: they would wait for it forever.
+   */
+  exclusive<T>(task: () => Promise<T>): Promise<T> {
+    const run = this.queue.then(task);
+    this.queue = run.catch(() => undefined);
+    return run;
+  }
+
   /** One write or undo at a time, in call order; unexpected errors become results. */
   private enqueue<T>(task: () => Promise<T>): Promise<T | WriteResult> {
-    const guarded = async (): Promise<T | WriteResult> => {
+    return this.exclusive(async (): Promise<T | WriteResult> => {
       try {
         return await task();
       } catch (error) {
         this.log.error('Writing translation files failed.', error);
         return { ok: false, reason: 'error', message: messageOf(error) };
       }
-    };
-    const run = this.queue.then(guarded);
-    this.queue = run;
-    return run;
+    });
   }
 
   private async writeNow(ref: RootRef, plan: Planner): Promise<WriteResult> {
     if (!vscode.workspace.isTrusted) {
       return { ok: false, reason: 'untrusted' };
     }
+    let backedUp = false;
     for (let attempt = 1; ; attempt++) {
       const indexed = await this.find(ref);
       if (!indexed) {
@@ -157,6 +168,11 @@ export class FileStore {
       const dirty = targets.filter((target) => isDirty(target.uri)).map((target) => target.uri);
       if (dirty.length > 0) {
         return { ok: false, reason: 'dirty', files: dirty };
+      }
+      if (!backedUp) {
+        // Before the disk check: between checking the files and writing them, nothing slow may happen.
+        await this.beforeWrite('write', targets.length);
+        backedUp = true;
       }
       const onDisk = await Promise.all(targets.map((target) => readIfExists(target.uri)));
       const changed = targets.filter((target, i) => !holds(onDisk[i], target.write.before, adapter));
@@ -216,6 +232,19 @@ export class FileStore {
     if (dirty.length > 0) {
       return { ok: false, reason: 'dirty', files: dirty };
     }
+    try {
+      await this.beforeWrite('restore', files.length);
+    } catch (error) {
+      // A restore replaces files wholesale; without a backup of the current state it must not happen.
+      this.log.error('Backing up before the restore failed; nothing was restored.', error);
+      const message = vscode.l10n.t(
+        'The current state could not be backed up, so nothing was restored: {error}',
+        {
+          error: messageOf(error),
+        },
+      );
+      return { ok: false, reason: 'error', message };
+    }
     const onDisk = await Promise.all(files.map((file) => readIfExists(file.uri)));
     const differing = files
       .map((file, i) => ({ ...file, before: onDisk[i] }))
@@ -223,12 +252,11 @@ export class FileStore {
     return differing.length === 0 ? { ok: true } : this.commit('restore', differing);
   }
 
-  /** Lets `beforeWrite` run (backups), writes all files or none, and keeps the write for undo. */
+  /** Writes all files or none and keeps the write for undo. */
   private async commit(
     kind: 'write' | 'restore',
     files: { uri: vscode.Uri; bytes: Uint8Array; before: Uint8Array | undefined }[],
   ): Promise<WriteResult> {
-    await this.beforeWrite(kind, files.length);
     const failure = await this.putAll(
       files,
       files.map((file) => ({ uri: file.uri, bytes: file.before })),

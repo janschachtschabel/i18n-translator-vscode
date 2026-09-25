@@ -63,6 +63,7 @@
   "The {base} text of {key} contains \"{match}\"; {locale} needs its own text.": "Der {base}-Text von {key} enthält „{match}“; {locale} braucht einen eigenen Text.",
   "The {locale} file of {bundle} is missing.": "In {bundle} fehlt die Datei für {locale}.",
   "The {locale} text of {key} still contains \"{match}\".": "Der {locale}-Text von {key} enthält noch „{match}“.",
+  "The current state could not be backed up, so nothing was restored: {error}": "Der aktuelle Stand ließ sich nicht sichern, deshalb wurde nichts wiederhergestellt: {error}",
   "The file cannot be read: {detail}.": "Die Datei kann nicht gelesen werden: {detail}.",
   "The file is not valid UTF-8.": "Die Datei ist kein gültiges UTF-8.",
   "The HTML tags of {key} differ from the reference {reference}: missing {missing}, extra {extra}.": "Die HTML-Tags von {key} weichen von der Referenz {reference} ab: fehlend {missing}, zusätzlich {extra}.",

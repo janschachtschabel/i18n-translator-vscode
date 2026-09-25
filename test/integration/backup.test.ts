@@ -1,5 +1,5 @@
 import * as assert from 'node:assert/strict';
-import { mkdtempSync, readdirSync, rmSync } from 'node:fs';
+import { mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import * as vscode from 'vscode';
@@ -130,5 +130,26 @@ suite('Backups', () => {
     // A restore is one write: undo brings the state before it back.
     assert.deepEqual(await store.undo(), { ok: true });
     assert.ok(new TextDecoder().decode(await vscode.workspace.fs.readFile(fr())).includes('Autre chose ?'));
+  });
+
+  test('stops a restore, but not a write, when the backup fails', async () => {
+    // Backups cannot be stored below a file.
+    const blocked = join(storage, 'blocked');
+    writeFileSync(blocked, 'not a folder');
+    const failing = new BackupService(
+      vscode.Uri.file(blocked),
+      api.index,
+      log,
+      () => settings,
+      () => now,
+    );
+    const failingStore = new FileStore(api.index, log, {
+      beforeWrite: (kind, files) => failing.beforeWrite(kind, files),
+    });
+    const before = await vscode.workspace.fs.readFile(fr());
+    assert.deepEqual(await failingStore.write(ref, setAsk('Continuer ?')), { ok: true });
+    const result = await failingStore.restore([{ uri: fr(), bytes: before }]);
+    assert.ok(!result.ok && result.reason === 'error', JSON.stringify(result));
+    assert.ok(new TextDecoder().decode(await vscode.workspace.fs.readFile(fr())).includes('Continuer ?'));
   });
 });

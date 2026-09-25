@@ -186,6 +186,29 @@ suite('FileStore', () => {
     assert.deepEqual(await vscode.workspace.fs.readFile(fr), before);
   });
 
+  test('checks the files after the backup, so that a change during the backup is kept', async () => {
+    const fr = uriOf('common', 'fr');
+    const store = new FileStore(api.index, log, {
+      beforeWrite: () => changeOnDisk(fr, '"MINUTE": "Minute"', '"MINUTE": "Minuto"'),
+    });
+    assert.deepEqual(await store.write(ref, setAsk('Continuer ?', 'Voulez-vous continuer ?')), { ok: true });
+    const text = await read(fr);
+    assert.ok(text.includes('"MINUTE": "Minuto"') && text.includes('"ASK": "Continuer ?"'), text);
+  });
+
+  test('runs exclusive tasks, such as a manual backup, between writes', async () => {
+    const order: string[] = [];
+    const write = api.fileStore.write(ref, (analysis) => {
+      order.push('write');
+      return setAsk('Continuer ?')(analysis);
+    });
+    const task = api.fileStore.exclusive(async () => {
+      order.push('exclusive');
+    });
+    await Promise.all([write, task]);
+    assert.deepEqual(order, ['write', 'exclusive']);
+  });
+
   test('restores a file whose write failed half-way, as writeFile empties it first', async () => {
     const fr = uriOf('common', 'fr');
     const before = await vscode.workspace.fs.readFile(fr);
