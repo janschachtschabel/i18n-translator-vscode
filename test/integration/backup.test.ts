@@ -1,5 +1,13 @@
 import * as assert from 'node:assert/strict';
-import { mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import * as vscode from 'vscode';
@@ -80,7 +88,9 @@ suite('Backups', () => {
       list.map((backup) => [backup.reason, backup.files]),
       [['first-write', original.length]],
     );
-    const saved = (await backups.read(list[0]!.id)).find((file) => file.uri.toString() === fr().toString());
+    const saved = (await backups.read(list[0]!.id)).files.find(
+      (file) => file.uri.toString() === fr().toString(),
+    );
     assert.deepEqual(saved?.bytes, before);
   });
 
@@ -102,7 +112,7 @@ suite('Backups', () => {
     );
   });
 
-  test('keeps only the newest backups, outside the workspace', async () => {
+  test('keeps only the newest backups', async () => {
     settings = { keep: 2, intervalMinutes: 10 };
     for (let count = 0; count < 4; count++) {
       await backups.create('manual');
@@ -115,8 +125,54 @@ suite('Backups', () => {
       ['2026-09-25T10:03:00.000Z', '2026-09-25T10:02:00.000Z'],
     );
     assert.equal(readdirSync(join(storage, 'backups')).length, 2);
-    const folder = vscode.workspace.workspaceFolders![0]!.uri.fsPath;
-    assert.ok(!storage.startsWith(folder), `${storage} lies outside ${folder}`);
+  });
+
+  test('keeps the order of backups made in the same millisecond', async () => {
+    settings = { keep: 3, intervalMinutes: 10 };
+    const made: string[] = [];
+    for (let count = 0; count < 12; count++) {
+      made.push((await backups.create('manual'))!.id);
+    }
+    assert.deepEqual(
+      (await backups.list()).map((backup) => backup.id),
+      made.slice(-3).reverse(),
+    );
+  });
+
+  test('keeps the backup that is restored, even when it is the oldest', async () => {
+    settings = { keep: 2, intervalMinutes: 10 };
+    const oldest = await backups.create('manual');
+    now += MINUTE;
+    await backups.create('manual');
+    now += MINUTE;
+    assert.deepEqual(await store.restore((await backups.read(oldest!.id)).files), { ok: true });
+    assert.ok((await backups.list()).some((backup) => backup.id === oldest!.id));
+  });
+
+  test('leaves out unfinished backups and removes them', async () => {
+    const unfinished = join(storage, 'backups', '2026-09-25T09-00-00-000Z');
+    mkdirSync(join(unfinished, '0'), { recursive: true });
+    await backups.create('manual');
+    assert.equal((await backups.list()).length, 1);
+    assert.equal(existsSync(unfinished), false);
+  });
+
+  test('refuses manifests that would lead out of their folder', async () => {
+    const backup = await backups.create('manual');
+    const path = join(storage, 'backups', backup!.id, 'manifest.json');
+    const original = readFileSync(path, 'utf8');
+    const tamperings: [string, (manifest: { files: { folder: number; path: string }[] }) => void][] = [
+      ['parent path', (manifest) => (manifest.files[0]!.path = '../outside.json')],
+      ['backslash', (manifest) => (manifest.files[0]!.path = 'a\\b.json')],
+      ['folder index', (manifest) => (manifest.files[0]!.folder = 5)],
+    ];
+    for (const [name, tamper] of tamperings) {
+      const manifest = JSON.parse(original) as { files: { folder: number; path: string }[] };
+      tamper(manifest);
+      writeFileSync(path, JSON.stringify(manifest));
+      assert.deepEqual(await backups.list(), [], name);
+      assert.deepEqual((await backups.read(backup!.id)).files, [], name);
+    }
   });
 
   test('restores the bytes of a backup through the file store, after backing up the current state', async () => {
@@ -124,7 +180,7 @@ suite('Backups', () => {
     const manual = await backups.create('manual');
     now += MINUTE;
     assert.deepEqual(await store.write(ref, setAsk('Autre chose ?')), { ok: true });
-    assert.deepEqual(await store.restore(await backups.read(manual!.id)), { ok: true });
+    assert.deepEqual(await store.restore((await backups.read(manual!.id)).files), { ok: true });
     assert.deepEqual(await vscode.workspace.fs.readFile(fr()), before);
     assert.equal((await backups.list())[0]!.reason, 'restore');
     // A restore is one write: undo brings the state before it back.

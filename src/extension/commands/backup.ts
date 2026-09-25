@@ -58,7 +58,7 @@ export async function restoreBackup(backups: BackupService, store: FileStore): P
   if (answer !== restore) {
     return;
   }
-  const result = await store.restore(await backups.read(picked.backup.id));
+  const result = await store.restore((await backups.read(picked.backup.id)).files);
   if (result.ok) {
     void vscode.window.showInformationMessage(
       vscode.l10n.t('The translation files from {time} were restored.', { time: picked.label }),
