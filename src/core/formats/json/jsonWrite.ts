@@ -1,5 +1,5 @@
 import { parseTree, type Node, type ParseError } from 'jsonc-parser';
-import { displayKey, type EntryKey } from '../../model/keys';
+import { displayKey, keyFromSegments, type EntryKey } from '../../model/keys';
 import { applyEdits } from '../../text/edits';
 import { detectStyle, type TextStyle } from '../../text/style';
 import { EditError, type FileOp } from '../adapter';
@@ -91,10 +91,10 @@ function parseObject(text: string): Node {
 function setValue(text: string, root: Node, key: EntryKey, value: string): string {
   const property = findProperty(root, key.segments);
   if (!property) {
-    throw new EditError('missing-key', `${displayKey(key)} does not exist in this file.`);
+    throw new EditError('missing-key', `${displayKey(key)} does not exist in this file.`, key);
   }
   if (property.value.type !== 'string') {
-    throw new EditError('path-conflict', `${displayKey(key)} is not a text.`);
+    throw new EditError('path-conflict', `${displayKey(key)} is not a text.`, key);
   }
   return applyEdits(text, [
     { offset: property.value.offset, length: property.value.length, content: jsonString(value) },
@@ -118,7 +118,8 @@ function insertEntry(
       break;
     }
     if (property.value.type !== 'object') {
-      throw new EditError('path-conflict', `${key.segments.slice(0, depth + 1).join('.')} is not an object.`);
+      const blocker = keyFromSegments(key.segments.slice(0, depth + 1));
+      throw new EditError('path-conflict', `${displayKey(blocker)} is not an object.`, key, blocker);
     }
     object = property.value;
     depth++;
@@ -195,10 +196,10 @@ function renderValue(
 function deleteEntry(text: string, root: Node, key: EntryKey): string {
   const property = findProperty(root, key.segments);
   if (!property) {
-    throw new EditError('missing-key', `${displayKey(key)} does not exist in this file.`);
+    throw new EditError('missing-key', `${displayKey(key)} does not exist in this file.`, key);
   }
   if (property.value.type !== 'string') {
-    throw new EditError('path-conflict', `${displayKey(key)} is not a text.`);
+    throw new EditError('path-conflict', `${displayKey(key)} is not a text.`, key);
   }
   // The highest level at which the path would leave an empty object behind.
   let level = key.segments.length - 1;
@@ -256,10 +257,10 @@ function removeProperty(text: string, object: Node, property: Property): string 
 function renameEntry(text: string, root: Node, from: EntryKey, to: EntryKey, style: TextStyle): string {
   const property = findProperty(root, from.segments);
   if (!property) {
-    throw new EditError('missing-key', `${displayKey(from)} does not exist in this file.`);
+    throw new EditError('missing-key', `${displayKey(from)} does not exist in this file.`, from);
   }
   if (property.value.type !== 'string') {
-    throw new EditError('path-conflict', `${displayKey(from)} is not a text.`);
+    throw new EditError('path-conflict', `${displayKey(from)} is not a text.`, from);
   }
   if (from.id === to.id) {
     return text;
@@ -288,8 +289,8 @@ function renameEntry(text: string, root: Node, from: EntryKey, to: EntryKey, sty
 /** A new text cannot replace an object (a path conflict) nor any other value (the key exists). */
 function existsError(key: EntryKey, existing: Property): EditError {
   return existing.value.type === 'object'
-    ? new EditError('path-conflict', `${displayKey(key)} is an object in this file.`)
-    : new EditError('key-exists', `${displayKey(key)} already exists in this file.`);
+    ? new EditError('path-conflict', `${displayKey(key)} is an object in this file.`, key)
+    : new EditError('key-exists', `${displayKey(key)} already exists in this file.`, key);
 }
 
 function propertiesOf(object: Node): Property[] {

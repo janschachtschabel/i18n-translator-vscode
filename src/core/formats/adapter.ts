@@ -52,6 +52,10 @@ export class EditError extends Error {
   constructor(
     readonly code: EditErrorCode,
     message: string,
+    /** The key of the operation; undefined when the file cannot be read at all. */
+    readonly key?: EntryKey,
+    /** For a path conflict: the path in the way, e.g. the text `A` for a new `A.B`. */
+    readonly other?: EntryKey,
   ) {
     super(message);
     this.name = 'EditError';

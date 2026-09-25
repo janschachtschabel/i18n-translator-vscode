@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { EditError, type FileOp } from '../../../../src/core/formats/adapter';
 import { jsonNestedAdapter } from '../../../../src/core/formats/json/jsonNested';
-import { keyFromSegments, type EntryKey } from '../../../../src/core/model/keys';
+import { displayKey, keyFromSegments, type EntryKey } from '../../../../src/core/model/keys';
 import { VALUE_FIELD } from '../../../../src/core/model/types';
 
 const key = (dotted: string): EntryKey => keyFromSegments(dotted.split('.'));
@@ -291,6 +291,45 @@ describe('jsonNestedAdapter.applyOps and encode', () => {
     const depth = 20000;
     const deep = `${'{"a":'.repeat(depth)}"x"${'}'.repeat(depth)}`;
     expect(codeOf(deep, { kind: 'set', key: key('a'), value: 'y' })).toBe('unparsable');
+  });
+
+  it('names the key of the failed operation and the path in its way', () => {
+    const errorOf = (text: string, op: FileOp) => {
+      try {
+        apply(text, op);
+      } catch (error) {
+        if (error instanceof EditError) {
+          return [error.code, error.key && displayKey(error.key), error.other && displayKey(error.other)];
+        }
+        throw error;
+      }
+      return undefined;
+    };
+    expect(errorOf(NESTED, { kind: 'insert', key: key('B.C'), value: 'x' })).toEqual([
+      'path-conflict',
+      'B.C',
+      'B',
+    ]);
+    expect(errorOf(NESTED, { kind: 'insert', key: key('A'), value: 'x' })).toEqual([
+      'path-conflict',
+      'A',
+      undefined,
+    ]);
+    expect(errorOf('{\n  "N": 5\n}\n', { kind: 'insert', key: key('N'), value: 'x' })).toEqual([
+      'key-exists',
+      'N',
+      undefined,
+    ]);
+    expect(errorOf(NESTED, { kind: 'rename', from: key('A.MISSING'), to: key('A.X') })).toEqual([
+      'missing-key',
+      'A.MISSING',
+      undefined,
+    ]);
+    expect(errorOf('{"A": }', { kind: 'set', key: key('A'), value: 'x' })).toEqual([
+      'unparsable',
+      undefined,
+      undefined,
+    ]);
   });
 
   it('reports an existing object as a path conflict and any other existing value as an existing key', () => {
