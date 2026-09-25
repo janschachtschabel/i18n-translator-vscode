@@ -10,6 +10,7 @@ export type EditProblemCode =
   | 'missing-key'
   | 'key-exists'
   | 'path-conflict'
+  | 'not-a-text'
   | 'invalid-key'
   | 'invalid-locale'
   | 'locale-exists'
@@ -38,6 +39,7 @@ export const EDIT_MESSAGES: Readonly<Record<EditProblemCode | EditWarningCode, s
   'missing-key': '{key} does not exist in {bundle}.',
   'key-exists': '{key} already exists in {bundle}.',
   'path-conflict': '{key} collides with {other}: a key cannot be a text and contain other keys.',
+  'not-a-text': '{file} has a value at {key} that is not a text; correct the file first.',
   'invalid-key': 'Every part of a key needs a name, e.g. SECTION.TITLE.',
   'invalid-locale': '{locale} is not a valid language code for {area}.',
   'locale-exists': 'Every bundle already has a file for {locale}.',
