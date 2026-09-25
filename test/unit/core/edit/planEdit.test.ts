@@ -4,6 +4,7 @@ import { formatMessage } from '../../../../src/core/checks/messages';
 import {
   planAddLanguage,
   planEdit,
+  planInBundles,
   type BundleEdit,
   type PlanResult,
 } from '../../../../src/core/edit/planEdit';
@@ -297,6 +298,48 @@ describe('planEdit: keys', () => {
     expect(plan('broken', { kind: 'addKey', key: key('NEW'), values: { de: 'x' } })).toBe('unreadable-file');
     expect(plan('broken', { kind: 'deleteKey', entryId: id('b') })).toBe('unreadable-file');
     expect(plan('broken', { kind: 'renameKey', entryId: id('b'), to: key('c') })).toBe('unreadable-file');
+  });
+});
+
+describe('planInBundles', () => {
+  const ids = (...names: string[]) => names.map((name) => bundle(name).id);
+
+  it('makes one change of the same edit in several bundles, e.g. a key renamed wherever it is', () => {
+    expect(
+      summary(
+        planInBundles(analysis.bundles, ids('common', 'admin'), {
+          kind: 'renameKey',
+          entryId: id('ASK'),
+          to: key('QUESTION'),
+        }),
+      ),
+    ).toEqual([
+      'common/de.json: rename ASK -> QUESTION',
+      'common/de-informal.json: rename ASK -> QUESTION',
+      'common/en.json: rename ASK -> QUESTION',
+      'common/fr.json: rename ASK -> QUESTION',
+      'common/it.json: rename ASK -> QUESTION',
+      'admin/de.json: rename ASK -> QUESTION',
+      'admin/en.json: rename ASK -> QUESTION',
+    ]);
+  });
+
+  it('plans nothing when the edit is not possible in one of them', () => {
+    expect(
+      summary(
+        planInBundles(analysis.bundles, ids('common', 'editorial'), {
+          kind: 'deleteKey',
+          entryId: id('ASK'),
+        }),
+      ),
+    ).toBe('missing-key');
+  });
+
+  it('names a bundle that is no longer there', () => {
+    const gone = JSON.stringify(['angular', 'Frontend/src/assets/i18n', 'gone']);
+    const result = planInBundles(analysis.bundles, [gone], { kind: 'deleteKey', entryId: id('ASK') });
+    expect(summary(result)).toBe('missing-bundle');
+    expect(!result.ok && result.problem.message.args).toEqual({ bundle: 'gone' });
   });
 });
 

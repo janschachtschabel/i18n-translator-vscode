@@ -2,7 +2,7 @@ import type { AreaDefinition } from '../area/areaDefinition';
 import { formatFilePattern } from '../area/filePattern';
 import { hasSyntaxError, type FileOp } from '../formats/adapter';
 import { ADAPTERS } from '../formats/registry';
-import type { Bundle, LoadedFile } from '../model/bundle';
+import { parseBundleId, type Bundle, type LoadedFile } from '../model/bundle';
 import { displayKey, isKeyPrefix, keyFromId, keyFromSegments, type EntryKey } from '../model/keys';
 import type { LocaleCode } from '../model/types';
 import { detectStyle } from '../text/style';
@@ -138,6 +138,30 @@ function planAddKey(
       relPath: file.relPath,
       ops: [{ kind: 'insert', key, value, ...(after ? { after } : {}) }],
     });
+  }
+  return done(changes);
+}
+
+/**
+ * The same edit in several bundles as one change, e.g. a key renamed in every bundle of a root that has it: all
+ * of it, or nothing if the edit is not possible in one of them.
+ */
+export function planInBundles(
+  bundles: readonly Bundle[],
+  ids: readonly string[],
+  edit: BundleEdit,
+): PlanResult {
+  const changes: FileChange[] = [];
+  for (const id of ids) {
+    const bundle = bundles.find((candidate) => candidate.id === id);
+    if (!bundle) {
+      return fail(editProblem('missing-bundle', { bundle: parseBundleId(id).name }));
+    }
+    const result = planEdit(bundle, edit);
+    if (!result.ok) {
+      return result;
+    }
+    changes.push(...result.changes);
   }
   return done(changes);
 }
