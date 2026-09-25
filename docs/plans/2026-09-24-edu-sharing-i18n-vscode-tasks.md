@@ -925,6 +925,45 @@ was nicht ausdrücklich geändert wurde.
 >   - Statussymbole, schrittweises Rendern, Scroll-Anker und die Sprachbeschriftung liegen jetzt in `components/` statt in `table/`.
 >   - `data-entry` trägt die Kennung des Keys kodiert (`encodeURIComponent`). Mit den Anführungszeichen des JSON scheiterte axe unter happy-dom beim Bauen von Selektoren.
 > - **In Chromium geprüft (Vorschau):** Bei 320 px scrollt nichts waagerecht, weder kompakt noch mit allen sechs Sprachen, und kein Element ragt über den Rand.
+>
+> **Review Block B (Tasks 2.6–2.11, 26.09.2026):** vier Prüfer mit frischem Kontext (Host und Vertrauensgrenze, Zustand und Bedienelemente, Tabelle und Liste, Barrierefreiheit nach WCAG 2.2 AA), zwei davon mit Messungen in Chromium. Zusammengeführt: 0 kritische, 9 schwere Befunde, dazu rund 25 kleinere und einige Kleinigkeiten.
+> - **Behoben (schwer):**
+>   - Die Tabelle war so breit wie ihr längster Text, sodass lange Texte weder abgeschnitten noch umbrochen wurden. Jetzt sind die Spalten 208 statt 1.291 px breit, gemessen.
+>   - Jede Pfeiltaste renderte alle Zeilen neu: 59 ms bei 2.000 × 6, jetzt etwa 3 ms. Zeilen und Kopfzeile werden memoisiert, und die Sprachliste bleibt stabil.
+>   - Ohne Chromiums Scroll-Anker sprang der Inhalt beim Hochscrollen, wenn Zeilen ihre echte Höhe bekamen.
+>   - Ein Filterwechsel konnte die aktive Zeile hinter die gerenderten schieben. Danach holte sich die Tabelle den Fokus auch aus dem Suchfeld zurück.
+>   - Verschwand das Grid (kein Treffer, Wechsel zur Liste), fiel der Fokus auf `<body>`.
+>   - Strg+Z löste zusätzlich VS Codes eigenes Undo aus, das die Sucheingabe zurücknahm.
+>   - Ein regulärer Ausdruck wurde gespeichert, bevor er lief. Einer, der nie endet, hätte jedes Öffnen blockiert.
+>   - `<html lang>` nannte die Sprache von VS Code auch dann, wenn die Texte englisch sind.
+>   - Befunde zu Keys ohne Zeile (doppelt definiertes Objekt, Zahl) erschienen nirgends.
+> - **Behoben (klein):**
+>   - Gespeicherte Zustände enthalten nur bekannte Felder.
+>   - `before` darf ein abgeschnittenes Zeichen enthalten.
+>   - Ein wiederhergestelltes Doppel eines offenen Editors wird geschlossen.
+>   - `eduI18n.openBundle` gibt nichts zurück; bisher ging sein Ergebnis bei jedem Klick an die Workbench. Das Kontextmenü „Öffnen“ ist neu.
+>   - Rückgängig nennt die Dateien und meldet ehrlich, wenn eine Änderung nicht mehr zurückzunehmen ist.
+>   - Tastenkürzel greifen auch mit nicht lateinischer Tastaturbelegung, und vor `init` ändert sich kein Zustand.
+>   - Die Breite liegt im Store. Die Zeilen rendern nur bei einem Wechsel des Layouts neu, und der Filter sieht genau die gezeigten Sprachen, auch kompakt.
+>   - Eine verschwundene Sprache im Filter zählt als keine.
+>   - Alt+↓/↑ springt zum nächsten offenen Punkt (Design §7.2). Die Leertaste scrollt nicht mehr, und die Kopfzeile nutzt die UI-Schrift.
+>   - Barrierefreiheit:
+>     - weitere Befunde unter den Chips und „keine Datei“ am Chip;
+>     - die Trefferzahl wird nach einer Tipp-Pause angesagt;
+>     - die Fehlermeldung steht in Textfarbe mit rotem Symbol;
+>     - Schwere in Worten, Marken für „kein Text“ und „leerer Text“, gültige BCP-47-Tags;
+>     - Sprunglinks zu Suche und Tabelle, die Legende „Angezeigte Sprachen“.
+>   - Die axe-Prüfung der Tests scheitert auch an unentschiedenen Ergebnissen (außer dem Kontrast, der Layout braucht).
+> - **Für 2.12:** Eine ungültige `edit`-Nachricht mit lesbarer `requestId` soll mit `writeResult { ok: false }` beantwortet werden, sonst wartet die Zelle vergeblich.
+> - **Für 2.16 (Sichtprüfung, NVDA):**
+>   - Die Rahmen von Suchfeld und Auswahllisten erreichen in den Standard-Themes keine 3:1; VS Codes eigene Felder sehen genauso aus. Entscheiden, ob das so bleibt.
+>   - Bei geringer Höhe (etwa 200 % Zoom) scrollen Seite und Tabelle ineinander. Das gehört zum kompakteren Kopfbereich.
+>   - Ansage, wenn eine Einheit nach dem Laden erscheint; Zebrastreifen für breite Tabellen; Aussehen der Rückgängig-Schaltfläche in Dark Modern.
+>   - Eine Layout-Prüfung in echtem Chromium gibt es in der CI nicht. Die Vorschau im Scratchpad ersetzt sie bis dahin.
+> - **Bewusst offen:**
+>   - Ein katastrophaler regulärer Ausdruck hält die Webview beim Tippen weiterhin auf, wird aber nicht mehr gespeichert. Vollen Schutz gäbe erst ein Worker mit Zeitlimit.
+>   - Texte nur aus Leerzeichen bekommen keine eigene Marke.
+>   - Statt Codicons (B6) stehen Unicode-Symbole; Codicons kommen mit dem ersten echten Symbol.
 
 ### Task 2.1: Textbausteine für das Schreiben
 **Dateien:** Create `src/core/text/edits.ts`, `src/core/text/style.ts`; Test: `test/unit/core/text/edits.test.ts`, `style.test.ts`
