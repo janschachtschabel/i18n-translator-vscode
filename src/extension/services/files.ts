@@ -55,9 +55,9 @@ export function isDirty(uri: vscode.Uri): boolean {
   );
 }
 
-/** The path of a file as messages and logs show it: relative to its workspace folder. */
+/** The path of a file as messages and logs show it: relative to its workspace folder, named if several are open. */
 export function relative(uri: vscode.Uri): string {
-  return vscode.workspace.asRelativePath(uri, false);
+  return vscode.workspace.asRelativePath(uri);
 }
 
 /** File systems on Windows and macOS ignore case, and an editor keeps the case a file was opened with. */

@@ -108,7 +108,7 @@ export class FileStore {
       const indexed = await this.find(ref);
       if (!indexed) {
         const message = vscode.l10n.t('The translation folder {root} is no longer indexed.', {
-          root: ref.root,
+          root: ref.root || '.',
         });
         return { ok: false, reason: 'error', message };
       }

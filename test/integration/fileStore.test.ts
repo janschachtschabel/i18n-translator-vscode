@@ -140,6 +140,48 @@ suite('FileStore', () => {
     assert.equal(await exists(es), false);
   });
 
+  test('refuses a plan that would write outside its root', async () => {
+    const result = await api.fileStore.write(ref, () => ({
+      ok: true,
+      changes: [{ kind: 'create', relPath: 'outside.json', content: '{}\n' }],
+    }));
+    assert.ok(!result.ok && result.reason === 'error', JSON.stringify(result));
+    assert.equal(await exists(workspaceUri('outside.json')), false);
+  });
+
+  test('gives up after planning three times on files that keep differing from the index', async () => {
+    const de = uriOf('common', 'de');
+    const before = await vscode.workspace.fs.readFile(de);
+    let plans = 0;
+    // A new file where one exists never matches the disk, however often the index is refreshed.
+    const result = await api.fileStore.write(ref, () => {
+      plans++;
+      return { ok: true, changes: [{ kind: 'create', relPath: `${I18N}/common/de.json`, content: '{}\n' }] };
+    });
+    assert.ok(!result.ok && result.reason === 'changed', JSON.stringify(result));
+    assert.equal(plans, 3);
+    assert.deepEqual(await vscode.workspace.fs.readFile(de), before);
+  });
+
+  test('reports a root that is no longer indexed', async () => {
+    const result = await api.fileStore.write({ ...ref, root: '' }, setAsk('Continuer ?'));
+    assert.ok(!result.ok && result.reason === 'error');
+    assert.equal(result.message, 'The translation folder . is no longer indexed.');
+  });
+
+  test('keeps an undo while its file has unsaved changes', async () => {
+    const fr = uriOf('common', 'fr');
+    const before = await vscode.workspace.fs.readFile(fr);
+    assert.deepEqual(await api.fileStore.write(ref, setAsk('Continuer ?')), { ok: true });
+    const editor = await vscode.window.showTextDocument(await vscode.workspace.openTextDocument(fr));
+    await editor.edit((builder) => builder.insert(new vscode.Position(0, 0), ' '));
+    const refused = await api.fileStore.undo();
+    assert.ok(refused && !refused.ok && refused.reason === 'dirty');
+    await vscode.commands.executeCommand('workbench.action.revertAndCloseActiveEditor');
+    assert.deepEqual(await api.fileStore.undo(), { ok: true });
+    assert.deepEqual(await vscode.workspace.fs.readFile(fr), before);
+  });
+
   test('writes every file of a change or none', async () => {
     const files = ['de', 'en', 'fr'].map((locale) => uriOf('common', locale));
     const before = await Promise.all(files.map(read));
