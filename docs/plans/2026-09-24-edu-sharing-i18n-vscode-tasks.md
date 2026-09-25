@@ -724,14 +724,28 @@ was nicht ausdrücklich geändert wurde.
 >   - Die Golden-Dateien laufen durch die ganze Operationstabelle von 2.2.
 >   - `keyCheck.test.ts` gibt es jetzt.
 >   - Der Löschfall `WORKSPACE.FILE.TITLE` ist getestet.
-> - **Folgen für 2.4 (aus dem Review):**
->   - Rebase (B5) heißt: die Einheit aus den frischen Bytes neu aufbauen und `planEdit` mit derselben Änderung (samt `before`) erneut aufrufen. Operationen erneut anzuwenden reicht nicht, weil `set` den Ausgangswert nicht kennt. Der FileStore bekommt deshalb die `BundleEdit` (oder eine Funktion zum Neuplanen) statt fertiger `FileChange`s.
->   - Konflikte, die nur der Schreiber sieht (leere Objekte `"X": {}`, Werte wie `"N": 5` am Pfad), meldet der FileStore als lokalisiertes `EditProblem`. `EditError` bekommt dafür den Key (Review-Befund 14, verschoben).
->   - `create` scheitert, wenn die Datei inzwischen existiert, und jedes Schreibziel muss innerhalb der Wurzel liegen.
-> - **Offen (Beobachtungen, nicht behoben):**
->   - 240 `set`-Operationen in einem Aufruf dauern auf 225 KiB etwa 1,2 s, weil nach jeder Operation neu geparst wird (B3). Für das Batch-Schreiben in 3.9 und 4.7 prüfen, ob ein Schnellpfad für `set` nötig ist.
->   - Eine Datei mit mehr als 10.000 Ebenen Verschachtelung lässt `applyOps` mit `RangeError` statt `EditError` scheitern. Der FileStore fängt allgemeine Fehler ab.
->   - Ein veralteter `before`-Wert ergibt `changed`, auch wenn der neue Text dem aktuellen gleicht.
+> - **Folgen für 2.4 (aus dem Review), umgesetzt in 2.4:**
+>   - Rebase (B5) heißt: `planEdit` mit derselben Änderung (samt `before`) auf den frischen Texten erneut aufrufen. Operationen erneut anzuwenden reicht nicht, weil `set` den Ausgangswert nicht kennt. Der FileStore bekommt deshalb eine Funktion zum Planen statt fertiger `FileChange`s.
+>   - Konflikte, die nur der Schreiber sieht (leere Objekte `"X": {}`, Werte wie `"N": 5` am Pfad), werden zu lokalisierten `EditProblem`s (`not-a-text`, `path-conflict`). `EditError` nennt dafür den Key und den Pfad im Weg (Review-Befund 14).
+>   - `create` wird nicht geschrieben, wenn die Datei inzwischen existiert, und jedes Schreibziel muss innerhalb der Wurzel liegen.
+> - **Beobachtungen:** Ein veralteter `before`-Wert ergibt keinen Konflikt mehr, wenn der Text schon so lautet wie gewünscht. Extrem tiefe Verschachtelung ergibt auch beim Schreiben `unparsable`. Offen bleibt: 240 `set`-Operationen in einem Aufruf dauern auf 225 KiB etwa 1,2 s, weil nach jeder Operation neu geparst wird (B3). Für das Batch-Schreiben in 3.9 und 4.7 prüfen, ob ein Schnellpfad für `set` nötig ist.
+>
+> **Umsetzungsnotizen Task 2.4 (25.09.2026):**
+> - **Schnittstelle:** `write(root: RootRef, plan: Planner)` statt `write(folder, area, changes, baseRevisions)`. `Planner = (analysis: RootAnalysis) => PlanResult` plant auf dem Index-Stand einer Wurzel, etwa `planEdit(bundle, edit)` oder `planAddLanguage(bundles, area, locale)`.
+> - **Ablauf:**
+>   - `applyChanges` (Kern) rechnet die neuen Texte im Speicher aus.
+>   - Der Store prüft, ob die Dateien auf der Platte noch den geplanten Text haben (dekodiert verglichen). Wenn nicht, indiziert er neu und plant noch einmal, höchstens dreimal.
+>   - Danach schreibt er ganz oder gar nicht: Ein Fehler stellt die schon geschriebenen Dateien wieder her.
+> - **`WriteResult`:**
+>   - `problem` mit `EditProblem` (enthält die Konflikte nach B5);
+>   - `dirty` und `changed` mit den Dateien;
+>   - `untrusted` (eingeschränkter Modus);
+>   - `error` mit Meldung.
+>   Die Meldung mit „Datei zeigen“ kommt mit dem ersten Aufrufer (2.12), weil der Store nur Ergebnisse liefert.
+> - **Revisionen:** `revisionOf` braucht nur das Undo, um „Datei hat noch den geschriebenen Stand“ zu prüfen, ohne diese Bytes aufzuheben. Undo hält die vorherigen Bytes, höchstens 100 Schreibvorgänge je Sitzung.
+> - **Warteschlange:** eine für alle Dateien statt einer je Datei (`simplify:`). Schreibvorgänge sind selten und kurz, und eine Änderung über mehrere Dateien braucht so keine Sperrreihenfolge.
+> - **Index:** Nach dem Schreiben wird noch der ganze Index neu aufgebaut; nur die betroffene Wurzel folgt mit 2.15.
+> - **Tests:** Die Integrationstests laufen je Profil auf einer frischen Kopie des Fixture-Workspace unter `out/test-workspace/`, damit `test/fixtures` unberührt bleibt. „Ganz oder gar nicht“ ist mit einer schreibgeschützten Datei getestet; ohne das Wiederherstellen schlägt der Test fehl.
 
 ### Task 2.1: Textbausteine für das Schreiben
 **Dateien:** Create `src/core/text/edits.ts`, `src/core/text/style.ts`; Test: `test/unit/core/text/edits.test.ts`, `style.test.ts`
