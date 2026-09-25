@@ -7,6 +7,7 @@
   "view.areas.welcome": "No edu-sharing translation files were found in this workspace.\n[Configure folders](command:eduI18n.configureRoots)",
   "cmd.check": "Check translations",
   "cmd.configureRoots": "Configure translation folders…",
+  "cmd.openBundle": "Open translation editor",
   "cmd.revealInExplorer": "Reveal in Explorer",
   "cmd.backupNow": "Back up translation files now",
   "cmd.restoreBackup": "Restore translation files from a backup…",

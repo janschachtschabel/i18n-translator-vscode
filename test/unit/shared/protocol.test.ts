@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { keyFromSegments } from '../../../src/core/model/keys';
-import { isWebviewToHost, MAX_TEXT_LENGTH } from '../../../src/shared/protocol';
+import {
+  DEFAULT_UI_STATE,
+  isPanelState,
+  isWebviewToHost,
+  MAX_TEXT_LENGTH,
+} from '../../../src/shared/protocol';
 
 const entryId = keyFromSegments(['WORKSPACE', 'TITLE']).id;
 const edit = {
@@ -23,6 +28,7 @@ describe('isWebviewToHost', () => {
       { type: 'command', command: 'addKey', entryId },
       { type: 'command', command: 'addLanguage' },
       { type: 'uiState', state: uiState },
+      { type: 'uiState', state: DEFAULT_UI_STATE },
     ]) {
       expect(isWebviewToHost(message), JSON.stringify(message)).toBe(true);
     }
@@ -83,5 +89,32 @@ describe('isWebviewToHost', () => {
     expect(isWebviewToHost({ type: 'uiState', state: { ...uiState, hiddenLocales: codes(201) } })).toBe(
       false,
     );
+  });
+});
+
+describe('isPanelState', () => {
+  const bundleId = JSON.stringify(['angular', 'web/src/assets/i18n', 'common']);
+
+  it('accepts the state the host gives the webview to keep', () => {
+    expect(isPanelState({ folder: 'file:///c%3A/repo', bundleId })).toBe(true);
+  });
+
+  it('refuses anything else, as the state comes back from the webview', () => {
+    for (const state of [
+      undefined,
+      null,
+      'common',
+      {},
+      { folder: 'file:///repo' },
+      { folder: 1, bundleId },
+      { folder: '', bundleId },
+      { folder: 'x'.repeat(10_001), bundleId },
+      { folder: 'file:///repo', bundleId: 'common' },
+      { folder: 'file:///repo', bundleId: '["angular","common"]' },
+      { folder: 'file:///repo', bundleId: '["angular","",3]' },
+      { folder: 'file:///repo', bundleId: '[ "angular", "", "common" ]' },
+    ]) {
+      expect(isPanelState(state), JSON.stringify(state)).toBe(false);
+    }
   });
 });

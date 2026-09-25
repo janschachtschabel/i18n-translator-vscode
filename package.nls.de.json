@@ -7,6 +7,7 @@
   "view.areas.welcome": "In diesem Arbeitsbereich wurden keine Übersetzungsdateien von edu-sharing gefunden.\n[Ordner festlegen](command:eduI18n.configureRoots)",
   "cmd.check": "Übersetzungen prüfen",
   "cmd.configureRoots": "Übersetzungsordner festlegen…",
+  "cmd.openBundle": "Übersetzungseditor öffnen",
   "cmd.revealInExplorer": "Im Explorer zeigen",
   "cmd.backupNow": "Übersetzungsdateien jetzt sichern",
   "cmd.restoreBackup": "Übersetzungsdateien aus einer Sicherung wiederherstellen…",

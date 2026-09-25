@@ -16,5 +16,5 @@
     "noEmit": true
   },
   "include": ["src", "test", "scripts", "vitest.config.mts"],
-  "exclude": ["test/fixtures"]
+  "exclude": ["test/fixtures", "src/webview", "test/unit/webview"]
 }

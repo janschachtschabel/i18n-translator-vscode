@@ -7,6 +7,7 @@ import tseslint from 'typescript-eslint';
 const nodeBuiltins = (message) => builtinModules.map((name) => ({ name, message }));
 const NEUTRAL_NODE_MESSAGE = 'src/core and src/shared must also run in the webview; keep Node APIs out.';
 const WEBVIEW_NODE_MESSAGE = 'The webview runs in a browser, not in Node.';
+const HTML_MESSAGE = 'Show texts as text: they come from files and are never parsed as HTML.';
 
 /**
  * Layer rule for platform-neutral code (no VS Code, no Node, no DOM): the extension host, the webview and CLI
@@ -75,6 +76,19 @@ export default defineConfig(
             { group: ['node:*'], message: WEBVIEW_NODE_MESSAGE },
           ],
         },
+      ],
+      // Texts come from files in the repository: they are shown as text, never parsed as HTML (design §6.12).
+      'no-restricted-syntax': [
+        'error',
+        { selector: "JSXAttribute[name.name='dangerouslySetInnerHTML']", message: HTML_MESSAGE },
+      ],
+      'no-restricted-properties': [
+        'error',
+        ...['innerHTML', 'outerHTML', 'insertAdjacentHTML'].map((property) => ({
+          property,
+          message: HTML_MESSAGE,
+        })),
+        { object: 'document', property: 'write', message: HTML_MESSAGE },
       ],
     },
   },

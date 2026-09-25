@@ -812,6 +812,35 @@ was nicht ausdrücklich geändert wurde.
 >   - Befunde ohne Key stehen an der Sprache, Befunde ohne Sprache an der Einheit.
 >   - Die Meldungen übersetzt der Aufrufer über `localize`.
 > - **Schichten:** `src/shared` ist wie `src/core` plattformneutral: kein VS Code, kein Node, kein DOM und keine Importe aus `extension` oder `webview` (ESLint). `src/core` darf `src/shared` nicht importieren. Die Abdeckung zählt `src/shared` mit.
+>
+> **Umsetzungsnotizen Task 2.7 (25.09.2026):**
+> - **Panels:**
+>   - `EditorPanels` hält je Einheit ein Panel, erkannt an Ordner-URI und Einheits-ID. Erneutes Öffnen holt es nach vorn.
+>   - Ein Klick auf eine Einheit in der Seitenleiste öffnet es (auch mit Enter).
+>   - `eduI18n.openBundle` fehlt in der Befehlspalette, weil der Befehl eine Einheit als Argument braucht. Eine Auswahl per QuickPick kann folgen, wenn sie gebraucht wird.
+> - **Wiederherstellen:**
+>   - Die Webview hebt den `panelState` aus `init` mit `setState` auf. Der Serializer (`onWebviewPanel:eduI18n.editor`) prüft ihn mit `isPanelState` und schließt Panels, deren Zustand er nicht lesen kann.
+>   - Gibt es die Einheit nicht (mehr), zeigt das Panel das an (`missing`). War die Einheit gerade zu sehen, wird es auch Screenreadern vorgelesen.
+>   - Beim Beenden bleiben die Panels offen, damit VS Code sie wiederherstellt.
+> - **Protokoll:** `init` trägt zusätzlich `panelState`; neu ist `missing`. Bis 2.8 schickt der Host den Standard-`UiState`.
+> - **Texte:**
+>   - Mit `init` schickt der Host seinen ganzen Übersetzungskatalog (`vscode.l10n.bundle`).
+>   - Die Webview übersetzt mit einem eigenen `l10n.t`. Der l10n-Test sammelt dessen Texte wie die des Hosts und verlangt deutsche Übersetzungen.
+>   - Zahlen formatiert die Webview in der Sprache von VS Code (`<html lang>`).
+> - **Sicherheit:**
+>   - CSP wie geplant, `localResourceRoots` nur `dist/webview`.
+>   - ESLint verbietet in `src/webview` `dangerouslySetInnerHTML`, `innerHTML`, `outerHTML`, `insertAdjacentHTML` und `document.write`.
+>   - Der Router loggt verworfene Nachrichten nur mit ihrem Typ, nie mit Texten.
+> - **Build:**
+>   - esbuild baut `dist/webview/main.js` und `main.css` (IIFE, Chromium 122 wie in VS Code 1.90). In Produktion sind das 22,5 KB, mit gzip 8,9 KB.
+>   - `tsconfig.webview.json` prüft Webview und Webview-Tests mit DOM und ohne Node-Typen.
+>   - `src/webview/css.d.ts` erlaubt CSS-Importe, denn TypeScript 6 prüft auch Importe ohne Namen.
+> - **Tests:**
+>   - axe läuft in happy-dom. `color-contrast` braucht ein Layout und bleibt dort „unvollständig“; den Kontrast prüft 2.16 in VS Code.
+>   - Der Integrationstest beobachtet die Nachrichten über `EditorPanel.onDidPost`. Mit falscher Nonce scheitert er (Gegenprobe), er prüft also den Weg über CSP, Skript und `ready`.
+> - **Beobachtungen:**
+>   - `npm audit` meldet vier Schwachstellen in `@vscode/test-cli` → `mocha` (`diff`, `serialize-javascript`), nur in den Testwerkzeugen. Die Laufzeitabhängigkeiten sind ohne Befund.
+>   - Für 2.18: Der Status im README („Phase 1 folgt“) ist veraltet.
 
 ### Task 2.1: Textbausteine für das Schreiben
 **Dateien:** Create `src/core/text/edits.ts`, `src/core/text/style.ts`; Test: `test/unit/core/text/edits.test.ts`, `style.test.ts`

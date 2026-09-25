@@ -55,7 +55,7 @@ export class AreasTreeProvider implements vscode.TreeDataProvider<AreaNode>, vsc
       case 'root':
         return this.rootItem(node.root);
       case 'bundle':
-        return this.bundleItem(node.root, node.bundle);
+        return this.bundleItem(node);
       case 'problems':
         return this.problemsItem(node.messages);
       case 'problem':
@@ -92,7 +92,8 @@ export class AreasTreeProvider implements vscode.TreeDataProvider<AreaNode>, vsc
     return item;
   }
 
-  private bundleItem(root: IndexedRoot, bundle: Bundle): vscode.TreeItem {
+  private bundleItem(node: Extract<AreaNode, { kind: 'bundle' }>): vscode.TreeItem {
+    const { root, bundle } = node;
     const summary = summarizeBundle(bundle, root.analysis.issues);
     const { error, warning, info } = summary.counts;
     const item = new vscode.TreeItem(bundle.name, vscode.TreeItemCollapsibleState.None);
@@ -111,6 +112,11 @@ export class AreasTreeProvider implements vscode.TreeDataProvider<AreaNode>, vsc
     item.tooltip = this.bundleTooltip(bundle, summary);
     item.iconPath = new vscode.ThemeIcon('files');
     item.contextValue = 'eduI18n.bundle';
+    item.command = {
+      command: 'eduI18n.openBundle',
+      title: vscode.l10n.t('Open translation editor'),
+      arguments: [node],
+    };
     return item;
   }
 

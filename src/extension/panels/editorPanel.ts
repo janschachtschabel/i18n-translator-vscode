@@ -1,0 +1,180 @@
+import { randomBytes } from 'node:crypto';
+import * as vscode from 'vscode';
+import { parseBundleId, type Bundle } from '../../core/model/bundle';
+import { DEFAULT_UI_STATE, isPanelState, type HostToWebview, type PanelState } from '../../shared/protocol';
+import { buildBundleViewModel } from '../../shared/viewModel';
+import { localize } from '../localize';
+import type { IndexedRoot, IndexSnapshot, WorkspaceIndex } from '../services/workspaceIndex';
+import { routeMessage } from './messageRouter';
+import { webviewHtml } from './webviewHtml';
+
+export const EDITOR_VIEW_TYPE = 'eduI18n.editor';
+
+/** The editors of the bundles: one per bundle, restored after a restart, updated after every index run. */
+export class EditorPanels implements vscode.Disposable {
+  private readonly panels = new Set<EditorPanel>();
+  private readonly subscriptions: vscode.Disposable[];
+  private readonly files: vscode.Uri;
+
+  constructor(
+    extensionUri: vscode.Uri,
+    private readonly index: WorkspaceIndex,
+    private readonly log: vscode.LogOutputChannel,
+  ) {
+    this.files = vscode.Uri.joinPath(extensionUri, 'dist', 'webview');
+    this.subscriptions = [
+      index.onDidChange((snapshot) => {
+        for (const panel of this.panels) {
+          panel.update(snapshot).catch((error: unknown) => log.error('Could not update an editor.', error));
+        }
+      }),
+      vscode.window.registerWebviewPanelSerializer(EDITOR_VIEW_TYPE, {
+        deserializeWebviewPanel: async (panel, state) => void this.restore(panel, state),
+      }),
+    ];
+  }
+
+  /** Shows the editor of a bundle; if it is open, it comes to the front. */
+  open(root: IndexedRoot, bundle: Bundle): EditorPanel {
+    const target: PanelState = { folder: root.folder.uri.toString(), bundleId: bundle.id };
+    const open = [...this.panels].find(
+      (panel) => panel.target.folder === target.folder && panel.target.bundleId === target.bundleId,
+    );
+    if (open) {
+      open.panel.reveal();
+      return open;
+    }
+    const panel = vscode.window.createWebviewPanel(EDITOR_VIEW_TYPE, bundle.name, vscode.ViewColumn.Active, {
+      retainContextWhenHidden: true,
+    });
+    return this.add(panel, target);
+  }
+
+  /** Takes over a panel VS Code restored after a restart; one whose state is not readable is closed. */
+  restore(panel: vscode.WebviewPanel, state: unknown): EditorPanel | undefined {
+    if (!isPanelState(state)) {
+      this.log.warn('Closed a restored editor whose saved state is not readable.');
+      panel.dispose();
+      return undefined;
+    }
+    return this.add(panel, state);
+  }
+
+  /** Leaves the panels open: VS Code restores them in the next session. */
+  dispose(): void {
+    for (const panel of this.panels) {
+      panel.dispose();
+    }
+    vscode.Disposable.from(...this.subscriptions).dispose();
+  }
+
+  private add(panel: vscode.WebviewPanel, target: PanelState): EditorPanel {
+    const editor = new EditorPanel(panel, target, this.index, this.log, this.files);
+    this.panels.add(editor);
+    panel.onDidDispose(() => {
+      this.panels.delete(editor);
+      editor.dispose();
+    });
+    return editor;
+  }
+}
+
+/** The editor of one bundle: its webview panel and the conversation with the webview. */
+export class EditorPanel implements vscode.Disposable {
+  private readonly posted = new vscode.EventEmitter<HostToWebview>();
+  /** Fires for every message to the webview; the integration tests follow the conversation with it. */
+  readonly onDidPost = this.posted.event;
+  private readonly subscriptions: vscode.Disposable[];
+  /** Whether the webview has asked for its content; messages sent before would get lost. */
+  private started = false;
+
+  constructor(
+    readonly panel: vscode.WebviewPanel,
+    readonly target: PanelState,
+    private readonly index: WorkspaceIndex,
+    log: vscode.LogOutputChannel,
+    files: vscode.Uri,
+  ) {
+    const { name } = parseBundleId(target.bundleId);
+    panel.title = name;
+    panel.webview.options = { enableScripts: true, localResourceRoots: [files] };
+    panel.webview.html = webviewHtml({
+      cspSource: panel.webview.cspSource,
+      nonce: randomBytes(16).toString('base64'),
+      scriptUri: panel.webview.asWebviewUri(vscode.Uri.joinPath(files, 'main.js')).toString(),
+      styleUri: panel.webview.asWebviewUri(vscode.Uri.joinPath(files, 'main.css')).toString(),
+      language: vscode.env.language,
+      title: name,
+    });
+    this.subscriptions = [
+      this.posted,
+      panel.webview.onDidReceiveMessage((message: unknown) =>
+        routeMessage(message, { ready: () => this.start() }, log),
+      ),
+    ];
+  }
+
+  /** Shows the bundle as an index run found it, or that it is gone. */
+  async update(snapshot: IndexSnapshot): Promise<void> {
+    if (this.started) {
+      await this.show(snapshot);
+    }
+  }
+
+  dispose(): void {
+    vscode.Disposable.from(...this.subscriptions).dispose();
+  }
+
+  /** Answers `ready`, which the webview sends whenever it (re)loads. */
+  private async start(): Promise<void> {
+    this.started = true;
+    await this.post({
+      type: 'init',
+      l10n: vscode.l10n.bundle ?? {},
+      uiState: DEFAULT_UI_STATE,
+      panelState: this.target,
+    });
+    // Before the first index run (a panel restored at startup), `update` brings the bundle.
+    const snapshot = this.index.current();
+    if (snapshot) {
+      await this.show(snapshot);
+    }
+  }
+
+  private show(snapshot: IndexSnapshot): Promise<void> {
+    const found = findBundle(snapshot, this.target);
+    return this.post(
+      found
+        ? {
+            type: 'bundle',
+            model: buildBundleViewModel(found.bundle, {
+              issues: found.root.analysis.issues,
+              variants: Object.keys(found.root.settings.variants),
+              localize,
+            }),
+          }
+        : { type: 'missing', name: parseBundleId(this.target.bundleId).name },
+    );
+  }
+
+  private async post(message: HostToWebview): Promise<void> {
+    this.posted.fire(message);
+    await this.panel.webview.postMessage(message);
+  }
+}
+
+function findBundle(
+  snapshot: IndexSnapshot,
+  target: PanelState,
+): { root: IndexedRoot; bundle: Bundle } | undefined {
+  for (const root of snapshot.roots) {
+    const bundle =
+      root.folder.uri.toString() === target.folder
+        ? root.analysis.bundles.find((candidate) => candidate.id === target.bundleId)
+        : undefined;
+    if (bundle) {
+      return { root, bundle };
+    }
+  }
+  return undefined;
+}

@@ -2,7 +2,9 @@ import * as vscode from 'vscode';
 import { backUpNow, restoreBackup } from './commands/backup';
 import { checkTranslations } from './commands/check';
 import { configureRoots } from './commands/configureRoots';
+import { openBundle } from './commands/openBundle';
 import { DiagnosticsPublisher } from './diagnostics/diagnosticsPublisher';
+import { EditorPanels } from './panels/editorPanel';
 import { BackupService } from './services/backupService';
 import { FileStore } from './services/fileStore';
 import { WorkspaceIndex } from './services/workspaceIndex';
@@ -14,6 +16,7 @@ import { IndexStatusBar } from './views/statusBar';
 export interface ExtensionApi {
   index: WorkspaceIndex;
   fileStore: FileStore;
+  editors: EditorPanels;
   views: {
     areas: AreasTreeProvider;
     areasView: vscode.TreeView<AreaNode>;
@@ -29,6 +32,7 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
   const fileStore = new FileStore(index, log, {
     beforeWrite: (kind, files) => backups.beforeWrite(kind, files),
   });
+  const editors = new EditorPanels(context.extensionUri, index, log);
   const areas = createAreasView(index);
   const statusBar = new IndexStatusBar(index);
 
@@ -36,10 +40,12 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
     log,
     index,
     new DiagnosticsPublisher(index),
+    editors,
     areas.disposable,
     statusBar,
     vscode.commands.registerCommand('eduI18n.check', () => checkTranslations(index)),
     vscode.commands.registerCommand('eduI18n.configureRoots', () => configureRoots()),
+    vscode.commands.registerCommand('eduI18n.openBundle', (node?: unknown) => openBundle(editors, node)),
     vscode.commands.registerCommand('eduI18n.backupNow', () => backUpNow(backups, fileStore, log)),
     vscode.commands.registerCommand('eduI18n.restoreBackup', () => restoreBackup(backups, fileStore, log)),
   );
@@ -48,6 +54,7 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
   return {
     index,
     fileStore,
+    editors,
     views: {
       areas: areas.provider,
       areasView: areas.view,

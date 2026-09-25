@@ -1,0 +1,25 @@
+/* Colors and fonts come from the VS Code theme (--vscode-*), so every theme applies, high contrast included. */
+body {
+  margin: 0;
+  padding: 0 20px;
+  color: var(--vscode-foreground);
+  background-color: var(--vscode-editor-background);
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size);
+  font-weight: var(--vscode-font-weight);
+}
+
+:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: -1px;
+}
+
+/* Read by screen readers, not shown. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

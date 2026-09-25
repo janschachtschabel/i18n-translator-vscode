@@ -15,9 +15,12 @@ function readJson(relPath: string): Record<string, string> {
 function runtimeMessages(): { messages: string[]; problems: string[] } {
   const messages = new Set<string>();
   const problems: string[] = [];
-  const files = readdirSync(join(root, 'src/extension'), { withFileTypes: true, recursive: true })
-    .filter((entry) => entry.isFile() && entry.name.endsWith('.ts'))
-    .map((entry) => join(entry.parentPath, entry.name));
+  // The webview gets the host's translations with `init` and looks its texts up with its own `l10n.t`.
+  const files = ['src/extension', 'src/webview'].flatMap((folder) =>
+    readdirSync(join(root, folder), { withFileTypes: true, recursive: true })
+      .filter((entry) => entry.isFile() && /\.tsx?$/.test(entry.name))
+      .map((entry) => join(entry.parentPath, entry.name)),
+  );
   for (const file of files) {
     const result = collectL10nCalls(readFileSync(file, 'utf8'), relative(root, file));
     result.messages.forEach((message) => messages.add(message));

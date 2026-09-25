@@ -6,7 +6,16 @@ export interface UiState {
   layout: 'auto' | 'table' | 'list';
   /** Long texts wrap onto several lines instead of being cut off. */
   wrap: boolean;
-  hiddenLocales: string[];
+  hiddenLocales: readonly string[];
+}
+
+export const DEFAULT_UI_STATE: UiState = { layout: 'auto', wrap: false, hiddenLocales: [] };
+
+/** What the webview keeps (`setState`) so that VS Code can restore the editor after a restart. */
+export interface PanelState {
+  /** The workspace folder, as `Uri.toString()`. */
+  folder: string;
+  bundleId: string;
 }
 
 export type EditorCommand = 'addKey' | 'renameKey' | 'deleteKey' | 'addLanguage';
@@ -24,15 +33,18 @@ export type WebviewToHost =
 /** What the host sends; it builds these itself, so the webview does not check them. */
 export type HostToWebview =
   /** `l10n`: the texts of the editor in the user's language, keyed by their English text. */
-  | { type: 'init'; l10n: Readonly<Record<string, string>>; uiState: UiState }
+  | { type: 'init'; l10n: Readonly<Record<string, string>>; uiState: UiState; panelState: PanelState }
   | { type: 'bundle'; model: BundleViewModel }
+  /** The bundle is not in the index (any more), e.g. after a restart or a branch switch. */
+  | { type: 'missing'; name: string }
   /** `message`: why the write failed, in the user's language. */
   | { type: 'writeResult'; requestId: string; ok: boolean; message?: string };
 
 /** Longest text an edit may carry; translations are far shorter, this only bounds a runaway message. */
 export const MAX_TEXT_LENGTH = 100_000;
 const MAX_ID_LENGTH = 200;
-const MAX_ENTRY_ID_LENGTH = 10_000;
+/** Entry ids, bundle ids and folder URIs: far longer than real ones, but bounded before they are parsed. */
+const MAX_LONG_ID_LENGTH = 10_000;
 const MAX_HIDDEN_LOCALES = 200;
 
 const LAYOUTS: readonly string[] = ['auto', 'table', 'list'];
@@ -70,6 +82,11 @@ export function isWebviewToHost(value: unknown): value is WebviewToHost {
   }
 }
 
+/** Whether a state that VS Code kept for a webview is one the host gave it; it comes back from the webview. */
+export function isPanelState(value: unknown): value is PanelState {
+  return isRecord(value) && isLongId(value['folder']) && isBundleId(value['bundleId']);
+}
+
 function isUiState(value: unknown): value is UiState {
   if (!isRecord(value)) {
     return false;
@@ -98,7 +115,7 @@ function isText(value: unknown): value is string {
 }
 
 function isEntryId(value: unknown): value is string {
-  if (typeof value !== 'string' || value.length > MAX_ENTRY_ID_LENGTH) {
+  if (typeof value !== 'string' || value.length > MAX_LONG_ID_LENGTH) {
     return false;
   }
   try {
@@ -106,6 +123,29 @@ function isEntryId(value: unknown): value is string {
     return true;
   } catch {
     // keyFromId throws for anything that is not the id of a key with at least one segment.
+    return false;
+  }
+}
+
+function isLongId(value: unknown): value is string {
+  return typeof value === 'string' && value.length > 0 && value.length <= MAX_LONG_ID_LENGTH;
+}
+
+/** The JSON tuple of area id, root and name that `buildBundle` makes, in exactly its spelling. */
+function isBundleId(value: unknown): value is string {
+  if (!isLongId(value)) {
+    return false;
+  }
+  try {
+    const parts: unknown = JSON.parse(value);
+    return (
+      Array.isArray(parts) &&
+      parts.length === 3 &&
+      parts.every((part) => typeof part === 'string') &&
+      JSON.stringify(parts) === value
+    );
+  } catch {
+    // Not JSON at all.
     return false;
   }
 }

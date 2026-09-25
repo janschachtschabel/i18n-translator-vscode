@@ -31,7 +31,8 @@
   "activationEvents": [
     "workspaceContains:**/common/de.json",
     "workspaceContains:**/mailtemplates/templates.xml",
-    "workspaceContains:**/metadatasets/i18n/mds.properties"
+    "workspaceContains:**/metadatasets/i18n/mds.properties",
+    "onWebviewPanel:eduI18n.editor"
   ],
   "capabilities": {
     "untrustedWorkspaces": {
@@ -87,6 +88,11 @@
         "category": "edu-sharing i18n"
       },
       {
+        "command": "eduI18n.openBundle",
+        "title": "%cmd.openBundle%",
+        "category": "edu-sharing i18n"
+      },
+      {
         "command": "eduI18n.revealInExplorer",
         "title": "%cmd.revealInExplorer%",
         "category": "edu-sharing i18n"
@@ -107,6 +113,10 @@
       "commandPalette": [
         {
           "command": "eduI18n.revealInExplorer",
+          "when": "false"
+        },
+        {
+          "command": "eduI18n.openBundle",
           "when": "false"
         }
       ],
@@ -509,7 +519,7 @@
     "watch": "node esbuild.mjs --watch",
     "vscode:prepublish": "node esbuild.mjs --production",
     "package": "vsce package --no-dependencies",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.webview.json --noEmit",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
@@ -519,6 +529,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@testing-library/preact": "^3.2.4",
     "@types/mocha": "^10.0.10",
     "@types/node": "^22.20.4",
     "@types/vscode": "1.90.0",
@@ -526,8 +537,10 @@
     "@vscode/test-cli": "^0.0.15",
     "@vscode/test-electron": "^3.1.0",
     "@vscode/vsce": "^4.0.0",
+    "axe-core": "^4.13.0",
     "esbuild": "^0.28.2",
     "eslint": "^10.11.0",
+    "happy-dom": "^20.14.5",
     "prettier": "^3.9.9",
     "tsx": "^4.23.15",
     "typescript": "~6.0.3",
@@ -535,6 +548,8 @@
     "vitest": "^5.0.1"
   },
   "dependencies": {
-    "jsonc-parser": "^3.3.1"
+    "@preact/signals": "^2.11.2",
+    "jsonc-parser": "^3.3.1",
+    "preact": "^10.29.8"
   }
 }
