@@ -726,7 +726,7 @@ was nicht ausdrücklich geändert wurde.
 >   - Der Löschfall `WORKSPACE.FILE.TITLE` ist getestet.
 > - **Folgen für 2.4 (aus dem Review), umgesetzt in 2.4:**
 >   - Rebase (B5) heißt: `planEdit` mit derselben Änderung (samt `before`) auf den frischen Texten erneut aufrufen. Operationen erneut anzuwenden reicht nicht, weil `set` den Ausgangswert nicht kennt. Der FileStore bekommt deshalb eine Funktion zum Planen statt fertiger `FileChange`s.
->   - Konflikte, die nur der Schreiber sieht (leere Objekte `"X": {}`, Werte wie `"N": 5` am Pfad), werden zu lokalisierten `EditProblem`s (`not-a-text`, `path-conflict`). `EditError` nennt dafür den Key und den Pfad im Weg (Review-Befund 14).
+>   - Konflikte, die nur der Schreiber sieht (leere Objekte `"X": {}`, Werte wie `"N": 5` am Pfad), werden zum lokalisierten `EditProblem` `not-a-text` mit Datei und Pfad des Werts (auch auf dem Pfad des Keys ist es nie ein Text, den hätte die Planung abgelehnt). `EditError` nennt dafür den Key und den Pfad im Weg (Review-Befund 14).
 >   - `create` wird nicht geschrieben, wenn die Datei inzwischen existiert, und jedes Schreibziel muss innerhalb der Wurzel liegen.
 > - **Beobachtungen:** Ein veralteter `before`-Wert ergibt keinen Konflikt mehr, wenn der Text schon so lautet wie gewünscht. Extrem tiefe Verschachtelung ergibt auch beim Schreiben `unparsable`. Offen bleibt: 240 `set`-Operationen in einem Aufruf dauern auf 225 KiB etwa 1,2 s, weil nach jeder Operation neu geparst wird (B3). Für das Batch-Schreiben in 3.9 und 4.7 prüfen, ob ein Schnellpfad für `set` nötig ist.
 >

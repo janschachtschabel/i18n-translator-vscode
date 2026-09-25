@@ -78,9 +78,10 @@ describe('applyChanges', () => {
       'not-a-text',
       { key: 'N', file: 'i18n/n/fr.json' },
     ]);
+    // On the path, too, the value in the way is not a text: planning would have refused a text.
     expect(problemOf({ 'p/de.json': '{"N": {"X": "x"}}', 'p/fr.json': '{"N": 5}' }, 'N.X')).toEqual([
-      'path-conflict',
-      { key: 'N.X', other: 'N' },
+      'not-a-text',
+      { key: 'N', file: 'i18n/p/fr.json' },
     ]);
   });
 });

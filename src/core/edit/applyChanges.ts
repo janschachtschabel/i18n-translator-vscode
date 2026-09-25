@@ -64,9 +64,7 @@ function writerProblem(error: EditError, file: string, bundle: string): EditProb
   if (error.code === 'missing-key') {
     return editProblem('missing-key', { key, bundle });
   }
-  // Planning sees every text of the bundle, so what is in the way here is an object or a value that is not a
-  // text: at the key itself, or on its path (then the writer names that path).
-  return error.code === 'path-conflict' && error.other
-    ? editProblem('path-conflict', { key, other: displayKey(error.other) })
-    : editProblem('not-a-text', { key, file });
+  // Planning sees every text of the bundle and refuses a text in the way, so what the writer finds is an object
+  // or another value that is not a text: at the key itself, or on its path (then the writer names that path).
+  return editProblem('not-a-text', { key: error.other ? displayKey(error.other) : key, file });
 }
