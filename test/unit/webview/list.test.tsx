@@ -49,6 +49,9 @@ describe('list', () => {
     expect(findings('CANCEL', 2)).toEqual(['⚠ Warnung: CANCEL fehlt in fr.']);
     expect(findings('ERROR_TITLE', 2)).toEqual(['✖ Fehler: Die Platzhalter von ERROR_TITLE weichen ab.']);
     expect(within(definitionOf('ERROR_TITLE', 2)).getByText('Erreur ({{data}})')).toBeTruthy();
+    expect(definitionOf('CANCEL', 2).querySelector('.card-hint')?.textContent).toBe(
+      'Fügen Sie die Übersetzung hinzu.',
+    );
     expect(within(definitionOf('CANCEL', 2)).getByText('⚠').getAttribute('aria-hidden')).toBe('true');
   });
 

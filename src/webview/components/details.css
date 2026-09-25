@@ -1,0 +1,47 @@
+/*
+ * The table and its details share the space below the controls: the details below the table, with a share of
+ * the height and a scroll area of their own, or beside it once the editor is wide.
+ */
+.workspace {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-block-size: 0;
+}
+
+.details {
+  flex: 0 1 auto;
+  max-block-size: 40%;
+  overflow: auto;
+  padding: 8px 0;
+  border-block-start: 1px solid var(--vscode-panel-border);
+}
+
+.details-title {
+  margin: 0 0 8px;
+  font-size: 1.1em;
+  overflow-wrap: anywhere;
+}
+
+/* The term above its text: the details are too narrow for both side by side. */
+.details .card-fields {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.details .card-field dd {
+  margin-block-end: 6px;
+}
+
+@media (min-width: 1200px) {
+  .workspace {
+    flex-direction: row;
+  }
+
+  .details {
+    flex: 0 0 22em;
+    max-block-size: none;
+    padding: 0 0 0 12px;
+    border-block-start: 0;
+    border-inline-start: 1px solid var(--vscode-panel-border);
+  }
+}

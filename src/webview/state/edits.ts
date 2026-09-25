@@ -10,12 +10,16 @@ export interface CellRef {
   locale: string;
 }
 
+/** Where an editor opens: in the rows of the table or the list, or in the details. */
+export type EditorPlace = 'rows' | 'details';
+
 /** The cell whose editor is open. */
 export interface OpenEditor extends CellRef {
   /** The text the cell showed when editing began (undefined: none); the host compares it with the file (B5). */
   before: string | undefined;
   /** Why the text the editor starts with was not saved before, if it was not. */
   error: string | undefined;
+  place: EditorPlace;
 }
 
 /** A text sent to the host. */
@@ -72,16 +76,12 @@ export class Edits {
   ) {}
 
   /** Opens the editor of a cell that shows `shown`, with the text that was not saved there, if there is one. */
-  start(cell: CellRef, shown: string | undefined): void {
+  start(cell: CellRef, shown: string | undefined, place: EditorPlace): void {
     this.commit();
     const rejection = this.rejected.value.get(cellKey(cell));
     batch(() => {
-      this.open.value = {
-        entryId: cell.entryId,
-        locale: cell.locale,
-        before: shown,
-        error: rejection?.message,
-      };
+      const { entryId, locale } = cell;
+      this.open.value = { entryId, locale, before: shown, error: rejection?.message, place };
       this.draft.value = rejection?.text ?? shown ?? '';
     });
   }
@@ -95,14 +95,18 @@ export class Edits {
     const value = this.draft.value;
     batch(() => {
       this.close(open);
-      if (value === (open.before ?? '')) {
-        return;
+      if (value !== (open.before ?? '')) {
+        this.send(open, value, open.before);
       }
-      const requestId = `edit-${++this.requests}`;
-      const { entryId, locale } = open;
-      this.pending.value = [...this.pending.value, { entryId, locale, requestId, value, written: false }];
-      this.post({ type: 'edit', requestId, entryId, locale, value, before: open.before ?? null });
     });
+  }
+
+  /**
+   * Deletes the text of a cell that shows `shown`, so that the fallback applies (B2); the host asks first. For
+   * an empty text, which editing cannot clear, as its text would not change.
+   */
+  delete(cell: CellRef, shown: string | undefined): void {
+    this.send(cell, '', shown);
   }
 
   /** Closes the editor without sending its text; a text that was not saved in its cell is given up too. */
@@ -182,6 +186,13 @@ export class Edits {
       this.pending.value = [];
       this.rejected.value = new Map();
     });
+  }
+
+  private send(cell: CellRef, value: string, before: string | undefined): void {
+    const requestId = `edit-${++this.requests}`;
+    const { entryId, locale } = cell;
+    this.pending.value = [...this.pending.value, { entryId, locale, requestId, value, written: false }];
+    this.post({ type: 'edit', requestId, entryId, locale, value, before: before ?? null });
   }
 
   private close(cell: CellRef): void {

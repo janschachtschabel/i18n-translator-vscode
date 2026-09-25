@@ -161,7 +161,14 @@ describe('isUiState', () => {
       status: 'missing',
     };
     expect(
-      isUiState({ layout: 'list', wrap: true, hiddenLocales: ['fr'], filter, compactLocale: 'it' }),
+      isUiState({
+        layout: 'list',
+        wrap: true,
+        hiddenLocales: ['fr'],
+        filter,
+        compactLocale: 'it',
+        details: false,
+      }),
     ).toBe(true);
     for (const state of [
       undefined,
@@ -172,6 +179,9 @@ describe('isUiState', () => {
       // View states of 2.8 and 2.9, before the filter and the language of the compact list were part of it.
       { layout: 'list', wrap: true, hiddenLocales: ['fr'] },
       { layout: 'list', wrap: true, hiddenLocales: ['fr'], filter },
+      // … and of 2.11, before the details.
+      { layout: 'list', wrap: true, hiddenLocales: ['fr'], filter, compactLocale: 'it' },
+      { ...DEFAULT_UI_STATE, details: 'yes' },
       { ...DEFAULT_UI_STATE, compactLocale: '' },
       { ...DEFAULT_UI_STATE, compactLocale: 3 },
       { ...DEFAULT_UI_STATE, filter: { ...filter, status: 'open' } },

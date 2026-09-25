@@ -13,6 +13,8 @@ export interface UiState {
   filter: RowFilter;
   /** The language the compact list shows next to the reference; null: the first visible full language. */
   compactLocale: string | null;
+  /** Whether the table shows the details of its active key beside or below it. */
+  details: boolean;
 }
 
 export const DEFAULT_UI_STATE: UiState = {
@@ -21,6 +23,7 @@ export const DEFAULT_UI_STATE: UiState = {
   hiddenLocales: [],
   filter: DEFAULT_FILTER,
   compactLocale: null,
+  details: true,
 };
 
 /** What the webview keeps (`setState`) so that VS Code can restore the editor after a restart. */
@@ -115,6 +118,7 @@ export function copyUiState(state: UiState): UiState {
     hiddenLocales: [...state.hiddenLocales],
     filter: { query, scope, locale, regex, matchCase, status },
     compactLocale: state.compactLocale,
+    details: state.details,
   };
 }
 
@@ -140,7 +144,8 @@ export function isUiState(value: unknown): value is UiState {
     hidden.length <= MAX_HIDDEN_LOCALES &&
     hidden.every(isId) &&
     isRowFilter(value['filter']) &&
-    (value['compactLocale'] === null || isId(value['compactLocale']))
+    (value['compactLocale'] === null || isId(value['compactLocale'])) &&
+    typeof value['details'] === 'boolean'
   );
 }
 

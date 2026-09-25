@@ -9,13 +9,13 @@ import { findingsModel as model, GERMAN, locale, panelState, row, text } from '.
 const id = (key: string) => JSON.stringify(key.split('.'));
 
 /** A store that shows the bundle of the tests in German, and what it sends to the host. */
-function open() {
+function open(uiState = DEFAULT_UI_STATE) {
   const posted: WebviewToHost[] = [];
   const store = new EditorStore({
     postMessage: (message) => void posted.push(message),
     setState: () => undefined,
   });
-  store.receive({ type: 'init', l10n: GERMAN, uiState: DEFAULT_UI_STATE, panelState });
+  store.receive({ type: 'init', l10n: GERMAN, uiState, panelState });
   store.receive({ type: 'bundle', model });
   const edits = () => posted.filter((message) => message.type === 'edit');
   const cell = (key: string, code: string) =>
@@ -128,6 +128,7 @@ describe('editing', () => {
       locale: 'de',
       before: 'Abbrechen',
       error: 'CANCEL in de wurde zwischenzeitlich geändert.',
+      place: 'rows',
     });
     store.edits.cancel();
     expect(cell('CANCEL', 'de').notSaved).toBeUndefined();
@@ -182,6 +183,24 @@ describe('editing', () => {
     expect(store.editNext(1)).toBe(false);
     expect(store.edits.open.value).toBeNull();
     expect(edits()).toHaveLength(1);
+  });
+
+  it('deletes an empty text, which hides the fallback, although editing cannot clear it', () => {
+    const { store, edits, cell } = open();
+    store.deleteText(id('WORKSPACE.TITLE'), 'it');
+    expect(edits()).toEqual([
+      expect.objectContaining({ entryId: id('WORKSPACE.TITLE'), locale: 'it', value: '', before: '' }),
+    ]);
+    expect(cell('WORKSPACE.TITLE', 'it').value).toBeUndefined();
+  });
+
+  it('goes on in the details along the languages of their key, all of them, and stops at the last', () => {
+    const { store } = open({ ...DEFAULT_UI_STATE, hiddenLocales: ['fr'] });
+    store.edit(id('SAVE'), 'de-informal', 'details');
+    expect(store.editNext(1)).toBe(true);
+    expect(store.edits.open.value).toMatchObject({ entryId: id('SAVE'), locale: 'fr', place: 'details' });
+    store.edit(id('SAVE'), 'it', 'details');
+    expect(store.editNext(1)).toBe(false);
   });
 
   it('starts afresh when the webview loads again', () => {

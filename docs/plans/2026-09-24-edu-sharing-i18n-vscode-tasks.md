@@ -999,6 +999,24 @@ was nicht ausdrücklich geändert wurde.
 >   - Die Prüfung beim Tippen nutzt die Standardschwere der Regeln, nicht `checks.severity`.
 >   - Ein leerer Text, der den Rückfall verdeckt (`empty-value`), lässt sich im Editor nicht löschen, denn ohne Änderung wird nichts gesendet. Die Lösung kommt mit den Details (2.13).
 >   - Eine gespeicherte Zeile, die nicht mehr zum Filter passt, verschwindet, sobald das Modell kommt (etwa 300 ms). Die Alternative wäre, solche Zeilen bis zum nächsten Filterwechsel stehen zu lassen.
+>
+> **Umsetzungsnotizen Task 2.13 (26.09.2026):**
+> - **Platz:**
+>   - Die Leiste gehört zur Tabelle. Ab 1200 px Breite steht sie rechts (22em, eigener Scrollbereich), darunter unter der Tabelle mit höchstens 40 % der Höhe.
+>   - Der Schalter „Details anzeigen“ in der Werkzeugleiste blendet sie aus. Er gehört zum Ansichtszustand je Einheit (`details` im `UiState`, B7); gespeicherte Zustände ohne das Feld gelten als veraltet.
+>   - In der Liste sind die Karten selbst die Details: Sie zeigen dieselben Felder mit Befund, Hinweis und Löschaktion. Ausgeblendete Sprachen bleiben dort ausgeblendet.
+> - **Inhalt:**
+>   - Die Leiste folgt der aktiven Zelle der Tabelle und behält ihren Key in der Kopfzeile. Lässt der Filter keinen Key durch, sagt sie, dass keiner gewählt ist.
+>   - Sie zeigt alle Sprachen des Keys, auch ausgeblendete. Jeder Text ist eine Schaltfläche, die den Editor an Ort und Stelle öffnet. Tab geht dort die Sprachen des Keys entlang und endet bei der letzten.
+>   - Zu jedem Befund stehen die Meldung als Erklärung und ein Lösungshinweis je Regel (`findingHints.ts`); ein Test verlangt einen Hinweis für jede Regel, die eine Zelle zeigen kann.
+>   - Ein leerer Text (`empty-value`) bekommt „Text löschen“. Der Host fragt nach und löscht den Key in dieser Sprache (B2). Damit ist die offene Stelle aus 2.12 gelöst.
+> - **Umbau:** Das Feld der Listenkarten ist jetzt ein eigenes Bauteil (`field.tsx`, `field.css`) für Liste und Details. Der offene Editor weiß, wo er steht (`place`: Zeilen oder Details), damit er nur an einer Stelle erscheint.
+> - **In Chromium geprüft (Vorschau):**
+>   - Bei 1300 px steht die Leiste rechts (299 px, so hoch wie die Tabelle).
+>   - Bei 1000 px steht sie unter der Tabelle (168 px mit eigenem Scrollbereich; die Tabelle behält 210 px).
+>   - In beiden Fällen gibt es weder Seiten- noch Querscrollen.
+> - **Für 2.16:** Bei 720 px Höhe bleiben der Tabelle mit Leiste darunter nur sechs Zeilen. Das gehört zum kompakteren Kopfbereich.
+> - **Bewusst offen:** Eine Leiste für die Liste (etwa unten angedockt) kommt erst, wenn Phase 7 Inhalte bringt, die in keine Karte passen (Kontext, Review, Vorschläge).
 
 ### Task 2.1: Textbausteine für das Schreiben
 **Dateien:** Create `src/core/text/edits.ts`, `src/core/text/style.ts`; Test: `test/unit/core/text/edits.test.ts`, `style.test.ts`

@@ -35,7 +35,9 @@ export function Table({ store, rows, locales, reference, wrap, labelledBy }: Tab
   const lastPosition = useRef<GridPosition>({ row: 1, column: 1 });
   const position = positionOf(active, rows, locales, lastPosition.current);
   lastPosition.current = position;
-  const editor = store.edits.open.value;
+  const open = store.edits.open.value;
+  // An editor in the details is theirs.
+  const editor = open?.place === 'rows' ? open : undefined;
   const editorRow = editor ? rows.findIndex((row) => row.entryId === editor.entryId) + 1 : 0;
   const count = useIncrementalCount(rows.length, Math.max(position.row, editorRow));
   /** Whether the focus is in the grid; after a render it goes back to the active cell if it got lost. */
@@ -59,6 +61,14 @@ export function Table({ store, rows, locales, reference, wrap, labelledBy }: Tab
       cell.scrollIntoView({ block: 'nearest', inline: 'nearest' });
     }
   });
+
+  // The details show the key of the active cell; in the header row, the one they show stays.
+  const activeKey = position.row > 0 ? rows[position.row - 1]?.entryId : undefined;
+  useLayoutEffect(() => {
+    if (activeKey !== undefined) {
+      store.detailsKey.value = activeKey;
+    }
+  }, [store, activeKey]);
 
   // When the list takes the table's place with the focus in it, the list gives it to the card of the key.
   useLayoutEffect(

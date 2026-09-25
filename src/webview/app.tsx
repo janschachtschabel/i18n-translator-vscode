@@ -3,6 +3,7 @@ import type { BundleViewModel } from '../shared/viewModel';
 import { LiveRegion } from './a11y/liveRegion';
 import { FileFindings } from './components/fileFindings';
 import { FilterBar } from './components/filterBar';
+import { Details } from './components/details';
 import { CompactChoice } from './components/list/compactChoice';
 import { List } from './components/list/list';
 import { LanguageChips } from './components/languageChips';
@@ -77,14 +78,19 @@ function BundleView({ store, model }: { store: EditorStore; model: BundleViewMod
         </p>
       )}
       {layout === 'table' && model.rows.length > 0 ? (
-        <Table
-          store={store}
-          rows={rows}
-          locales={shown}
-          reference={reference}
-          wrap={store.uiState.value.wrap}
-          labelledBy={TITLE_ID}
-        />
+        <div class="workspace">
+          <Table
+            store={store}
+            rows={rows}
+            locales={shown}
+            reference={reference}
+            wrap={store.uiState.value.wrap}
+            labelledBy={TITLE_ID}
+          />
+          {store.uiState.value.details && (
+            <Details store={store} locales={model.locales} reference={reference} />
+          )}
+        </div>
       ) : rows.length > 0 ? (
         <List store={store} rows={rows} locales={shown} reference={reference} labelledBy={TITLE_ID} />
       ) : null}

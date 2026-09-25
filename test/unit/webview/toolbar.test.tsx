@@ -40,6 +40,18 @@ describe('toolbar', () => {
     expect(posted).toEqual([{ type: 'uiState', state: { ...DEFAULT_UI_STATE, wrap: true } }]);
   });
 
+  it('shows or hides the details of the table, which the host keeps', () => {
+    const { open, posted } = renderEditor();
+    open();
+    const details = () => screen.getByRole('checkbox', { name: 'Details anzeigen' }) as HTMLInputElement;
+    expect(details().checked).toBe(true);
+    act(() => void fireEvent.click(details()));
+    expect(posted).toEqual([{ type: 'uiState', state: { ...DEFAULT_UI_STATE, details: false } }]);
+    cleanup();
+    open({ ...DEFAULT_UI_STATE, layout: 'list' });
+    expect(screen.queryByRole('checkbox', { name: 'Details anzeigen' })).toBeNull();
+  });
+
   it('undoes the last change with the button and with Ctrl+Z outside text fields', () => {
     const { open, posted } = renderEditor();
     open();

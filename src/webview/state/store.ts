@@ -8,7 +8,15 @@ import {
 } from '../../shared/protocol';
 import type { BundleViewModel, LocaleView } from '../../shared/viewModel';
 import { l10n, setTranslations } from '../l10n';
-import { Edits, nextCell, showEdits, type ShownRow } from './edits';
+import {
+  Edits,
+  nextCell,
+  showEdits,
+  type CellRef,
+  type EditorPlace,
+  type OpenEditor,
+  type ShownRow,
+} from './edits';
 import { compactLocales, layoutFor } from './layout';
 
 /** The part of the webview API (`acquireVsCodeApi()`) the editor uses. */
@@ -74,6 +82,13 @@ export class EditorStore {
   readonly rows = computed((): readonly ShownRow[] =>
     showEdits(this.filtered.value?.rows ?? [], this.edits.pending.value, this.edits.rejected.value),
   );
+  /** The key of the table's active cell, whose details the table shows; null before it has one. */
+  readonly detailsKey = signal<string | null>(null);
+  /** The row the details show; undefined when the filter does not let it through. */
+  readonly detailsRow = computed(() => {
+    const key = this.detailsKey.value;
+    return key === null ? undefined : this.rows.value.find((row) => row.entryId === key);
+  });
 
   /** The key whose card takes the focus when the list replaces a table that had it; null: the first card. */
   private focusHandoff: string | null | undefined;
@@ -164,30 +179,48 @@ export class EditorStore {
     return entryId;
   }
 
-  /** Opens the editor of a cell, with the text it shows. */
-  edit(entryId: string, locale: string): void {
-    const row = this.rows.value.find((candidate) => candidate.entryId === entryId);
-    this.edits.start({ entryId, locale }, row?.cells[locale]?.value);
+  /** Opens the editor of a cell in the rows or in the details, with the text the cell shows. */
+  edit(entryId: string, locale: string, place: EditorPlace = 'rows'): void {
+    this.edits.start({ entryId, locale }, this.shownText(entryId, locale), place);
   }
 
   /**
-   * Saves the open editor and opens the one of the next (1) or the previous (-1) cell shown, in reading order;
-   * false if there is none.
+   * Saves the open editor and opens the one of the next (1) or the previous (-1) cell, in reading order: in the
+   * rows along the languages shown, in the details along all languages of their key. False if there is none.
    */
   editNext(direction: 1 | -1): boolean {
     const open = this.edits.open.value;
-    const next = open ? nextCell(this.rows.value, this.shownLocales.value, open, direction) : undefined;
+    const next = open ? this.nextCell(open, direction) : undefined;
     this.edits.commit();
-    if (!next) {
+    if (!open || !next) {
       return false;
     }
-    this.edit(next.entryId, next.locale);
+    this.edit(next.entryId, next.locale, open.place);
     return true;
+  }
+
+  /** Deletes the text of a cell, so that the fallback applies (B2), e.g. an empty one; the host asks first. */
+  deleteText(entryId: string, locale: string): void {
+    this.edits.delete({ entryId, locale }, this.shownText(entryId, locale));
   }
 
   /** Undoes the last change of this session to the translation files, in whichever bundle it was. */
   undo(): void {
     this.host.postMessage({ type: 'undo' });
+  }
+
+  /** The text a cell shows, with the one on its way to the file. */
+  private shownText(entryId: string, locale: string): string | undefined {
+    return this.rows.value.find((row) => row.entryId === entryId)?.cells[locale]?.value;
+  }
+
+  private nextCell(open: OpenEditor, direction: 1 | -1): CellRef | undefined {
+    if (open.place === 'rows') {
+      return nextCell(this.rows.value, this.shownLocales.value, open, direction);
+    }
+    const view = this.view.value;
+    const row = this.rows.value.find((candidate) => candidate.entryId === open.entryId);
+    return view.kind === 'bundle' && row ? nextCell([row], view.model.locales, open, direction) : undefined;
   }
 }
 

@@ -1,12 +1,8 @@
 import { useLayoutEffect, useRef } from 'preact/hooks';
 import type { LocaleView } from '../../../shared/viewModel';
-import { l10n } from '../../l10n';
 import type { OpenEditor, ShownCell, ShownRow } from '../../state/edits';
 import type { EditorStore } from '../../state/store';
-import { CellEditor } from '../cellEditor';
-import { SEVERITY_SYMBOLS, severityWord } from '../cellStatus';
-import { EmptyValue } from '../emptyValue';
-import { LocaleLabel } from '../localeLabel';
+import { Field, focusIsLost } from '../field';
 import { memo } from '../memo';
 import { useIncrementalCount } from '../useIncrementalCount';
 import { entryAttribute, useScrollAnchor } from '../useScrollAnchor';
@@ -143,89 +139,10 @@ const Card = memo(({ row, locales, store, reference, editor }: CardProps) => {
             cell={row.cells[locale.code] ?? NO_TEXT}
             editor={editor?.locale === locale.code ? editor : undefined}
             referenceText={locale.code === reference ? undefined : referenceText}
+            place="rows"
           />
         ))}
       </dl>
     </li>
   );
 });
-
-interface FieldProps {
-  store: EditorStore;
-  row: ShownRow;
-  locale: LocaleView;
-  cell: ShownCell;
-  editor: OpenEditor | undefined;
-  referenceText: string | undefined;
-}
-
-/** A language and its text, which is a button that opens its editor in its place. */
-function Field({ store, row, locale, cell, editor, referenceText }: FieldProps) {
-  const button = useRef<HTMLButtonElement>(null);
-  const wasEditing = useRef(false);
-  useLayoutEffect(() => {
-    // After Enter or Esc the text takes the focus back; after Tab, the next editor has it.
-    if (wasEditing.current && !editor && focusIsLost() && !store.edits.open.peek()) {
-      button.current?.focus();
-    }
-    wasEditing.current = editor !== undefined;
-  });
-  return (
-    <div class="card-field">
-      <dt>
-        <LocaleLabel locale={locale} />
-      </dt>
-      <dd>
-        {editor ? (
-          <CellEditor
-            store={store}
-            editor={editor}
-            locale={locale}
-            keyText={row.key}
-            referenceText={referenceText}
-          />
-        ) : (
-          <button
-            ref={button}
-            type="button"
-            class="field-value"
-            data-locale={locale.code}
-            onClick={() => store.edit(row.entryId, locale.code)}
-          >
-            {/* The language names the button with its text; the term before it is not its label. */}
-            <span class="visually-hidden">{locale.code}: </span>
-            {cell.value !== undefined && cell.value !== '' ? (
-              <span class="cell-text" lang={locale.lang} dir="auto">
-                {cell.value}
-              </span>
-            ) : (
-              <EmptyValue value={cell.value} variant={locale.variant} />
-            )}
-          </button>
-        )}
-        {cell.notSaved !== undefined && (
-          <p class="card-finding">
-            <span aria-hidden="true" class="status-symbol error">
-              {SEVERITY_SYMBOLS.error}
-            </span>{' '}
-            {l10n.t('Not saved: {message}', { message: cell.notSaved })}
-          </p>
-        )}
-        {cell.issues.map((issue, index) => (
-          <p key={index} class="card-finding">
-            <span aria-hidden="true" class={`status-symbol ${issue.severity}`}>
-              {SEVERITY_SYMBOLS[issue.severity]}
-            </span>{' '}
-            <span class="visually-hidden">{severityWord(issue.severity)}: </span>
-            {issue.message}
-          </p>
-        ))}
-      </dd>
-    </div>
-  );
-}
-
-/** The focus went with the element that had it. */
-function focusIsLost(): boolean {
-  return document.activeElement === null || document.activeElement === document.body;
-}

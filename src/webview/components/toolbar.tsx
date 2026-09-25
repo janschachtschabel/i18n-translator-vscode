@@ -3,9 +3,9 @@ import { l10n } from '../l10n';
 import type { EditorStore } from '../state/store';
 import './toolbar.css';
 
-/** How the bundle is shown (layout, wrapping) and the undo of the last change. */
+/** How the bundle is shown (layout, wrapping, the details of the table) and the undo of the last change. */
 export function Toolbar({ store }: { store: EditorStore }) {
-  const { layout, wrap } = store.uiState.value;
+  const { layout, wrap, details } = store.uiState.value;
   const layouts: [UiState['layout'], string][] = [
     ['auto', l10n.t('Automatic')],
     ['table', l10n.t('Table')],
@@ -31,6 +31,16 @@ export function Toolbar({ store }: { store: EditorStore }) {
         <input type="checkbox" checked={wrap} onChange={() => store.updateUiState({ wrap: !wrap })} />
         {l10n.t('Wrap long texts')}
       </label>
+      {store.layout.value === 'table' && (
+        <label class="option">
+          <input
+            type="checkbox"
+            checked={details}
+            onChange={() => store.updateUiState({ details: !details })}
+          />
+          {l10n.t('Show details')}
+        </label>
+      )}
       <button type="button" aria-keyshortcuts="Control+Z Meta+Z" onClick={() => store.undo()}>
         {l10n.t('Undo last change')}
       </button>

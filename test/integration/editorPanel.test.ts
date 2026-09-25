@@ -142,6 +142,7 @@ suite('editor panel', () => {
       hiddenLocales: ['it'],
       filter: { ...DEFAULT_FILTER, query: 'Speichern', status: 'missing' },
       compactLocale: 'fr',
+      details: false,
     };
 
     const first = editors.open(root, common);
