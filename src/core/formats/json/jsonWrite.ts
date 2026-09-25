@@ -72,7 +72,16 @@ function applyOp(text: string, op: FileOp, style: TextStyle): string {
 
 function parseObject(text: string): Node {
   const errors: ParseError[] = [];
-  const root = parseTree(text, errors, { disallowComments: true, allowTrailingComma: false });
+  let root: Node | undefined;
+  try {
+    root = parseTree(text, errors, { disallowComments: true, allowTrailingComma: false });
+  } catch (error) {
+    if (!(error instanceof RangeError)) {
+      throw error;
+    }
+    // As in the reader: the call stack overflowed on nesting far deeper than any translation file.
+    throw new EditError('unparsable', 'The file is nested too deeply to be read.');
+  }
   if (errors.length > 0 || root?.type !== 'object') {
     throw new EditError('unparsable', 'The file is not a valid JSON object.');
   }

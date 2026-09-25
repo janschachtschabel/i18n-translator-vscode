@@ -287,6 +287,10 @@ describe('jsonNestedAdapter.applyOps and encode', () => {
     expect(codeOf('{"A": }', { kind: 'set', key: key('A'), value: 'x' })).toBe('unparsable');
     // Like the reader: only a file without any content counts as an empty object.
     expect(codeOf('\n', { kind: 'insert', key: key('A'), value: 'x' })).toBe('unparsable');
+    // Also like the reader: nesting deep enough to overflow the parser's stack is unreadable, not a crash.
+    const depth = 20000;
+    const deep = `${'{"a":'.repeat(depth)}"x"${'}'.repeat(depth)}`;
+    expect(codeOf(deep, { kind: 'set', key: key('a'), value: 'y' })).toBe('unparsable');
   });
 
   it('reports an existing object as a path conflict and any other existing value as an existing key', () => {
