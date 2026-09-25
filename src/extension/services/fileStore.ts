@@ -10,14 +10,14 @@ import { messageOf } from './errors';
 import {
   holds,
   isDirty,
-  isFileNotFound,
-  put,
+  putAllOrNone,
   readIfExists,
   relative,
   sameBytes,
   type FileAccess,
   type Put,
 } from './files';
+import { UndoHistory, type UndoEntry, type UndoLimits } from './undoHistory';
 import { insideRoot } from './uriPaths';
 import type { IndexedRoot, IndexSnapshot, WorkspaceIndex } from './workspaceIndex';
 
@@ -54,22 +54,8 @@ export type WriteResult =
   /** Reading or writing failed. The files got their old bytes back, except `notRestored` (may be damaged). */
   | { ok: false; reason: 'error'; message: string; notRestored?: vscode.Uri[] };
 
-/**
- * How much undo a session keeps: each entry holds the previous bytes of its files, and a restore or a batch
- * write holds many. The oldest entries go first; the newest always stays.
- */
-export interface UndoLimits {
-  undoEntries: number;
-  undoBytes: number;
-}
-
-const UNDO_LIMITS: UndoLimits = { undoEntries: 100, undoBytes: 32 * 1024 * 1024 };
 /** Plans per write: when files change on disk between planning and writing, the edit is planned again. */
 const PLAN_ATTEMPTS = 3;
-
-interface UndoEntry {
-  files: { uri: vscode.Uri; before: Uint8Array | undefined; afterRevision: string }[];
-}
 
 export function rootRef(indexed: IndexedRoot): RootRef {
   return { folder: indexed.folder.uri, areaId: indexed.analysis.area.id, root: indexed.analysis.root };
@@ -83,20 +69,18 @@ export class FileStore {
   // simplify: one queue for all files instead of one per file; writes are rare and quick, and a change over
   // several files then needs no lock ordering.
   private queue: Promise<unknown> = Promise.resolve();
-  private readonly undoStack: UndoEntry[] = [];
-
+  private readonly history: UndoHistory;
   private readonly beforeWrite: BeforeWrite;
   private readonly files: FileAccess;
-  private readonly limits: UndoLimits;
 
   constructor(
     private readonly index: WorkspaceIndex,
     private readonly log: vscode.LogOutputChannel,
     options: { beforeWrite?: BeforeWrite; files?: FileAccess; limits?: UndoLimits } = {},
   ) {
+    this.history = new UndoHistory(options.limits);
     this.beforeWrite = options.beforeWrite ?? (async () => undefined);
     this.files = options.files ?? vscode.workspace.fs;
-    this.limits = options.limits ?? UNDO_LIMITS;
   }
 
   /** Plans the edit on the current files and writes the result. Never throws; failures are results. */
@@ -202,7 +186,7 @@ export class FileStore {
   }
 
   private async undoNow(): Promise<WriteResult | undefined> {
-    const entry = this.undoStack.pop();
+    const entry = this.history.pop();
     if (!entry) {
       return undefined;
     }
@@ -211,13 +195,13 @@ export class FileStore {
       result = await this.undoEntry(entry);
     } catch (error) {
       // A read or write error says nothing about the state the write left: the undo stays for another try.
-      this.undoStack.push(entry);
+      this.history.push(entry);
       throw error;
     }
     // Only a changed file ends an undo for good: the state the write left is gone. Unsaved editors and
     // failed writes leave it for another try.
     if (!result.ok && result.reason !== 'changed') {
-      this.undoStack.push(entry);
+      this.history.push(entry);
     }
     return result;
   }
@@ -245,17 +229,6 @@ export class FileStore {
     this.log.info(`Undid the write of ${entry.files.map((file) => relative(file.uri)).join(', ')}`);
     await this.reindex();
     return { ok: true };
-  }
-
-  /** Drops the oldest undo entries beyond the limits; the newest stays, however large. */
-  private trimUndo(): void {
-    const size = (entry: UndoEntry) =>
-      entry.files.reduce((sum, file) => sum + (file.before?.byteLength ?? 0), 0);
-    let bytes = this.undoStack.reduce((sum, entry) => sum + size(entry), 0);
-    const { undoEntries, undoBytes } = this.limits;
-    while (this.undoStack.length > 1 && (this.undoStack.length > undoEntries || bytes > undoBytes)) {
-      bytes -= size(this.undoStack.shift()!);
-    }
   }
 
   private async restoreNow(files: readonly RestoredFile[]): Promise<WriteResult> {
@@ -298,14 +271,13 @@ export class FileStore {
     if (failure) {
       return failure;
     }
-    this.undoStack.push({
+    this.history.push({
       files: files.map((file) => ({
         uri: file.uri,
         before: file.before,
         afterRevision: revisionOf(file.bytes),
       })),
     });
-    this.trimUndo();
     this.log.info(
       `${kind === 'write' ? 'Wrote' : 'Restored'} ${files.map((file) => relative(file.uri)).join(', ')}`,
     );
@@ -313,34 +285,14 @@ export class FileStore {
     return { ok: true };
   }
 
-  /**
-   * Writes the files in order. If one fails, it and those written before it get their `restore` bytes back,
-   * so that all or none are written: `writeFile` empties a file before it writes, so the failed one may be cut
-   * off. Returns the failure, naming files that could not be restored, or undefined when all were written.
-   */
+  /** Writes all files or none; the failure, if any, as a result. */
   private async putAll(files: Put[], restore: Put[]): Promise<WriteResult | undefined> {
-    for (const [position, file] of files.entries()) {
-      try {
-        await put(this.files, file);
-      } catch (error) {
-        this.log.error(`Could not write ${relative(file.uri)}; restoring the files written so far.`, error);
-        const notRestored: vscode.Uri[] = [];
-        for (const done of restore.slice(0, position + 1).reverse()) {
-          try {
-            await put(this.files, done);
-          } catch (restoreError) {
-            // Removing a new file that was never created is no failure.
-            if (!(done.bytes === undefined && isFileNotFound(restoreError))) {
-              this.log.error(`Could not restore ${relative(done.uri)}.`, restoreError);
-              notRestored.push(done.uri);
-            }
-          }
-        }
-        const failure = { ok: false, reason: 'error', message: messageOf(error) } as const;
-        return notRestored.length > 0 ? { ...failure, notRestored } : failure;
-      }
+    const failure = await putAllOrNone(this.files, files, restore, this.log);
+    if (!failure) {
+      return undefined;
     }
-    return undefined;
+    const result = { ok: false, reason: 'error', message: messageOf(failure.error) } as const;
+    return failure.notRestored.length > 0 ? { ...result, notRestored: failure.notRestored } : result;
   }
 
   /** The indexed root, after a new run if the last one does not have it (e.g. before the first run ended). */

@@ -23,6 +23,46 @@ export async function put(files: FileAccess, { uri, bytes }: Put): Promise<void>
   }
 }
 
+/** Why {@link putAllOrNone} failed: the error, and the files that could not get their old bytes back. */
+export interface PutFailure {
+  error: unknown;
+  notRestored: vscode.Uri[];
+}
+
+/**
+ * Writes the files in order, all or none: if one fails, it and those written before it get their `restore`
+ * bytes back (`writeFile` empties a file before it writes, so the failed one may be cut off). Undefined when
+ * every file was written.
+ */
+export async function putAllOrNone(
+  access: FileAccess,
+  files: readonly Put[],
+  restore: readonly Put[],
+  log: vscode.LogOutputChannel,
+): Promise<PutFailure | undefined> {
+  for (const [position, file] of files.entries()) {
+    try {
+      await put(access, file);
+    } catch (error) {
+      log.error(`Could not write ${relative(file.uri)}; restoring the files written so far.`, error);
+      const notRestored: vscode.Uri[] = [];
+      for (const done of restore.slice(0, position + 1).reverse()) {
+        try {
+          await put(access, done);
+        } catch (restoreError) {
+          // Removing a new file that was never created is no failure.
+          if (!(done.bytes === undefined && isFileNotFound(restoreError))) {
+            log.error(`Could not restore ${relative(done.uri)}.`, restoreError);
+            notRestored.push(done.uri);
+          }
+        }
+      }
+      return { error, notRestored };
+    }
+  }
+  return undefined;
+}
+
 export function isFileNotFound(error: unknown): boolean {
   return error instanceof vscode.FileSystemError && error.code === 'FileNotFound';
 }
