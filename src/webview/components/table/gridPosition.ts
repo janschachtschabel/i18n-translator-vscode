@@ -7,20 +7,29 @@ export interface ActiveCell {
   locale: string | null;
 }
 
-/** Where the active cell is now; if its key or language is gone, the first cell of the grid. */
+/**
+ * Where the active cell is now. If its key or its language is gone, the cell stays where it was (`last`), so
+ * that the row or language that takes the place gets it: e.g. the next key once a missing text is there.
+ */
 export function positionOf(
   active: ActiveCell,
   rows: readonly RowView[],
   locales: readonly LocaleView[],
+  last: GridPosition,
 ): GridPosition {
   const row =
     active.entryId === null ? 0 : rows.findIndex((candidate) => candidate.entryId === active.entryId) + 1;
   const column =
     active.locale === null ? 0 : locales.findIndex((locale) => locale.code === active.locale) + 1;
-  if ((active.entryId !== null && row === 0) || (active.locale !== null && column === 0)) {
-    return { row: rows.length > 0 ? 1 : 0, column: locales.length > 0 ? 1 : 0 };
-  }
-  return { row, column };
+  return {
+    row: active.entryId !== null && row === 0 ? inside(last.row, rows.length) : row,
+    column: active.locale !== null && column === 0 ? inside(last.column, locales.length) : column,
+  };
+}
+
+/** A row or column of the body (from 1 to `count`) near `index`; 0, the header, if there is none. */
+function inside(index: number, count: number): number {
+  return Math.min(Math.max(index, 1), count);
 }
 
 export function cellAt(

@@ -204,13 +204,33 @@ describe('table', () => {
     const { store } = open();
     act(() => cellOf('CANCEL', 2).focus());
     act(() => store.updateFilter({ query: 'SAVE', scope: 'keys' }));
-    expect(document.activeElement).toBe(cellOf('SAVE', 0));
+    expect(document.activeElement).toBe(cellOf('SAVE', 2));
 
     const outside = document.body.appendChild(document.createElement('button'));
     act(() => outside.focus());
     act(() => store.updateFilter({ query: '' }));
     expect(document.activeElement).toBe(outside);
     outside.remove();
+  });
+
+  it('stays in its place when its row goes, e.g. once a missing text is there', () => {
+    const { send } = open({ filter: { ...DEFAULT_FILTER, status: 'missing' } });
+    act(() => cellOf('CANCEL', 2).focus());
+    const rows = model.rows.map((candidate) =>
+      candidate.key === 'CANCEL'
+        ? { ...candidate, cells: { ...candidate.cells, fr: text('Annuler') } }
+        : candidate,
+    );
+    send({ type: 'bundle', model: { ...model, rows } });
+    expect(document.activeElement).toBe(cellOf('ERROR_TITLE', 2));
+  });
+
+  it('stays in its row when its language is hidden', () => {
+    const { store } = open();
+    act(() => cellOf('CANCEL', 1).focus());
+    act(() => store.toggleLocale('de-informal'));
+    expect(document.activeElement).toBe(cellOf('CANCEL', 1));
+    expect(document.activeElement?.textContent).toBe('⚠ fehlt');
   });
 
   it('does not take the focus back after a click beside the controls', async () => {

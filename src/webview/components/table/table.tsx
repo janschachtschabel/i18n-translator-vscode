@@ -28,7 +28,9 @@ export function Table({ store, rows, locales, wrap, labelledBy }: TableProps) {
     entryId: rows[0]?.entryId ?? null,
     locale: locales[0]?.code ?? null,
   }));
-  const position = positionOf(active, rows, locales);
+  const lastPosition = useRef<GridPosition>({ row: 1, column: 1 });
+  const position = positionOf(active, rows, locales, lastPosition.current);
+  lastPosition.current = position;
   const count = useIncrementalCount(rows.length, position.row);
   /** Whether the focus is in the grid; after a render it goes back to the active cell if it got lost. */
   const focused = useRef(false);
