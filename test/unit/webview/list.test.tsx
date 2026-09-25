@@ -96,6 +96,15 @@ describe('list', () => {
     expect(document.activeElement).toBe(within(list()).getByRole('heading', { level: 2, name: 'CANCEL' }));
   });
 
+  it('names the key of each card for the context menu, which offers the key commands', () => {
+    setWidth(600);
+    open();
+    expect(JSON.parse(cardOf('CANCEL').dataset['vscodeContext']!)).toEqual({
+      webviewSection: 'key',
+      entryId: JSON.stringify(['CANCEL']),
+    });
+  });
+
   it('has no accessibility violations, full or compact', async () => {
     setWidth(600);
     open();

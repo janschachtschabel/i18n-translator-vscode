@@ -3,7 +3,10 @@ import { l10n } from '../l10n';
 import type { EditorStore } from '../state/store';
 import './toolbar.css';
 
-/** How the bundle is shown (layout, wrapping, the details of the table) and the undo of the last change. */
+/**
+ * How the bundle is shown (layout, wrapping, the details of the table), new keys and languages, and the undo of
+ * the last change.
+ */
 export function Toolbar({ store }: { store: EditorStore }) {
   const { layout, wrap, details } = store.uiState.value;
   const layouts: [UiState['layout'], string][] = [
@@ -41,6 +44,13 @@ export function Toolbar({ store }: { store: EditorStore }) {
           {l10n.t('Show details')}
         </label>
       )}
+      {/* A new key goes after the active one of the table. */}
+      <button type="button" onClick={() => store.command('addKey', store.detailsKey.value ?? undefined)}>
+        {l10n.t('Add Key…')}
+      </button>
+      <button type="button" onClick={() => store.command('addLanguage')}>
+        {l10n.t('Add Language…')}
+      </button>
       <button type="button" aria-keyshortcuts="Control+Z Meta+Z" onClick={() => store.undo()}>
         {l10n.t('Undo last change')}
       </button>

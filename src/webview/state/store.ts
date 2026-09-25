@@ -2,6 +2,7 @@ import { computed, signal } from '@preact/signals';
 import { filterRows, type FilterResult, type RowFilter } from '../../shared/filter';
 import {
   DEFAULT_UI_STATE,
+  type EditorCommand,
   type HostToWebview,
   type UiState,
   type WebviewToHost,
@@ -202,6 +203,11 @@ export class EditorStore {
   /** Deletes the text of a cell, so that the fallback applies (B2), e.g. an empty one; the host asks first. */
   deleteText(entryId: string, locale: string): void {
     this.edits.delete({ entryId, locale }, this.shownText(entryId, locale));
+  }
+
+  /** Asks the host for a key or language command; it asks the user for names and confirmations itself. */
+  command(command: EditorCommand, entryId?: string): void {
+    this.host.postMessage({ type: 'command', command, ...(entryId !== undefined ? { entryId } : {}) });
   }
 
   /** Undoes the last change of this session to the translation files, in whichever bundle it was. */

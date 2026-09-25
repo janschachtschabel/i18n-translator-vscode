@@ -91,11 +91,19 @@ export function Table({ store, rows, locales, reference, wrap, labelledBy }: Tab
       event.preventDefault();
       return;
     }
+    const at = cellPosition(target);
+    const keyCommand = at.column === 0 && at.row > 0 ? keyCommandOf(event) : undefined;
+    if (keyCommand) {
+      event.preventDefault();
+      event.stopPropagation();
+      store.command(keyCommand, rows[at.row - 1]!.entryId);
+      return;
+    }
     if (isEditKey(event)) {
       event.preventDefault();
       event.stopPropagation();
       // The cell the key was pressed in, even if the grid has not caught up with the focus yet.
-      editAt(cellPosition(target));
+      editAt(at);
       return;
     }
     const openPoint = openPointDirection(event);
@@ -191,6 +199,14 @@ export function Table({ store, rows, locales, reference, wrap, labelledBy }: Tab
       </div>
     </div>
   );
+}
+
+/** In the key column, F2 renames the key and Delete deletes it; the host asks first. */
+function keyCommandOf(event: KeyboardEvent): 'renameKey' | 'deleteKey' | undefined {
+  if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) {
+    return undefined;
+  }
+  return event.key === 'F2' ? 'renameKey' : event.key === 'Delete' ? 'deleteKey' : undefined;
 }
 
 /** Enter or F2 opens the editor of a cell (design §7.2). */

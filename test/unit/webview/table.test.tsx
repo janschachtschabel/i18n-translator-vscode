@@ -193,6 +193,29 @@ describe('table', () => {
     expect(grid().querySelectorAll('[tabindex="0"]')).toHaveLength(1);
   });
 
+  it('asks the host to rename a key with F2 and to delete it with Delete, in the key column', () => {
+    const { posted } = open();
+    const key = within(rowOf('CANCEL')).getByRole('rowheader');
+    act(() => key.focus());
+    press('F2');
+    press('Delete');
+    act(() => within(grid()).getByRole('columnheader', { name: 'Key' }).focus());
+    press('F2');
+    const entryId = JSON.stringify(['CANCEL']);
+    expect(posted.filter((message) => message.type === 'command')).toEqual([
+      { type: 'command', command: 'renameKey', entryId },
+      { type: 'command', command: 'deleteKey', entryId },
+    ]);
+  });
+
+  it('names the key of each row for the context menu, which offers the key commands', () => {
+    open();
+    expect(JSON.parse(rowOf('CANCEL').dataset['vscodeContext']!)).toEqual({
+      webviewSection: 'key',
+      entryId: JSON.stringify(['CANCEL']),
+    });
+  });
+
   it('ignores keys that are not for moving', () => {
     open();
     act(() => cellOf('SAVE', 1).focus());

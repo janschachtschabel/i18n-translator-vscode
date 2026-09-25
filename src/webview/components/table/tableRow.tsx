@@ -6,6 +6,7 @@ import type { EditorStore } from '../../state/store';
 import { CellEditor } from '../cellEditor';
 import { SEVERITY_SYMBOLS, severityWord, statusWord } from '../cellStatus';
 import { EmptyValue } from '../emptyValue';
+import { keyContext } from '../keyContext';
 import { LocaleLabel } from '../localeLabel';
 import { memo } from '../memo';
 import { entryAttribute } from '../useScrollAnchor';
@@ -65,7 +66,13 @@ export const TableRow = memo(
     const cells = locales.map((locale) => row.cells[locale.code] ?? NO_TEXT);
     const referenceText = reference === undefined ? undefined : row.cells[reference]?.value;
     return (
-      <div role="row" aria-rowindex={index + 1} class="grid-row" data-entry={entryAttribute(row.entryId)}>
+      <div
+        role="row"
+        aria-rowindex={index + 1}
+        class="grid-row"
+        data-entry={entryAttribute(row.entryId)}
+        data-vscode-context={keyContext(row.entryId)}
+      >
         <div role="rowheader" aria-colindex={1} class="grid-key" {...focusable(index, 0, activeColumn)}>
           {row.key}
         </div>

@@ -3,6 +3,7 @@ import type { LocaleView } from '../../../shared/viewModel';
 import type { OpenEditor, ShownCell, ShownRow } from '../../state/edits';
 import type { EditorStore } from '../../state/store';
 import { Field, focusIsLost } from '../field';
+import { keyContext } from '../keyContext';
 import { memo } from '../memo';
 import { useIncrementalCount } from '../useIncrementalCount';
 import { entryAttribute, useScrollAnchor } from '../useScrollAnchor';
@@ -124,7 +125,7 @@ interface CardProps {
 const Card = memo(({ row, locales, store, reference, editor }: CardProps) => {
   const referenceText = reference === undefined ? undefined : row.cells[reference]?.value;
   return (
-    <li class="card" data-entry={entryAttribute(row.entryId)}>
+    <li class="card" data-entry={entryAttribute(row.entryId)} data-vscode-context={keyContext(row.entryId)}>
       {/* It can take the focus, so that the focus has a place when the list replaces the table. */}
       <h2 class="card-key" tabIndex={-1}>
         {row.key}

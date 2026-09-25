@@ -1017,6 +1017,29 @@ was nicht ausdrücklich geändert wurde.
 >   - In beiden Fällen gibt es weder Seiten- noch Querscrollen.
 > - **Für 2.16:** Bei 720 px Höhe bleiben der Tabelle mit Leiste darunter nur sechs Zeilen. Das gehört zum kompakteren Kopfbereich.
 > - **Bewusst offen:** Eine Leiste für die Liste (etwa unten angedockt) kommt erst, wenn Phase 7 Inhalte bringt, die in keine Karte passen (Kontext, Review, Vorschläge).
+>
+> **Umsetzungsnotizen Task 2.14 (26.09.2026):**
+> - **Keys tippen:** Punkte trennen die Teile eines Keys. Ein Punkt innerhalb eines Teils wird als `\.` geschrieben, ein Backslash als `\\` (`parseKeyInput`/`keyInput`). So bleibt `CCMAIL` › `mail.smtp.server` beim Umbenennen heil; die Eingabe zeigt den alten Namen in dieser Form vor. Für `.properties` (Phase 5), deren Keys flach sind, braucht es eine eigene Regel.
+> - **Befehle:**
+>   - Key hinzufügen fragt nach dem Key und seinem Referenztext; beides wird beim Tippen geprüft (`checkNewKey`). Gibt es den obersten Key auch in einer anderen Einheit der Wurzel, fragt ein modaler Dialog, weil er sie zur Laufzeit ersetzen würde.
+>   - Umbenennen und Löschen fragen, ob nur diese Einheit oder alle Einheiten mit dem Key geändert werden, und nennen sie. Löschen in einer Einheit wird bestätigt. Mehrere Einheiten plant `planInBundles` als eine Änderung, ganz oder gar nicht; das Backup davor legt der FileStore an.
+>   - Sprache hinzufügen legt in jeder Einheit der Wurzel eine leere Datei an; der Code wird beim Tippen gegen das Muster des Bereichs geprüft.
+>   - „Übersetzungseditor öffnen…“ wählt eine Einheit aus allen Wurzeln.
+>   - Schreibende Befehle sind nur in vertrauenswürdigen Arbeitsbereichen aktiv (`enablement`).
+> - **Wo:**
+>   - Seitenleiste: Key hinzufügen an Einheiten, Sprache hinzufügen an Wurzeln und Einheiten.
+>   - Titelleiste des Editors: Key und Sprache hinzufügen.
+>   - Kontextmenü des Editors (`webview/context`): Zeilen und Karten tragen ihren Key (`data-vscode-context`), dazu Sprache hinzufügen.
+>   - Im Editor: Schaltflächen für Key und Sprache, F2 (umbenennen) und Entf (löschen) in der Key-Spalte.
+>   - Palette: alles außer Umbenennen und Löschen, die einen Key brauchen.
+> - **Vertrauensgrenze:** Das Argument eines Menüs, auch das aus der Webview, wählt nur über Kennungen unter dem aus, was der Index hat. Ein Key, den die Einheit nicht hat, zählt als keiner.
+> - **Tests:** Die Rückfragen stehen hinter einer Schnittstelle (`Prompts`); die Integrationstests beantworten sie. Geprüft ist:
+>   - `es` legt vier Dateien `{}` an, und Undo entfernt sie.
+>   - Umbenennen wirkt in allen Einheiten oder nur in dieser.
+>   - Abbrechen bei jeder Frage schreibt nichts.
+>   - Ein neuer Key steht hinter seinem Vorgänger, und die Rückfrage beim geteilten obersten Key kommt.
+>   - Löschen und die Wahl des Ziels funktionieren.
+> - **Für 2.18 (Abnahme, von Hand):** die Dialoge der vier Befehle, das Kontextmenü im Editor und die Titelleiste.
 
 ### Task 2.1: Textbausteine für das Schreiben
 **Dateien:** Create `src/core/text/edits.ts`, `src/core/text/style.ts`; Test: `test/unit/core/text/edits.test.ts`, `style.test.ts`

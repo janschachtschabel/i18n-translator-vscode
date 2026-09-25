@@ -52,6 +52,18 @@ describe('toolbar', () => {
     expect(screen.queryByRole('checkbox', { name: 'Details anzeigen' })).toBeNull();
   });
 
+  it('asks the host to add a key after the active one, or a language', () => {
+    const { open, posted } = renderEditor();
+    open();
+    act(() => within(screen.getByRole('grid')).getByRole('rowheader', { name: 'CANCEL' }).focus());
+    act(() => void fireEvent.click(screen.getByRole('button', { name: 'Key hinzufügen…' })));
+    act(() => void fireEvent.click(screen.getByRole('button', { name: 'Sprache hinzufügen…' })));
+    expect(posted).toEqual([
+      { type: 'command', command: 'addKey', entryId: JSON.stringify(['CANCEL']) },
+      { type: 'command', command: 'addLanguage' },
+    ]);
+  });
+
   it('undoes the last change with the button and with Ctrl+Z outside text fields', () => {
     const { open, posted } = renderEditor();
     open();
