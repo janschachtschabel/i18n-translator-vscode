@@ -11,7 +11,7 @@ import {
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import * as vscode from 'vscode';
-import { planEdit, type BundleEdit } from '../../src/core/edit/planEdit';
+import { planAddLanguage, planEdit, type BundleEdit } from '../../src/core/edit/planEdit';
 import { keyFromSegments } from '../../src/core/model/keys';
 import type { ExtensionApi } from '../../src/extension/extension';
 import type { BackupSettings } from '../../src/core/config/settings';
@@ -69,6 +69,12 @@ suite('Backups', () => {
   });
 
   teardown(async () => {
+    const known = new Set(original.map(([uri]) => uri.toString()));
+    for (const uri of await translationFiles()) {
+      if (!known.has(uri.toString())) {
+        await vscode.workspace.fs.delete(uri);
+      }
+    }
     for (const [uri, bytes] of original) {
       await vscode.workspace.fs.writeFile(uri, bytes);
     }
@@ -94,9 +100,10 @@ suite('Backups', () => {
     assert.deepEqual(saved?.bytes, before);
   });
 
-  test('backs up before a change of several files and after the interval', async () => {
+  test('backs up before a change of several bundles and after the interval, not for one bundle', async () => {
     assert.deepEqual(await store.write(ref, setAsk('Continuer ?')), { ok: true });
     now += MINUTE;
+    // Three files of one bundle: the session undo covers it.
     const addKey = edit({
       kind: 'addKey',
       key: keyFromSegments(['NEW']),
@@ -104,11 +111,14 @@ suite('Backups', () => {
       after: id('SAVE'),
     });
     assert.deepEqual(await store.write(ref, addKey), { ok: true });
+    now += MINUTE;
+    const addLanguage: Planner = (analysis) => planAddLanguage(analysis.bundles, analysis.area, 'es');
+    assert.deepEqual(await store.write(ref, addLanguage), { ok: true });
     now += 10 * MINUTE;
     assert.deepEqual(await store.write(ref, setAsk('Continuer ?!')), { ok: true });
     assert.deepEqual(
       (await backups.list()).map((backup) => backup.reason),
-      ['interval', 'several-files', 'first-write'],
+      ['interval', 'several-bundles', 'first-write'],
     );
   });
 
@@ -173,6 +183,9 @@ suite('Backups', () => {
       assert.deepEqual(await backups.list(), [], name);
       assert.deepEqual((await backups.read(backup!.id)).files, [], name);
     }
+    // A manifest this version does not understand may come from another version: it is not removed.
+    await backups.create('manual');
+    assert.ok(existsSync(join(storage, 'backups', backup!.id)));
   });
 
   test('restores the bytes of a backup through the file store, after backing up the current state', async () => {

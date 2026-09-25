@@ -7,7 +7,7 @@ import { readIfExists } from './files';
 import { isPlainRelativePath } from './uriPaths';
 import type { IndexSnapshot, WorkspaceIndex } from './workspaceIndex';
 
-export type BackupReason = 'first-write' | 'several-files' | 'interval' | 'manual' | 'restore';
+export type BackupReason = 'first-write' | 'several-bundles' | 'interval' | 'manual' | 'restore';
 
 export interface BackupInfo {
   /** Folder name below `backups/`; sorts by creation time. */
@@ -28,7 +28,7 @@ interface Manifest {
 }
 
 const MANIFEST = 'manifest.json';
-const REASONS: readonly BackupReason[] = ['first-write', 'several-files', 'interval', 'manual', 'restore'];
+const REASONS: readonly BackupReason[] = ['first-write', 'several-bundles', 'interval', 'manual', 'restore'];
 /**
  * An ISO timestamp with `-` for `:` and `.`, plus a three-digit counter for backups in the same millisecond,
  * so that ids sort in the order they were made.
@@ -37,7 +37,7 @@ const ID = /^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z(?:-\d{3})?$/;
 
 /**
  * Copies every indexed translation file into the extension's storage for this workspace, never into the
- * repository: before the first write of a session, before writes of several files, at the next write once
+ * repository: before the first write of a session, before writes of several bundles, at the next write once
  * `intervalMinutes` have passed, before a restore, and on request. Keeps the newest `keep` backups.
  */
 export class BackupService {
@@ -60,8 +60,8 @@ export class BackupService {
    * For the file store, before it writes. A failed backup is reported but does not stop a change; before a
    * restore, it throws, and the restore does not happen.
    */
-  async beforeWrite(kind: 'write' | 'restore', files: number): Promise<void> {
-    const reason = this.reasonFor(kind, files);
+  async beforeWrite(kind: 'write' | 'restore', bundles: number): Promise<void> {
+    const reason = this.reasonFor(kind, bundles);
     if (!reason) {
       return;
     }
@@ -177,15 +177,15 @@ export class BackupService {
     return { files, skipped: manifest.files.length - files.length };
   }
 
-  private reasonFor(kind: 'write' | 'restore', files: number): BackupReason | undefined {
+  private reasonFor(kind: 'write' | 'restore', bundles: number): BackupReason | undefined {
     if (kind === 'restore') {
       return 'restore';
     }
     if (this.lastBackup === undefined) {
       return 'first-write';
     }
-    if (files > 1) {
-      return 'several-files';
+    if (bundles > 1) {
+      return 'several-bundles';
     }
     const { intervalMinutes } = this.settings();
     return intervalMinutes > 0 && this.now() - this.lastBackup >= intervalMinutes * 60_000
@@ -225,8 +225,9 @@ export class BackupService {
 
   /**
    * Keeps the newest `keep` complete backups, plus the one just made and the one being restored (which may be
-   * the oldest, or older after a clock change). Folders without a manifest were left by an interrupted backup;
-   * backups run one at a time in the file store's queue, so none is being written now, and they go.
+   * the oldest, or older after a clock change). Folders without a manifest file were left by an interrupted
+   * backup; backups run one at a time in the file store's queue, so none is being written now, and they go. A
+   * manifest this version does not understand (from another version) is left alone.
    */
   private async prune(made: string): Promise<void> {
     const kept = new Set([made, this.restoring]);
@@ -234,7 +235,7 @@ export class BackupService {
     for (const id of await this.ids()) {
       if (await this.manifest(id)) {
         complete.push(id);
-      } else if (!kept.has(id)) {
+      } else if (!kept.has(id) && !(await readIfExists(this.manifestUri(id)))) {
         await this.remove(id);
       }
     }
@@ -250,6 +251,10 @@ export class BackupService {
     }
   }
 
+  private manifestUri(id: string): vscode.Uri {
+    return vscode.Uri.joinPath(this.storage!, 'backups', id, MANIFEST);
+  }
+
   private async remove(id: string): Promise<void> {
     await vscode.workspace.fs.delete(vscode.Uri.joinPath(this.storage!, 'backups', id), {
       recursive: true,
@@ -262,7 +267,7 @@ export class BackupService {
     if (!this.storage || !ID.test(id)) {
       return undefined;
     }
-    const bytes = await readIfExists(vscode.Uri.joinPath(this.storage, 'backups', id, MANIFEST));
+    const bytes = await readIfExists(this.manifestUri(id));
     if (!bytes) {
       return undefined;
     }

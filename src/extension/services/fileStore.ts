@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { compileFilePattern } from '../../core/area/filePattern';
 import { applyChanges } from '../../core/edit/applyChanges';
 import type { EditProblem } from '../../core/edit/editMessages';
 import type { PlanResult } from '../../core/edit/planEdit';
@@ -32,10 +33,11 @@ export interface RootRef {
 export type Planner = (analysis: RootAnalysis) => PlanResult;
 
 /**
- * Runs before the files are checked and written, e.g. to back them up; `files` is the number about to change.
- * It runs inside the store's queue, so it must not call write, restore, undo or exclusive.
+ * Runs before the files are checked and written, e.g. to back them up; `bundles` is how many bundles the write
+ * changes (for a restore, how many files it may change). It runs inside the store's queue, so it must not call
+ * write, restore, undo or exclusive.
  */
-export type BeforeWrite = (kind: 'write' | 'restore', files: number) => Promise<void>;
+export type BeforeWrite = (kind: 'write' | 'restore', bundles: number) => Promise<void>;
 
 /** A file and the bytes it gets back, e.g. from a backup. */
 export interface RestoredFile {
@@ -165,7 +167,13 @@ export class FileStore {
       }
       if (!backedUp) {
         // Before the disk check: between checking the files and writing them, nothing slow may happen.
-        await this.beforeWrite('write', targets.length);
+        await this.beforeWrite(
+          'write',
+          bundlesOf(
+            analysis,
+            targets.map((target) => target.write.relPath),
+          ),
+        );
         backedUp = true;
       }
       const onDisk = await Promise.all(targets.map((target) => readIfExists(target.uri, this.files)));
@@ -336,4 +344,11 @@ function inRoot(uri: vscode.Uri, indexed: IndexedRoot): boolean {
     relPath !== undefined &&
     insideRoot(relPath, indexed.analysis.root)
   );
+}
+
+/** How many bundles a write changes: the area's file pattern tells the bundle of every path, new ones too. */
+function bundlesOf(analysis: RootAnalysis, relPaths: readonly string[]): number {
+  const match = compileFilePattern(analysis.area);
+  const prefix = analysis.root === '' ? '' : `${analysis.root}/`;
+  return new Set(relPaths.map((relPath) => match(relPath.slice(prefix.length))?.bundle ?? relPath)).size;
 }

@@ -6,7 +6,7 @@ import { showWriteFailure } from '../services/writeFeedback';
 
 const REASONS: Readonly<Record<BackupReason, () => string>> = {
   'first-write': () => vscode.l10n.t('Before the first change of a session'),
-  'several-files': () => vscode.l10n.t('Before a change of several files'),
+  'several-bundles': () => vscode.l10n.t('Before a change of several bundles'),
   interval: () => vscode.l10n.t('While editing'),
   manual: () => vscode.l10n.t('Created by hand'),
   restore: () => vscode.l10n.t('Before restoring a backup'),

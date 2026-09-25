@@ -30,7 +30,7 @@
   "Area whose folders you want to set": "Bereich, dessen Ordner festgelegt werden sollen",
   "Backup created. Files: {count}": "Sicherung erstellt. Dateien: {count}",
   "Backup to restore": "Wiederherzustellende Sicherung",
-  "Before a change of several files": "Vor einer Änderung mehrerer Dateien",
+  "Before a change of several bundles": "Vor einer Änderung mehrerer Einheiten",
   "Before restoring a backup": "Vor dem Wiederherstellen einer Sicherung",
   "Before the first change of a session": "Vor der ersten Änderung einer Sitzung",
   "Changed in the meantime: {files}. Nothing was written.": "Inzwischen geändert: {files}. Es wurde nichts geschrieben.",
