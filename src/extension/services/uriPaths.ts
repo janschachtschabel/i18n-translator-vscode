@@ -16,6 +16,16 @@ export function relativeUriPath(folderPath: string, path: string, ignoreCase = f
   return target.length >= base.length && same ? target.slice(base.length, -1) : undefined;
 }
 
+/**
+ * A relative path of named segments with `/` separators: no empty, `.` or `..` segment, no backslash and no
+ * drive letter. Paths that are joined to a folder must be plain, or they could lead out of it.
+ */
+export function isPlainRelativePath(path: string): boolean {
+  return path
+    .split('/')
+    .every((segment) => segment !== '' && segment !== '.' && segment !== '..' && !/[\\:]/.test(segment));
+}
+
 function lowerDriveLetter(path: string): string {
   return path.replace(/^\/([A-Za-z]):/, (_, letter: string) => `/${letter.toLowerCase()}:`);
 }

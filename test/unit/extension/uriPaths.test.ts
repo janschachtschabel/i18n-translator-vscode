@@ -1,5 +1,18 @@
 import { describe, expect, it } from 'vitest';
-import { relativeUriPath } from '../../../src/extension/services/uriPaths';
+import { isPlainRelativePath, relativeUriPath } from '../../../src/extension/services/uriPaths';
+
+describe('isPlainRelativePath', () => {
+  it('accepts paths of named segments', () => {
+    expect(isPlainRelativePath('Frontend/src/assets/i18n/common/de.json')).toBe(true);
+    expect(isPlainRelativePath('de.json')).toBe(true);
+  });
+
+  it('refuses paths that could leave the folder they are relative to', () => {
+    for (const path of ['', '/abs', 'a//b', 'a/', './a', 'a/../b', '..', 'a\\b', 'c:/x']) {
+      expect(isPlainRelativePath(path), path).toBe(false);
+    }
+  });
+});
 
 describe('relativeUriPath', () => {
   it('returns the path below the folder', () => {

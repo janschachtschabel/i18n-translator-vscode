@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { checkTranslations } from './commands/check';
 import { configureRoots } from './commands/configureRoots';
 import { DiagnosticsPublisher } from './diagnostics/diagnosticsPublisher';
+import { BackupService } from './services/backupService';
 import { FileStore } from './services/fileStore';
 import { WorkspaceIndex } from './services/workspaceIndex';
 import { createAreasView, type AreaNode, type AreasTreeProvider } from './views/areasTree';
@@ -23,7 +24,8 @@ export interface ExtensionApi {
 export function activate(context: vscode.ExtensionContext): ExtensionApi {
   const log = vscode.window.createOutputChannel('edu-sharing i18n', { log: true });
   const index = new WorkspaceIndex(log);
-  const fileStore = new FileStore(index, log);
+  const backups = new BackupService(context.storageUri, index, log);
+  const fileStore = new FileStore(index, log, (kind, files) => backups.beforeWrite(kind, files));
   const areas = createAreasView(index);
   const statusBar = new IndexStatusBar(index);
 

@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { applyChanges, type FileWrite } from '../../core/edit/applyChanges';
+import { applyChanges } from '../../core/edit/applyChanges';
 import type { EditProblem } from '../../core/edit/editMessages';
 import type { PlanResult } from '../../core/edit/planEdit';
 import type { FormatAdapter } from '../../core/formats/adapter';
@@ -9,6 +9,8 @@ import type { RootAnalysis } from '../../core/pipeline/analyze';
 import type { DecodedText } from '../../core/text/decode';
 import { revisionOf } from '../../core/util/hash';
 import { messageOf } from './errors';
+import { isDirty, readIfExists, relative, sameBytes } from './files';
+import { isPlainRelativePath } from './uriPaths';
 import type { IndexedRoot, IndexSnapshot, WorkspaceIndex } from './workspaceIndex';
 
 /** One area root of a workspace folder: where an edit is planned and written. */
@@ -20,6 +22,15 @@ export interface RootRef {
 
 /** Plans an edit on the current state of a root. The store plans again when files changed on disk (B5). */
 export type Planner = (analysis: RootAnalysis) => PlanResult;
+
+/** Runs right before files are written, e.g. to back them up; `files` is the number about to change. */
+export type BeforeWrite = (kind: 'write' | 'restore', files: number) => Promise<void>;
+
+/** A file and the bytes it gets back, e.g. from a backup. */
+export interface RestoredFile {
+  uri: vscode.Uri;
+  bytes: Uint8Array;
+}
 
 export type WriteResult =
   | { ok: true }
@@ -36,12 +47,6 @@ export type WriteResult =
 const UNDO_LIMIT = 100;
 /** Plans per write: when files change on disk between planning and writing, the edit is planned again. */
 const PLAN_ATTEMPTS = 3;
-
-interface Target {
-  uri: vscode.Uri;
-  write: FileWrite;
-  bytes: Uint8Array;
-}
 
 /** Bytes a file gets; undefined deletes it (undoing a new file). */
 interface Put {
@@ -70,11 +75,17 @@ export class FileStore {
   constructor(
     private readonly index: WorkspaceIndex,
     private readonly log: vscode.LogOutputChannel,
+    private readonly beforeWrite: BeforeWrite = async () => undefined,
   ) {}
 
   /** Plans the edit on the current files and writes the result. Never throws; failures are results. */
   write(ref: RootRef, plan: Planner): Promise<WriteResult> {
     return this.enqueue(() => this.writeNow(ref, plan));
+  }
+
+  /** Gives files their bytes back, as one write that can be undone; files that already have them stay. */
+  restore(files: readonly RestoredFile[]): Promise<WriteResult> {
+    return this.enqueue(() => this.restoreNow(files));
   }
 
   /** Restores the files of the last write, if they still have the bytes it wrote. Undefined: nothing to undo. */
@@ -142,7 +153,10 @@ export class FileStore {
       const onDisk = await Promise.all(targets.map((target) => readIfExists(target.uri)));
       const changed = targets.filter((target, i) => !holds(onDisk[i], target.write.before, adapter));
       if (changed.length === 0) {
-        return this.commit(targets, onDisk);
+        return this.commit(
+          'write',
+          targets.map((target, i) => ({ uri: target.uri, bytes: target.bytes, before: onDisk[i] })),
+        );
       }
       const uris = changed.map((target) => target.uri);
       if (attempt === PLAN_ATTEMPTS) {
@@ -186,25 +200,47 @@ export class FileStore {
     return { ok: true };
   }
 
-  private async commit(targets: Target[], onDisk: (Uint8Array | undefined)[]): Promise<WriteResult> {
+  private async restoreNow(files: readonly RestoredFile[]): Promise<WriteResult> {
+    if (!vscode.workspace.isTrusted) {
+      return { ok: false, reason: 'untrusted' };
+    }
+    const dirty = files.filter((file) => isDirty(file.uri)).map((file) => file.uri);
+    if (dirty.length > 0) {
+      return { ok: false, reason: 'dirty', files: dirty };
+    }
+    const onDisk = await Promise.all(files.map((file) => readIfExists(file.uri)));
+    const differing = files
+      .map((file, i) => ({ ...file, before: onDisk[i] }))
+      .filter((file) => file.before === undefined || !sameBytes(file.before, file.bytes));
+    return differing.length === 0 ? { ok: true } : this.commit('restore', differing);
+  }
+
+  /** Lets `beforeWrite` run (backups), writes all files or none, and keeps the write for undo. */
+  private async commit(
+    kind: 'write' | 'restore',
+    files: { uri: vscode.Uri; bytes: Uint8Array; before: Uint8Array | undefined }[],
+  ): Promise<WriteResult> {
+    await this.beforeWrite(kind, files.length);
     const failure = await this.putAll(
-      targets.map((target) => ({ uri: target.uri, bytes: target.bytes })),
-      targets.map((target, i) => ({ uri: target.uri, bytes: onDisk[i] })),
+      files,
+      files.map((file) => ({ uri: file.uri, bytes: file.before })),
     );
     if (failure) {
       return failure;
     }
     this.undoStack.push({
-      files: targets.map((target, i) => ({
-        uri: target.uri,
-        before: onDisk[i],
-        afterRevision: revisionOf(target.bytes),
+      files: files.map((file) => ({
+        uri: file.uri,
+        before: file.before,
+        afterRevision: revisionOf(file.bytes),
       })),
     });
     if (this.undoStack.length > UNDO_LIMIT) {
       this.undoStack.shift();
     }
-    this.log.info(`Wrote ${targets.map((target) => relative(target.uri)).join(', ')}`);
+    this.log.info(
+      `${kind === 'write' ? 'Wrote' : 'Restored'} ${files.map((file) => relative(file.uri)).join(', ')}`,
+    );
     await this.reindex();
     return { ok: true };
   }
@@ -260,17 +296,6 @@ async function put({ uri, bytes }: Put): Promise<void> {
   }
 }
 
-async function readIfExists(uri: vscode.Uri): Promise<Uint8Array | undefined> {
-  try {
-    return await vscode.workspace.fs.readFile(uri);
-  } catch (error) {
-    if (error instanceof vscode.FileSystemError && error.code === 'FileNotFound') {
-      return undefined;
-    }
-    throw error;
-  }
-}
-
 /** Whether the file on disk still has the text the change was planned on (no file, for a new one). */
 function holds(
   bytes: Uint8Array | undefined,
@@ -286,31 +311,13 @@ function holds(
   );
 }
 
-function isDirty(uri: vscode.Uri): boolean {
-  const target = comparable(uri);
-  return vscode.workspace.textDocuments.some(
-    (document) => document.isDirty && comparable(document.uri) === target,
-  );
-}
-
-/** File systems on Windows and macOS ignore case, and an editor keeps the case a file was opened with. */
-function comparable(uri: vscode.Uri): string {
-  return process.platform === 'linux' ? uri.toString() : uri.toString().toLowerCase();
-}
-
 /** A plan must stay below its root; `..`, empty segments or drive letters in a path would leave it. */
 function insideRoot(relPath: string, root: string): boolean {
   const segments = relPath.split('/');
   const rootSegments = root === '' ? [] : root.split('/');
   return (
+    isPlainRelativePath(relPath) &&
     segments.length > rootSegments.length &&
-    rootSegments.every((segment, index) => segments[index] === segment) &&
-    segments.every(
-      (segment) => segment !== '' && segment !== '.' && segment !== '..' && !/[\\:]/.test(segment),
-    )
+    rootSegments.every((segment, index) => segments[index] === segment)
   );
-}
-
-function relative(uri: vscode.Uri): string {
-  return vscode.workspace.asRelativePath(uri, false);
 }
