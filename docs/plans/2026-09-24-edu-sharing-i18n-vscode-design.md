@@ -607,7 +607,7 @@ Texte beim Start vom Host. Die Anzeigesprache folgt VS Code.
 | `eduI18n.metadata.path` | `".edu-i18n/metadata.json"` | Metadaten-Datei (leer = nur lokal) |
 | `eduI18n.review.humanEditSetsReviewed` | `true` | Status nach manueller Bearbeitung |
 | `eduI18n.context.baseUrl` | `""` | edu-sharing-Instanz für Kontext-URLs |
-| `eduI18n.backup.intervalMinutes` · `.keep` | `30` · `10` | automatische Backups |
+| `eduI18n.backup.intervalMinutes` · `.keep` | `10` · `10` | automatische Backups |
 | `eduI18n.import.overwriteExisting` · `.markReviewRequired` | `false` · `true` | Import-Standardoptionen |
 | `eduI18n.export.defaultFormat` · `.csvDelimiter` · `.target` | `"csv"` · `";"` · `"untitled"` | Export-Standardoptionen |
 | `eduI18n.log.level` | `"info"` | Protokollierung |

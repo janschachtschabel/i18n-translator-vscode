@@ -750,20 +750,52 @@ was nicht ausdrücklich geändert wurde.
 > **Umsetzungsnotizen Task 2.5 (25.09.2026):**
 > - **Wann gesichert wird:**
 >   - Der FileStore ruft den Dienst direkt vor dem Schreiben.
->   - Gesichert wird vor dem ersten Schreiben einer Sitzung, vor Änderungen **mehrerer Dateien** (der Store sieht Dateien, keine Einheiten; so sind auch Umbenennen und Löschen eines Keys über alle Sprachen gesichert) und vor einem Wiederherstellen.
+>   - Gesichert wird vor dem ersten Schreiben einer Sitzung, vor Änderungen **mehrerer Einheiten** und vor einem Wiederherstellen. Die Einheit jeder Datei bestimmt der Store über das Dateimuster, auch für neue Dateien. Änderungen innerhalb einer Einheit (Key anlegen, umbenennen, löschen) deckt das Undo der Sitzung ab.
 >   - Nach `intervalMinutes` sichert das **nächste** Schreiben, statt dass ein Timer läuft. Die Sicherung hält dann genau den Stand vor der Änderung, und im Hintergrund läuft nichts.
->   - Eine fehlgeschlagene Sicherung wird gemeldet, hält das Schreiben aber nicht auf, weil das Schreiben selbst „ganz oder gar nicht“ ist und sich rückgängig machen lässt.
+>   - Die Sicherung läuft **vor** der Prüfung der Dateien auf der Platte, damit zwischen Prüfen und Schreiben nichts Langsames passiert.
+>   - Eine fehlgeschlagene Sicherung wird gemeldet, hält eine Änderung aber nicht auf, weil diese „ganz oder gar nicht“ geschrieben wird und sich rückgängig machen lässt. Ein Wiederherstellen hält sie dagegen auf.
+>   - „Jetzt sichern“ läuft über `FileStore.exclusive` zwischen zwei Schreibvorgängen und erwischt so keine halb geschriebene Änderung.
 > - **Inhalt und Ablage:**
 >   - Gesichert werden alle indizierten Übersetzungsdateien aller Wurzeln.
 >   - Ablage: `storageUri/backups/<Zeitstempel>/<Ordnernummer>/<Pfad>` und zuletzt `manifest.json`. Ein Ordner ohne Manifest gilt als abgebrochen und erscheint nicht in der Liste.
 >   - Manifeste werden beim Lesen geprüft (Form, Pfade ohne `..`).
 > - **Wiederherstellen:**
 >   - Nur die Dateien der Sicherung werden wiederhergestellt; neuere Dateien bleiben.
->   - `FileStore.restore` ist ein Schreibvorgang mit denselben Schutzprüfungen und lässt sich rückgängig machen.
+>   - `FileStore.restore` ist ein Schreibvorgang mit denselben Schutzprüfungen (Vertrauen, ungespeicherte Editoren, nur in indizierte Wurzeln) und lässt sich rückgängig machen.
+>   - Die wiederhergestellte Sicherung wird beim Aufräumen nie gelöscht, auch wenn sie die älteste ist.
+>   - Ordner ohne Manifest (abgebrochene Sicherungen) werden entfernt. Ordner mit einem Manifest, das diese Version nicht versteht, bleiben liegen.
 >   - Dateien von Ordnern, die nicht mehr geöffnet sind, bleiben unberührt.
-> - **Einstellungen:** `backup.intervalMinutes` und `backup.keep` prüft `parseSettings` wie alle anderen (ungültig ergibt den Standard und eine Meldung).
+> - **Einstellungen:** `backup.intervalMinutes` und `backup.keep` gelten für das Fenster, nicht je Ordner. `parseBackupSettings` prüft sie wie `parseSettings` die übrigen; ungültige Werte ergeben den Standard, und der Index meldet sie.
 > - **Befehle:** „Wiederherstellen“ ist nur in vertrauenswürdigen Arbeitsbereichen aktiv. `writeFeedback.ts` erklärt fehlgeschlagene Schreibvorgänge (mit „Datei anzeigen“ und „Arbeitsbereichsvertrauen verwalten“) für alle Aufrufer.
 > - **Nicht automatisch getestet:** Auswahl und Rückfrage des Befehls „Wiederherstellen“, weil sich die Dialoge im Testhost nicht bedienen lassen. Die Schritte darunter sind getestet: Sichern, Lesen, `FileStore.restore` und Undo. Die Dialoge prüft die Abnahme 2.18 von Hand.
+>
+> **Review Block A, Teil 2 (Tasks 2.4–2.5, 25.09.2026):** drei Reviewer mit frischem Kontext. Ergebnis: 0 kritische, 2 schwere, 15 mittlere Befunde und 10 Kleinigkeiten.
+> - **Behoben:**
+>   - Das Zurückrollen stellt auch die Datei wieder her, deren Schreiben scheiterte (`writeFile` leert eine Datei vor dem Schreiben). Dateien, die sich nicht wiederherstellen ließen, nennt das Ergebnis (`notRestored`) mit dem Angebot „Aus Sicherung wiederherstellen…“.
+>   - Sicherung vor der Plattenprüfung.
+>   - Undo bleibt bei Lesefehlern erhalten und ist zusätzlich auf 32 MB begrenzt (`UndoHistory`).
+>   - `restore` schreibt nur in indizierte Wurzeln.
+>   - Die wiederhergestellte Sicherung wird nicht gelöscht, abgebrochene Sicherungen werden aufgeräumt, und die Kennungen aus derselben Millisekunde sortieren richtig.
+>   - Gesichert wird vor Änderungen mehrerer Einheiten statt mehrerer Dateien.
+>   - Die Backup-Einstellungen werden für das Fenster gelesen, die übrigen je Ordner; `diagnostics.missing` hat jetzt `scope: resource`. So gibt es keine Warnungen zum Geltungsbereich mehr.
+>   - Die Befehle fangen Fehler ab und nennen übersprungene Dateien.
+>   - Kern: Ein Wert auf dem Pfad eines Keys ist `not-a-text`; mehrere Änderungen einer Datei werden verkettet (`applyChanges`).
+>   - Der Zufallsgenerator im Hash-Test, die Grenzen der Einstellungen im Manifest-Test und die Tests der Schutzprüfungen.
+>   - `fileStore.ts` ist aufgeteilt (`UndoHistory`, `putAllOrNone`).
+> - **Für 2.15 (aus dem Review):**
+>   - Jeder Schreibvorgang indiziert heute zweimal neu: direkt danach und rund 300 ms später über den Watcher. Ein warmer Lauf am echten Repo dauert 244–363 ms; Ziel sind unter 150 ms je Zelle (Design §8).
+>   - 2.15 soll nur die betroffene Wurzel neu indizieren und Watcher-Läufe für Dateien überspringen, die noch den eben indizierten Stand haben (Revision je Datei).
+>   - Zu prüfen ist, ob `write()` schon nach dem Schreiben zurückkehren darf und der nächste Schreibvorgang auf einen laufenden Lauf wartet.
+>   - Die erste Sicherung einer Sitzung verzögert das erste Schreiben (14 Dateien: 70–100 ms).
+> - **Für 2.6 und 2.12:**
+>   - Leere Zellen ohne Text schicken `before: null`, nicht `''`: `''` gilt als vorhandener leerer Text.
+>   - Planer für eine Einheit, die es nicht mehr gibt, brauchen ein eigenes `EditProblem`, statt mit `!` zu scheitern.
+>   - Unvollständige Zeichen (einzelne Surrogate) weist schon die Protokollprüfung ab.
+> - **Für 2.18 (Abnahme):**
+>   - Die Dialoge von „Wiederherstellen“ von Hand prüfen.
+>   - Undo ist endgültig: Es gibt kein Wiederholen, und ein Undo wird nicht gesichert.
+>   - Rückgängig gemachte neue Dateien hinterlassen bei Mustern mit einem Ordner je Sprache leere Ordner.
+>   - Der Test „ganz oder gar nicht“ mit schreibgeschützter Datei schlägt als root (z. B. in einem Dev-Container) fälschlich fehl.
 
 ### Task 2.1: Textbausteine für das Schreiben
 **Dateien:** Create `src/core/text/edits.ts`, `src/core/text/style.ts`; Test: `test/unit/core/text/edits.test.ts`, `style.test.ts`
