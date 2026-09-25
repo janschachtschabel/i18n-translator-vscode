@@ -28,7 +28,3 @@
   flex-basis: 100%;
   margin: 0;
 }
-
-.filter-result.invalid {
-  color: var(--vscode-errorForeground);
-}

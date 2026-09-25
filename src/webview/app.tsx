@@ -1,10 +1,12 @@
 import { useEffect } from 'preact/hooks';
 import type { BundleViewModel } from '../shared/viewModel';
 import { LiveRegion } from './a11y/liveRegion';
+import { FileFindings } from './components/fileFindings';
 import { FilterBar } from './components/filterBar';
 import { CompactChoice } from './components/list/compactChoice';
 import { List } from './components/list/list';
 import { LanguageChips } from './components/languageChips';
+import { SkipLinks } from './components/skipLinks';
 import { Table } from './components/table/table';
 import { Toolbar } from './components/toolbar';
 import { formatNumber, l10n } from './l10n';
@@ -51,6 +53,7 @@ function BundleView({ store, model }: { store: EditorStore; model: BundleViewMod
   const shown = store.shownLocales.value;
   return (
     <div class={layout === 'table' ? 'bundle fill' : 'bundle'}>
+      <SkipLinks layout={layout} />
       <h1 id={TITLE_ID}>{model.name}</h1>
       <p>
         {l10n.t('Keys: {keys} · Languages: {languages}', {
@@ -60,6 +63,7 @@ function BundleView({ store, model }: { store: EditorStore; model: BundleViewMod
       </p>
       <Toolbar store={store} />
       <LanguageChips store={store} locales={model.locales} />
+      <FileFindings model={model} />
       <FilterBar store={store} model={model} />
       {layout === 'compact' && shown[1] && (
         <CompactChoice store={store} locales={model.locales} selected={shown[1].code} />

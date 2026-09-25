@@ -1,4 +1,5 @@
 import { act, render } from '@testing-library/preact';
+import axe from 'axe-core';
 import german from '../../../l10n/bundle.l10n.de.json';
 import type { HostToWebview, PanelState, UiState, WebviewToHost } from '../../../src/shared/protocol';
 import { DEFAULT_UI_STATE } from '../../../src/shared/protocol';
@@ -122,4 +123,16 @@ export function openWith(uiState: Partial<UiState> = {}, bundle: BundleViewModel
   const editor = renderEditor();
   editor.open({ ...DEFAULT_UI_STATE, ...uiState }, bundle);
   return editor;
+}
+
+/**
+ * What axe finds on the page: violations, and checks it could not decide, except the contrast, which needs a
+ * layout happy-dom does not have (checked by hand in 2.16). Anything else it cannot decide fails the test.
+ */
+export async function axeProblems(): Promise<string[]> {
+  const results = await axe.run(document);
+  return [
+    ...results.violations.map(({ id, nodes }) => `${id}: ${nodes.length}`),
+    ...results.incomplete.filter(({ id }) => id !== 'color-contrast').map(({ id }) => `undecided ${id}`),
+  ];
 }

@@ -40,3 +40,15 @@ export function statusWord(rule: string): string {
       return l10n.t('finding');
   }
 }
+
+/** The severity in words, for screen readers: the symbol that shows it is hidden from them. */
+export function severityWord(severity: Severity): string {
+  switch (severity) {
+    case 'error':
+      return l10n.t('Error');
+    case 'warning':
+      return l10n.t('Warning');
+    case 'info':
+      return l10n.t('Info');
+  }
+}

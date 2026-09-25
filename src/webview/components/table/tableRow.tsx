@@ -1,6 +1,7 @@
 import type { CellView, LocaleView, RowView } from '../../../shared/viewModel';
 import { l10n } from '../../l10n';
-import { SEVERITY_SYMBOLS, statusWord } from '../cellStatus';
+import { SEVERITY_SYMBOLS, severityWord, statusWord } from '../cellStatus';
+import { EmptyValue } from '../emptyValue';
 import { LocaleLabel } from '../localeLabel';
 import { memo } from '../memo';
 import { entryAttribute } from '../useScrollAnchor';
@@ -55,7 +56,7 @@ export const TableRow = memo(
           <Cell
             key={locales[position]!.code}
             cell={cell}
-            locale={locales[position]!.code}
+            locale={locales[position]!}
             row={index}
             column={position + 1}
             activeColumn={activeColumn}
@@ -66,7 +67,7 @@ export const TableRow = memo(
           (cell, position) =>
             cell.issues.length > 0 && (
               <span key={`finding-${position}`} id={describedBy(index, position + 1)} hidden>
-                {cell.issues.map((issue) => issue.message).join(' ')}
+                {cell.issues.map((issue) => `${severityWord(issue.severity)}: ${issue.message}`).join(' ')}
               </span>
             ),
         )}
@@ -77,7 +78,7 @@ export const TableRow = memo(
 
 interface CellProps {
   cell: CellView;
-  locale: string;
+  locale: LocaleView;
   row: number;
   column: number;
   activeColumn: number | undefined;
@@ -92,10 +93,12 @@ function Cell({ cell, locale, row, column, activeColumn }: CellProps) {
       aria-describedby={cell.issues.length > 0 ? describedBy(row, column) : undefined}
       {...focusable(row, column, activeColumn)}
     >
-      {cell.value !== undefined && cell.value !== '' && (
-        <span class="cell-text" lang={locale} dir="auto">
+      {cell.value !== undefined && cell.value !== '' ? (
+        <span class="cell-text" lang={locale.lang} dir="auto">
           {cell.value}
         </span>
+      ) : (
+        cell.issues.length === 0 && <EmptyValue value={cell.value} variant={locale.variant} />
       )}
       {cell.issues.map((issue, index) => (
         <span key={index} class="cell-status">

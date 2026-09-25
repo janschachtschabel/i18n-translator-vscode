@@ -1,14 +1,13 @@
 // @vitest-environment happy-dom
 import { act, cleanup, fireEvent, screen, within } from '@testing-library/preact';
-import axe from 'axe-core';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_FILTER } from '../../../src/shared/filter';
 import { DEFAULT_UI_STATE, type UiState } from '../../../src/shared/protocol';
-import { renderEditor } from './support';
+import { renderEditor, axeProblems } from './support';
 
 const search = () => within(screen.getByRole('search'));
 const field = () => search().getByRole('searchbox', { name: 'Suchen' }) as HTMLInputElement;
-const status = () => search().getByRole('status');
+const status = () => document.getElementById('filter-result')!;
 const type = (value: string) => act(() => void fireEvent.input(field(), { target: { value } }));
 const choose = (name: string, value: string) =>
   act(() => void fireEvent.change(search().getByRole('combobox', { name }), { target: { value } }));
@@ -54,7 +53,8 @@ describe('filter bar', () => {
     open();
     act(() => void fireEvent.click(search().getByRole('checkbox', { name: 'Regulärer Ausdruck' })));
     type('(');
-    expect(status().textContent).toBe('Der reguläre Ausdruck ist ungültig: Unterminated group');
+    expect(status().textContent).toBe('✖ Der reguläre Ausdruck ist ungültig: Unterminated group');
+    expect(within(status()).getByText('Unterminated group').getAttribute('lang')).toBe('en');
     expect(field().getAttribute('aria-invalid')).toBe('true');
     expect(field().getAttribute('aria-describedby')).toBe(status().id);
   });
@@ -104,8 +104,7 @@ describe('filter bar', () => {
   it('has no accessibility violations, also with an invalid expression', async () => {
     const { open } = renderEditor();
     open({ ...DEFAULT_UI_STATE, filter: { ...DEFAULT_FILTER, query: '(', regex: true, status: 'findings' } });
-    const results = await axe.run(document);
-    expect(results.violations.map(({ id, nodes }) => `${id}: ${nodes.length}`)).toEqual([]);
+    expect(await axeProblems()).toEqual([]);
   });
 });
 
@@ -116,5 +115,21 @@ it('shows a kept language that is gone from the bundle as "texts", which is what
     filter: { ...DEFAULT_FILTER, query: 'Speichern', scope: 'texts', locale: 'xx' },
   });
   expect((screen.getByRole('combobox', { name: 'Suchen in' }) as HTMLSelectElement).value).toBe('texts');
-  expect(screen.getByRole('search').querySelector('[role="status"]')?.textContent).toBe('Keys: 1 von 2');
+  expect(document.getElementById('filter-result')?.textContent).toBe('Keys: 1 von 2');
+});
+
+it('announces the result once typing pauses, not after every key', () => {
+  vi.useFakeTimers();
+  try {
+    const { open } = renderEditor();
+    open();
+    const live = () => screen.getAllByRole('status').find((region) => !region.closest('[role="search"]'))!;
+    type('s');
+    type('speichern');
+    expect(live().textContent).toBe('');
+    act(() => void vi.advanceTimersByTime(700));
+    expect(live().textContent).toBe('Keys: 1 von 2');
+  } finally {
+    vi.useRealTimers();
+  }
 });

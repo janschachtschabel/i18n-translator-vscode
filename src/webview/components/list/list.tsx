@@ -1,7 +1,8 @@
 import { useLayoutEffect, useRef } from 'preact/hooks';
 import type { CellView, LocaleView, RowView } from '../../../shared/viewModel';
 import type { EditorStore } from '../../state/store';
-import { SEVERITY_SYMBOLS } from '../cellStatus';
+import { SEVERITY_SYMBOLS, severityWord } from '../cellStatus';
+import { EmptyValue } from '../emptyValue';
 import { LocaleLabel } from '../localeLabel';
 import { memo } from '../memo';
 import { useIncrementalCount } from '../useIncrementalCount';
@@ -73,16 +74,19 @@ function Field({ locale, cell }: { locale: LocaleView; cell: CellView }) {
         <LocaleLabel locale={locale} />
       </dt>
       <dd>
-        {cell.value !== undefined && cell.value !== '' && (
-          <span class="cell-text" lang={locale.code} dir="auto">
+        {cell.value !== undefined && cell.value !== '' ? (
+          <span class="cell-text" lang={locale.lang} dir="auto">
             {cell.value}
           </span>
+        ) : (
+          cell.issues.length === 0 && <EmptyValue value={cell.value} variant={locale.variant} />
         )}
         {cell.issues.map((issue, index) => (
           <p key={index} class="card-finding">
             <span aria-hidden="true" class={`status-symbol ${issue.severity}`}>
               {SEVERITY_SYMBOLS[issue.severity]}
             </span>{' '}
+            <span class="visually-hidden">{severityWord(issue.severity)}: </span>
             {issue.message}
           </p>
         ))}

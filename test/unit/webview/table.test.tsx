@@ -1,9 +1,8 @@
 // @vitest-environment happy-dom
 import { act, cleanup, fireEvent, screen, waitFor, within } from '@testing-library/preact';
-import axe from 'axe-core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_FILTER } from '../../../src/shared/filter';
-import { findingsModel as model, openWith as open, row, text } from './support';
+import { findingsModel as model, openWith as open, row, text, axeProblems } from './support';
 
 const grid = () => screen.getByRole('grid', { name: 'common' });
 const rowOf = (key: string) => within(grid()).getByRole('rowheader', { name: key }).parentElement!;
@@ -70,12 +69,19 @@ describe('table', () => {
     const missing = cellOf('CANCEL', 2);
     expect(missing.textContent).toBe('⚠ fehlt');
     expect(within(missing).getByText('⚠').getAttribute('aria-hidden')).toBe('true');
-    expect(description(missing)).toBe('CANCEL fehlt in fr.');
+    expect(description(missing)).toBe('Warnung: CANCEL fehlt in fr.');
     expect(cellOf('WORKSPACE.TITLE', 3).textContent).toBe('⚠ leer');
     const mismatch = cellOf('ERROR_TITLE', 2);
     expect(mismatch.textContent).toBe('Erreur ({{data}}) ✖ Platzhalter');
-    expect(description(mismatch)).toBe('Die Platzhalter von ERROR_TITLE weichen ab.');
+    expect(description(mismatch)).toBe('Fehler: Die Platzhalter von ERROR_TITLE weichen ab.');
     expect(cellOf('SAVE', 2).getAttribute('aria-describedby')).toBeNull();
+  });
+
+  it('marks a cell without a text when no finding says why: no own text in a variant, none, or empty', () => {
+    open();
+    expect(within(cellOf('SAVE', 1)).getByText('kein eigener Text')).toBeTruthy();
+    expect(within(cellOf('SAVE', 1)).getByText('–').getAttribute('aria-hidden')).toBe('true');
+    expect(cellOf('CANCEL', 2).textContent).toBe('⚠ fehlt');
   });
 
   it('tells screen readers the language of each text', () => {
@@ -240,7 +246,6 @@ describe('table', () => {
 
   it('has no accessibility violations', async () => {
     open({ wrap: true });
-    const results = await axe.run(document);
-    expect(results.violations.map(({ id, nodes }) => `${id}: ${nodes.length}`)).toEqual([]);
+    expect(await axeProblems()).toEqual([]);
   });
 });

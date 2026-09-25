@@ -9,7 +9,7 @@ export function LanguageChips({ store, locales }: { store: EditorStore; locales:
   const hidden = store.uiState.value.hiddenLocales;
   return (
     <fieldset class="group">
-      <legend>{l10n.t('Languages')}</legend>
+      <legend>{l10n.t('Shown languages')}</legend>
       {locales.map((locale) => (
         <label key={locale.code} class="chip">
           <input
@@ -35,6 +35,7 @@ function marks(locale: LocaleView): string[] {
   return [
     ...(locale.reference ? [l10n.t('reference')] : []),
     ...(locale.variant ? [l10n.t('variant')] : []),
+    ...(locale.hasFile ? [] : [l10n.t('no file')]),
     ...(locale.missing > 0 ? [l10n.t('missing: {count}', { count: formatNumber(locale.missing) })] : []),
     ...(locale.findings > 0 ? [l10n.t('findings: {count}', { count: formatNumber(locale.findings) })] : []),
   ];

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseLocale, pickReference } from '../../../../src/core/model/locale';
+import { languageTag, parseLocale, pickReference } from '../../../../src/core/model/locale';
 
 const opts = { baseFileLanguage: 'en' };
 
@@ -63,5 +63,24 @@ describe('pickReference', () => {
 
   it('returns undefined when no locale matches', () => {
     expect(pickReference(['en', 'fr'], 'de', opts)).toBeUndefined();
+  });
+});
+
+describe('languageTag', () => {
+  const tag = (code: string) => languageTag(parseLocale(code, { baseFileLanguage: 'en' }));
+
+  it('makes a valid BCP 47 tag, so that screen readers pick the voice of a text', () => {
+    expect(tag('de')).toBe('de');
+    expect(tag('de_DE')).toBe('de-DE');
+    expect(tag('pt-BR')).toBe('pt-BR');
+    // Variants are no registered subtags: their language is what matters for the voice.
+    expect(tag('de-informal')).toBe('de');
+    expect(tag('de-no-binnen-i')).toBe('de');
+    expect(tag('default')).toBe('en');
+  });
+
+  it('has no tag for a code that names no language', () => {
+    expect(tag('messages')).toBeUndefined();
+    expect(tag('x')).toBeUndefined();
   });
 });

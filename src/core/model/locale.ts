@@ -56,3 +56,14 @@ export function pickReference(
     .filter((info) => info.language === wanted && !info.variant)
     .sort((a, b) => rank(a) - rank(b) || (a.code < b.code ? -1 : a.code > b.code ? 1 : 0))[0]?.code;
 }
+
+/**
+ * The BCP 47 tag of a locale, for the `lang` of its texts: language and region (`de_DE` → `de-DE`); only the
+ * language for a variant, whose subtag is not registered; undefined if the code names no language.
+ */
+export function languageTag(info: LocaleInfo): string | undefined {
+  if (!/^[a-z]{2,3}$/.test(info.language)) {
+    return undefined;
+  }
+  return info.region ? `${info.language}-${info.region}` : info.language;
+}

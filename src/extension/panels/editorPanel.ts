@@ -192,6 +192,7 @@ export class EditorPanel implements vscode.Disposable {
             model: buildBundleViewModel(found.bundle, {
               issues: found.root.analysis.issues,
               variants: Object.keys(found.root.settings.variants),
+              baseFileLanguage: found.root.settings.baseFileLanguage,
               localize,
             }),
           }

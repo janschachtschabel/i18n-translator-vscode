@@ -2,6 +2,7 @@ import { ISSUE_MESSAGES, type MessageText } from '../core/checks/messages';
 import type { Issue, Severity } from '../core/checks/types';
 import type { Bundle } from '../core/model/bundle';
 import { displayKey } from '../core/model/keys';
+import { languageTag, parseLocale } from '../core/model/locale';
 
 /** A finding as the editor shows it: its message already in the user's language. */
 export interface IssueView {
@@ -12,6 +13,8 @@ export interface IssueView {
 
 export interface LocaleView {
   code: string;
+  /** BCP 47 tag for the `lang` of its texts, so that screen readers pick the right voice; undefined if none. */
+  lang?: string;
   reference: boolean;
   /** A sparse variant (e.g. `de-informal`): missing texts fall back to its base language. */
   variant: boolean;
@@ -56,6 +59,8 @@ export interface ViewModelOptions {
   issues: readonly Issue[];
   /** Codes of the sparse variants. */
   variants: readonly string[];
+  /** Language of the base file (`default`), for its language tag. */
+  baseFileLanguage: string;
   /** Turns a message template into the user's language (vscode.l10n in the host, formatMessage in tests). */
   localize: (message: MessageText) => string;
 }
@@ -89,8 +94,10 @@ export function buildBundleViewModel(bundle: Bundle, options: ViewModelOptions):
     name: bundle.name,
     locales: codes.map((code) => {
       const inLocale = issues.filter((issue) => issue.locale === code);
+      const lang = languageTag(parseLocale(code, { baseFileLanguage: options.baseFileLanguage }));
       return {
         code,
+        ...(lang !== undefined ? { lang } : {}),
         reference: code === bundle.reference,
         variant: options.variants.includes(code),
         hasFile: bundle.file(code) !== undefined,

@@ -1,9 +1,9 @@
 // @vitest-environment happy-dom
-import { cleanup, screen, within } from '@testing-library/preact';
-import axe from 'axe-core';
+import { act, cleanup, fireEvent, screen, within } from '@testing-library/preact';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { DEFAULT_UI_STATE } from '../../../src/shared/protocol';
-import { GERMAN, model, panelState, renderEditor } from './support';
+import type { BundleViewModel } from '../../../src/shared/viewModel';
+import { GERMAN, model, panelState, renderEditor, axeProblems } from './support';
 
 const main = () => within(screen.getByRole('main'));
 const notice =
@@ -55,10 +55,44 @@ describe('App', () => {
     expect(main().getByText('Keys: 2 · Languages: 3')).toBeTruthy();
   });
 
+  it('leads past the controls with skip links, to the search and to the rows', () => {
+    const { open } = renderEditor();
+    open();
+    act(() => void fireEvent.click(screen.getByRole('link', { name: 'Zur Suche' })));
+    expect(document.activeElement).toBe(screen.getByRole('searchbox'));
+    act(() => void fireEvent.click(screen.getByRole('link', { name: 'Zur Tabelle' })));
+    expect(document.activeElement?.getAttribute('tabindex')).toBe('0');
+    expect(screen.getByRole('grid').contains(document.activeElement)).toBe(true);
+  });
+
+  it('shows the findings no cell can show, and marks a language without a file', () => {
+    const { open } = renderEditor();
+    const withoutFile: BundleViewModel = {
+      ...model,
+      locales: model.locales.map((locale) =>
+        locale.code === 'fr'
+          ? {
+              ...locale,
+              hasFile: false,
+              issues: [
+                { rule: 'missing-file', severity: 'error', message: 'In common fehlt die Datei für fr.' },
+              ],
+            }
+          : locale,
+      ),
+    };
+    open(DEFAULT_UI_STATE, withoutFile);
+    expect(
+      within(screen.getByRole('list', { name: 'Weitere Befunde' }))
+        .getAllByRole('listitem')
+        .map((item) => item.textContent),
+    ).toEqual(['✖ Fehler: In common fehlt die Datei für fr.']);
+    expect(screen.getByRole('checkbox', { name: /^fr keine Datei/ })).toBeTruthy();
+  });
+
   it('has no accessibility violations', async () => {
     const { open } = renderEditor();
     open();
-    const results = await axe.run(document);
-    expect(results.violations.map(({ id, nodes }) => `${id}: ${nodes.length}`)).toEqual([]);
+    expect(await axeProblems()).toEqual([]);
   });
 });

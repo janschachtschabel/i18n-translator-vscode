@@ -4,6 +4,7 @@ import type { CellView, LocaleView, RowView } from '../../../src/shared/viewMode
 /** Builders for view models in tests; without DOM or Node, so both the shared and the webview tests use them. */
 export const locale = (code: string, flags: Partial<LocaleView> = {}): LocaleView => ({
   code,
+  lang: code.replace(/[-_].*$/, ''),
   reference: false,
   variant: false,
   hasFile: true,

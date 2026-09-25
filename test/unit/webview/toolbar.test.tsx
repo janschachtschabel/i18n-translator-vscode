@@ -1,11 +1,10 @@
 // @vitest-environment happy-dom
 import { act, cleanup, fireEvent, screen, within } from '@testing-library/preact';
-import axe from 'axe-core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { DEFAULT_UI_STATE } from '../../../src/shared/protocol';
-import { renderEditor } from './support';
+import { renderEditor, axeProblems } from './support';
 
-const languages = () => within(screen.getByRole('group', { name: 'Sprachen' }));
+const languages = () => within(screen.getByRole('group', { name: 'Angezeigte Sprachen' }));
 const view = () => within(screen.getByRole('group', { name: 'Ansicht' }));
 
 beforeEach(() => {
@@ -102,8 +101,7 @@ describe('language chips', () => {
 it('has no accessibility violations with the toolbar and the chips', async () => {
   const { open } = renderEditor();
   open({ ...DEFAULT_UI_STATE, layout: 'table', wrap: true, hiddenLocales: ['de-informal'] });
-  const results = await axe.run(document);
-  expect(results.violations.map(({ id, nodes }) => `${id}: ${nodes.length}`)).toEqual([]);
+  expect(await axeProblems()).toEqual([]);
 });
 
 describe('keys the editor handles itself', () => {

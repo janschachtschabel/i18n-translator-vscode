@@ -13,6 +13,7 @@ function modelOf(name: string): BundleViewModel {
   return buildBundleViewModel(bundle, {
     issues: analysis.issues,
     variants: VARIANTS,
+    baseFileLanguage: 'en',
     localize: (message) => formatMessage(message.template, message.args),
   });
 }
@@ -110,6 +111,7 @@ describe('buildBundleViewModel', () => {
     const model = buildBundleViewModel(bundle, {
       issues: [general],
       variants: VARIANTS,
+      baseFileLanguage: 'en',
       localize: (message) => formatMessage(message.template, message.args),
     });
     expect(model.issues.map((issue) => issue.rule)).toEqual(['parse-error']);
@@ -130,6 +132,7 @@ describe('findings about keys without a row', () => {
     const view = buildBundleViewModel(bundle, {
       issues: analysis.issues,
       variants: VARIANTS,
+      baseFileLanguage: 'en',
       localize: (message) => formatMessage(message.template, message.args),
     });
     const de = view.locales.find((locale) => locale.code === 'de')!;

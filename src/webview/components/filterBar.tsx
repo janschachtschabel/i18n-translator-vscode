@@ -1,4 +1,5 @@
 import { MAX_QUERY_LENGTH, type FilterScope, type StatusFilter } from '../../shared/filter';
+import { useEffect, useRef } from 'preact/hooks';
 import type { BundleViewModel } from '../../shared/viewModel';
 import { formatNumber, l10n } from '../l10n';
 import type { EditorStore } from '../state/store';
@@ -6,7 +7,9 @@ import './filterBar.css';
 
 /** Ctrl+F puts the cursor here (shortcuts.ts). */
 export const SEARCH_FIELD_ID = 'filter-query';
-const RESULT_ID = 'filter-result';
+export const RESULT_ID = 'filter-result';
+/** Screen readers hear the result once typing pauses, not after every key. */
+const ANNOUNCE_AFTER_MS = 700;
 
 /** Search and status filter, and how many keys they let through. */
 export function FilterBar({ store, model }: { store: EditorStore; model: BundleViewModel }) {
@@ -16,6 +19,14 @@ export function FilterBar({ store, model }: { store: EditorStore; model: BundleV
   // A kept language that is gone from the bundle counts as none, as in filterRows.
   const chosen = model.locales.some((locale) => locale.code === filter.locale) ? filter.locale : null;
   const scope = filter.scope === 'texts' && chosen !== null ? `texts:${chosen}` : filter.scope;
+  const counted = l10n.t('Keys: {shown} of {total}', {
+    shown: formatNumber(result?.rows.length ?? 0),
+    total: formatNumber(model.rows.length),
+  });
+  useAnnounceAfterPause(
+    store,
+    invalid !== undefined ? `${l10n.t('The regular expression is invalid:')} ${invalid}` : counted,
+  );
   const statuses: [StatusFilter, string][] = [
     ['all', l10n.t('all keys')],
     ['missing', l10n.t('keys with missing texts')],
@@ -90,18 +101,32 @@ export function FilterBar({ store, model }: { store: EditorStore; model: BundleV
           ))}
         </select>
       </label>
-      <p
-        id={RESULT_ID}
-        role="status"
-        class={invalid !== undefined ? 'filter-result invalid' : 'filter-result'}
-      >
-        {invalid !== undefined
-          ? l10n.t('The regular expression is invalid: {reason}', { reason: invalid })
-          : l10n.t('Keys: {shown} of {total}', {
-              shown: formatNumber(result?.rows.length ?? 0),
-              total: formatNumber(model.rows.length),
-            })}
+      {/* Not a live region: typing would announce every count. It can take the focus of a skip link. */}
+      <p id={RESULT_ID} class="filter-result" tabIndex={-1}>
+        {invalid !== undefined ? (
+          <>
+            <span aria-hidden="true" class="status-symbol error">
+              ✖
+            </span>{' '}
+            {l10n.t('The regular expression is invalid:')} <span lang="en">{invalid}</span>
+          </>
+        ) : (
+          counted
+        )}
       </p>
     </div>
   );
+}
+
+/** Has screen readers read `text` once it stopped changing for a moment; not when the editor opens. */
+function useAnnounceAfterPause(store: EditorStore, text: string): void {
+  const opened = useRef(false);
+  useEffect(() => {
+    if (!opened.current) {
+      opened.current = true;
+      return undefined;
+    }
+    const timer = setTimeout(() => store.announce(text), ANNOUNCE_AFTER_MS);
+    return () => clearTimeout(timer);
+  }, [store, text]);
 }

@@ -1,9 +1,8 @@
 // @vitest-environment happy-dom
 import { act, cleanup, fireEvent, screen, within } from '@testing-library/preact';
-import axe from 'axe-core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { UiState } from '../../../src/shared/protocol';
-import { openWith as open } from './support';
+import { openWith as open, axeProblems } from './support';
 
 function setWidth(width: number) {
   Object.defineProperty(window, 'innerWidth', { value: width, configurable: true });
@@ -43,9 +42,9 @@ describe('list', () => {
   it('shows each finding with a symbol and its message', () => {
     setWidth(600);
     open();
-    expect(definitionOf('CANCEL', 2).textContent).toBe('⚠ CANCEL fehlt in fr.');
+    expect(definitionOf('CANCEL', 2).textContent).toBe('⚠ Warnung: CANCEL fehlt in fr.');
     expect(definitionOf('ERROR_TITLE', 2).textContent).toBe(
-      'Erreur ({{data}})✖ Die Platzhalter von ERROR_TITLE weichen ab.',
+      'Erreur ({{data}})✖ Fehler: Die Platzhalter von ERROR_TITLE weichen ab.',
     );
     expect(within(definitionOf('CANCEL', 2)).getByText('⚠').getAttribute('aria-hidden')).toBe('true');
   });
@@ -94,8 +93,8 @@ describe('list', () => {
   it('has no accessibility violations, full or compact', async () => {
     setWidth(600);
     open();
-    expect((await axe.run(document)).violations.map(({ id }) => id)).toEqual([]);
+    expect(await axeProblems()).toEqual([]);
     setWidth(400);
-    expect((await axe.run(document)).violations.map(({ id }) => id)).toEqual([]);
+    expect(await axeProblems()).toEqual([]);
   });
 });

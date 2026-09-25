@@ -115,6 +115,33 @@ select {
   font: inherit;
 }
 
+/* The first stops on the page, shown only while they have the focus. */
+.skip-links a {
+  position: absolute;
+  inset-block-start: 4px;
+  inset-inline-start: 20px;
+  z-index: 10;
+  padding: 4px 8px;
+  color: var(--vscode-textLink-foreground);
+  background-color: var(--vscode-editor-background);
+  transform: translateY(-200%);
+}
+
+.skip-links a:focus {
+  transform: none;
+}
+
+.file-findings {
+  margin: 8px 0 0;
+  padding-inline-start: 0;
+  list-style: none;
+}
+
+/* "–" for no text, "" for an empty one. */
+.empty-mark {
+  color: var(--vscode-descriptionForeground);
+}
+
 /* "Reference" or "variant" after a language code. */
 .locale-mark {
   color: var(--vscode-descriptionForeground);
