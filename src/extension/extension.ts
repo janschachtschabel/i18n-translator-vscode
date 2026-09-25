@@ -40,8 +40,8 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
     statusBar,
     vscode.commands.registerCommand('eduI18n.check', () => checkTranslations(index)),
     vscode.commands.registerCommand('eduI18n.configureRoots', () => configureRoots()),
-    vscode.commands.registerCommand('eduI18n.backupNow', () => backUpNow(backups, fileStore)),
-    vscode.commands.registerCommand('eduI18n.restoreBackup', () => restoreBackup(backups, fileStore)),
+    vscode.commands.registerCommand('eduI18n.backupNow', () => backUpNow(backups, fileStore, log)),
+    vscode.commands.registerCommand('eduI18n.restoreBackup', () => restoreBackup(backups, fileStore, log)),
   );
   // Not awaited: activation stays fast, and the views update when the first run completes.
   index.refresh().catch((error: unknown) => log.error('Indexing failed.', error));

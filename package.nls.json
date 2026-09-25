@@ -24,6 +24,6 @@
   "config.diagnostics.missing.aggregate": "One problem per file with the number of missing keys",
   "config.diagnostics.missing.individual": "One problem per missing key",
   "config.diagnostics.missing.off": "Not shown in the Problems panel",
-  "config.backup.intervalMinutes": "Minutes after which the next change backs up the translation files again. `0` turns this off; the backups before the first change of a session and before changes of several files stay.",
+  "config.backup.intervalMinutes": "Minutes after which the next change backs up the translation files again. `0` turns this off; the backups before the first change of a session and before changes of several bundles still happen.",
   "config.backup.keep": "Number of backups to keep. Backups lie in the extension's storage for this workspace, never in the repository."
 }

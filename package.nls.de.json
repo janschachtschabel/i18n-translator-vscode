@@ -24,6 +24,6 @@
   "config.diagnostics.missing.aggregate": "Ein Problem je Datei mit der Anzahl fehlender Keys",
   "config.diagnostics.missing.individual": "Ein Problem je fehlendem Key",
   "config.diagnostics.missing.off": "Nicht in der Ansicht „Probleme“ anzeigen",
-  "config.backup.intervalMinutes": "Minuten, nach denen die nächste Änderung die Übersetzungsdateien erneut sichert. `0` schaltet das ab; die Sicherungen vor der ersten Änderung einer Sitzung und vor Änderungen mehrerer Dateien bleiben.",
+  "config.backup.intervalMinutes": "Minuten, nach denen die nächste Änderung die Übersetzungsdateien erneut sichert. `0` schaltet das ab; die Sicherungen vor der ersten Änderung einer Sitzung und vor Änderungen mehrerer Einheiten finden weiterhin statt.",
   "config.backup.keep": "Anzahl der aufbewahrten Sicherungen. Sicherungen liegen im Speicher der Erweiterung für diesen Arbeitsbereich, nie im Repository."
 }
