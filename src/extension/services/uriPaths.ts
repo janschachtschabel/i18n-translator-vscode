@@ -26,6 +26,17 @@ export function isPlainRelativePath(path: string): boolean {
     .every((segment) => segment !== '' && segment !== '.' && segment !== '..' && !/[\\:]/.test(segment));
 }
 
+/** Whether a folder-relative path lies below `root` (`''` for the folder) without leaving it on the way. */
+export function insideRoot(relPath: string, root: string): boolean {
+  const segments = relPath.split('/');
+  const rootSegments = root === '' ? [] : root.split('/');
+  return (
+    isPlainRelativePath(relPath) &&
+    segments.length > rootSegments.length &&
+    rootSegments.every((segment, index) => segments[index] === segment)
+  );
+}
+
 function lowerDriveLetter(path: string): string {
   return path.replace(/^\/([A-Za-z]):/, (_, letter: string) => `/${letter.toLowerCase()}:`);
 }

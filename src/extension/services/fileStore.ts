@@ -2,15 +2,13 @@ import * as vscode from 'vscode';
 import { applyChanges } from '../../core/edit/applyChanges';
 import type { EditProblem } from '../../core/edit/editMessages';
 import type { PlanResult } from '../../core/edit/planEdit';
-import type { FormatAdapter } from '../../core/formats/adapter';
 import { ADAPTERS } from '../../core/formats/registry';
 import type { AreaId } from '../../core/model/types';
 import type { RootAnalysis } from '../../core/pipeline/analyze';
-import type { DecodedText } from '../../core/text/decode';
 import { revisionOf } from '../../core/util/hash';
 import { messageOf } from './errors';
-import { isDirty, readIfExists, relative, sameBytes } from './files';
-import { isPlainRelativePath } from './uriPaths';
+import { holds, isDirty, put, readIfExists, relative, sameBytes, type Put } from './files';
+import { insideRoot } from './uriPaths';
 import type { IndexedRoot, IndexSnapshot, WorkspaceIndex } from './workspaceIndex';
 
 /** One area root of a workspace folder: where an edit is planned and written. */
@@ -47,12 +45,6 @@ export type WriteResult =
 const UNDO_LIMIT = 100;
 /** Plans per write: when files change on disk between planning and writing, the edit is planned again. */
 const PLAN_ATTEMPTS = 3;
-
-/** Bytes a file gets; undefined deletes it (undoing a new file). */
-interface Put {
-  uri: vscode.Uri;
-  bytes: Uint8Array | undefined;
-}
 
 interface UndoEntry {
   files: { uri: vscode.Uri; before: Uint8Array | undefined; afterRevision: string }[];
@@ -286,38 +278,4 @@ export class FileStore {
       this.log.error('Indexing after writing failed.', error);
     }
   }
-}
-
-async function put({ uri, bytes }: Put): Promise<void> {
-  if (bytes) {
-    await vscode.workspace.fs.writeFile(uri, bytes);
-  } else {
-    await vscode.workspace.fs.delete(uri);
-  }
-}
-
-/** Whether the file on disk still has the text the change was planned on (no file, for a new one). */
-function holds(
-  bytes: Uint8Array | undefined,
-  planned: DecodedText | undefined,
-  adapter: FormatAdapter,
-): boolean {
-  if (bytes === undefined || planned === undefined) {
-    return bytes === undefined && planned === undefined;
-  }
-  const current = adapter.decode(bytes);
-  return (
-    current.text === planned.text && current.encoding === planned.encoding && current.bom === planned.bom
-  );
-}
-
-/** A plan must stay below its root; `..`, empty segments or drive letters in a path would leave it. */
-function insideRoot(relPath: string, root: string): boolean {
-  const segments = relPath.split('/');
-  const rootSegments = root === '' ? [] : root.split('/');
-  return (
-    isPlainRelativePath(relPath) &&
-    segments.length > rootSegments.length &&
-    rootSegments.every((segment, index) => segments[index] === segment)
-  );
 }

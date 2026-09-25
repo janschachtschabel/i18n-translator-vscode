@@ -1,5 +1,19 @@
 import { describe, expect, it } from 'vitest';
-import { isPlainRelativePath, relativeUriPath } from '../../../src/extension/services/uriPaths';
+import { insideRoot, isPlainRelativePath, relativeUriPath } from '../../../src/extension/services/uriPaths';
+
+describe('insideRoot', () => {
+  it('accepts plain paths below the root', () => {
+    expect(insideRoot('Frontend/i18n/common/de.json', 'Frontend/i18n')).toBe(true);
+    expect(insideRoot('common/de.json', '')).toBe(true);
+  });
+
+  it('refuses the root itself, paths beside it and paths that climb out of it', () => {
+    expect(insideRoot('Frontend/i18n', 'Frontend/i18n')).toBe(false);
+    expect(insideRoot('Frontend/i18n-old/de.json', 'Frontend/i18n')).toBe(false);
+    expect(insideRoot('Frontend/i18n/../x.json', 'Frontend/i18n')).toBe(false);
+    expect(insideRoot('../x.json', '')).toBe(false);
+  });
+});
 
 describe('isPlainRelativePath', () => {
   it('accepts paths of named segments', () => {

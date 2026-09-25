@@ -1,4 +1,35 @@
 import * as vscode from 'vscode';
+import type { FormatAdapter } from '../../core/formats/adapter';
+import type { DecodedText } from '../../core/text/decode';
+
+/** Bytes a file gets; undefined deletes it (e.g. when undoing a new file). */
+export interface Put {
+  uri: vscode.Uri;
+  bytes: Uint8Array | undefined;
+}
+
+export async function put({ uri, bytes }: Put): Promise<void> {
+  if (bytes) {
+    await vscode.workspace.fs.writeFile(uri, bytes);
+  } else {
+    await vscode.workspace.fs.delete(uri);
+  }
+}
+
+/** Whether the bytes on disk still hold the text a change was planned on (no file, for a new one). */
+export function holds(
+  bytes: Uint8Array | undefined,
+  planned: DecodedText | undefined,
+  adapter: FormatAdapter,
+): boolean {
+  if (bytes === undefined || planned === undefined) {
+    return bytes === undefined && planned === undefined;
+  }
+  const current = adapter.decode(bytes);
+  return (
+    current.text === planned.text && current.encoding === planned.encoding && current.bom === planned.bom
+  );
+}
 
 /** The bytes of a file, or undefined if it does not exist; other errors are thrown. */
 export async function readIfExists(uri: vscode.Uri): Promise<Uint8Array | undefined> {
