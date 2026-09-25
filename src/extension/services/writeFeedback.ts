@@ -39,9 +39,24 @@ export async function showWriteFailure(result: Exclude<WriteResult, { ok: true }
       }
       return;
     }
-    case 'error':
-      void vscode.window.showErrorMessage(
-        vscode.l10n.t('The translation files could not be written: {error}', { error: result.message }),
+    case 'error': {
+      if (!result.notRestored?.length) {
+        void vscode.window.showErrorMessage(
+          vscode.l10n.t('The translation files could not be written: {error}', { error: result.message }),
+        );
+        return;
+      }
+      const restore = vscode.l10n.t('Restore from Backup…');
+      const answer = await vscode.window.showErrorMessage(
+        vscode.l10n.t(
+          'The translation files could not be written: {error}. These files could not be restored and may be damaged: {files}.',
+          { error: result.message, files: result.notRestored.map(relative).join(', ') },
+        ),
+        restore,
       );
+      if (answer === restore) {
+        await vscode.commands.executeCommand('eduI18n.restoreBackup');
+      }
+    }
   }
 }

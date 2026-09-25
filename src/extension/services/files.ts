@@ -8,12 +8,22 @@ export interface Put {
   bytes: Uint8Array | undefined;
 }
 
-export async function put({ uri, bytes }: Put): Promise<void> {
+/** Where files are written: `vscode.workspace.fs`, or a stand-in that fails on purpose in tests. */
+export interface FileWriter {
+  writeFile(uri: vscode.Uri, content: Uint8Array): Thenable<void>;
+  delete(uri: vscode.Uri): Thenable<void>;
+}
+
+export async function put(files: FileWriter, { uri, bytes }: Put): Promise<void> {
   if (bytes) {
-    await vscode.workspace.fs.writeFile(uri, bytes);
+    await files.writeFile(uri, bytes);
   } else {
-    await vscode.workspace.fs.delete(uri);
+    await files.delete(uri);
   }
+}
+
+export function isFileNotFound(error: unknown): boolean {
+  return error instanceof vscode.FileSystemError && error.code === 'FileNotFound';
 }
 
 /** Whether the bytes on disk still hold the text a change was planned on (no file, for a new one). */
@@ -36,7 +46,7 @@ export async function readIfExists(uri: vscode.Uri): Promise<Uint8Array | undefi
   try {
     return await vscode.workspace.fs.readFile(uri);
   } catch (error) {
-    if (error instanceof vscode.FileSystemError && error.code === 'FileNotFound') {
+    if (isFileNotFound(error)) {
       return undefined;
     }
     throw error;

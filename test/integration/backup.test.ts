@@ -57,7 +57,7 @@ suite('Backups', () => {
       () => settings,
       () => now,
     );
-    store = new FileStore(api.index, log, (kind, files) => backups.beforeWrite(kind, files));
+    store = new FileStore(api.index, log, { beforeWrite: (kind, files) => backups.beforeWrite(kind, files) });
   });
 
   teardown(async () => {

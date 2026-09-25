@@ -4,7 +4,8 @@ import * as vscode from 'vscode';
 import { planAddLanguage, planEdit, type BundleEdit } from '../../src/core/edit/planEdit';
 import { keyFromSegments } from '../../src/core/model/keys';
 import type { ExtensionApi } from '../../src/extension/extension';
-import { rootRef, type Planner, type RootRef } from '../../src/extension/services/fileStore';
+import { FileStore, rootRef, type Planner, type RootRef } from '../../src/extension/services/fileStore';
+import { sameBytes } from '../../src/extension/services/files';
 import { activateExtension, workspaceUri } from './helpers';
 
 const I18N = 'Frontend/src/assets/i18n';
@@ -39,6 +40,7 @@ async function changeOnDisk(uri: vscode.Uri, from: string, to: string): Promise<
 }
 
 suite('FileStore', () => {
+  const log = vscode.window.createOutputChannel('edu-sharing i18n (file store tests)', { log: true });
   let api: ExtensionApi;
   let ref: RootRef;
   /** Every translation file as the suite found it; each test puts them back. */
@@ -53,6 +55,8 @@ suite('FileStore', () => {
       (await translationFiles()).map(async (uri) => [uri, await vscode.workspace.fs.readFile(uri)] as const),
     ).then((files) => files.map(([uri, bytes]) => [uri, bytes]));
   });
+
+  suiteTeardown(() => log.dispose());
 
   teardown(async () => {
     await vscode.commands.executeCommand('workbench.action.revertAndCloseActiveEditor');
@@ -180,6 +184,47 @@ suite('FileStore', () => {
     await vscode.commands.executeCommand('workbench.action.revertAndCloseActiveEditor');
     assert.deepEqual(await api.fileStore.undo(), { ok: true });
     assert.deepEqual(await vscode.workspace.fs.readFile(fr), before);
+  });
+
+  test('restores a file whose write failed half-way, as writeFile empties it first', async () => {
+    const fr = uriOf('common', 'fr');
+    const before = await vscode.workspace.fs.readFile(fr);
+    const store = new FileStore(api.index, log, {
+      files: {
+        writeFile: async (uri, bytes) => {
+          if (uri.toString() === fr.toString() && !sameBytes(bytes, before)) {
+            await vscode.workspace.fs.writeFile(uri, new Uint8Array());
+            throw new Error('disk full');
+          }
+          await vscode.workspace.fs.writeFile(uri, bytes);
+        },
+        delete: (uri) => vscode.workspace.fs.delete(uri),
+      },
+    });
+    const result = await store.write(ref, setAsk('Continuer ?'));
+    assert.deepEqual(result, { ok: false, reason: 'error', message: 'disk full' });
+    assert.deepEqual(await vscode.workspace.fs.readFile(fr), before);
+  });
+
+  test('names the files that could not be restored after a failed write', async () => {
+    const fr = uriOf('common', 'fr');
+    const store = new FileStore(api.index, log, {
+      files: {
+        writeFile: async (uri, bytes) => {
+          if (uri.toString() === fr.toString()) {
+            throw new Error('disk full');
+          }
+          await vscode.workspace.fs.writeFile(uri, bytes);
+        },
+        delete: (uri) => vscode.workspace.fs.delete(uri),
+      },
+    });
+    const result = await store.write(ref, setAsk('Continuer ?'));
+    assert.ok(!result.ok && result.reason === 'error');
+    assert.deepEqual(
+      result.notRestored?.map((uri) => uri.toString()),
+      [fr.toString()],
+    );
   });
 
   test('writes every file of a change or none', async () => {

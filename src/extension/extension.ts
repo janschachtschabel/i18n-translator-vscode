@@ -26,7 +26,9 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
   const log = vscode.window.createOutputChannel('edu-sharing i18n', { log: true });
   const index = new WorkspaceIndex(log);
   const backups = new BackupService(context.storageUri, index, log);
-  const fileStore = new FileStore(index, log, (kind, files) => backups.beforeWrite(kind, files));
+  const fileStore = new FileStore(index, log, {
+    beforeWrite: (kind, files) => backups.beforeWrite(kind, files),
+  });
   const areas = createAreasView(index);
   const statusBar = new IndexStatusBar(index);
 

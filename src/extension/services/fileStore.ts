@@ -7,7 +7,17 @@ import type { AreaId } from '../../core/model/types';
 import type { RootAnalysis } from '../../core/pipeline/analyze';
 import { revisionOf } from '../../core/util/hash';
 import { messageOf } from './errors';
-import { holds, isDirty, put, readIfExists, relative, sameBytes, type Put } from './files';
+import {
+  holds,
+  isDirty,
+  isFileNotFound,
+  put,
+  readIfExists,
+  relative,
+  sameBytes,
+  type FileWriter,
+  type Put,
+} from './files';
 import { insideRoot } from './uriPaths';
 import type { IndexedRoot, IndexSnapshot, WorkspaceIndex } from './workspaceIndex';
 
@@ -38,8 +48,8 @@ export type WriteResult =
   | { ok: false; reason: 'dirty' | 'changed'; files: vscode.Uri[] }
   /** Restricted mode: the extension only checks. */
   | { ok: false; reason: 'untrusted' }
-  /** Reading or writing failed; files written before the failure got their old bytes back. */
-  | { ok: false; reason: 'error'; message: string };
+  /** Reading or writing failed. The files got their old bytes back, except `notRestored` (may be damaged). */
+  | { ok: false; reason: 'error'; message: string; notRestored?: vscode.Uri[] };
 
 /** Writes that can be undone in a session; each keeps the previous bytes of its files. */
 const UNDO_LIMIT = 100;
@@ -64,11 +74,17 @@ export class FileStore {
   private queue: Promise<unknown> = Promise.resolve();
   private readonly undoStack: UndoEntry[] = [];
 
+  private readonly beforeWrite: BeforeWrite;
+  private readonly files: FileWriter;
+
   constructor(
     private readonly index: WorkspaceIndex,
     private readonly log: vscode.LogOutputChannel,
-    private readonly beforeWrite: BeforeWrite = async () => undefined,
-  ) {}
+    options: { beforeWrite?: BeforeWrite; files?: FileWriter } = {},
+  ) {
+    this.beforeWrite = options.beforeWrite ?? (async () => undefined);
+    this.files = options.files ?? vscode.workspace.fs;
+  }
 
   /** Plans the edit on the current files and writes the result. Never throws; failures are results. */
   write(ref: RootRef, plan: Planner): Promise<WriteResult> {
@@ -238,21 +254,30 @@ export class FileStore {
   }
 
   /**
-   * Writes the files in order. If one fails, those written before it get their `restore` bytes back, so that
-   * all or none are written. Returns the failure, or undefined when every file was written.
+   * Writes the files in order. If one fails, it and those written before it get their `restore` bytes back,
+   * so that all or none are written: `writeFile` empties a file before it writes, so the failed one may be cut
+   * off. Returns the failure, naming files that could not be restored, or undefined when all were written.
    */
   private async putAll(files: Put[], restore: Put[]): Promise<WriteResult | undefined> {
     for (const [position, file] of files.entries()) {
       try {
-        await put(file);
+        await put(this.files, file);
       } catch (error) {
-        this.log.error(`Could not write ${relative(file.uri)}; restoring the files written before.`, error);
-        for (const done of restore.slice(0, position).reverse()) {
-          await put(done).catch((restoreError: unknown) =>
-            this.log.error(`Could not restore ${relative(done.uri)}.`, restoreError),
-          );
+        this.log.error(`Could not write ${relative(file.uri)}; restoring the files written so far.`, error);
+        const notRestored: vscode.Uri[] = [];
+        for (const done of restore.slice(0, position + 1).reverse()) {
+          try {
+            await put(this.files, done);
+          } catch (restoreError) {
+            // Removing a new file that was never created is no failure.
+            if (!(done.bytes === undefined && isFileNotFound(restoreError))) {
+              this.log.error(`Could not restore ${relative(done.uri)}.`, restoreError);
+              notRestored.push(done.uri);
+            }
+          }
         }
-        return { ok: false, reason: 'error', message: messageOf(error) };
+        const failure = { ok: false, reason: 'error', message: messageOf(error) } as const;
+        return notRestored.length > 0 ? { ...failure, notRestored } : failure;
       }
     }
     return undefined;
