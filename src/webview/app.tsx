@@ -64,13 +64,14 @@ function BundleView({ store, model }: { store: EditorStore; model: BundleViewMod
       {layout === 'compact' && shown[1] && (
         <CompactChoice store={store} locales={model.locales} selected={shown[1].code} />
       )}
-      {rows.length === 0 ? (
+      {rows.length === 0 && (
         <p>
           {model.rows.length > 0
             ? l10n.t('No key matches the filter.')
             : l10n.t('This bundle has no keys yet.')}
         </p>
-      ) : layout === 'table' ? (
+      )}
+      {layout === 'table' && model.rows.length > 0 ? (
         <Table
           store={store}
           rows={rows}
@@ -78,9 +79,9 @@ function BundleView({ store, model }: { store: EditorStore; model: BundleViewMod
           wrap={store.uiState.value.wrap}
           labelledBy={TITLE_ID}
         />
-      ) : (
+      ) : rows.length > 0 ? (
         <List store={store} rows={rows} locales={shown} labelledBy={TITLE_ID} />
-      )}
+      ) : null}
     </div>
   );
 }

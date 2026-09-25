@@ -5,10 +5,10 @@ const ROWS_PER_STEP = 200;
 
 /**
  * How many of `total` rows to render: the first ones at once, then a block per task, so that a large bundle
- * shows quickly and stays responsive. The count only grows; `renderAtLeast` makes it cover a row now, e.g. the
- * one the keyboard moves to.
+ * shows quickly and stays responsive. The count only grows, and it always covers `needed` rows, e.g. up to the
+ * row with the focus, also when a filter moves that row past the rows rendered so far.
  */
-export function useIncrementalCount(total: number): { count: number; renderAtLeast: (rows: number) => void } {
+export function useIncrementalCount(total: number, needed = 0): number {
   const [count, setCount] = useState(FIRST_ROWS);
   useEffect(() => {
     if (count >= total) {
@@ -17,8 +17,5 @@ export function useIncrementalCount(total: number): { count: number; renderAtLea
     const timer = setTimeout(() => setCount((current) => current + ROWS_PER_STEP), 0);
     return () => clearTimeout(timer);
   }, [count, total]);
-  return {
-    count: Math.min(count, total),
-    renderAtLeast: (rows) => setCount((current) => Math.max(current, rows)),
-  };
+  return Math.min(total, Math.max(count, needed));
 }

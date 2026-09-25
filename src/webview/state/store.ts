@@ -39,13 +39,18 @@ export class EditorStore {
   readonly width = signal(window.innerWidth);
   /** Table, list or compact list: as the user chose, or by width. Changes only when the layout does. */
   readonly layout = computed(() => layoutFor(this.uiState.value.layout, this.width.value));
+  // Their own signals, so that a change of the filter does not make a new list of languages: the rows
+  // render again only when their props change.
+  private readonly hiddenLocales = computed(() => this.uiState.value.hiddenLocales);
+  private readonly compactLocale = computed(() => this.uiState.value.compactLocale);
   /** The languages the rows show: the visible ones, in the compact list the reference and one more. */
   readonly shownLocales = computed((): LocaleView[] => {
     const view = this.view.value;
     if (view.kind !== 'bundle') {
       return [];
     }
-    const { hiddenLocales, compactLocale } = this.uiState.value;
+    const hiddenLocales = this.hiddenLocales.value;
+    const compactLocale = this.compactLocale.value;
     return this.layout.value === 'compact'
       ? compactLocales(view.model.locales, hiddenLocales, compactLocale)
       : view.model.locales.filter((locale) => !hiddenLocales.includes(locale.code));
@@ -60,6 +65,9 @@ export class EditorStore {
     const hidden = view.model.locales.map((locale) => locale.code).filter((code) => !shown.has(code));
     return filterRows(view.model, this.uiState.value.filter, hidden);
   });
+
+  /** The key whose card takes the focus when the list replaces a table that had it; null: the first card. */
+  private focusHandoff: string | null | undefined;
 
   constructor(private readonly host: HostApi) {}
 
@@ -125,6 +133,18 @@ export class EditorStore {
       return;
     }
     this.updateFilter({ status: this.uiState.value.filter.status === 'missing' ? 'all' : 'missing' });
+  }
+
+  /** Called by a table that goes while it has the focus, with its active key (null: its header row). */
+  handOffFocus(entryId: string | null): void {
+    this.focusHandoff = entryId;
+  }
+
+  /** The key the focus was handed off with, once; undefined: nothing was handed off. */
+  takeFocusHandoff(): string | null | undefined {
+    const entryId = this.focusHandoff;
+    this.focusHandoff = undefined;
+    return entryId;
   }
 
   /** Undoes the last change of this session to the translation files, in whichever bundle it was. */

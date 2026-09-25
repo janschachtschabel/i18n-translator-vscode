@@ -11,8 +11,20 @@ const rowOf = (key: string) => within(grid()).getByRole('rowheader', { name: key
 const cellOf = (key: string, column: number) => within(rowOf(key)).getAllByRole('gridcell')[column]!;
 const description = (element: Element) =>
   document.getElementById(element.getAttribute('aria-describedby') ?? '')?.textContent;
-const press = (key: string, modifiers: { ctrlKey?: boolean } = {}) =>
+const press = (key: string, modifiers: { ctrlKey?: boolean; altKey?: boolean } = {}) =>
   act(() => void fireEvent.keyDown(document.activeElement!, { key, ...modifiers }));
+
+/** Rows KEY_0 … KEY_n-1 with a German text each; those `missing` picks lack their French text. */
+function manyRows(count: number, missing: (index: number) => boolean = () => false) {
+  return Array.from({ length: count }, (_, index) =>
+    row(`KEY_${index}`, {
+      de: text(`Text ${index}`),
+      'de-informal': text(undefined),
+      fr: missing(index) ? text(undefined, 'missing-key') : text(`Texte ${index}`),
+      it: text(undefined),
+    }),
+  );
+}
 
 beforeEach(() => {
   document.documentElement.lang = 'de';
@@ -101,11 +113,46 @@ describe('table', () => {
   it('says when no key matches the filter, and when the bundle has no keys', () => {
     const { store } = open();
     act(() => store.updateFilter({ query: 'xyz' }));
-    expect(screen.queryByRole('grid')).toBeNull();
     expect(screen.getByText('Kein Key passt zum Filter.')).toBeTruthy();
     cleanup();
     open({}, { ...model, rows: [] });
+    expect(screen.queryByRole('grid')).toBeNull();
     expect(screen.getByText('Diese Einheit hat noch keine Keys.')).toBeTruthy();
+  });
+
+  it('keeps the grid, its tab stop and the focus when no key matches, and the key when they are back', () => {
+    const { store } = open();
+    act(() => cellOf('CANCEL', 2).focus());
+    act(() => store.updateFilter({ query: 'xyz' }));
+    expect(grid().getAttribute('aria-rowcount')).toBe('1');
+    expect(grid().querySelectorAll('[tabindex="0"]')).toHaveLength(1);
+    expect(grid().contains(document.activeElement)).toBe(true);
+    act(() => store.updateFilter({ query: '' }));
+    expect(document.activeElement).toBe(cellOf('CANCEL', 2));
+  });
+
+  it('goes to the next and the previous open point with Alt+Down and Alt+Up', () => {
+    open();
+    act(() => cellOf('SAVE', 2).focus());
+    press('ArrowDown', { altKey: true });
+    expect(document.activeElement).toBe(cellOf('CANCEL', 2));
+    // WORKSPACE.TITLE has a finding only in it, not in fr.
+    press('ArrowDown', { altKey: true });
+    expect(document.activeElement).toBe(cellOf('ERROR_TITLE', 2));
+    press('ArrowDown', { altKey: true });
+    expect(document.activeElement).toBe(cellOf('ERROR_TITLE', 2));
+    press('ArrowUp', { altKey: true });
+    expect(document.activeElement).toBe(cellOf('CANCEL', 2));
+    // In the key column, a finding in any language counts.
+    act(() => within(rowOf('CANCEL')).getByRole('rowheader').focus());
+    press('ArrowDown', { altKey: true });
+    expect(document.activeElement).toBe(within(rowOf('WORKSPACE.TITLE')).getByRole('rowheader'));
+  });
+
+  it('keeps Space from scrolling the table away from the focused cell', () => {
+    open();
+    act(() => cellOf('SAVE', 1).focus());
+    expect(fireEvent.keyDown(cellOf('SAVE', 1), { key: ' ' })).toBe(false);
   });
 
   it('renders a large bundle in steps', async () => {
@@ -121,6 +168,23 @@ describe('table', () => {
     expect(grid().getAttribute('aria-rowcount')).toBe('451');
     expect(within(grid()).getAllByRole('row').length).toBeLessThan(451);
     await waitFor(() => expect(within(grid()).getAllByRole('row')).toHaveLength(451));
+  });
+
+  it('moves the focus to a row that is not rendered yet', () => {
+    open({}, { ...model, rows: manyRows(450) });
+    act(() => cellOf('KEY_0', 0).focus());
+    press('End', { ctrlKey: true });
+    expect(document.activeElement).toBe(cellOf('KEY_449', 3));
+  });
+
+  it('keeps the focus when a filter moves its row past the rows rendered so far', () => {
+    // KEY_300 has a missing text: with "missing", it is the 11th row; with all rows, the 301st.
+    const rows = manyRows(450, (index) => index < 10 || index === 300);
+    const { store } = open({ filter: { ...DEFAULT_FILTER, status: 'missing' } }, { ...model, rows });
+    act(() => cellOf('KEY_300', 2).focus());
+    act(() => store.toggleMissing());
+    expect(document.activeElement).toBe(cellOf('KEY_300', 2));
+    expect(grid().querySelectorAll('[tabindex="0"]')).toHaveLength(1);
   });
 
   it('ignores keys that are not for moving', () => {

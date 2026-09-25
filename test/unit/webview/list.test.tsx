@@ -83,6 +83,14 @@ describe('list', () => {
     expect(list()).toBeTruthy();
   });
 
+  it('takes the focus from the grid to the card of its key when the editor gets narrower', () => {
+    open();
+    const cancel = within(screen.getByRole('grid')).getByRole('rowheader', { name: 'CANCEL' });
+    act(() => cancel.focus());
+    setWidth(600);
+    expect(document.activeElement).toBe(within(list()).getByRole('heading', { level: 2, name: 'CANCEL' }));
+  });
+
   it('has no accessibility violations, full or compact', async () => {
     setWidth(600);
     open();

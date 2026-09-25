@@ -2,6 +2,7 @@ import type { CellView, LocaleView, RowView } from '../../../shared/viewModel';
 import { l10n } from '../../l10n';
 import { SEVERITY_SYMBOLS, statusWord } from '../cellStatus';
 import { LocaleLabel } from '../localeLabel';
+import { memo } from '../memo';
 import { entryAttribute } from '../useScrollAnchor';
 
 /** Where the grid's keys move the focus to: row 0 is the header row, column 0 the key column. */
@@ -17,7 +18,7 @@ interface RowProps {
   activeColumn: number | undefined;
 }
 
-export function HeaderRow({ locales, activeColumn }: RowProps) {
+export const HeaderRow = memo(({ locales, activeColumn }: RowProps) => {
   return (
     <div role="row" aria-rowindex={1} class="grid-row">
       <div role="columnheader" aria-colindex={1} class="grid-key" {...focusable(0, 0, activeColumn)}>
@@ -36,38 +37,43 @@ export function HeaderRow({ locales, activeColumn }: RowProps) {
       ))}
     </div>
   );
-}
+});
 
-/** A key and its texts; `index` counts from 1, as the header is row 0. */
-export function TableRow({ row, index, locales, activeColumn }: RowProps & { row: RowView; index: number }) {
-  const cells = locales.map((locale) => row.cells[locale.code] ?? { value: undefined, issues: [] });
-  return (
-    <div role="row" aria-rowindex={index + 1} class="grid-row" data-entry={entryAttribute(row.entryId)}>
-      <div role="rowheader" aria-colindex={1} class="grid-key" {...focusable(index, 0, activeColumn)}>
-        {row.key}
+/**
+ * A key and its texts; `index` counts from 1, as the header is row 0. Memoized: moving the focus renders only
+ * the two rows it leaves and enters, not all 2,000.
+ */
+export const TableRow = memo(
+  ({ row, index, locales, activeColumn }: RowProps & { row: RowView; index: number }) => {
+    const cells = locales.map((locale) => row.cells[locale.code] ?? { value: undefined, issues: [] });
+    return (
+      <div role="row" aria-rowindex={index + 1} class="grid-row" data-entry={entryAttribute(row.entryId)}>
+        <div role="rowheader" aria-colindex={1} class="grid-key" {...focusable(index, 0, activeColumn)}>
+          {row.key}
+        </div>
+        {cells.map((cell, position) => (
+          <Cell
+            key={locales[position]!.code}
+            cell={cell}
+            locale={locales[position]!.code}
+            row={index}
+            column={position + 1}
+            activeColumn={activeColumn}
+          />
+        ))}
+        {/* Hidden, so that they describe their cell without being part of its name. */}
+        {cells.map(
+          (cell, position) =>
+            cell.issues.length > 0 && (
+              <span key={`finding-${position}`} id={describedBy(index, position + 1)} hidden>
+                {cell.issues.map((issue) => issue.message).join(' ')}
+              </span>
+            ),
+        )}
       </div>
-      {cells.map((cell, position) => (
-        <Cell
-          key={locales[position]!.code}
-          cell={cell}
-          locale={locales[position]!.code}
-          row={index}
-          column={position + 1}
-          activeColumn={activeColumn}
-        />
-      ))}
-      {/* Hidden, so that they describe their cell without being part of its name. */}
-      {cells.map(
-        (cell, position) =>
-          cell.issues.length > 0 && (
-            <span key={`finding-${position}`} id={describedBy(index, position + 1)} hidden>
-              {cell.issues.map((issue) => issue.message).join(' ')}
-            </span>
-          ),
-      )}
-    </div>
-  );
-}
+    );
+  },
+);
 
 interface CellProps {
   cell: CellView;
