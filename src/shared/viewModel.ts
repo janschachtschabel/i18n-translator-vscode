@@ -20,7 +20,10 @@ export interface LocaleView {
   missing: number;
   /** Every finding in this language. */
   findings: number;
-  /** Findings about the file itself (missing, unreadable), not about a key. */
+  /**
+   * Findings that belong to no cell: about the file itself (missing, unreadable), or about a key that is not a
+   * text in any language (an object defined twice, a number), which therefore has no row.
+   */
   issues: IssueView[];
 }
 
@@ -72,12 +75,13 @@ export function buildBundleViewModel(bundle: Bundle, options: ViewModelOptions):
   const extra = [...new Set(pointedTo)].filter((code) => !bundle.locales.includes(code)).sort();
   const codes = [...bundle.locales, ...extra];
 
+  const rowIds = new Set(bundle.keys.map((key) => key.id));
+  const inCell = (issue: Issue) =>
+    issue.locale !== undefined && issue.entryId !== undefined && rowIds.has(issue.entryId);
   const cellIssues = new Map<string, IssueView[]>();
-  for (const issue of issues) {
-    if (issue.locale !== undefined && issue.entryId !== undefined) {
-      const cell = cellId(issue.entryId, issue.locale);
-      cellIssues.set(cell, [...(cellIssues.get(cell) ?? []), view(issue)]);
-    }
+  for (const issue of issues.filter(inCell)) {
+    const cell = cellId(issue.entryId!, issue.locale!);
+    cellIssues.set(cell, [...(cellIssues.get(cell) ?? []), view(issue)]);
   }
 
   return {
@@ -92,7 +96,7 @@ export function buildBundleViewModel(bundle: Bundle, options: ViewModelOptions):
         hasFile: bundle.file(code) !== undefined,
         missing: inLocale.filter((issue) => issue.rule === 'missing-key').length,
         findings: inLocale.length,
-        issues: inLocale.filter((issue) => issue.entryId === undefined).map(view),
+        issues: inLocale.filter((issue) => !inCell(issue)).map(view),
       };
     }),
     rows: bundle.keys.map((key) => ({

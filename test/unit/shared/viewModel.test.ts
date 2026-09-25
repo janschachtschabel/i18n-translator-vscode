@@ -3,7 +3,7 @@ import { formatMessage } from '../../../src/core/checks/messages';
 import type { Issue } from '../../../src/core/checks/types';
 import { keyFromSegments } from '../../../src/core/model/keys';
 import { buildBundleViewModel, type BundleViewModel } from '../../../src/shared/viewModel';
-import { analyzeFixtureWorkspace } from '../support/fixtureWorkspace';
+import { analyzeFixtureWorkspace, analyzeTexts } from '../support/fixtureWorkspace';
 
 const { analysis } = analyzeFixtureWorkspace();
 const VARIANTS = ['de-informal', 'de-no-binnen-i'];
@@ -115,5 +115,32 @@ describe('buildBundleViewModel', () => {
     expect(model.issues.map((issue) => issue.rule)).toEqual(['parse-error']);
     expect(model.locales.flatMap((locale) => locale.issues)).toEqual([]);
     expect(model.locales.map((locale) => locale.findings)).toEqual([0, 0, 0, 0, 0, 0]);
+  });
+});
+
+describe('findings about keys without a row', () => {
+  it('shows them at their language instead of losing them', () => {
+    // A duplicate object key and a number at a key: the adapter reports both with a key, but neither is a text,
+    // so no row exists for them.
+    const analysis = analyzeTexts({
+      'common/de.json': '{"A":"a","N":5,"O":{"X":"x"},"O":{"X":"y"}}',
+      'common/fr.json': '{"A":"b"}',
+    });
+    const bundle = analysis.bundles[0]!;
+    const view = buildBundleViewModel(bundle, {
+      issues: analysis.issues,
+      variants: VARIANTS,
+      localize: (message) => formatMessage(message.template, message.args),
+    });
+    const de = view.locales.find((locale) => locale.code === 'de')!;
+    const inCells = view.rows.flatMap((row) => Object.values(row.cells).flatMap((cell) => cell.issues));
+    const shown = [...de.issues, ...inCells.filter((issue) => issue.rule !== 'missing-key'), ...view.issues];
+    expect(shown.map((issue) => issue.rule).sort()).toEqual(
+      analysis.issues
+        .filter((issue) => issue.locale === 'de')
+        .map((issue) => issue.rule)
+        .sort(),
+    );
+    expect(de.findings).toBe(analysis.issues.filter((issue) => issue.locale === 'de').length);
   });
 });
