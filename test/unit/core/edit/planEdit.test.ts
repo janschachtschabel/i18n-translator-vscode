@@ -137,6 +137,21 @@ describe('planEdit: setText', () => {
     ).toEqual(['common/fr.json: insert CANCEL after SAVE = Annuler']);
   });
 
+  it('sees no conflict when the text changed in the meantime to what the user wants', () => {
+    expect(
+      plan('common', {
+        kind: 'setText',
+        entryId: id('ASK'),
+        locale: 'fr',
+        value: 'Voulez-vous continuer ?',
+        before: 'Continuer ?',
+      }),
+    ).toEqual([]);
+    expect(
+      plan('common', { kind: 'setText', entryId: id('CANCEL'), locale: 'fr', value: '', before: 'Annuler' }),
+    ).toEqual([]);
+  });
+
   it('refuses texts for keys the bundle no longer has, instead of creating them again', () => {
     expect(
       plan('common', { kind: 'setText', entryId: id('GONE'), locale: 'fr', value: 'x', before: null }),

@@ -65,15 +65,20 @@ function planSetText(
     return fail(editProblem('missing-key', { key: displayKey(key), bundle: bundle.name }));
   }
   const current = bundle.value(entryId, locale);
+  // Nothing to do, whatever the user saw before: the text already reads as wanted, or there is nothing to
+  // clear (intentionally empty reference texts stay).
+  const unchanged =
+    value === ''
+      ? current === undefined || (locale === bundle.reference && current === '')
+      : value === current;
+  if (unchanged) {
+    return done([]);
+  }
   if (before !== undefined && (current ?? null) !== before) {
     return fail(editProblem('changed', { key: displayKey(key), locale }));
   }
   const edit = (op: FileOp) => done([{ kind: 'edit', relPath: file.relPath, ops: [op] }]);
   if (value === '') {
-    // Nothing to clear; intentionally empty reference texts stay.
-    if (current === undefined || (locale === bundle.reference && current === '')) {
-      return done([]);
-    }
     if (locale === bundle.reference) {
       return fail(editProblem('reference-empty', { key: displayKey(key) }));
     }
@@ -81,7 +86,7 @@ function planSetText(
     return edit({ kind: 'delete', key });
   }
   if (current !== undefined) {
-    return value === current ? done([]) : edit({ kind: 'set', key, value });
+    return edit({ kind: 'set', key, value });
   }
   const blocker = collidingKey(
     file.parsed.entries.map((entry) => entry.key),
