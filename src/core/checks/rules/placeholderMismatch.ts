@@ -1,5 +1,5 @@
 import { displayKey } from '../../model/keys';
-import { compareParams, scanPlaceholders } from '../placeholders';
+import { asPlaceholder, compareParams, scanPlaceholders } from '../placeholders';
 import type { Rule } from '../types';
 import { finding, translationPairs, valueLocation } from './support';
 
@@ -30,7 +30,3 @@ export const placeholderMismatchRule: Rule = {
       }),
     ),
 };
-
-function asPlaceholder(name: string): string {
-  return `{{${name}}}`;
-}

@@ -67,6 +67,11 @@ export function withoutPlaceholders(text: string): string {
   return text.replace(TOKEN, ' ');
 }
 
+/** A parameter name as it is written in a text: `date` → `{{date}}`. */
+export function asPlaceholder(name: string): string {
+  return `{{${name}}}`;
+}
+
 /** Parameters of the reference that the translation lacks, and parameters only the translation has. */
 export function compareParams(
   reference: PlaceholderScan,

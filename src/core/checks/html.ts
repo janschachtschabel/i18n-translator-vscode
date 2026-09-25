@@ -30,6 +30,11 @@ export function withoutTags(text: string): string {
   );
 }
 
+/** A tag of {@link tagSignature} as it is written in a text: `/b` → `</b>`, `b` → `<b>`. */
+export function asTag(signature: string): string {
+  return signature.startsWith('/') ? `</${signature.slice(1)}>` : `<${signature}>`;
+}
+
 /** Tags of the reference that the translation lacks, and tags only the translation has (counted). */
 export function compareTags(reference: string, translation: string): { missing: string[]; extra: string[] } {
   const remaining = tagSignature(translation);

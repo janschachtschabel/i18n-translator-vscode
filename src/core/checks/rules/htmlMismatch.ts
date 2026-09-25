@@ -1,5 +1,5 @@
 import { displayKey } from '../../model/keys';
-import { compareTags } from '../html';
+import { asTag, compareTags } from '../html';
 import type { Rule } from '../types';
 import { finding, translationPairs, valueLocation } from './support';
 
@@ -30,8 +30,3 @@ export const htmlMismatchRule: Rule = {
       }),
     ),
 };
-
-/** `/b` → `</b>`, `b` → `<b>`. */
-function asTag(signature: string): string {
-  return signature.startsWith('/') ? `</${signature.slice(1)}>` : `<${signature}>`;
-}
