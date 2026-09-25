@@ -4,7 +4,8 @@ import * as vscode from 'vscode';
 import { planAddLanguage, planEdit, type BundleEdit } from '../../src/core/edit/planEdit';
 import { keyFromSegments } from '../../src/core/model/keys';
 import type { ExtensionApi } from '../../src/extension/extension';
-import { FileStore, rootRef, type Planner, type RootRef } from '../../src/extension/services/fileStore';
+import { FileStore, type Planner } from '../../src/extension/services/fileStore';
+import { rootRef, type RootRef } from '../../src/extension/services/workspaceIndex';
 import { sameBytes } from '../../src/extension/services/files';
 import { activateExtension, workspaceUri } from './helpers';
 

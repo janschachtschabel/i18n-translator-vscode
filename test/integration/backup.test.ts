@@ -16,7 +16,8 @@ import { keyFromSegments } from '../../src/core/model/keys';
 import type { ExtensionApi } from '../../src/extension/extension';
 import type { BackupSettings } from '../../src/core/config/settings';
 import { BackupService } from '../../src/extension/services/backupService';
-import { FileStore, rootRef, type Planner, type RootRef } from '../../src/extension/services/fileStore';
+import { FileStore, type Planner } from '../../src/extension/services/fileStore';
+import { rootRef, type RootRef } from '../../src/extension/services/workspaceIndex';
 import { activateExtension, workspaceUri } from './helpers';
 
 const I18N = 'Frontend/src/assets/i18n';

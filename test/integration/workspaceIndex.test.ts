@@ -1,6 +1,7 @@
 import * as assert from 'node:assert';
 import * as vscode from 'vscode';
-import type { IndexSnapshot } from '../../src/extension/services/workspaceIndex';
+import { keyFromSegments } from '../../src/core/model/keys';
+import { rootRef, type IndexSnapshot } from '../../src/extension/services/workspaceIndex';
 import { activateExtension, waitFor, workspaceUri } from './helpers';
 
 function severities(snapshot: IndexSnapshot): number[] {
@@ -89,6 +90,46 @@ suite('workspace index', () => {
       const restored = waitFor(index.onDidChange, (snapshot) => snapshot.roots.length === 1);
       await config.update('areas', undefined, vscode.ConfigurationTarget.Global);
       await restored;
+    }
+  });
+
+  test('indexes a root again without a new analysis while its files are as indexed', async () => {
+    const { index } = await activateExtension();
+    const snapshot = await index.refresh();
+    let runs = 0;
+    const listener = index.onDidChange(() => runs++);
+    try {
+      assert.strictEqual(await index.refreshRoot(rootRef(snapshot.roots[0]!)), snapshot);
+      assert.strictEqual(runs, 0);
+    } finally {
+      listener.dispose();
+    }
+  });
+
+  test('indexes the root of a write once: the watcher then finds its files as indexed', async () => {
+    const { index, fileStore } = await activateExtension();
+    const root = (await index.refresh()).roots[0]!;
+    const common = root.analysis.bundles.find((bundle) => bundle.name === 'common')!;
+    let runs = 0;
+    const listener = index.onDidChange(() => runs++);
+    try {
+      const result = await fileStore.write(rootRef(root), () => ({
+        ok: true,
+        changes: [
+          {
+            kind: 'edit',
+            relPath: common.file('fr')!.relPath,
+            ops: [{ kind: 'set', key: keyFromSegments(['OK']), value: 'D’accord' }],
+          },
+        ],
+      }));
+      assert.ok(result.ok);
+      // Well past the watcher's delay of 300 ms after the change.
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      assert.strictEqual(runs, 1);
+    } finally {
+      listener.dispose();
+      assert.equal((await fileStore.undo())?.ok, true);
     }
   });
 

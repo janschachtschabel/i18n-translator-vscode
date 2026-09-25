@@ -2,7 +2,7 @@ import * as assert from 'node:assert';
 import * as vscode from 'vscode';
 import { planEdit } from '../../src/core/edit/planEdit';
 import { keyFromSegments } from '../../src/core/model/keys';
-import { rootRef } from '../../src/extension/services/fileStore';
+import { rootRef } from '../../src/extension/services/workspaceIndex';
 import { sameBytes } from '../../src/extension/services/files';
 import { DEFAULT_FILTER } from '../../src/shared/filter';
 import { DEFAULT_UI_STATE, type UiState } from '../../src/shared/protocol';

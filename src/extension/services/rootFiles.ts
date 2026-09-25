@@ -1,0 +1,76 @@
+import * as vscode from 'vscode';
+import type { AreaDefinition } from '../../core/area/areaDefinition';
+import { rootsFromMarkers } from '../../core/discovery/discover';
+import { filesToRead, type SourceFile } from '../../core/pipeline/analyze';
+import { revisionOf } from '../../core/util/hash';
+import { messageOf } from './errors';
+import { relativeUriPath } from './uriPaths';
+
+/** The roots of an area in a workspace folder, from its marker files: a search of the whole folder. */
+export async function detectRoots(
+  folder: vscode.WorkspaceFolder,
+  area: AreaDefinition,
+  exclude: string | null,
+): Promise<string[]> {
+  if (!area.detect) {
+    return [];
+  }
+  const markers = await vscode.workspace.findFiles(
+    new vscode.RelativePattern(folder, area.detect.glob),
+    exclude,
+  );
+  return rootsFromMarkers(relativePaths(folder, markers), area.detect.marker);
+}
+
+/** The files below `root` that belong to the area. */
+export async function listRoot(
+  folder: vscode.WorkspaceFolder,
+  area: AreaDefinition,
+  root: string,
+  exclude: string | null,
+): Promise<string[]> {
+  const pattern = new vscode.RelativePattern(vscode.Uri.joinPath(folder.uri, root), '**/*');
+  const found = await vscode.workspace.findFiles(pattern, exclude);
+  return filesToRead(area, root, relativePaths(folder, found));
+}
+
+/** Unreadable files (e.g. deleted since the listing) are reported and left out. */
+export async function readFiles(
+  folder: vscode.WorkspaceFolder,
+  paths: readonly string[],
+  report: (message: string) => void,
+): Promise<SourceFile[]> {
+  const files = await Promise.all(
+    paths.map(async (relPath) => {
+      try {
+        return {
+          relPath,
+          bytes: await vscode.workspace.fs.readFile(vscode.Uri.joinPath(folder.uri, relPath)),
+        };
+      } catch (error) {
+        report(
+          vscode.l10n.t('{file} could not be read: {error}', { file: relPath, error: messageOf(error) }),
+        );
+        return undefined;
+      }
+    }),
+  );
+  return files.filter((file) => file !== undefined);
+}
+
+/** The revision of each file by its path: whether a root still has the files it had when it was indexed. */
+export function revisionsOf(files: readonly SourceFile[]): ReadonlyMap<string, string> {
+  return new Map(files.map((file) => [file.relPath, revisionOf(file.bytes)]));
+}
+
+export function sameRevisions(
+  a: ReadonlyMap<string, string> | undefined,
+  b: ReadonlyMap<string, string>,
+): boolean {
+  return a !== undefined && a.size === b.size && [...b].every(([path, revision]) => a.get(path) === revision);
+}
+
+/** Workspace-relative paths of search results; results outside the folder cannot occur and are dropped. */
+function relativePaths(folder: vscode.WorkspaceFolder, uris: readonly vscode.Uri[]): string[] {
+  return uris.map((uri) => relativeUriPath(folder.uri.path, uri.path)).filter((path) => path !== undefined);
+}

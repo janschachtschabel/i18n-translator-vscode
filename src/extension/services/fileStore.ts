@@ -4,7 +4,6 @@ import { applyChanges } from '../../core/edit/applyChanges';
 import type { EditProblem } from '../../core/edit/editMessages';
 import type { PlanResult } from '../../core/edit/planEdit';
 import { ADAPTERS } from '../../core/formats/registry';
-import type { AreaId } from '../../core/model/types';
 import type { RootAnalysis } from '../../core/pipeline/analyze';
 import { revisionOf } from '../../core/util/hash';
 import { messageOf } from './errors';
@@ -20,14 +19,13 @@ import {
 } from './files';
 import { UndoHistory, type UndoEntry, type UndoLimits } from './undoHistory';
 import { insideRoot, relativeUriPath } from './uriPaths';
-import type { IndexedRoot, IndexSnapshot, WorkspaceIndex } from './workspaceIndex';
-
-/** One area root of a workspace folder: where an edit is planned and written. */
-export interface RootRef {
-  folder: vscode.Uri;
-  areaId: AreaId;
-  root: string;
-}
+import {
+  rootRef,
+  type IndexedRoot,
+  type IndexSnapshot,
+  type RootRef,
+  type WorkspaceIndex,
+} from './workspaceIndex';
 
 /** Plans an edit on the current state of a root. The store plans again when files changed on disk (B5). */
 export type Planner = (analysis: RootAnalysis) => PlanResult;
@@ -64,10 +62,6 @@ export type UndoResult = { ok: true; files: vscode.Uri[] } | Exclude<WriteResult
 
 /** Plans per write: when files change on disk between planning and writing, the edit is planned again. */
 const PLAN_ATTEMPTS = 3;
-
-export function rootRef(indexed: IndexedRoot): RootRef {
-  return { folder: indexed.folder.uri, areaId: indexed.analysis.area.id, root: indexed.analysis.root };
-}
 
 /**
  * Writes translation files, one change at a time: plans on the indexed texts, checks that the files on disk
@@ -195,7 +189,7 @@ export class FileStore {
         return { ok: false, reason: 'changed', files: uris };
       }
       this.log.info(`Changed on disk since indexing, planning again: ${uris.map(relative).join(', ')}`);
-      await this.index.refresh();
+      await this.index.refreshRoot(ref);
     }
   }
 
@@ -241,7 +235,7 @@ export class FileStore {
       return failure;
     }
     this.log.info(`Undid the write of ${entry.files.map((file) => relative(file.uri)).join(', ')}`);
-    await this.reindex();
+    await this.reindex(entry.files.map((file) => file.uri));
     return { ok: true, files: entry.files.map((file) => file.uri) };
   }
 
@@ -304,7 +298,7 @@ export class FileStore {
     this.log.info(
       `${kind === 'write' ? 'Wrote' : 'Restored'} ${files.map((file) => relative(file.uri)).join(', ')}`,
     );
-    await this.reindex();
+    await this.reindex(files.map((file) => file.uri));
     return { ok: true };
   }
 
@@ -330,10 +324,19 @@ export class FileStore {
     return lookup(this.index.current()) ?? lookup(await this.index.refresh());
   }
 
-  /** The written files are indexed right away instead of after the watcher's delay. */
-  private async reindex(): Promise<void> {
+  /**
+   * The roots of the written files are indexed right away instead of after the watcher's delay; the watcher's
+   * run then finds them as indexed and does nothing.
+   */
+  private async reindex(uris: readonly vscode.Uri[]): Promise<void> {
     try {
-      await this.index.refresh();
+      const roots = this.index.current()?.roots.filter((indexed) => uris.some((uri) => inRoot(uri, indexed)));
+      if (!roots?.length) {
+        await this.index.refresh();
+      }
+      for (const indexed of roots ?? []) {
+        await this.index.refreshRoot(rootRef(indexed));
+      }
     } catch (error) {
       this.log.error('Indexing after writing failed.', error);
     }
