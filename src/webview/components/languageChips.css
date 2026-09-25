@@ -1,0 +1,31 @@
+.chip {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-block-size: 24px;
+  padding-block: 2px;
+  padding-inline: 6px 10px;
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+/* The whole chip shows the focus of its checkbox. */
+.chip:has(:focus-visible) {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: 1px;
+}
+
+.chip :focus-visible {
+  outline: none;
+}
+
+/* Codes and counts stay whole; a narrow chip wraps between them. */
+.chip > span {
+  white-space: nowrap;
+}
+
+.chip-mark {
+  color: var(--vscode-descriptionForeground);
+}

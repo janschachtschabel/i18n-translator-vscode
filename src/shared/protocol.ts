@@ -87,7 +87,8 @@ export function isPanelState(value: unknown): value is PanelState {
   return isRecord(value) && isLongId(value['folder']) && isBundleId(value['bundleId']);
 }
 
-function isUiState(value: unknown): value is UiState {
+/** Whether a view state is complete and valid; the host also reads it back from the workspace state. */
+export function isUiState(value: unknown): value is UiState {
   if (!isRecord(value)) {
     return false;
   }

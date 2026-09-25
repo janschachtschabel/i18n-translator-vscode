@@ -11,6 +11,7 @@
   "cmd.revealInExplorer": "Reveal in Explorer",
   "cmd.backupNow": "Back up translation files now",
   "cmd.restoreBackup": "Restore translation files from a backup…",
+  "cmd.undoLastChange": "Undo last change to translation files",
   "untrusted.description": "In Restricted Mode, translations can only be viewed and checked; writing files and AI features are disabled, and the workspace settings for areas, variants and roots are ignored.",
   "config.title": "edu-sharing i18n",
   "config.referenceLanguage": "Language that translations are compared with. `de` also matches `de_DE`.",

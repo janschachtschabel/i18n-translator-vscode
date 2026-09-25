@@ -17,3 +17,8 @@ export const l10n = {
     return formatMessage(Object.hasOwn(translations, message) ? translations[message]! : message, args);
   },
 };
+
+/** A count in the language of VS Code, which the host puts into the page (`<html lang>`). */
+export function formatNumber(value: number): string {
+  return new Intl.NumberFormat(document.documentElement.lang || undefined).format(value);
+}

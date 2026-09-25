@@ -841,6 +841,29 @@ was nicht ausdrücklich geändert wurde.
 > - **Beobachtungen:**
 >   - `npm audit` meldet vier Schwachstellen in `@vscode/test-cli` → `mocha` (`diff`, `serialize-javascript`), nur in den Testwerkzeugen. Die Laufzeitabhängigkeiten sind ohne Befund.
 >   - Für 2.18: Der Status im README („Phase 1 folgt“) ist veraltet.
+>
+> **Umsetzungsnotizen Task 2.8 (25.09.2026):**
+> - **Sprach-Chips:**
+>   - Die Chips sind native Checkboxen in einer `fieldset` „Sprachen“ statt Knöpfen mit `aria-pressed`. Das bringt native Semantik, einen Zustand, der ohne Farbe sichtbar ist (Haken), und Bedienung mit der Leertaste ohne eigenen Code.
+>   - Der Name nennt Code, Referenz oder Variante und die Zähler, etwa „fr fehlend: 2 Befunde: 6“. Zähler erscheinen nur über 0, als „Bezeichnung: Zahl“, damit keine Pluralformen nötig sind.
+> - **Ansicht und Umbruch:** Die Ansicht ist eine Radiogruppe (Automatisch, Tabelle, Liste; Pfeiltasten wie gewohnt), der Umbruch eine Checkbox „Lange Texte umbrechen“. Sichtbar wirken beide erst mit Tabelle und Liste (2.10, 2.11).
+> - **Ansichtszustand (B7):**
+>   - Die Webview schickt jede Änderung als `uiState`. Der Host legt ihn je Einheit im `workspaceState` ab (Schlüssel aus Ordner-URI und Einheits-ID) und schickt ihn mit `init`.
+>   - Einen Zustand, den `isUiState` nicht versteht (etwa aus einer älteren Version), ersetzt der Standard.
+> - **Rückgängig:**
+>   - Die Schaltfläche „Letzte Änderung rückgängig machen“, `Strg+Z` bzw. `Cmd+Z` außerhalb von Textfeldern und der Befehl `eduI18n.undoLastChange` (Design §10) rufen dieselbe Funktion.
+>   - Das Undo gilt für die ganze Sitzung, nicht nur für die angezeigte Einheit. Der Host meldet jedes Ergebnis, auch „Es gibt keine Änderung, die sich rückgängig machen lässt.“
+> - **Suche (`Strg+F`)** kommt mit dem Filter in 2.9, weil sie dessen Texteingabe ist.
+> - **Scroll-Anker:**
+>   - Er ist eine reine Funktion (`captureAnchor`, `anchoredScrollTop`). Anker ist die erste Zeile, deren Oberkante mit dem Key im Blick ist; füllt eine Zeile den ganzen Blick, ist es diese.
+>   - Angewandt wird er in 2.10 und 2.11, wenn es Zeilen gibt.
+> - **Darstellung:**
+>   - Native Bedienelemente folgen per `color-scheme` der Theme-Klasse von VS Code.
+>   - Den Fokusrahmen trägt das ganze Label, denn innen an einem 13-px-Feld wäre er kaum sichtbar.
+>   - Sichtprüfung in einer lokalen Vorschau (echtes Bundle, nachgebildete API, Theme-Variablen für hell, dunkel und hohen Kontrast) bei 350 und 640 px, dazu Tastaturbedienung in Chromium. Seitdem brechen Codes und Zähler nicht mehr mitten im Wort um.
+>   - Die Kontraste mit den echten Theme-Farben prüft 2.16.
+> - **Tests:** Die Webview-Tests nutzen den echten deutschen Katalog (`test/unit/webview/support.tsx`).
+> - **Für 2.14:** Design §10 sieht `eduI18n.openEditor` mit Auswahl der Einheit in der Befehlspalette vor. Bisher öffnet nur die Seitenleiste den Editor.
 
 ### Task 2.1: Textbausteine für das Schreiben
 **Dateien:** Create `src/core/text/edits.ts`, `src/core/text/style.ts`; Test: `test/unit/core/text/edits.test.ts`, `style.test.ts`

@@ -1,7 +1,14 @@
 import { randomBytes } from 'node:crypto';
 import * as vscode from 'vscode';
 import { parseBundleId, type Bundle } from '../../core/model/bundle';
-import { DEFAULT_UI_STATE, isPanelState, type HostToWebview, type PanelState } from '../../shared/protocol';
+import {
+  DEFAULT_UI_STATE,
+  isPanelState,
+  isUiState,
+  type HostToWebview,
+  type PanelState,
+  type UiState,
+} from '../../shared/protocol';
 import { buildBundleViewModel } from '../../shared/viewModel';
 import { localize } from '../localize';
 import type { IndexedRoot, IndexSnapshot, WorkspaceIndex } from '../services/workspaceIndex';
@@ -10,22 +17,29 @@ import { webviewHtml } from './webviewHtml';
 
 export const EDITOR_VIEW_TYPE = 'eduI18n.editor';
 
+/** What the editors need from the extension. */
+export interface EditorServices {
+  extensionUri: vscode.Uri;
+  /** Keeps the view state of each bundle (B7). */
+  workspaceState: vscode.Memento;
+  index: WorkspaceIndex;
+  log: vscode.LogOutputChannel;
+  /** Undoes the last change to the translation files and tells the user how it went. */
+  undo: () => Promise<void>;
+}
+
 /** The editors of the bundles: one per bundle, restored after a restart, updated after every index run. */
 export class EditorPanels implements vscode.Disposable {
   private readonly panels = new Set<EditorPanel>();
   private readonly subscriptions: vscode.Disposable[];
-  private readonly files: vscode.Uri;
 
-  constructor(
-    extensionUri: vscode.Uri,
-    private readonly index: WorkspaceIndex,
-    private readonly log: vscode.LogOutputChannel,
-  ) {
-    this.files = vscode.Uri.joinPath(extensionUri, 'dist', 'webview');
+  constructor(private readonly services: EditorServices) {
     this.subscriptions = [
-      index.onDidChange((snapshot) => {
+      services.index.onDidChange((snapshot) => {
         for (const panel of this.panels) {
-          panel.update(snapshot).catch((error: unknown) => log.error('Could not update an editor.', error));
+          panel
+            .update(snapshot)
+            .catch((error: unknown) => services.log.error('Could not update an editor.', error));
         }
       }),
       vscode.window.registerWebviewPanelSerializer(EDITOR_VIEW_TYPE, {
@@ -53,7 +67,7 @@ export class EditorPanels implements vscode.Disposable {
   /** Takes over a panel VS Code restored after a restart; one whose state is not readable is closed. */
   restore(panel: vscode.WebviewPanel, state: unknown): EditorPanel | undefined {
     if (!isPanelState(state)) {
-      this.log.warn('Closed a restored editor whose saved state is not readable.');
+      this.services.log.warn('Closed a restored editor whose saved state is not readable.');
       panel.dispose();
       return undefined;
     }
@@ -69,7 +83,7 @@ export class EditorPanels implements vscode.Disposable {
   }
 
   private add(panel: vscode.WebviewPanel, target: PanelState): EditorPanel {
-    const editor = new EditorPanel(panel, target, this.index, this.log, this.files);
+    const editor = new EditorPanel(panel, target, this.services);
     this.panels.add(editor);
     panel.onDidDispose(() => {
       this.panels.delete(editor);
@@ -91,11 +105,10 @@ export class EditorPanel implements vscode.Disposable {
   constructor(
     readonly panel: vscode.WebviewPanel,
     readonly target: PanelState,
-    private readonly index: WorkspaceIndex,
-    log: vscode.LogOutputChannel,
-    files: vscode.Uri,
+    private readonly services: EditorServices,
   ) {
     const { name } = parseBundleId(target.bundleId);
+    const files = vscode.Uri.joinPath(services.extensionUri, 'dist', 'webview');
     panel.title = name;
     panel.webview.options = { enableScripts: true, localResourceRoots: [files] };
     panel.webview.html = webviewHtml({
@@ -108,10 +121,23 @@ export class EditorPanel implements vscode.Disposable {
     });
     this.subscriptions = [
       this.posted,
-      panel.webview.onDidReceiveMessage((message: unknown) =>
-        routeMessage(message, { ready: () => this.start() }, log),
-      ),
+      panel.webview.onDidReceiveMessage((message: unknown) => this.receive(message)),
     ];
+  }
+
+  /** Handles a message from the webview; anything invalid is logged and dropped. */
+  receive(message: unknown): Promise<void> {
+    return routeMessage(
+      message,
+      {
+        ready: () => this.start(),
+        uiState: async ({ state }) => {
+          await this.services.workspaceState.update(this.stateKey(), state);
+        },
+        undo: () => this.services.undo(),
+      },
+      this.services.log,
+    );
   }
 
   /** Shows the bundle as an index run found it, or that it is gone. */
@@ -131,11 +157,11 @@ export class EditorPanel implements vscode.Disposable {
     await this.post({
       type: 'init',
       l10n: vscode.l10n.bundle ?? {},
-      uiState: DEFAULT_UI_STATE,
+      uiState: this.storedUiState(),
       panelState: this.target,
     });
     // Before the first index run (a panel restored at startup), `update` brings the bundle.
-    const snapshot = this.index.current();
+    const snapshot = this.services.index.current();
     if (snapshot) {
       await this.show(snapshot);
     }
@@ -155,6 +181,16 @@ export class EditorPanel implements vscode.Disposable {
           }
         : { type: 'missing', name: parseBundleId(this.target.bundleId).name },
     );
+  }
+
+  /** The view state the bundle had when its editor was last used; a state of an older version is ignored. */
+  private storedUiState(): UiState {
+    const stored = this.services.workspaceState.get<unknown>(this.stateKey());
+    return isUiState(stored) ? stored : DEFAULT_UI_STATE;
+  }
+
+  private stateKey(): string {
+    return `eduI18n.view:${JSON.stringify([this.target.folder, this.target.bundleId])}`;
   }
 
   private async post(message: HostToWebview): Promise<void> {

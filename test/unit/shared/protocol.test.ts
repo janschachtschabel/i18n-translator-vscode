@@ -3,6 +3,7 @@ import { keyFromSegments } from '../../../src/core/model/keys';
 import {
   DEFAULT_UI_STATE,
   isPanelState,
+  isUiState,
   isWebviewToHost,
   MAX_TEXT_LENGTH,
 } from '../../../src/shared/protocol';
@@ -115,6 +116,16 @@ describe('isPanelState', () => {
       { folder: 'file:///repo', bundleId: '[ "angular", "", "common" ]' },
     ]) {
       expect(isPanelState(state), JSON.stringify(state)).toBe(false);
+    }
+  });
+});
+
+describe('isUiState', () => {
+  it('accepts a complete view state only, as the host reads it back from the workspace state', () => {
+    expect(isUiState(DEFAULT_UI_STATE)).toBe(true);
+    expect(isUiState({ layout: 'list', wrap: true, hiddenLocales: ['fr'] })).toBe(true);
+    for (const state of [undefined, null, {}, { ...DEFAULT_UI_STATE, layout: 'grid' }, { layout: 'auto' }]) {
+      expect(isUiState(state), JSON.stringify(state)).toBe(false);
     }
   });
 });

@@ -62,6 +62,24 @@ export class EditorStore {
   announce(text: string): void {
     this.announcement.value = { text, id: this.announcement.value.id + 1 };
   }
+
+  /** Changes how the bundle is shown; the host keeps it for the next time the editor opens (B7). */
+  updateUiState(change: Partial<UiState>): void {
+    this.uiState.value = { ...this.uiState.value, ...change };
+    this.host.postMessage({ type: 'uiState', state: this.uiState.value });
+  }
+
+  toggleLocale(code: string): void {
+    const hidden = this.uiState.value.hiddenLocales;
+    this.updateUiState({
+      hiddenLocales: hidden.includes(code) ? hidden.filter((other) => other !== code) : [...hidden, code],
+    });
+  }
+
+  /** Undoes the last change of this session to the translation files, in whichever bundle it was. */
+  undo(): void {
+    this.host.postMessage({ type: 'undo' });
+  }
 }
 
 export function missingNotice(name: string): string {

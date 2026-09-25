@@ -107,6 +107,11 @@
         "title": "%cmd.restoreBackup%",
         "category": "edu-sharing i18n",
         "enablement": "isWorkspaceTrusted"
+      },
+      {
+        "command": "eduI18n.undoLastChange",
+        "title": "%cmd.undoLastChange%",
+        "category": "edu-sharing i18n"
       }
     ],
     "menus": {

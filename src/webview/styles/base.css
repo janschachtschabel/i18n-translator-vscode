@@ -23,3 +23,66 @@ body {
   clip-path: inset(50%);
   white-space: nowrap;
 }
+
+/* Checkboxes, radio buttons and scrollbars in the scheme of the theme (VS Code sets the body class). */
+body.vscode-light,
+body.vscode-high-contrast-light {
+  color-scheme: light;
+}
+
+body.vscode-dark,
+body.vscode-high-contrast:not(.vscode-high-contrast-light) {
+  color-scheme: dark;
+}
+
+button {
+  min-block-size: 26px;
+  padding: 4px 12px;
+  border: 1px solid var(--vscode-button-border, transparent);
+  border-radius: 2px;
+  color: var(--vscode-button-secondaryForeground);
+  background-color: var(--vscode-button-secondaryBackground);
+  font: inherit;
+  cursor: pointer;
+}
+
+button:hover {
+  background-color: var(--vscode-button-secondaryHoverBackground);
+}
+
+/* Controls that belong together, their name in front: "View (•) Automatic ( ) Table ( ) List". */
+.group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+/* Floated, the legend is laid out like the controls instead of on the border. */
+.group > legend {
+  float: inline-start;
+  padding: 0;
+  font-weight: 600;
+}
+
+.option {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-block-size: 24px;
+  cursor: pointer;
+}
+
+/* A ring inside a 13 px checkbox or radio button would hardly show: the label around it carries the focus. */
+.option:has(:focus-visible) {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: 2px;
+}
+
+.option :focus-visible {
+  outline: none;
+}

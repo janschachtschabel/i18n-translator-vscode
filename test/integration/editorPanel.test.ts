@@ -1,7 +1,11 @@
 import * as assert from 'node:assert';
 import * as vscode from 'vscode';
+import { planEdit } from '../../src/core/edit/planEdit';
+import { keyFromSegments } from '../../src/core/model/keys';
 import type { EditorPanel } from '../../src/extension/panels/editorPanel';
-import type { HostToWebview } from '../../src/shared/protocol';
+import { rootRef } from '../../src/extension/services/fileStore';
+import { sameBytes } from '../../src/extension/services/files';
+import { DEFAULT_UI_STATE, type HostToWebview, type UiState } from '../../src/shared/protocol';
 import { activateExtension, waitFor } from './helpers';
 
 function editorTabs(): string[] {
@@ -87,5 +91,44 @@ suite('editor panel', () => {
     const disposed = new Promise<void>((resolve) => panel.onDidDispose(() => resolve()));
     assert.strictEqual(editors.restore(panel, { bundleId: 42 }), undefined);
     await disposed;
+  });
+
+  test('keeps the view state of a bundle for the next time its editor opens', async () => {
+    const { index, editors } = await activateExtension();
+    const root = (await index.refresh()).roots[0]!;
+    const common = root.analysis.bundles.find((bundle) => bundle.name === 'common')!;
+    const state: UiState = { layout: 'list', wrap: true, hiddenLocales: ['it'] };
+
+    const first = editors.open(root, common);
+    await first.receive({ type: 'uiState', state });
+    first.panel.dispose();
+    const second = editors.open(root, common);
+    assert.deepStrictEqual((await nextPost(second, 'init')).uiState, state);
+    // The workspace state outlives the test run.
+    await second.receive({ type: 'uiState', state: DEFAULT_UI_STATE });
+  });
+
+  test('undoes the last change from the editor', async () => {
+    const { index, editors, fileStore } = await activateExtension();
+    const root = (await index.refresh()).roots[0]!;
+    const common = root.analysis.bundles.find((bundle) => bundle.name === 'common')!;
+    const fr = vscode.Uri.joinPath(root.folder.uri, common.file('fr')!.relPath);
+    const before = await vscode.workspace.fs.readFile(fr);
+    const written = await fileStore.write(rootRef(root), (analysis) =>
+      planEdit(
+        analysis.bundles.find((bundle) => bundle.id === common.id)!,
+        {
+          kind: 'setText',
+          entryId: keyFromSegments(['ASK']).id,
+          locale: 'fr',
+          value: 'Demander ?',
+        },
+      ),
+    );
+    assert.deepStrictEqual(written, { ok: true });
+    assert.ok(!sameBytes(await vscode.workspace.fs.readFile(fr), before));
+
+    await editors.open(root, common).receive({ type: 'undo' });
+    assert.ok(sameBytes(await vscode.workspace.fs.readFile(fr), before));
   });
 });

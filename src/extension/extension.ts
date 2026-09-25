@@ -3,6 +3,7 @@ import { backUpNow, restoreBackup } from './commands/backup';
 import { checkTranslations } from './commands/check';
 import { configureRoots } from './commands/configureRoots';
 import { openBundle } from './commands/openBundle';
+import { undoLastChange } from './commands/undoLastChange';
 import { DiagnosticsPublisher } from './diagnostics/diagnosticsPublisher';
 import { EditorPanels } from './panels/editorPanel';
 import { BackupService } from './services/backupService';
@@ -32,7 +33,13 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
   const fileStore = new FileStore(index, log, {
     beforeWrite: (kind, files) => backups.beforeWrite(kind, files),
   });
-  const editors = new EditorPanels(context.extensionUri, index, log);
+  const editors = new EditorPanels({
+    extensionUri: context.extensionUri,
+    workspaceState: context.workspaceState,
+    index,
+    log,
+    undo: () => undoLastChange(fileStore),
+  });
   const areas = createAreasView(index);
   const statusBar = new IndexStatusBar(index);
 
@@ -48,6 +55,7 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
     vscode.commands.registerCommand('eduI18n.openBundle', (node?: unknown) => openBundle(editors, node)),
     vscode.commands.registerCommand('eduI18n.backupNow', () => backUpNow(backups, fileStore, log)),
     vscode.commands.registerCommand('eduI18n.restoreBackup', () => restoreBackup(backups, fileStore, log)),
+    vscode.commands.registerCommand('eduI18n.undoLastChange', () => undoLastChange(fileStore)),
   );
   // Not awaited: activation stays fast, and the views update when the first run completes.
   index.refresh().catch((error: unknown) => log.error('Indexing failed.', error));
