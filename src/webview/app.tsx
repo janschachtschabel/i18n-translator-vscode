@@ -1,18 +1,19 @@
+import { useEffect } from 'preact/hooks';
 import type { BundleViewModel } from '../shared/viewModel';
 import { LiveRegion } from './a11y/liveRegion';
 import { FilterBar } from './components/filterBar';
-import { CompactChoice, compactLocales } from './components/list/compactChoice';
+import { CompactChoice } from './components/list/compactChoice';
 import { List } from './components/list/list';
 import { LanguageChips } from './components/languageChips';
 import { Table } from './components/table/table';
 import { Toolbar } from './components/toolbar';
 import { formatNumber, l10n } from './l10n';
 import { useShortcuts } from './shortcuts';
-import { layoutFor, useViewportWidth } from './state/layout';
 import { missingNotice, type EditorStore, type View } from './state/store';
 
 export function App({ store }: { store: EditorStore }) {
   useShortcuts(store);
+  useWidth(store);
   return (
     <>
       <main>
@@ -45,11 +46,9 @@ function Content({ store, view }: { store: EditorStore; view: View }) {
 const TITLE_ID = 'bundle-title';
 
 function BundleView({ store, model }: { store: EditorStore; model: BundleViewModel }) {
-  const { hiddenLocales, wrap, compactLocale } = store.uiState.value;
   const rows = store.filtered.value?.rows ?? [];
-  const layout = layoutFor(store.uiState.value.layout, useViewportWidth());
-  const visible = model.locales.filter((locale) => !hiddenLocales.includes(locale.code));
-  const compact = compactLocales(model.locales, hiddenLocales, compactLocale);
+  const layout = store.layout.value;
+  const shown = store.shownLocales.value;
   return (
     <div class={layout === 'table' ? 'bundle fill' : 'bundle'}>
       <h1 id={TITLE_ID}>{model.name}</h1>
@@ -62,8 +61,8 @@ function BundleView({ store, model }: { store: EditorStore; model: BundleViewMod
       <Toolbar store={store} />
       <LanguageChips store={store} locales={model.locales} />
       <FilterBar store={store} model={model} />
-      {layout === 'compact' && compact[1] && (
-        <CompactChoice store={store} locales={model.locales} selected={compact[1].code} />
+      {layout === 'compact' && shown[1] && (
+        <CompactChoice store={store} locales={model.locales} selected={shown[1].code} />
       )}
       {rows.length === 0 ? (
         <p>
@@ -72,15 +71,27 @@ function BundleView({ store, model }: { store: EditorStore; model: BundleViewMod
             : l10n.t('This bundle has no keys yet.')}
         </p>
       ) : layout === 'table' ? (
-        <Table store={store} rows={rows} locales={visible} wrap={wrap} labelledBy={TITLE_ID} />
-      ) : (
-        <List
+        <Table
           store={store}
           rows={rows}
-          locales={layout === 'list' ? visible : compact}
+          locales={shown}
+          wrap={store.uiState.value.wrap}
           labelledBy={TITLE_ID}
         />
+      ) : (
+        <List store={store} rows={rows} locales={shown} labelledBy={TITLE_ID} />
       )}
     </div>
   );
+}
+
+/** Keeps the store's width up to date; only a change of layout renders the rows again. */
+function useWidth(store: EditorStore): void {
+  useEffect(() => {
+    const onResize = () => {
+      store.width.value = window.innerWidth;
+    };
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, [store]);
 }

@@ -1,26 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_FILTER, filterRows, type RowFilter } from '../../../src/shared/filter';
-import type { BundleViewModel, CellView, LocaleView, RowView } from '../../../src/shared/viewModel';
-
-const locale = (code: string, flags: Partial<LocaleView> = {}): LocaleView => ({
-  code,
-  reference: false,
-  variant: false,
-  hasFile: true,
-  missing: 0,
-  findings: 0,
-  issues: [],
-  ...flags,
-});
-const text = (value: string | undefined, ...rules: string[]): CellView => ({
-  value,
-  issues: rules.map((rule) => ({ rule, severity: 'warning', message: rule })),
-});
-const row = (key: string, cells: Record<string, CellView>): RowView => ({
-  entryId: JSON.stringify(key.split('.')),
-  key,
-  cells,
-});
+import type { BundleViewModel } from '../../../src/shared/viewModel';
+import { locale, row, text } from '../support/viewModels';
 
 const model: BundleViewModel = {
   bundleId: JSON.stringify(['angular', '', 'common']),
@@ -150,5 +131,31 @@ describe('filterRows', () => {
       expect(keys({ query: 'title', scope: 'keys', status: 'missing' })).toEqual(['ERROR_TITLE']);
       expect(keys({ query: 'title', scope: 'keys', status: 'empty' })).toEqual(['WORKSPACE.TITLE']);
     });
+  });
+});
+
+describe('filterRows in combination', () => {
+  it.each([
+    { filter: { query: 'Espace', scope: 'texts', matchCase: true }, keys: ['WORKSPACE.TITLE'] },
+    { filter: { query: 'ESPACE', scope: 'texts', matchCase: true }, keys: [] },
+    {
+      filter: { query: '^Espace', scope: 'texts', locale: 'fr', regex: true },
+      hidden: ['fr'],
+      keys: ['WORKSPACE.TITLE'],
+    },
+    { filter: { query: '^espace', scope: 'texts', locale: 'fr', regex: true, matchCase: true }, keys: [] },
+    { filter: { query: 'fehler', scope: 'texts', status: 'findings' }, keys: ['ERROR_TITLE'] },
+    { filter: { query: 'fehler', scope: 'texts', status: 'findings' }, hidden: ['fr', 'it'], keys: [] },
+    { filter: { query: 'TITLE$', scope: 'keys', regex: true, status: 'empty' }, keys: ['WORKSPACE.TITLE'] },
+    { filter: { query: 'a', scope: 'all', status: 'missing' }, keys: ['CANCEL', 'ERROR_TITLE'] },
+  ] as { filter: Partial<RowFilter>; hidden?: string[]; keys: string[] }[])(
+    'search $filter.query in $filter.scope with status $filter.status → $keys',
+    ({ filter, hidden, keys: expected }) => {
+      expect(keys(filter, hidden)).toEqual(expected);
+    },
+  );
+
+  it('searches every visible language when the chosen one is no longer in the bundle', () => {
+    expect(keys({ query: 'espace', scope: 'texts', locale: 'xx' })).toEqual(['WORKSPACE.TITLE']);
   });
 });

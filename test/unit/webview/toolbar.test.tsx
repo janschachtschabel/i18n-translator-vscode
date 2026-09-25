@@ -105,3 +105,27 @@ it('has no accessibility violations with the toolbar and the chips', async () =>
   const results = await axe.run(document);
   expect(results.violations.map(({ id, nodes }) => `${id}: ${nodes.length}`)).toEqual([]);
 });
+
+describe('keys the editor handles itself', () => {
+  it('keeps VS Code from also undoing, which would take back typing in the search field', () => {
+    const { open, posted } = renderEditor();
+    open();
+    // VS Code's webview host listens like this (bubble phase on the window) and runs its own undo.
+    const seen: string[] = [];
+    const forwarder = (event: KeyboardEvent) => void seen.push(event.key);
+    window.addEventListener('keydown', forwarder);
+    act(() => void fireEvent.keyDown(document.body, { key: 'z', ctrlKey: true }));
+    act(() => void fireEvent.keyDown(screen.getByRole('searchbox'), { key: 'z', ctrlKey: true }));
+    window.removeEventListener('keydown', forwarder);
+    // Only the one from the text field goes on, where Ctrl+Z undoes the typing.
+    expect(seen).toEqual(['z']);
+    expect(posted.filter((message) => message.type === 'undo')).toHaveLength(1);
+  });
+
+  it('knows its keys with other keyboard layouts, e.g. a Cyrillic one', () => {
+    const { open } = renderEditor();
+    open();
+    act(() => void fireEvent.keyDown(document.body, { key: 'а', code: 'KeyF', ctrlKey: true }));
+    expect(document.activeElement).toBe(screen.getByRole('searchbox'));
+  });
+});

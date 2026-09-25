@@ -6,8 +6,9 @@ import {
   type UiState,
   type WebviewToHost,
 } from '../../shared/protocol';
-import type { BundleViewModel } from '../../shared/viewModel';
+import type { BundleViewModel, LocaleView } from '../../shared/viewModel';
 import { l10n, setTranslations } from '../l10n';
+import { compactLocales, layoutFor } from './layout';
 
 /** The part of the webview API (`acquireVsCodeApi()`) the editor uses. */
 export interface HostApi {
@@ -34,11 +35,30 @@ export class EditorStore {
   readonly view = signal<View>({ kind: 'starting' });
   readonly uiState = signal<UiState>(DEFAULT_UI_STATE);
   readonly announcement = signal<Announcement>({ text: '', id: 0 });
-  /** The rows the filter lets through; undefined without a bundle. */
+  /** The width of the editor; the app follows resizing. */
+  readonly width = signal(window.innerWidth);
+  /** Table, list or compact list: as the user chose, or by width. Changes only when the layout does. */
+  readonly layout = computed(() => layoutFor(this.uiState.value.layout, this.width.value));
+  /** The languages the rows show: the visible ones, in the compact list the reference and one more. */
+  readonly shownLocales = computed((): LocaleView[] => {
+    const view = this.view.value;
+    if (view.kind !== 'bundle') {
+      return [];
+    }
+    const { hiddenLocales, compactLocale } = this.uiState.value;
+    return this.layout.value === 'compact'
+      ? compactLocales(view.model.locales, hiddenLocales, compactLocale)
+      : view.model.locales.filter((locale) => !hiddenLocales.includes(locale.code));
+  });
+  /** The rows the filter lets through, looking at the languages that are shown; undefined without a bundle. */
   readonly filtered = computed((): FilterResult | undefined => {
     const view = this.view.value;
-    const { filter, hiddenLocales } = this.uiState.value;
-    return view.kind === 'bundle' ? filterRows(view.model, filter, hiddenLocales) : undefined;
+    if (view.kind !== 'bundle') {
+      return undefined;
+    }
+    const shown = new Set(this.shownLocales.value.map((locale) => locale.code));
+    const hidden = view.model.locales.map((locale) => locale.code).filter((code) => !shown.has(code));
+    return filterRows(view.model, this.uiState.value.filter, hidden);
   });
 
   constructor(private readonly host: HostApi) {}
@@ -53,6 +73,10 @@ export class EditorStore {
         this.view.value = { kind: 'loading' };
         break;
       case 'bundle':
+        if (this.announcement.value.text !== '') {
+          // "The bundle is gone" is no longer true; browsing screen reader users would still find it.
+          this.announce('');
+        }
         this.view.value = { kind: 'bundle', model: message.model };
         break;
       case 'missing':
@@ -70,9 +94,17 @@ export class EditorStore {
     this.announcement.value = { text, id: this.announcement.value.id + 1 };
   }
 
-  /** Changes how the bundle is shown; the host keeps it for the next time the editor opens (B7). */
+  /**
+   * Changes how the bundle is shown; the host keeps it for the next time the editor opens (B7). Before `init`
+   * there is no state to change: it would replace the one the host kept. The filter runs before the state is
+   * sent, so that a regular expression that never ends (the user's own) is never kept to hang every opening.
+   */
   updateUiState(change: Partial<UiState>): void {
+    if (this.view.value.kind === 'starting') {
+      return;
+    }
     this.uiState.value = { ...this.uiState.value, ...change };
+    void this.filtered.value;
     this.host.postMessage({ type: 'uiState', state: this.uiState.value });
   }
 
@@ -89,6 +121,9 @@ export class EditorStore {
 
   /** Only the keys with missing texts, or all again (Alt+M). */
   toggleMissing(): void {
+    if (this.view.value.kind !== 'bundle') {
+      return;
+    }
     this.updateFilter({ status: this.uiState.value.filter.status === 'missing' ? 'all' : 'missing' });
   }
 

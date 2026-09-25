@@ -53,7 +53,9 @@ export function filterRows(
 
   const search = matcher(filter);
   const test = search.test;
-  const textCodes = filter.scope === 'texts' && filter.locale !== null ? [filter.locale] : visibleCodes;
+  // A language kept in the view state may be gone from the bundle (e.g. after a branch switch).
+  const chosen = model.locales.some((locale) => locale.code === filter.locale) ? filter.locale : null;
+  const textCodes = filter.scope === 'texts' && chosen !== null ? [chosen] : visibleCodes;
   const searched = (row: RowView): boolean =>
     test === undefined ||
     (filter.scope !== 'texts' && test(row.key)) ||

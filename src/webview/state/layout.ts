@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'preact/hooks';
 import type { UiState } from '../../shared/protocol';
+import type { LocaleView } from '../../shared/viewModel';
 
 /** How the editor shows the rows: a table, a card per key, or cards with the reference and one language. */
 export type Layout = 'table' | 'list' | 'compact';
@@ -15,13 +15,20 @@ export function layoutFor(choice: UiState['layout'], width: number): Layout {
   return width >= TABLE_FROM ? 'table' : width > COMPACT_UP_TO ? 'list' : 'compact';
 }
 
-/** The width of the editor, updated when the panel is resized. */
-export function useViewportWidth(): number {
-  const [width, setWidth] = useState(() => window.innerWidth);
-  useEffect(() => {
-    const onResize = () => setWidth(window.innerWidth);
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, []);
-  return width;
+/**
+ * The reference and the one language the compact list shows beside it: the chosen one, else the first
+ * visible full language (a variant leaves most texts to its base), else any.
+ */
+export function compactLocales(
+  locales: readonly LocaleView[],
+  hidden: readonly string[],
+  chosen: string | null,
+): LocaleView[] {
+  const reference = locales.find((locale) => locale.reference);
+  const others = locales.filter((locale) => !locale.reference);
+  const second =
+    others.find((locale) => locale.code === chosen) ??
+    others.find((locale) => !locale.variant && !hidden.includes(locale.code)) ??
+    others[0];
+  return [reference, second].filter((locale) => locale !== undefined);
 }

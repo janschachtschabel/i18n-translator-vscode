@@ -13,7 +13,9 @@ export function FilterBar({ store, model }: { store: EditorStore; model: BundleV
   const { filter } = store.uiState.value;
   const result = store.filtered.value;
   const invalid = result?.invalidPattern;
-  const scope = filter.scope === 'texts' && filter.locale !== null ? `texts:${filter.locale}` : filter.scope;
+  // A kept language that is gone from the bundle counts as none, as in filterRows.
+  const chosen = model.locales.some((locale) => locale.code === filter.locale) ? filter.locale : null;
+  const scope = filter.scope === 'texts' && chosen !== null ? `texts:${chosen}` : filter.scope;
   const statuses: [StatusFilter, string][] = [
     ['all', l10n.t('all keys')],
     ['missing', l10n.t('keys with missing texts')],
@@ -95,7 +97,7 @@ export function FilterBar({ store, model }: { store: EditorStore; model: BundleV
       >
         {invalid !== undefined
           ? l10n.t('The regular expression is invalid: {reason}', { reason: invalid })
-          : l10n.t('{shown} of {total} keys', {
+          : l10n.t('Keys: {shown} of {total}', {
               shown: formatNumber(result?.rows.length ?? 0),
               total: formatNumber(model.rows.length),
             })}

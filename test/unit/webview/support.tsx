@@ -2,7 +2,7 @@ import { act, render } from '@testing-library/preact';
 import german from '../../../l10n/bundle.l10n.de.json';
 import type { HostToWebview, PanelState, UiState, WebviewToHost } from '../../../src/shared/protocol';
 import { DEFAULT_UI_STATE } from '../../../src/shared/protocol';
-import type { BundleViewModel, CellView, LocaleView, RowView } from '../../../src/shared/viewModel';
+import type { BundleViewModel } from '../../../src/shared/viewModel';
 import { App } from '../../../src/webview/app';
 import { EditorStore } from '../../../src/webview/state/store';
 
@@ -71,28 +71,8 @@ export function renderEditor() {
   return { store, posted, kept, send, open };
 }
 
-export const locale = (code: string, flags: Partial<LocaleView> = {}): LocaleView => ({
-  code,
-  reference: false,
-  variant: false,
-  hasFile: true,
-  missing: 0,
-  findings: 0,
-  issues: [],
-  ...flags,
-});
-export const text = (
-  value: string | undefined,
-  issue?: { rule: string; message: string; severity?: 'error' },
-) => ({
-  value,
-  issues: issue ? [{ severity: 'warning' as const, ...issue }] : [],
-});
-export const row = (key: string, cells: Record<string, CellView>): RowView => ({
-  entryId: JSON.stringify(key.split('.')),
-  key,
-  cells,
-});
+export { locale, row, text } from '../support/viewModels';
+import { locale, row, text } from '../support/viewModels';
 
 /** A bundle with a finding of each kind the editor shows: missing, empty, placeholders. */
 export const findingsModel: BundleViewModel = {
