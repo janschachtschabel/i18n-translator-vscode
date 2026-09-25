@@ -796,6 +796,22 @@ was nicht ausdrücklich geändert wurde.
 >   - Undo ist endgültig: Es gibt kein Wiederholen, und ein Undo wird nicht gesichert.
 >   - Rückgängig gemachte neue Dateien hinterlassen bei Mustern mit einem Ordner je Sprache leere Ordner.
 >   - Der Test „ganz oder gar nicht“ mit schreibgeschützter Datei schlägt als root (z. B. in einem Dev-Container) fälschlich fehl.
+>
+> **Umsetzungsnotizen Task 2.6 (25.09.2026):**
+> - **Abweichungen von Design §6.12:**
+>   - `edit` hat kein `bundleId`: Jedes Panel zeigt genau eine Einheit, der Host kennt sie. Eine Webview kann so nur in ihre eigene Einheit schreiben.
+>   - `edit` hat kein `field`: In Phase 2 wird nur der Text bearbeitet. Das Feld kommt mit dem ersten Format, in dem mehrere Felder bearbeitet werden.
+>   - `edit` trägt statt `baseRevision` den Text `before`, den die Zelle zeigte (`null`: kein Text). Der FileStore plant damit neu (B5), und ein Konflikt entsteht nur, wenn sich genau diese Zelle geändert hat. Das ViewModel enthält deshalb keine Revisionen; 2.12 schickt nur `before`.
+>   - `edit` hat eine `requestId`, die `writeResult` zurückgibt, damit die Zelle bei einem Fehler ihren alten Text zurückbekommt. `writeResult` enthält statt `error: UserError` eine fertig übersetzte `message`.
+>   - `command` hat statt `args: unknown` nur `entryId`, den Key, von dem der Befehl ausgeht. Namen und Rückfragen holt der Host selbst über InputBox und Dialoge (2.14).
+>   - Neu ist `undo` für `Strg+Z` im Editor außerhalb von Eingabefeldern (Design §6.10).
+>   - `init` hat noch keine `settings`, weil die Webview in Phase 2 keine Einstellungen braucht. `patch` kommt mit 2.15 (`src/shared/patch.ts`), `filter` im `UiState` mit 2.9.
+> - **Prüfung:** `isWebviewToHost` weist ab: unbekannte Typen, fehlende oder falsch getypte Felder, leere oder zu lange Kennungen (höchstens 200 Zeichen), `entryId`s, die `keyFromId` nicht versteht, Texte über 100.000 Zeichen und einzelne Surrogate (aus dem Review). Verwerfen und Loggen übernimmt der Router in 2.7.
+> - **ViewModel:**
+>   - Die Sprachen sind zuerst die mit Datei, in der Reihenfolge der Einheit. Danach folgen alphabetisch die Sprachen ohne Datei, auf die Befunde zeigen (fehlende Datei, nötige Variante).
+>   - Befunde ohne Key stehen an der Sprache, Befunde ohne Sprache an der Einheit.
+>   - Die Meldungen übersetzt der Aufrufer über `localize`.
+> - **Schichten:** `src/shared` ist wie `src/core` plattformneutral: kein VS Code, kein Node, kein DOM und keine Importe aus `extension` oder `webview` (ESLint). `src/core` darf `src/shared` nicht importieren. Die Abdeckung zählt `src/shared` mit.
 
 ### Task 2.1: Textbausteine für das Schreiben
 **Dateien:** Create `src/core/text/edits.ts`, `src/core/text/style.ts`; Test: `test/unit/core/text/edits.test.ts`, `style.test.ts`

@@ -5,8 +5,43 @@ import tseslint from 'typescript-eslint';
 
 // Node built-ins by bare name ('fs', 'path/posix', ...); 'node:*' imports are matched by pattern.
 const nodeBuiltins = (message) => builtinModules.map((name) => ({ name, message }));
-const CORE_NODE_MESSAGE = 'src/core must also run in the webview; keep Node APIs out.';
+const NEUTRAL_NODE_MESSAGE = 'src/core and src/shared must also run in the webview; keep Node APIs out.';
 const WEBVIEW_NODE_MESSAGE = 'The webview runs in a browser, not in Node.';
+
+/**
+ * Layer rule for platform-neutral code (no VS Code, no Node, no DOM): the extension host, the webview and CLI
+ * scripts can all reuse it, and it stays unit-testable. `outer` are the layers it must not depend on.
+ */
+const platformNeutral = (layer, outer) => ({
+  files: [`src/${layer}/**/*.ts`],
+  rules: {
+    'no-restricted-imports': [
+      'error',
+      {
+        paths: [
+          { name: 'vscode', message: `src/${layer} must not depend on the VS Code API.` },
+          ...nodeBuiltins(NEUTRAL_NODE_MESSAGE),
+        ],
+        patterns: [
+          {
+            group: outer.map((name) => `**/${name}/**`),
+            message: `src/${layer} must not depend on ${outer.map((name) => `src/${name}`).join(', ')}.`,
+          },
+          { group: ['node:*'], message: NEUTRAL_NODE_MESSAGE },
+        ],
+      },
+    ],
+    'no-restricted-globals': [
+      'error',
+      'window',
+      'document',
+      'navigator',
+      ...['Buffer', 'process', 'global', 'require', 'module', '__dirname', '__filename', 'setImmediate'].map(
+        (name) => ({ name, message: NEUTRAL_NODE_MESSAGE }),
+      ),
+    ],
+  },
+});
 
 export default defineConfig(
   { ignores: ['dist/', 'out/', 'coverage/', '.vscode-test/', 'node_modules/', 'test/fixtures/'] },
@@ -22,45 +57,8 @@ export default defineConfig(
     files: ['**/*.mjs'],
     languageOptions: { globals: { process: 'readonly', console: 'readonly' } },
   },
-  {
-    // Layer rule: the core is platform-neutral (no VS Code, no Node, no DOM) so the extension host,
-    // the webview and CLI scripts can all reuse it, and it stays unit-testable.
-    files: ['src/core/**/*.ts'],
-    rules: {
-      'no-restricted-imports': [
-        'error',
-        {
-          paths: [
-            { name: 'vscode', message: 'src/core must not depend on the VS Code API.' },
-            ...nodeBuiltins(CORE_NODE_MESSAGE),
-          ],
-          patterns: [
-            {
-              group: ['**/extension/**', '**/webview/**'],
-              message: 'src/core must not depend on outer layers.',
-            },
-            { group: ['node:*'], message: CORE_NODE_MESSAGE },
-          ],
-        },
-      ],
-      'no-restricted-globals': [
-        'error',
-        'window',
-        'document',
-        'navigator',
-        ...[
-          'Buffer',
-          'process',
-          'global',
-          'require',
-          'module',
-          '__dirname',
-          '__filename',
-          'setImmediate',
-        ].map((name) => ({ name, message: CORE_NODE_MESSAGE })),
-      ],
-    },
-  },
+  platformNeutral('core', ['shared', 'extension', 'webview']),
+  platformNeutral('shared', ['extension', 'webview']),
   {
     // Layer rule: the webview runs in a browser sandbox and talks to the host only via messages.
     files: ['src/webview/**/*.{ts,tsx}'],
