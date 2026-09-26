@@ -15,7 +15,7 @@ import { planAddLanguage, planEdit, type BundleEdit } from '../../src/core/edit/
 import { keyFromSegments } from '../../src/core/model/keys';
 import type { ExtensionApi } from '../../src/extension/extension';
 import type { BackupSettings } from '../../src/core/config/settings';
-import { BackupService } from '../../src/extension/services/backupService';
+import { BackupService, type BackupFiles } from '../../src/extension/services/backupService';
 import { FileStore, type Planner } from '../../src/extension/services/fileStore';
 import { rootRef, type RootRef } from '../../src/extension/services/workspaceIndex';
 import { activateExtension, workspaceUri } from './helpers';
@@ -177,6 +177,54 @@ suite('Backups', () => {
     );
     // It is not taken for an unfinished backup: it stays for someone to look at.
     assert.ok(existsSync(broken));
+  });
+
+  /** A backup service of this session whose file access fails where `fail` says so. */
+  const failing = (fail: { read?: (uri: vscode.Uri) => boolean; remove?: (uri: vscode.Uri) => boolean }) => {
+    const refused = (uri: vscode.Uri) => Promise.reject(vscode.FileSystemError.NoPermissions(uri));
+    const files: BackupFiles = {
+      readFile: (uri) => (fail.read?.(uri) ? refused(uri) : vscode.workspace.fs.readFile(uri)),
+      writeFile: (uri, bytes) => vscode.workspace.fs.writeFile(uri, bytes),
+      readDirectory: (uri) => vscode.workspace.fs.readDirectory(uri),
+      delete: (uri, options) =>
+        fail.remove?.(uri) ? refused(uri) : vscode.workspace.fs.delete(uri, options),
+    };
+    return new BackupService(vscode.Uri.file(storage), api.index, log, {
+      settings: () => settings,
+      now: () => now,
+      files,
+    });
+  };
+
+  // Failures of the storage while backing up, which the tests above cannot bring about (audit T-07).
+  test('keeps backing up when old backups cannot be removed', async () => {
+    settings = { keep: 1, intervalMinutes: 10 };
+    const service = failing({ remove: () => true });
+    for (let count = 0; count < 3; count++) {
+      assert.ok(await service.create('manual'));
+      now += MINUTE;
+    }
+    assert.equal((await service.list()).length, 3);
+  });
+
+  test('lists the other backups when the manifest of one cannot be read', async () => {
+    const first = await backups.create('manual');
+    now += MINUTE;
+    const second = await backups.create('manual');
+    const service = failing({ read: (uri) => uri.path.includes(first!.id) });
+    assert.deepEqual(
+      (await service.list()).map((info) => info.id),
+      [second!.id],
+    );
+  });
+
+  test('leaves out a translation file that cannot be read, and backs up the others', async () => {
+    const service = failing({ read: (uri) => uri.toString() === fr().toString() });
+    const backup = await service.create('manual');
+    assert.equal(backup?.files, original.length - 1);
+    const saved = (await service.read(backup!.id)).files.map((file) => file.uri.toString());
+    assert.equal(saved.length, original.length - 1);
+    assert.ok(!saved.includes(fr().toString()));
   });
 
   test('refuses manifests that would lead out of their folder', async () => {
