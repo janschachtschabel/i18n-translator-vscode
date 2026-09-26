@@ -204,6 +204,26 @@ suite('FileStore', () => {
     assert.ok(text.includes('"MINUTE": "Minuto"') && text.includes('"ASK": "Continuer ?"'), text);
   });
 
+  // The first backup of a session takes a few hundred milliseconds: time enough to type into the file (audit L-02).
+  for (const kind of ['write', 'restore'] as const) {
+    test(`checks for unsaved changes after the backup of a ${kind}, so that an editor's changes are kept`, async () => {
+      const fr = uriOf('common', 'fr');
+      const before = await read(fr);
+      const store = new FileStore(api.index, log, {
+        beforeWrite: async () => {
+          const editor = await vscode.window.showTextDocument(await vscode.workspace.openTextDocument(fr));
+          await editor.edit((builder) => builder.insert(new vscode.Position(0, 0), ' '));
+        },
+      });
+      const result =
+        kind === 'write'
+          ? await store.write(ref, setAsk('Continuer ?'))
+          : await store.restore([{ uri: fr, bytes: encoder.encode('{}\n') }]);
+      assert.ok(!result.ok && result.reason === 'dirty', JSON.stringify(result));
+      assert.equal(await read(fr), before);
+    });
+  }
+
   test('runs exclusive tasks, such as a manual backup, between writes', async () => {
     const order: string[] = [];
     const write = api.fileStore.write(ref, (analysis) => {

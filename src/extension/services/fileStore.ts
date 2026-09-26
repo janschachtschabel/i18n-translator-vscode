@@ -173,12 +173,9 @@ export class FileStore {
         write,
         bytes: adapter.encode(write.after),
       }));
-      const dirty = targets.filter((target) => isDirty(target.uri)).map((target) => target.uri);
-      if (dirty.length > 0) {
-        return { ok: false, reason: 'dirty', files: dirty };
-      }
       if (!backedUp) {
-        // Before the disk check: between checking the files and writing them, nothing slow may happen.
+        // Before the checks of editors and disk: between checking the files and writing them, nothing slow may
+        // happen, and a backup can take a few hundred milliseconds.
         await this.beforeWrite(
           'write',
           bundlesOf(
@@ -187,6 +184,10 @@ export class FileStore {
           ),
         );
         backedUp = true;
+      }
+      const dirty = targets.filter((target) => isDirty(target.uri)).map((target) => target.uri);
+      if (dirty.length > 0) {
+        return { ok: false, reason: 'dirty', files: dirty };
       }
       const onDisk = await Promise.all(targets.map((target) => readIfExists(target.uri, this.files)));
       const changed = targets.filter((target, i) => !holds(onDisk[i], target.write.before, adapter));
@@ -266,10 +267,6 @@ export class FileStore {
       });
       return { ok: false, reason: 'error', message };
     }
-    const dirty = files.filter((file) => isDirty(file.uri)).map((file) => file.uri);
-    if (dirty.length > 0) {
-      return { ok: false, reason: 'dirty', files: dirty };
-    }
     try {
       await this.beforeWrite('restore', files.length);
     } catch (error) {
@@ -282,6 +279,11 @@ export class FileStore {
         },
       );
       return { ok: false, reason: 'error', message };
+    }
+    // After the backup, which takes a moment: a file may have got unsaved changes meanwhile.
+    const dirty = files.filter((file) => isDirty(file.uri)).map((file) => file.uri);
+    if (dirty.length > 0) {
+      return { ok: false, reason: 'dirty', files: dirty };
     }
     const onDisk = await Promise.all(files.map((file) => readIfExists(file.uri, this.files)));
     const differing = files
