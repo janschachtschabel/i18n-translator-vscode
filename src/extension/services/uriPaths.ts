@@ -1,3 +1,5 @@
+import { isPlainRelativePath } from '../../core/area/rootPath';
+
 /**
  * The part of a URI path below a folder's URI path (`/` separators), `''` for the folder itself (as for
  * roots), or undefined if it is not inside the folder. The result keeps the casing of `path`.
@@ -14,16 +16,6 @@ export function relativeUriPath(folderPath: string, path: string, ignoreCase = f
     ? head.toLowerCase() === base.toLowerCase()
     : lowerDriveLetter(head) === lowerDriveLetter(base);
   return target.length >= base.length && same ? target.slice(base.length, -1) : undefined;
-}
-
-/**
- * A relative path of named segments with `/` separators: no empty, `.` or `..` segment, no backslash and no
- * drive letter. Paths that are joined to a folder must be plain, or they could lead out of it.
- */
-export function isPlainRelativePath(path: string): boolean {
-  return path
-    .split('/')
-    .every((segment) => segment !== '' && segment !== '.' && segment !== '..' && !/[\\:]/.test(segment));
 }
 
 /** Whether a folder-relative path lies below `root` (`''` for the folder) without leaving it on the way. */

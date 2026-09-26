@@ -1,10 +1,10 @@
 import * as vscode from 'vscode';
+import { isPlainRelativePath } from '../../core/area/rootPath';
 import type { BackupSettings } from '../../core/config/settings';
 import { readBackupSettings } from '../config';
 import { messageOf } from './errors';
 import type { RestoredFile } from './fileStore';
 import { readIfExists } from './files';
-import { isPlainRelativePath } from './uriPaths';
 import type { IndexSnapshot, WorkspaceIndex } from './workspaceIndex';
 import { showWarning } from '../notify';
 

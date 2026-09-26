@@ -13,9 +13,11 @@ export function normalizeRoot(root: string): string | undefined {
 }
 
 /**
- * Whether `path` is a plain path below a folder: relative, with `/` between segments that are not empty, `.` or
- * `..`.
+ * A relative path of named segments with `/` separators: no empty, `.` or `..` segment, no backslash and no
+ * drive letter. Paths that are joined to a folder must be plain, or they could lead out of it.
  */
 export function isPlainRelativePath(path: string): boolean {
-  return path !== '' && normalizeRoot(path) === path;
+  return path
+    .split('/')
+    .every((segment) => segment !== '' && segment !== '.' && segment !== '..' && !/[\\:]/.test(segment));
 }
