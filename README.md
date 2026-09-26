@@ -211,7 +211,8 @@ Gut zu wissen:
    - In schmalen Fenstern erscheint sie als Liste.
    - **Lücken finden:** Die Sprach-Chips über der Tabelle zeigen je Sprache, wie viele Texte fehlen, und blenden
      Sprachen aus oder ein, etwa um nur Referenz und Französisch nebeneinander zu sehen. Alt+M (Filter „fehlend“)
-     zeigt nur die Keys, denen in einer sichtbaren Sprache ein Text fehlt.
+     zeigt nur die Keys, denen in einer sichtbaren Sprache ein Text fehlt. Zeilen, die Sie bearbeitet haben, bleiben
+     stehen, bis Sie den Filter oder die sichtbaren Sprachen ändern.
    - **Befunde erkennen:** Eine Zelle mit Warnung (etwa „⚠ fehlt“ oder „⚠ leer“) ist gelb hinterlegt, eine mit Fehler
      (etwa „✖ Platzhalter“) rot, jeweils mit einem Balken am Anfang; im hohen Kontrast bleiben Balken und Symbol.
      Hinweise wie „ℹ wie Referenz“ bleiben ohne Fläche und Balken. „–“ heißt: kein eigener Text, die Sprache zeigt

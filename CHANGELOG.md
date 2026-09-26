@@ -17,6 +17,8 @@ Phasen 5 und 6 vorgezogen sind, zählt sie weiter, ohne die Phase zu nennen. Die
   Maustaste; die Zeile wurde wieder klein, die Zellen darunter rückten nach oben, und der Klick traf beim Loslassen
   eine andere Stelle: Die angeklickte Zelle öffnete sich nicht, man musste ein zweites Mal klicken. Jetzt speichert
   der Klick erst beim Loslassen.
+- **Bearbeitete Zeilen bleiben im Filter**, bis der Filter oder die sichtbaren Sprachen wechseln. Mit „fehlend“
+  (Alt+M) verschwand eine Zeile, sobald ihr Text gespeichert war, und die Zeilen darunter rückten nach.
 - **Befunde farbig:** Zellen mit Warnung (etwa „fehlt“, „leer“) sind gelb hinterlegt, Zellen mit Fehler (etwa
   Platzhalter) rot, jeweils mit einem Balken am Anfang; ebenso die Texte in der Liste und in den Details. Symbol und
   Wort bleiben, im hohen Kontrast bleiben Balken und Symbol. Die Symbole nutzen die Listenfarben des Themes, die auch
