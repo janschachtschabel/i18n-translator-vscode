@@ -180,6 +180,31 @@ describe('cell editor in the table', () => {
     expect(field().getAttribute('aria-describedby')?.split(' ')).toContain(error.id);
   });
 
+  it('shows a change of its text outside the editor, with the choice to take it or keep the draft', async () => {
+    const { send, posted } = open();
+    act(() => cellOf('SAVE', 2).focus());
+    press('Enter');
+    typeText('Sauver');
+    const save = model.rows[0]!;
+    send({
+      type: 'patch',
+      patch: { rows: [{ ...save, cells: { ...save.cells, fr: text('Sauvegarder') } }] },
+    });
+    const conflict = document.getElementById('cell-editor-conflict')!;
+    expect(conflict.textContent).toContain('Außerhalb des Editors geändert: Sauvegarder');
+    expect(field().getAttribute('aria-describedby')?.split(' ')).toContain(conflict.id);
+    expect(within(conflict).getByText('Sauvegarder').getAttribute('lang')).toBe('fr');
+    expect(field().value).toBe('Sauver');
+    expect(await axeProblems()).toEqual([]);
+    // Tab leads to the choice instead of saving.
+    expect(fireEvent.keyDown(field(), { key: 'Tab' })).toBe(true);
+    act(() => void fireEvent.click(within(conflict).getByRole('button', { name: 'Meinen behalten' })));
+    expect(document.getElementById('cell-editor-conflict')).toBeNull();
+    expect(document.activeElement).toBe(field());
+    press('Enter');
+    expect(posted.at(-1)).toMatchObject({ type: 'edit', value: 'Sauver', before: 'Sauvegarder' });
+  });
+
   it('says while typing how placeholders and tags compare with the reference', () => {
     open();
     act(() => cellOf('ERROR_TITLE', 2).focus());

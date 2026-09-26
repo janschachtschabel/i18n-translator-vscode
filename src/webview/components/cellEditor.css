@@ -29,3 +29,11 @@
 .editor-hint {
   color: var(--vscode-descriptionForeground);
 }
+
+/* The text changed outside the editor: the choice below its message. */
+.editor-choice {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  margin-block-start: 4px;
+}

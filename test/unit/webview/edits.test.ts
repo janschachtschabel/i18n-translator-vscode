@@ -218,6 +218,54 @@ describe('editing', () => {
     expect(store.rows.value[1]).toBe(before[1]);
   });
 
+  it('keeps the draft when the text of its cell changes outside, and says so', () => {
+    const { store } = open();
+    store.edit(id('SAVE'), 'fr');
+    store.edits.draft.value = 'Sauver';
+    const save = model.rows[0]!;
+    const changed = (value: string | undefined) => ({
+      type: 'patch' as const,
+      patch: { rows: [{ ...save, cells: { ...save.cells, fr: text(value) } }] },
+    });
+    store.receive(changed('Sauvegarder'));
+    expect(store.edits.open.value?.conflict).toEqual({ text: 'Sauvegarder' });
+    expect(store.edits.draft.value).toBe('Sauver');
+    expect(store.announcement.value.text).toBe(
+      'SAVE in fr wurde außerhalb des Editors geändert. Übernehmen Sie den neuen Text, oder behalten Sie Ihren.',
+    );
+    store.receive(changed(undefined));
+    expect(store.edits.open.value?.conflict).toEqual({ text: undefined });
+    // Back to the text editing began with: no conflict any more.
+    store.receive(changed('Enregistrer'));
+    expect(store.edits.open.value?.conflict).toBeUndefined();
+  });
+
+  it('takes the changed text, or keeps the draft to replace it, as the user chooses', () => {
+    const { store, edits } = open();
+    const save = model.rows[0]!;
+    const changed = {
+      type: 'patch' as const,
+      patch: { rows: [{ ...save, cells: { ...save.cells, fr: text('Sauvegarder') } }] },
+    };
+    store.edit(id('SAVE'), 'fr');
+    store.edits.draft.value = 'Sauver';
+    store.receive(changed);
+    store.edits.keepMine();
+    expect(store.edits.open.value).toMatchObject({ before: 'Sauvegarder', conflict: undefined });
+    store.edits.commit();
+    expect(edits()).toEqual([expect.objectContaining({ value: 'Sauver', before: 'Sauvegarder' })]);
+
+    store.edit(id('SAVE'), 'fr');
+    store.edits.draft.value = 'Sauver tout';
+    store.receive({
+      ...changed,
+      patch: { rows: [{ ...save, cells: { ...save.cells, fr: text('Tout sauver') } }] },
+    });
+    store.edits.takeTheirs();
+    expect(store.edits.draft.value).toBe('Tout sauver');
+    expect(store.edits.open.value).toMatchObject({ before: 'Tout sauver', conflict: undefined });
+  });
+
   it('starts afresh when the webview loads again', () => {
     const { store, cell, type } = open();
     type('SAVE', 'fr', 'Sauver');

@@ -9,6 +9,7 @@ import { inlineCheck, type CheckLine } from './inlineCheck';
 
 // One editor is open at a time, so these ids are unique.
 const ERROR_ID = 'cell-editor-error';
+const CONFLICT_ID = 'cell-editor-conflict';
 const CHECK_ID = 'cell-editor-check';
 const HINT_ID = 'cell-editor-hint';
 
@@ -54,7 +55,8 @@ export function CellEditor({ store, editor, locale, keyText, referenceText }: Ce
     if (event.key === 'Escape' && !command && !event.altKey && !event.shiftKey) {
       handled(event);
       edits.cancel();
-    } else if (event.key === 'Tab' && !command && !event.altKey) {
+    } else if (event.key === 'Tab' && !command && !event.altKey && !editor.conflict) {
+      // In a conflict, Tab leads to the choice below the field instead.
       handled(event);
       store.editNext(event.shiftKey ? -1 : 1);
     } else if (event.key === 'Enter' && !event.altKey && !event.shiftKey && (command || !multiline)) {
@@ -73,7 +75,18 @@ export function CellEditor({ store, editor, locale, keyText, referenceText }: Ce
     }, 0);
   };
 
-  const describedBy = [editor.error !== undefined && ERROR_ID, CHECK_ID, HINT_ID].filter(Boolean).join(' ');
+  const describedBy = [
+    editor.conflict && CONFLICT_ID,
+    editor.error !== undefined && ERROR_ID,
+    CHECK_ID,
+    HINT_ID,
+  ]
+    .filter(Boolean)
+    .join(' ');
+  const resolve = (choice: 'takeTheirs' | 'keepMine') => {
+    edits[choice]();
+    field.current?.focus();
+  };
   return (
     <div class={EDITOR_CLASS}>
       <textarea
@@ -91,6 +104,33 @@ export function CellEditor({ store, editor, locale, keyText, referenceText }: Ce
         onKeyDown={onKeyDown}
         onBlur={onBlur}
       />
+      {editor.conflict && (
+        <div id={CONFLICT_ID} class="editor-conflict">
+          <p class="editor-note">
+            <span aria-hidden="true" class="status-symbol warning">
+              {SEVERITY_SYMBOLS.warning}
+            </span>{' '}
+            {editor.conflict.text === undefined ? (
+              l10n.t('Deleted outside the editor.')
+            ) : (
+              <>
+                {l10n.t('Changed outside the editor:')}{' '}
+                <span lang={locale.lang} dir="auto">
+                  {editor.conflict.text}
+                </span>
+              </>
+            )}
+          </p>
+          <div class="editor-choice">
+            <button type="button" onClick={() => resolve('takeTheirs')}>
+              {l10n.t('Take It')}
+            </button>
+            <button type="button" onClick={() => resolve('keepMine')}>
+              {l10n.t('Keep Mine')}
+            </button>
+          </div>
+        </div>
+      )}
       {editor.error !== undefined && (
         <p id={ERROR_ID} class="editor-note">
           <span aria-hidden="true" class="status-symbol error">

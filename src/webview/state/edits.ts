@@ -20,6 +20,8 @@ export interface OpenEditor extends CellRef {
   /** Why the text the editor starts with was not saved before, if it was not. */
   error: string | undefined;
   place: EditorPlace;
+  /** The cell's text changed outside the editor while it was open: to this text (undefined: deleted). */
+  conflict?: { text: string | undefined } | undefined;
 }
 
 /** A text sent to the host. */
@@ -109,6 +111,26 @@ export class Edits {
     this.send(cell, '', shown);
   }
 
+  /** Takes the text that changed outside the editor: the draft becomes it, and saving compares with it. */
+  takeTheirs(): void {
+    const open = this.open.value;
+    const conflict = open?.conflict;
+    if (open && conflict) {
+      batch(() => {
+        this.open.value = { ...open, before: conflict.text, conflict: undefined };
+        this.draft.value = conflict.text ?? '';
+      });
+    }
+  }
+
+  /** Keeps the draft, so that saving it replaces the text that changed outside the editor. */
+  keepMine(): void {
+    const open = this.open.value;
+    if (open?.conflict) {
+      this.open.value = { ...open, before: open.conflict.text, conflict: undefined };
+    }
+  }
+
   /** Closes the editor without sending its text; a text that was not saved in its cell is given up too. */
   cancel(): void {
     const open = this.open.value;
@@ -175,6 +197,8 @@ export class Edits {
             key: displayKey(keyFromId(open.entryId)),
           }),
         );
+      } else if (open) {
+        this.checkConflict(open, model);
       }
     });
   }
@@ -186,6 +210,30 @@ export class Edits {
       this.pending.value = [];
       this.rejected.value = new Map();
     });
+  }
+
+  /**
+   * The text of the open editor's cell changed outside it (another program, a merge): the draft stays, and the
+   * editor offers to take the new text or keep the draft. Back to the text editing began with, there is none.
+   */
+  private checkConflict(open: OpenEditor, model: BundleViewModel): void {
+    const current = model.rows.find((row) => row.entryId === open.entryId)?.cells[open.locale]?.value;
+    if (current === open.before) {
+      if (open.conflict) {
+        this.open.value = { ...open, conflict: undefined };
+      }
+      return;
+    }
+    if (open.conflict && open.conflict.text === current) {
+      return;
+    }
+    this.open.value = { ...open, conflict: { text: current } };
+    this.announce(
+      l10n.t('{key} in {locale} changed outside the editor. Take the new text, or keep yours.', {
+        key: displayKey(keyFromId(open.entryId)),
+        locale: open.locale,
+      }),
+    );
   }
 
   private send(cell: CellRef, value: string, before: string | undefined): void {

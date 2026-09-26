@@ -1040,6 +1040,23 @@ was nicht ausdrücklich geändert wurde.
 >   - Ein neuer Key steht hinter seinem Vorgänger, und die Rückfrage beim geteilten obersten Key kommt.
 >   - Löschen und die Wahl des Ziels funktionieren.
 > - **Für 2.18 (Abnahme, von Hand):** die Dialoge der vier Befehle, das Kontextmenü im Editor und die Titelleiste.
+>
+> **Umsetzungsnotizen Task 2.15 (26.09.2026):**
+> - **Index je Wurzel:**
+>   - `refreshRoot(ref)` liest und prüft nur eine Wurzel, ohne die Suche nach Wurzeln, die den größten Teil eines Laufs ausmacht. Es läuft nach Schreiben, Undo und Wiederherstellen (für die Wurzeln der betroffenen Dateien) und für den Watcher einer Wurzel.
+>   - Volle Läufe bleiben für Einstellungen, Ordner, Vertrauen, Marker-Dateien und „Prüfen“. Die erkannten Wurzeln hält der Snapshot bis zum nächsten vollen Lauf.
+>   - Ein Lauf auf Dateien, die die Revisionen des letzten haben, tut nichts. So analysiert und meldet der Watcher-Lauf nach einem Schreiben nicht mehr ein zweites Mal (Gegenprobe: ohne das Überspringen schlagen beide neuen Tests fehl).
+>   - Alle Läufe, voll oder je Wurzel, laufen nacheinander. Die Lesefehler stehen je Wurzel, damit ein Lauf nur seine eigenen ersetzt.
+>   - `RootRef` gehört jetzt zum Index; Suchen, Auflisten und Lesen stehen in `rootFiles.ts`.
+> - **Patch:**
+>   - Hat die Webview ein Modell, schickt der Host nach jedem Lauf nur die neuen oder geänderten Zeilen (`src/shared/patch.ts`). Reihenfolge, Sprachen und Befunde der Einheit kommen nur mit, wenn sie sich änderten; betraf der Lauf eine andere Einheit, kommt nichts.
+>   - Die Webview behält alle anderen Zeilen als dieselben Objekte, deshalb rendert eine geänderte Zelle eine Zeile neu, und Fokus und Scrollposition bleiben.
+>   - Nach `ready` oder `missing` kommt wieder das ganze Modell.
+> - **Konflikt:**
+>   - Ändert sich der Text der gerade bearbeiteten Zelle außerhalb des Editors, bleibt der Entwurf. Das Feld zeigt den neuen Text (in seiner Sprache) mit „Übernehmen“ und „Meinen behalten“, und eine Ansage folgt. Kehrt der Text zum Ausgangstext zurück, verschwindet der Konflikt.
+>   - Im Konflikt führt Tab zu den beiden Schaltflächen, statt zu speichern.
+>   - Enter speichert gegen den alten Stand. Der Host lehnt das ab (B5), und der Entwurf bleibt als „nicht gespeichert“ erhalten, statt ungefragt zu überschreiben.
+> - **Für das Review von Block C:** `workspaceIndex.ts` hat 361 Zeilen (über der Marke von 300), bleibt aber bei einer Aufgabe; `fileStore.ts` hatte schon vorher 360.
 
 ### Task 2.1: Textbausteine für das Schreiben
 **Dateien:** Create `src/core/text/edits.ts`, `src/core/text/style.ts`; Test: `test/unit/core/text/edits.test.ts`, `style.test.ts`
