@@ -39,7 +39,8 @@ jobs:
       - run: npm run test:coverage
       - run: npm run build
       # The VS Code builds of the integration tests, kept for a month: stable changes, 1.90.0 does not. Only the
-      # downloads: the tests' user data must start empty.
+      # downloads: the tests' user data must start empty. Each month starts afresh, without the cache of the month
+      # before, which would carry every old stable build along.
       - name: Month
         id: month
         shell: bash
@@ -48,7 +49,6 @@ jobs:
         with:
           path: .vscode-test/vscode-*
           key: vscode-test-${{ runner.os }}-${{ steps.month.outputs.month }}
-          restore-keys: vscode-test-${{ runner.os }}-
       # Integration tests need a display on Linux; there they run against VS Code 1.90.0 and stable, and in a
       # workspace of several folders.
       - name: Integration tests
