@@ -1,9 +1,11 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import type { AreaDefinition } from '../../src/core/area/areaDefinition';
 import { formatMessage, ISSUE_MESSAGES } from '../../src/core/checks/messages';
 import { analysisOptions, DEFAULT_SETTINGS } from '../../src/core/config/settings';
 import type { Issue, RuleId, Severity } from '../../src/core/checks/types';
 import { rootsFromMarkers } from '../../src/core/discovery/discover';
+import { ADAPTERS } from '../../src/core/formats/registry';
 import { analyzeRoot, filesToRead, type RootAnalysis } from '../../src/core/pipeline/analyze';
 import { createLineIndex, type LineIndex } from '../../src/core/text/lineIndex';
 import { listFiles } from './fsScan';
@@ -34,27 +36,69 @@ export interface Report {
 
 const SEVERITIES: Severity[] = ['error', 'warning', 'info'];
 
+export interface RoundTrip {
+  files: number;
+  /** Files whose bytes differ after reading and writing them back; none, if nothing is lost. */
+  changed: string[];
+}
+
 /** Runs the check catalog of every preset over a repository checkout, with the extension's default settings. */
 export function checkRepository(repositoryPath: string): Report {
   const paths = listFiles(repositoryPath);
   const { options } = analysisOptions(DEFAULT_SETTINGS);
   const roots: RootReport[] = [];
-  for (const area of DEFAULT_SETTINGS.areas) {
-    const areaRoots = area.detect ? rootsFromMarkers(paths, area.detect.marker) : area.roots;
-    for (const root of areaRoots) {
-      const files = filesToRead(area, root, paths).map((relPath) => ({
-        relPath,
-        bytes: readFileSync(join(repositoryPath, relPath)),
-      }));
-      const analysis = analyzeRoot(area, root, files, options);
-      roots.push(toRootReport(analysis));
-    }
+  for (const { area, root } of areaRoots(paths)) {
+    const files = filesToRead(area, root, paths).map((relPath) => ({
+      relPath,
+      bytes: readFileSync(join(repositoryPath, relPath)),
+    }));
+    const analysis = analyzeRoot(area, root, files, options);
+    roots.push(toRootReport(analysis));
   }
   const totals = { error: 0, warning: 0, info: 0 };
   for (const issue of roots.flatMap((root) => root.issues)) {
     totals[issue.severity]++;
   }
   return { roots, totals };
+}
+
+/**
+ * Reads every translation file of the presets with its format adapter and writes it back without an edit: the
+ * bytes must not change (encoding, byte order mark, escapes, line breaks).
+ */
+export function roundTrip(repositoryPath: string): RoundTrip {
+  const paths = listFiles(repositoryPath);
+  const result: RoundTrip = { files: 0, changed: [] };
+  for (const { area, root } of areaRoots(paths)) {
+    const adapter = ADAPTERS[area.format];
+    for (const relPath of filesToRead(area, root, paths)) {
+      const bytes = readFileSync(join(repositoryPath, relPath));
+      const written = adapter.encode(adapter.applyOps(adapter.decode(bytes), []));
+      result.files++;
+      if (!Buffer.from(written).equals(bytes)) {
+        result.changed.push(relPath);
+      }
+    }
+  }
+  return result;
+}
+
+export function formatRoundTrip({ files, changed }: RoundTrip): string {
+  return changed.length === 0
+    ? `Round trip: ${plural(files, 'file')}, all byte-identical`
+    : [
+        `Round trip: ${plural(files, 'file')}, ${changed.length} changed:`,
+        ...changed.map((path) => `  ${path}`),
+      ].join('\n');
+}
+
+/** Every root of every preset in the checkout: detected by its marker, or as configured. */
+function* areaRoots(paths: readonly string[]): Generator<{ area: AreaDefinition; root: string }> {
+  for (const area of DEFAULT_SETTINGS.areas) {
+    for (const root of area.detect ? rootsFromMarkers(paths, area.detect.marker) : area.roots) {
+      yield { area, root };
+    }
+  }
 }
 
 function toRootReport(analysis: RootAnalysis): RootReport {

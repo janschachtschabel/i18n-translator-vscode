@@ -1,6 +1,6 @@
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { checkRepository, formatReport } from '../../../scripts/lib/checkRepo';
+import { checkRepository, formatReport, formatRoundTrip, roundTrip } from '../../../scripts/lib/checkRepo';
 
 const workspace = join(__dirname, '..', '..', 'fixtures', 'workspace-basic');
 
@@ -38,5 +38,19 @@ describe('formatReport', () => {
     expect(text).toMatch(/placeholder-mismatch\s+error\s+1/);
     expect(text).toContain('Frontend/src/assets/i18n/common/fr.json:2');
     expect(text).toContain('Total: 3 errors, 15 warnings, 3 infos');
+  });
+});
+
+describe('roundTrip', () => {
+  it('reads and writes back every translation file of the presets without changing a byte', () => {
+    expect(roundTrip(workspace)).toEqual({ files: 14, changed: [] });
+  });
+
+  it('says how many files kept their bytes, or which did not', () => {
+    expect(formatRoundTrip({ files: 14, changed: [] })).toBe('Round trip: 14 files, all byte-identical');
+    expect(formatRoundTrip({ files: 2, changed: ['a.json'] }).split('\n')).toEqual([
+      'Round trip: 2 files, 1 changed:',
+      '  a.json',
+    ]);
   });
 });
