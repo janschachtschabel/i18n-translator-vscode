@@ -3,6 +3,8 @@ name: CI
 on:
   push:
     branches: [main]
+    # A version tag builds and tests like any commit, then the job release publishes its VSIX.
+    tags: ['v*']
   pull_request:
 
 permissions:
@@ -72,3 +74,35 @@ jobs:
           name: vsix
           path: '*.vsix'
           if-no-files-found: error
+
+  # For a version tag, a GitHub release with the VSIX that the build above packaged and smoke-tested, once both
+  # systems passed. It goes out twice: with its version in the name, and as edu-sharing-i18n.vsix, so that
+  # .../releases/latest/download/edu-sharing-i18n.vsix always names the newest (README, installation).
+  release:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          name: vsix
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          REPO: ${{ github.repository }}
+        run: |
+          version="$(jq -r .version package.json)"
+          if [ "$TAG" != "v$version" ]; then
+            echo "::error::The tag $TAG does not match the version $version in package.json."
+            exit 1
+          fi
+          cp "edu-sharing-i18n-$version.vsix" edu-sharing-i18n.vsix
+          gh release create "$TAG" "edu-sharing-i18n-$version.vsix" edu-sharing-i18n.vsix \
+            --repo "$REPO" --verify-tag --title "edu-sharing i18n $version" \
+            --notes "Installation: https://github.com/$REPO#installation · Änderungen: https://github.com/$REPO/blob/$TAG/CHANGELOG.md"
