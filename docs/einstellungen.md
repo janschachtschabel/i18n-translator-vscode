@@ -37,7 +37,7 @@ Drei Regeln gelten für alle Einstellungen:
 |---|---|---|
 | `eduI18n.referenceLanguage` | `de` | Sprache, mit der verglichen wird |
 | `eduI18n.baseFileLanguage` | `en` | Sprache der Dateien ohne Sprachsuffix |
-| `eduI18n.areas` | `[]` | eigene Übersetzungsbereiche oder Ersatz des eingebauten |
+| `eduI18n.areas` | `[]` | eigene Übersetzungsbereiche oder Ersatz eines eingebauten |
 | `eduI18n.roots` | `{}` | feste Wurzelordner je Bereich statt der Erkennung |
 | `eduI18n.exclude` | `node_modules`, `.git`, `dist`, `out`, `target`, `build` | Ordner, die nie durchsucht werden |
 | `eduI18n.variants` | `de-informal`, `de-no-binnen-i` | dünn besetzte Sprachvarianten und ihre Regeln |
@@ -61,8 +61,11 @@ Standard: `de`. An dieser Sprache misst die Extension die anderen:
 ### `eduI18n.baseFileLanguage`
 
 Standard: `en`. Die Sprache von Dateien ohne Sprachsuffix. Sie zählt nur für Bereiche, deren Dateimuster die Sprache
-optional macht (`[…]` in `files`, etwa `{bundle}[_{locale}].json`). Im Angular-JSON von edu-sharing hat jede Datei
-ein Suffix.
+optional macht (`[…]` in `files`, etwa `{bundle}[_{locale}].properties`):
+- Bei edu-sharing sind das `mds.properties` und die anderen Gruppen der Metadatasets sowie `templates.xml` der
+  Mail-Templates. edu-sharing liest sie als letzten Rückfall.
+- Der Editor nennt eine solche Datei `default (en)`.
+- Im Angular-JSON hat jede Datei ein Suffix.
 
 ## Bereiche und Ordner
 
@@ -71,7 +74,7 @@ Ein **Bereich** ist eine Art von Übersetzungsdateien:
 - ein Pfadmuster unterhalb eines Wurzelordners,
 - ein Muster für den Teil des Pfads, der die Sprache nennt.
 
-Eingebaut ist `edu-sharing.angular`:
+Eingebaut sind drei Bereiche. Angular-JSON, `edu-sharing.angular`:
 
 ```json
 {
@@ -86,21 +89,57 @@ Eingebaut ist `edu-sharing.angular`:
 }
 ```
 
+Metadatasets, `edu-sharing.mds`:
+
+```json
+{
+  "id": "edu-sharing.mds",
+  "label": "Metadatasets",
+  "format": "properties",
+  "files": "{bundle}[_{locale}].properties",
+  "localePattern": "[a-z]{2}_[A-Z]{2}",
+  "ignoredKeys": ["this_is_a_bug_the_first_line_will_not_be_translated"],
+  "placeholderSyntax": "single-brace",
+  "detect": { "glob": "**/metadatasets/i18n/mds.properties", "marker": "mds.properties" }
+}
+```
+
+Mail-Templates, `edu-sharing.mail`:
+
+```json
+{
+  "id": "edu-sharing.mail",
+  "label": "Mail templates",
+  "format": "mail-xml",
+  "files": "templates[_{locale}].xml",
+  "localePattern": "[a-z]{2}_[A-Z]{2}",
+  "bundleName": "templates",
+  "detect": { "glob": "**/mailtemplates/templates.xml", "marker": "templates.xml" }
+}
+```
+
 So funktioniert die Erkennung:
-- Sie findet jede Datei `common/de.json` im Arbeitsbereichsordner.
-- Der Ordner über `common` ist eine Wurzel, bei edu-sharing `Frontend/src/assets/i18n`.
-- Jeder Unterordner der Wurzel ist eine Einheit (`common`, `admin`, …), jede Datei darin eine Sprache.
+- Sie findet jede Markerdatei (`glob`) im Arbeitsbereichsordner, auch in Unterordnern, etwa in einem Datenordner.
+- Der Pfad vor dem Marker ist eine Wurzel, bei edu-sharing `Frontend/src/assets/i18n`,
+  `config/defaults/src/main/resources/metadatasets/i18n` und `…/mailtemplates`.
+- Unter der Wurzel ordnet `files` jede Datei einer Einheit und einer Sprache zu:
+  - Angular: jeder Unterordner eine Einheit (`common`, `admin`, …), jede Datei darin eine Sprache;
+  - Metadatasets: `mds_de_DE.properties` gehört zur Einheit `mds` und zur Sprache `de_DE`, `mds.properties` zur Datei
+    ohne Suffix (`default`);
+  - Mail-Templates: alle Dateien bilden die Einheit `templates`; `templates_de_DE_override.xml` gehört nicht dazu.
+- Die Referenz ist überall `de` (`eduI18n.referenceLanguage`); bei Metadatasets und Mail-Templates passt sie auf
+  `de_DE`.
 
 ### `eduI18n.areas`
 
-Standard: `[]`, also nur der eingebaute Bereich. Eigene Bereiche kommen hinzu; ein Bereich mit der `id` des
+Standard: `[]`, also nur die eingebauten Bereiche. Eigene Bereiche kommen hinzu; ein Bereich mit der `id` eines
 eingebauten ersetzt diesen.
 
 | Feld | Pflicht | Bedeutung |
 |---|---|---|
-| `id` | ja | eindeutige ID; die ID des eingebauten Bereichs ersetzt diesen |
+| `id` | ja | eindeutige ID; die ID eines eingebauten Bereichs ersetzt diesen |
 | `label` | | Name in den Ansichten; Standard: die ID |
-| `format` | ja | Dateiformat; heute nur `json-nested` (verschachteltes JSON wie bei Angular) |
+| `format` | ja | Dateiformat: `json-nested` (verschachteltes JSON wie bei Angular), `properties` (Java-Properties, ein Key ist der ganze Name) oder `mail-xml` (Mail-Templates von edu-sharing) |
 | `files` | ja | Pfad der Dateien unterhalb einer Wurzel, mit `{bundle}` (Einheit) und `{locale}` (Sprache); `[…]` markiert einen optionalen Teil |
 | `localePattern` | ja | regulärer Ausdruck für `{locale}`, ohne `^` und `$` |
 | `roots` | ja, wenn `detect` fehlt | Wurzelordner, relativ zum Arbeitsbereichsordner |
@@ -110,6 +149,8 @@ eingebauten ersetzt diesen.
 | `referenceLanguage` | | Referenzsprache dieses Bereichs; Standard: `eduI18n.referenceLanguage` |
 | `bundleOrder` | | Reihenfolge, in der die Anwendung die Einheiten lädt |
 | `mergeSemantics` | | `shallow-toplevel` oder `none`, siehe unten |
+| `ignoredKeys` | | Keys, die keine Übersetzungen sind: Einheit, Prüfungen und Editor lassen sie aus, die Dateien behalten sie, und neue Keys kommen nie davor |
+| `placeholderSyntax` | | `double-brace` (Standard, `{{name}}`) oder `single-brace` (`{name}`); danach prüft die Extension Platzhalter. `{{GENDER_SEPARATOR}}` gilt in beiden |
 
 `mergeSemantics`:
 - `shallow-toplevel`: Die Anwendung führt die Einheiten flach zusammen; eine spätere Einheit ersetzt ganze Werte der
@@ -148,7 +189,8 @@ Standard: `{}`. Feste Wurzelordner je Bereichs-ID, relativ zum Arbeitsbereichsor
 
 ```json
 "eduI18n.roots": {
-  "edu-sharing.angular": ["Frontend/src/assets/i18n"]
+  "edu-sharing.angular": ["Frontend/src/assets/i18n"],
+  "edu-sharing.mds": ["config/defaults/src/main/resources/metadatasets/i18n"]
 }
 ```
 

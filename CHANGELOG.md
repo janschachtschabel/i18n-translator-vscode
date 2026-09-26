@@ -1,8 +1,32 @@
 # Änderungen
 
-Die nennenswerten Änderungen der Extension je Version. Die Version folgt den Phasen der
-[Taskliste](docs/plans/2026-09-24-edu-sharing-i18n-vscode-tasks.md): `0.<Phase>.<Korrektur>`. Die Installation
-beschreibt das [README](README.md#installation).
+Die nennenswerten Änderungen der Extension je Version. Die Version zählt die Ausbaustufen: `0.<Stufe>.<Korrektur>`.
+Bis 0.2 entsprach die Stufe der Phase der [Taskliste](docs/plans/2026-09-24-edu-sharing-i18n-vscode-tasks.md); seit die
+Phasen 5 und 6 vorgezogen sind, zählt sie weiter, ohne die Phase zu nennen. Die Installation beschreibt das
+[README](README.md#installation).
+
+## 0.3.0 – 26.09.2026
+
+Metadatasets und Mail-Templates kommen hinzu, vorgezogen vor Füllen und Import/Export. Ein edu-sharing-Checkout oder
+ein Datenordner wie der der alten i18n-App (`data/1.0.0/` mit `json/`, `metadatasets/i18n/` und `mailtemplates/`)
+zeigt jetzt alle drei Bereiche, jeden im selben Editor mit einer Spalte je Sprache.
+
+- **Metadatasets (`.properties`):**
+  - Eine Einheit je Gruppe (`mds`, `valuespaces_i18n`, …), Referenz `de_DE`. Die Datei ohne Sprachkürzel heißt im
+    Editor `default (en)`.
+  - Gelesen wie von Java, mit Fortsetzungszeilen, Escapes und Kommentaren; doppelte Keys werden gemeldet.
+  - Jede Datei behält ihr Encoding. Zeichen, die ISO-8859-1 nicht kennt, schreibt die Extension dort als `\uXXXX`.
+  - Platzhalter mit einer Klammer (`{user}`) prüft sie als Platzhalter.
+  - Die Wächterzeile am Anfang der Hauptdateien bleibt verborgen und an erster Stelle.
+- **Mail-Templates (XML):**
+  - Eine Einheit `templates`, je Template eine Zeile für den Betreff und eine für die Nachricht.
+  - Fehlt einer Sprache ein Feld oder ein ganzes Template, legt das Füllen der Zelle es an der Stelle der Referenz an.
+  - Geschrieben wird nur der geänderte Text; CDATA, das Stylesheet, Kommentare und Einrückung bleiben.
+- **Neue Sprache:** Die Abfrage schlägt einen Code in der Form des Bereichs vor (`es` oder `es_ES`).
+- **Eigene Bereiche:** die Formate `properties` und `mail-xml` sowie die Felder `ignoredKeys` und `placeholderSyntax`,
+  siehe [Einstellungen](docs/einstellungen.md#edui18nareas).
+- **Geprüft gegen edu-sharing:** Alle 116 Übersetzungsdateien des Repositorys lassen sich lesen und byte-gleich
+  zurückschreiben (`npm run check:repo -- <Checkout> --roundtrip`).
 
 ## 0.2.2 – 26.09.2026
 

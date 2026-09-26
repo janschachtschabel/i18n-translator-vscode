@@ -65,7 +65,8 @@ Meldungen zu Links macht und Namen aus dem Arbeitsbereich darin stehen.
 
 ## Release
 
-Die Version folgt den Phasen: `0.<Phase>.<Korrektur>`. Eine Release entsteht aus einem Tag auf `main`:
+Die Version zählt die Ausbaustufen: `0.<Stufe>.<Korrektur>` (bis 0.2 gleich der Phase; seit die Phasen 5 und 6
+vorgezogen sind, zählt sie weiter). Eine Release entsteht aus einem Tag auf `main`:
 
 1. Die Version anheben und `CHANGELOG.md` ergänzen, beides per Pull Request nach `main`.
    `npm version <x.y.z> --no-git-tag-version` passt `package.json` und `package-lock.json` an.

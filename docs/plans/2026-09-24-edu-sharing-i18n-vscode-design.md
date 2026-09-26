@@ -271,6 +271,12 @@ export type FileOp =
 > **Stand Phase 2 (Tasks, Entscheidungen B3/B4):** Der JSON-Adapter schreibt mit eigenen Textoperationen
 > (`applyOps` liefert den neuen Text statt `TextEdit[]`); `jsonc-parser` dient nur zum Parsen, weil `modify`
 > benachbarte Zeilen neu formatiert. `encode(doc)` nimmt das Dokument samt Encoding und BOM.
+>
+> **Stand Phasen 5 und 6 (Kern), 26.09.2026 (Entscheidungen M1–M5, T1–T4 der Taskliste):** Alle Adapter kennen nur
+> das Feld `value`. Ein Mail-Eintrag ist `[Template, Feld]` mit Feld `subject` oder `message`, der Editor zeigt je
+> Feld eine Zeile; `fieldMode` entfällt. Keys von `.properties` sind ein Segment (`flatKeys`). Metadatasets schreiben
+> Platzhalter mit einer Klammer (`{user}`), daher kennt ein Bereich seine `placeholderSyntax`. Die Wächterzeile der
+> MDS-Dateien blendet `ignoredKeys` aus.
 
 **Golden-Regeln (Tests für jeden Adapter):**
 1. Laden und ohne Änderung schreiben ergibt **byte-identische** Dateien.
@@ -675,6 +681,11 @@ zusätzlich `/better-coding-frontend`).
 
 Umfang: S ≈ 0,5–1 Tag · M ≈ 2–3 Tage · L ≈ 4–5 Tage (grobe Schätzung; gesamt etwa 20–25 Tage).
 
+**Geänderte Reihenfolge (26.09.2026):** Der Nutzer öffnet den Datenordner der alten App und möchte alle drei Bereiche
+wie dort nebeneinander vergleichen und füllen. Phase 5 und der Kern von Phase 6 (Lesen, Schreiben, Regeln,
+Bearbeiten in der Tabelle) kommen deshalb vor den Phasen 3 und 4; Template-Ansicht mit Vorschau und KI für Templates
+folgen mit der KI. Die Tasks stehen in der Taskliste unter „Phasen 5 und 6 (Kern)".
+
 ## 12. Verifikationsplan
 
 | Anforderung | Nachweis (stärkstes verfügbares Mittel) | Erfolg | Misserfolg |
@@ -713,7 +724,7 @@ Umfang: S ≈ 0,5–1 Tag · M ≈ 2–3 Tage · L ≈ 4–5 Tage (grobe Schätz
 | E2 | Webview-Technik | **Preact + native HTML + VS-Code-Theme-Variablen** | React + react-aria-components (stark bei a11y, schwer) · Lit + @vscode-elements (VS-Code-Look, Shadow-DOM-Hürden) |
 | E3 | Schreibstrategie | **byte-genaue Adapter + Dirty-Guard + Sitzungs-Undo + Backups** | `WorkspaceEdit` auf TextDocuments (natives Undo, aber Encoding-Fallen bei Latin-1 und Nebenwirkungen durch Format-on-Save) |
 | E4 | Metadaten | **`.edu-i18n/metadata.json` im Repo (teamweit)** | nur lokal (`workspaceState`) · keine (ohne Kontext und Review) |
-| E5 | Reihenfolge | **Prüfen → Bearbeiten → Füllen/KI → Import/Export → MDS → Mail → Review** | alle drei Formate vor der KI · Import/Export vor der KI |
+| E5 | Reihenfolge | **Prüfen → Bearbeiten → Füllen/KI → Import/Export → MDS → Mail → Review**; am 26.09.2026 geändert: MDS und der Kern von Mail vor Füllen/KI (siehe §11) | alle drei Formate vor der KI · Import/Export vor der KI |
 | E6 | Verteilung | **VSIX über GitHub Releases** | zusätzlich Open VSX (Forks) · VS Marketplace |
 | E7 | UI-Sprache | **DE + EN, folgt VS Code** | nur DE |
 | E8 | Austauschformate v1 | **CSV (Excel), JSON (verschachtelt/flach/Hülle), `.properties`, Mail-XML** | zusätzlich XLIFF 2.0 schon in v1 |
