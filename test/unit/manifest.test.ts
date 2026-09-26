@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { FORMAT_IDS, MERGE_SEMANTICS } from '../../src/core/area/areaDefinition';
+import { PRESETS } from '../../src/core/area/presets';
 import { RULE_IDS } from '../../src/core/checks/types';
 import {
   BACKUP_KEEP_LIMITS,
@@ -22,6 +23,8 @@ interface SettingSchema {
 }
 
 const manifest = JSON.parse(readFileSync(join(__dirname, '..', '..', 'package.json'), 'utf8')) as {
+  activationEvents: string[];
+  keywords: string[];
   contributes: { configuration: { properties: Record<string, SettingSchema> } };
 };
 const properties = manifest.contributes.configuration.properties;
@@ -68,5 +71,20 @@ describe('package.json configuration', () => {
     const area = setting('areas').items?.properties ?? {};
     expect(area['format']?.enum).toEqual([...FORMAT_IDS]);
     expect(area['mergeSemantics']?.enum).toEqual([...MERGE_SEMANTICS]);
+  });
+});
+
+// The listing and the activation name only what the extension can do (audit DOC-02): phases 5 and 6 bring the
+// presets for .properties and mail templates, and their activation with them.
+describe('package.json activation', () => {
+  it('activates for the marker files of the presets, and for no format without one', () => {
+    const markers = manifest.activationEvents
+      .filter((event) => event.startsWith('workspaceContains:'))
+      .map((event) => event.slice('workspaceContains:'.length));
+    expect(markers).toEqual(PRESETS.flatMap((preset) => (preset.detect ? [preset.detect.glob] : [])));
+  });
+
+  it('names no format that has no preset yet', () => {
+    expect(manifest.keywords).not.toContain('properties');
   });
 });

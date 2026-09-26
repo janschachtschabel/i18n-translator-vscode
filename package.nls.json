@@ -1,6 +1,6 @@
 {
   "displayName": "edu-sharing i18n",
-  "description": "Check, fill, import and export edu-sharing translation files (Angular JSON, metadataset .properties, mail templates).",
+  "description": "Check and edit the translation files of edu-sharing (Angular JSON) in a table or list, with undo and backups.",
   "view.container": "edu-sharing i18n",
   "view.areas": "Areas",
   "view.areas.searching": "Looking for edu-sharing translation files…",
@@ -17,7 +17,7 @@
   "cmd.renameKey": "Rename key…",
   "cmd.deleteKey": "Delete key…",
   "cmd.addLanguage": "Add language…",
-  "untrusted.description": "In Restricted Mode, translations can only be viewed and checked; writing files and AI features are disabled, and the workspace settings for areas, variants and roots are ignored.",
+  "untrusted.description": "In Restricted Mode, translations can only be viewed and checked; writing files is disabled, and the workspace settings for areas, variants and roots are ignored.",
   "config.title": "edu-sharing i18n",
   "config.referenceLanguage": "Language that translations are compared with. `de` also matches `de_DE`.",
   "config.baseFileLanguage": "Language of files without a locale suffix, such as `templates.xml` or `mds.properties`.",

@@ -23,15 +23,12 @@
     "i18n",
     "translation",
     "edu-sharing",
-    "ngx-translate",
-    "properties"
+    "ngx-translate"
   ],
   "main": "./dist/extension.js",
   "l10n": "./l10n",
   "activationEvents": [
     "workspaceContains:**/common/de.json",
-    "workspaceContains:**/mailtemplates/templates.xml",
-    "workspaceContains:**/metadatasets/i18n/mds.properties",
     "onWebviewPanel:eduI18n.editor"
   ],
   "capabilities": {

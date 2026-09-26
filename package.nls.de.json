@@ -1,6 +1,6 @@
 {
   "displayName": "edu-sharing i18n",
-  "description": "Übersetzungsdateien von edu-sharing prüfen, füllen, importieren und exportieren (Angular-JSON, Metadataset-.properties, Mail-Templates).",
+  "description": "Übersetzungsdateien von edu-sharing (Angular-JSON) prüfen und in Tabelle oder Liste bearbeiten, mit Undo und Sicherungen.",
   "view.container": "edu-sharing i18n",
   "view.areas": "Bereiche",
   "view.areas.searching": "Übersetzungsdateien von edu-sharing werden gesucht…",
@@ -17,7 +17,7 @@
   "cmd.renameKey": "Key umbenennen…",
   "cmd.deleteKey": "Key löschen…",
   "cmd.addLanguage": "Sprache hinzufügen…",
-  "untrusted.description": "Im eingeschränkten Modus können Übersetzungen nur angezeigt und geprüft werden; Schreiben und KI-Funktionen sind deaktiviert, und die Arbeitsbereichseinstellungen für Bereiche, Varianten und Wurzeln werden ignoriert.",
+  "untrusted.description": "Im eingeschränkten Modus können Übersetzungen nur angezeigt und geprüft werden; Schreiben ist deaktiviert, und die Arbeitsbereichseinstellungen für Bereiche, Varianten und Wurzeln werden ignoriert.",
   "config.title": "edu-sharing i18n",
   "config.referenceLanguage": "Sprache, mit der Übersetzungen verglichen werden. `de` passt auch auf `de_DE`.",
   "config.baseFileLanguage": "Sprache der Dateien ohne Sprachsuffix, etwa `templates.xml` oder `mds.properties`.",
