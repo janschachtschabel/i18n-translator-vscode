@@ -353,6 +353,14 @@
                   "type": "string"
                 },
                 "description": "%config.areas.ignoredKeys%"
+              },
+              "placeholderSyntax": {
+                "type": "string",
+                "enum": [
+                  "double-brace",
+                  "single-brace"
+                ],
+                "description": "%config.areas.placeholderSyntax%"
               }
             }
           }

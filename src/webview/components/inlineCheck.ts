@@ -1,3 +1,4 @@
+import type { PlaceholderSyntax } from '../../core/area/areaDefinition';
 import { asTag, compareTags, tagSignature } from '../../core/checks/html';
 import { asPlaceholder, compareParams, scanPlaceholders } from '../../core/checks/placeholders';
 import type { Severity } from '../../core/checks/types';
@@ -15,20 +16,25 @@ export interface CheckLine {
  * they match, it says so, if the reference has any. A cleared text is deleted, so the reference applies; as in
  * the checks, a text of only white space counts as none.
  */
-export function inlineCheck(reference: string | undefined, text: string): CheckLine[] {
+export function inlineCheck(
+  reference: string | undefined,
+  text: string,
+  syntax: PlaceholderSyntax = 'double-brace',
+): CheckLine[] {
   if (!reference?.trim() || !text.trim()) {
     return [];
   }
-  const referenceScan = scanPlaceholders(reference);
-  const params = compareParams(referenceScan, scanPlaceholders(text));
+  const referenceScan = scanPlaceholders(reference, syntax);
+  const params = compareParams(referenceScan, scanPlaceholders(text, syntax));
+  const asName = (name: string) => asPlaceholder(name, syntax);
   const tags = compareTags(reference, text);
   const lines: CheckLine[] = [];
   if (params.missing.length > 0) {
-    const names = params.missing.map(asPlaceholder);
+    const names = params.missing.map(asName);
     lines.push({ severity: 'error', text: l10n.t('Missing placeholders: {names}', { names }) });
   }
   if (params.extra.length > 0) {
-    const names = params.extra.map(asPlaceholder);
+    const names = params.extra.map(asName);
     lines.push({
       severity: 'error',
       text: l10n.t('Placeholders the reference does not have: {names}', { names }),

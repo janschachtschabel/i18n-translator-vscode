@@ -1,9 +1,11 @@
 import {
   FORMAT_IDS,
   MERGE_SEMANTICS,
+  PLACEHOLDER_SYNTAXES,
   type AreaDefinition,
   type FormatId,
   type MergeSemantics,
+  type PlaceholderSyntax,
 } from './areaDefinition';
 import { compileFilePattern } from './filePattern';
 import { normalizeRoot } from './rootPath';
@@ -73,6 +75,12 @@ export function parseAreaDefinition(raw: unknown): ParseAreaResult {
     raw.ignoredKeys === undefined || isStringArray(raw.ignoredKeys),
     '"ignoredKeys" must be a list of keys.',
   );
+  const placeholderSyntax = check(
+    raw.placeholderSyntax,
+    raw.placeholderSyntax === undefined ||
+      PLACEHOLDER_SYNTAXES.includes(raw.placeholderSyntax as PlaceholderSyntax),
+    `"placeholderSyntax" must be one of: ${PLACEHOLDER_SYNTAXES.join(', ')}.`,
+  );
   const roots = parseRoots(raw.roots, raw.detect !== undefined, errors);
 
   if (typeof files === 'string' && typeof localePattern === 'string') {
@@ -107,6 +115,7 @@ export function parseAreaDefinition(raw: unknown): ParseAreaResult {
       mergeSemantics: mergeSemantics as MergeSemantics | undefined,
       detect: detect as AreaDefinition['detect'],
       ignoredKeys: ignoredKeys as string[] | undefined,
+      placeholderSyntax: placeholderSyntax as PlaceholderSyntax | undefined,
     }),
   };
 }

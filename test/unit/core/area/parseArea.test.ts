@@ -54,6 +54,15 @@ describe('parseAreaDefinition', () => {
     expect(result.ok ? [] : result.errors).toEqual(['"ignoredKeys" must be a list of keys.']);
   });
 
+  it('accepts the placeholder syntaxes it knows', () => {
+    const single = { ...customArea, placeholderSyntax: 'single-brace' };
+    expect(parseAreaDefinition(single)).toEqual({ ok: true, area: single });
+    const result = parseAreaDefinition({ ...customArea, placeholderSyntax: 'percent' });
+    expect(result.ok ? [] : result.errors).toEqual([
+      '"placeholderSyntax" must be one of: double-brace, single-brace.',
+    ]);
+  });
+
   it('requires roots unless the area can be detected', () => {
     const { roots, ...withoutRoots } = customArea;
     expect(parseAreaDefinition(withoutRoots).ok).toBe(false);

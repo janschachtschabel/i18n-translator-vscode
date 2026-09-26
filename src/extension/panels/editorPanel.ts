@@ -279,18 +279,22 @@ export class EditorPanel implements vscode.Disposable {
       issues: found.root.analysis.issues,
       variants: Object.keys(found.root.settings.variants),
       baseFileLanguage: found.root.settings.baseFileLanguage,
+      ...(found.root.analysis.area.placeholderSyntax
+        ? { placeholderSyntax: found.root.analysis.area.placeholderSyntax }
+        : {}),
       localize,
     });
     const before = this.sent;
     this.sent = model;
-    const patch = before && diffModels(before, model);
     const name = found.bundle.name;
-    if (!before) {
+    // A patch carries no placeholder syntax; it changes only with the area settings, then the whole model goes.
+    if (!before || before.placeholderSyntax !== model.placeholderSyntax) {
       this.services.log.debug(
         `Built the model of ${name} (${model.rows.length} keys) in ${Date.now() - started} ms.`,
       );
       return this.post({ type: 'bundle', model });
     }
+    const patch = diffModels(before, model);
     if (!patch) {
       return Promise.resolve();
     }

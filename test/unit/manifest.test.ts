@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { FORMAT_IDS, MERGE_SEMANTICS } from '../../src/core/area/areaDefinition';
+import { FORMAT_IDS, MERGE_SEMANTICS, PLACEHOLDER_SYNTAXES } from '../../src/core/area/areaDefinition';
 import { PRESETS } from '../../src/core/area/presets';
 import { RULE_IDS } from '../../src/core/checks/types';
 import {
@@ -72,10 +72,11 @@ describe('package.json configuration', () => {
     expect(Object.keys(setting('checks.severity').properties ?? {}).sort()).toEqual([...RULE_IDS].sort());
   });
 
-  it('offers the supported formats and merge semantics for custom areas', () => {
+  it('offers the supported formats, merge semantics and placeholder syntaxes for custom areas', () => {
     const area = setting('areas').items?.properties ?? {};
     expect(area['format']?.enum).toEqual([...FORMAT_IDS]);
     expect(area['mergeSemantics']?.enum).toEqual([...MERGE_SEMANTICS]);
+    expect(area['placeholderSyntax']?.enum).toEqual([...PLACEHOLDER_SYNTAXES]);
   });
 });
 

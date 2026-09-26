@@ -54,6 +54,11 @@ export class EditorStore {
   readonly width = signal(window.innerWidth);
   /** Table, list or compact list: as the user chose, or by width. Changes only when the layout does. */
   readonly layout = computed(() => layoutFor(this.uiState.value.layout, this.width.value));
+  /** How the texts of the bundle write placeholders, for the check while typing. */
+  readonly placeholderSyntax = computed(() => {
+    const view = this.view.value;
+    return (view.kind === 'bundle' && view.model.placeholderSyntax) || 'double-brace';
+  });
   // Their own signals, so that a change of one part of the view state recomputes only what depends on it: a new
   // filter makes no new list of languages (the rows render again only when their props change), and wrapping
   // filters no rows again.

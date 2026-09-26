@@ -37,7 +37,8 @@ export const ANGULAR_PRESET: AreaDefinition = {
 /**
  * Metadataset translations of edu-sharing (`config/defaults/src/main/resources/metadatasets/i18n/`): one bundle per
  * group, `{group}.properties` is the English base file (`default`), `{group}_{locale}.properties` the languages.
- * The first line of the main files is a guard: edu-sharing never reads it, so it stays hidden and first.
+ * The first line of the main files is a guard: edu-sharing never reads it, so it stays hidden and first. Placeholders
+ * have one brace.
  */
 export const MDS_PRESET: AreaDefinition = {
   id: 'edu-sharing.mds',
@@ -47,6 +48,8 @@ export const MDS_PRESET: AreaDefinition = {
   files: '{bundle}[_{locale}].properties',
   localePattern: '[a-z]{2}_[A-Z]{2}',
   ignoredKeys: ['this_is_a_bug_the_first_line_will_not_be_translated'],
+  // edu-sharing fills `{user}` and the like there; only `{{GENDER_SEPARATOR}}` keeps two braces.
+  placeholderSyntax: 'single-brace',
   detect: { glob: '**/metadatasets/i18n/mds.properties', marker: 'mds.properties' },
 };
 

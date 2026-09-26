@@ -1,5 +1,37 @@
 import { describe, expect, it } from 'vitest';
-import { compareParams, scanPlaceholders } from '../../../../src/core/checks/placeholders';
+import {
+  asPlaceholder,
+  compareParams,
+  scanPlaceholders,
+  withoutPlaceholders,
+} from '../../../../src/core/checks/placeholders';
+
+describe('scanPlaceholders with single braces (edu-sharing metadatasets)', () => {
+  it('finds {name} parameters and still the gender marker, which edu-sharing replaces there too', () => {
+    const text = '{user} hat Sie zu "{placeholder}" eingeladen, Autor{{GENDER_SEPARATOR}}in';
+    expect(scanPlaceholders(text, 'single-brace')).toMatchObject({
+      params: ['placeholder', 'user'],
+      genderSeparators: 1,
+      malformed: [],
+    });
+  });
+
+  it('reports stray, empty and doubled braces', () => {
+    expect(scanPlaceholders('{user', 'single-brace').malformed).toEqual([{ index: 0, text: '{' }]);
+    expect(scanPlaceholders('{ }', 'single-brace').malformed).toEqual([{ index: 0, text: '{ }' }]);
+    expect(scanPlaceholders('{{name}}', 'single-brace').malformed).toEqual([
+      { index: 0, text: '{' },
+      { index: 7, text: '}' },
+    ]);
+    expect(scanPlaceholders('{GENDER_SEPARATOR}', 'single-brace').malformed).toHaveLength(1);
+  });
+
+  it('writes and blanks out a parameter in the syntax of its area', () => {
+    expect(asPlaceholder('user', 'single-brace')).toBe('{user}');
+    expect(asPlaceholder('user')).toBe('{{user}}');
+    expect(withoutPlaceholders('{user} x {{y}}', 'single-brace')).toBe('  x { }');
+  });
+});
 
 describe('scanPlaceholders', () => {
   it('finds parameters and normalizes inner whitespace', () => {

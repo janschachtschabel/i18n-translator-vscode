@@ -41,6 +41,11 @@ describe('presets', () => {
     expect(MDS_PRESET.ignoredKeys).toEqual(['this_is_a_bug_the_first_line_will_not_be_translated']);
   });
 
+  it('read {name} placeholders in metadatasets and {{name}} in Angular', () => {
+    expect(MDS_PRESET.placeholderSyntax).toBe('single-brace');
+    expect(ANGULAR_PRESET.placeholderSyntax).toBeUndefined();
+  });
+
   it('merge Angular categories in the order of edu-sharing TRANSLATION_LIST', () => {
     expect(ANGULAR_PRESET.bundleOrder).toEqual([
       'common',

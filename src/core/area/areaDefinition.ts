@@ -8,6 +8,10 @@ export type FormatId = (typeof FORMAT_IDS)[number];
 export const MERGE_SEMANTICS = ['shallow-toplevel', 'none'] as const;
 export type MergeSemantics = (typeof MERGE_SEMANTICS)[number];
 
+/** How the texts of an area write placeholders: `{{name}}` (ngx-translate, mail templates) or `{name}` (metadatasets). */
+export const PLACEHOLDER_SYNTAXES = ['double-brace', 'single-brace'] as const;
+export type PlaceholderSyntax = (typeof PLACEHOLDER_SYNTAXES)[number];
+
 /** Declarative description of a translation area; presets and user settings share this shape. */
 export interface AreaDefinition extends FilePatternSpec {
   id: AreaId;
@@ -31,4 +35,6 @@ export interface AreaDefinition extends FilePatternSpec {
    * files: bundles, checks and editor leave them out, the files keep them, and new keys never go before them.
    */
   ignoredKeys?: string[];
+  /** How the texts write placeholders; `double-brace` if not set. */
+  placeholderSyntax?: PlaceholderSyntax;
 }

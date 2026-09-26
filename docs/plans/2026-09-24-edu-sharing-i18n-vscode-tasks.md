@@ -1498,7 +1498,13 @@ Beschriftung `default (en)`.
 **Umsetzung:** `--roundtrip` liest jede Datei jedes Bereichs, schreibt sie ohne Änderung und vergleicht die Bytes.
 **Abnahme gegen den Clone (nur lesend):** 0 Abweichungen; Zahlen aus Design §2.3 (fehlende Keys gegenüber `de_DE`,
 14 doppelte Keys, 13 Dateien in ISO-8859-1) stimmen oder die Abweichung ist begründet.
-**Commit:** `feat(scripts): check that every translation file survives a round trip`
+**Ergebnis (26.09.2026):** 112 Dateien (87 JSON, 25 `.properties`) byte-identisch; 2.605 fehlende Keys, 14 doppelte
+Keys, 7 Einheiten wie in §2.3. **Befund der Abnahme:** 60 Fehler `placeholder-malformed` in `mds*.properties` waren
+Fehlalarme: Metadatasets schreiben Platzhalter mit einer Klammer (`{user}`), nur `{{GENDER_SEPARATOR}}` mit zwei. Behoben
+mit dem Bereichsattribut `placeholderSyntax` (`single-brace` im MDS-Preset); Prüfregeln und Prüfung beim Tippen lesen
+Platzhalter danach. Danach 0 Platzhalter-Befunde in den Metadatasets.
+**Commit:** `feat(scripts): check that every translation file survives a round trip`,
+`fix(core): read the single-brace placeholders of metadatasets`
 
 ### Task 6.1: Mail-Templates lesen
 **Dateien:** Create `src/core/formats/mail/xmlTokens.ts`, `mailRead.ts`, `mail.ts`; Test: `mail.parse.test.ts`

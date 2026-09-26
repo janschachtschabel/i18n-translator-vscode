@@ -1,3 +1,4 @@
+import type { PlaceholderSyntax } from '../core/area/areaDefinition';
 import { ISSUE_MESSAGES, type MessageText } from '../core/checks/messages';
 import type { Issue, Severity } from '../core/checks/types';
 import type { Bundle } from '../core/model/bundle';
@@ -50,6 +51,8 @@ export interface RowView {
 export interface BundleViewModel {
   bundleId: string;
   name: string;
+  /** How the texts write placeholders, for the check while typing; `double-brace` if not set. */
+  placeholderSyntax?: PlaceholderSyntax;
   locales: LocaleView[];
   rows: RowView[];
   /** Findings about the bundle as a whole, without a language. */
@@ -63,6 +66,8 @@ export interface ViewModelOptions {
   variants: readonly string[];
   /** Language of the base file (`default`), for its language tag. */
   baseFileLanguage: string;
+  /** Placeholder syntax of the bundle's area. */
+  placeholderSyntax?: PlaceholderSyntax;
   /** Turns a message template into the user's language (vscode.l10n in the host, formatMessage in tests). */
   localize: (message: MessageText) => string;
 }
@@ -94,6 +99,7 @@ export function buildBundleViewModel(bundle: Bundle, options: ViewModelOptions):
   return {
     bundleId: bundle.id,
     name: bundle.name,
+    ...(options.placeholderSyntax === 'single-brace' ? { placeholderSyntax: options.placeholderSyntax } : {}),
     locales: codes.map((code) => {
       const inLocale = issues.filter((issue) => issue.locale === code);
       const info = parseLocale(code, { baseFileLanguage: options.baseFileLanguage });

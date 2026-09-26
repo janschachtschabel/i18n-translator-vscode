@@ -43,7 +43,8 @@ export function CellEditor({ store, editor, locale, keyText, referenceText }: Ce
   const choice = useRef<HTMLButtonElement>(null);
   const { edits } = store;
   const text = edits.draft.value;
-  const check = useMemo(() => inlineCheck(referenceText, text), [referenceText, text]);
+  const syntax = store.placeholderSyntax.value;
+  const check = useMemo(() => inlineCheck(referenceText, text, syntax), [referenceText, text, syntax]);
 
   useLayoutEffect(() => {
     const element = field.current!;
