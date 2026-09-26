@@ -1,14 +1,14 @@
 import * as vscode from 'vscode';
-import { isPlainRelativePath } from '../../core/area/rootPath';
 import type { BackupSettings } from '../../core/config/settings';
 import { readBackupSettings } from '../config';
+import { folderUri, isManifest, MANIFEST, type BackupReason, type Manifest } from './backupManifest';
 import { messageOf } from './errors';
 import type { RestoredFile } from './fileStore';
 import { readIfExists } from './files';
 import type { IndexSnapshot, WorkspaceIndex } from './workspaceIndex';
-import { showWarning } from '../notify';
 
-export type BackupReason = 'first-write' | 'several-bundles' | 'interval' | 'manual' | 'restore';
+export type { BackupReason } from './backupManifest';
+import { showWarning } from '../notify';
 
 export interface BackupInfo {
   /** Folder name below `backups/`; sorts by creation time. */
@@ -18,18 +18,6 @@ export interface BackupInfo {
   files: number;
 }
 
-/** Written last into a backup folder; the files lie at `<folder index>/<path>` next to it. */
-interface Manifest {
-  version: 1;
-  created: string;
-  reason: BackupReason;
-  /** Workspace folder URIs; the `folder` of a file is an index into this list. */
-  folders: string[];
-  files: { folder: number; path: string }[];
-}
-
-const MANIFEST = 'manifest.json';
-const REASONS: readonly BackupReason[] = ['first-write', 'several-bundles', 'interval', 'manual', 'restore'];
 /**
  * An ISO timestamp with `-` for `:` and `.`, plus a three-digit counter for backups in the same millisecond,
  * so that ids sort in the order they were made.
@@ -41,6 +29,16 @@ const ID = /^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z(?:-\d{3})?$/;
  * repository: before the first write of a session, before writes of several bundles, at the next write once
  * `intervalMinutes` have passed, before a restore, and on request. Keeps the newest `keep` backups.
  */
+/** How backups are read and written: `vscode.workspace.fs`, or a stand-in that fails on purpose in tests. */
+export type BackupFiles = Pick<vscode.FileSystem, 'readFile' | 'writeFile' | 'readDirectory' | 'delete'>;
+
+export interface BackupOptions {
+  /** Invalid values fall back to the defaults; the index reports them. */
+  settings?: () => BackupSettings;
+  now?: () => number;
+  files?: BackupFiles;
+}
+
 export class BackupService {
   /** Time of the last backup in this session; undefined until the first. */
   private lastBackup: number | undefined;
@@ -49,15 +47,21 @@ export class BackupService {
   /** The backup read last for restoring: removing old backups must not delete it (it may be the oldest). */
   private restoring: string | undefined;
 
+  private readonly settings: () => BackupSettings;
+  private readonly now: () => number;
+  private readonly files: BackupFiles;
+
   constructor(
     /** `context.storageUri`: undefined without a workspace, and then nothing is backed up. */
     private readonly storage: vscode.Uri | undefined,
     private readonly index: WorkspaceIndex,
     private readonly log: vscode.LogOutputChannel,
-    // Invalid values fall back to the defaults; the index reports them.
-    private readonly settings: () => BackupSettings = () => readBackupSettings().settings,
-    private readonly now: () => number = Date.now,
-  ) {}
+    options: BackupOptions = {},
+  ) {
+    this.settings = options.settings ?? (() => readBackupSettings().settings);
+    this.now = options.now ?? Date.now;
+    this.files = options.files ?? vscode.workspace.fs;
+  }
 
   /**
    * For the file store, before it writes. A failed backup is reported but does not stop a change; before a
@@ -96,7 +100,9 @@ export class BackupService {
     const folders = [...new Set(sources.map((source) => source.folder.toString()))];
     // A file that cannot be read is left out: one locked file must not prevent every backup.
     const read = await Promise.allSettled(
-      sources.map(({ folder, path }) => readIfExists(vscode.Uri.joinPath(folder, ...path.split('/')))),
+      sources.map(({ folder, path }) =>
+        readIfExists(vscode.Uri.joinPath(folder, ...path.split('/')), this.files),
+      ),
     );
     const copies = sources.flatMap(({ folder, path }, i) => {
       const result = read[i]!;
@@ -117,11 +123,11 @@ export class BackupService {
     try {
       await Promise.all(
         copies.map(({ folder, path, bytes }) =>
-          vscode.workspace.fs.writeFile(vscode.Uri.joinPath(base, String(folder), ...path.split('/')), bytes),
+          this.files.writeFile(vscode.Uri.joinPath(base, String(folder), ...path.split('/')), bytes),
         ),
       );
       // Written last: a folder without a manifest is an unfinished backup.
-      await vscode.workspace.fs.writeFile(
+      await this.files.writeFile(
         vscode.Uri.joinPath(base, MANIFEST),
         new TextEncoder().encode(`${JSON.stringify(manifest, null, 2)}\n`),
       );
@@ -174,9 +180,10 @@ export class BackupService {
     const base = vscode.Uri.joinPath(this.storage, 'backups', id);
     const files: RestoredFile[] = [];
     for (const file of manifest.files) {
-      const folder = parseUri(manifest.folders[file.folder]!);
+      const folder = folderUri(manifest.folders[file.folder]!);
       const bytes = await readIfExists(
         vscode.Uri.joinPath(base, String(file.folder), ...file.path.split('/')),
+        this.files,
       );
       if (!folder || !vscode.workspace.getWorkspaceFolder(folder) || !bytes) {
         this.log.warn(`Backup ${id}: ${file.path} is skipped (folder not open, or file missing).`);
@@ -215,7 +222,7 @@ export class BackupService {
     }
     let entries: [string, vscode.FileType][];
     try {
-      entries = await vscode.workspace.fs.readDirectory(vscode.Uri.joinPath(this.storage, 'backups'));
+      entries = await this.files.readDirectory(vscode.Uri.joinPath(this.storage, 'backups'));
     } catch (error) {
       if (error instanceof vscode.FileSystemError && error.code === 'FileNotFound') {
         return [];
@@ -251,7 +258,7 @@ export class BackupService {
       try {
         if (await this.manifest(id)) {
           complete.push(id);
-        } else if (!kept.has(id) && !(await readIfExists(this.manifestUri(id)))) {
+        } else if (!kept.has(id) && !(await readIfExists(this.manifestUri(id), this.files))) {
           await this.remove(id);
         }
       } catch (error) {
@@ -280,7 +287,7 @@ export class BackupService {
   }
 
   private async remove(id: string): Promise<void> {
-    await vscode.workspace.fs.delete(vscode.Uri.joinPath(this.storage!, 'backups', id), {
+    await this.files.delete(vscode.Uri.joinPath(this.storage!, 'backups', id), {
       recursive: true,
       useTrash: false,
     });
@@ -291,7 +298,7 @@ export class BackupService {
     if (!this.storage || !ID.test(id)) {
       return undefined;
     }
-    const bytes = await readIfExists(this.manifestUri(id));
+    const bytes = await readIfExists(this.manifestUri(id), this.files);
     if (!bytes) {
       return undefined;
     }
@@ -321,42 +328,4 @@ function translationFiles(snapshot: IndexSnapshot): { folder: vscode.Uri; path: 
     }
   }
   return [...files.values()];
-}
-
-/** Manifests are read from disk: every path must stay inside its folder. */
-function isManifest(value: unknown): value is Manifest {
-  if (typeof value !== 'object' || value === null) {
-    return false;
-  }
-  const manifest = value as Partial<Manifest>;
-  const folders = manifest.folders;
-  return (
-    manifest.version === 1 &&
-    typeof manifest.created === 'string' &&
-    !Number.isNaN(Date.parse(manifest.created)) &&
-    REASONS.includes(manifest.reason as BackupReason) &&
-    Array.isArray(folders) &&
-    folders.every((folder) => typeof folder === 'string') &&
-    Array.isArray(manifest.files) &&
-    manifest.files.every(
-      (file) =>
-        typeof file === 'object' &&
-        file !== null &&
-        Number.isInteger(file.folder) &&
-        file.folder >= 0 &&
-        file.folder < folders.length &&
-        typeof file.path === 'string' &&
-        isPlainRelativePath(file.path),
-    )
-  );
-}
-
-/** A folder URI from a manifest, or undefined if it does not parse. */
-function parseUri(value: string): vscode.Uri | undefined {
-  try {
-    return vscode.Uri.parse(value, true);
-  } catch {
-    // A manifest from disk may hold anything; such a folder is skipped like one that is not open.
-    return undefined;
-  }
 }

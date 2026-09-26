@@ -71,10 +71,9 @@ suite('multi-root workspace', () => {
     const files = (await roots()).map(frOf);
     const before = await Promise.all(files.map(read));
     try {
-      const backups = new BackupService(vscode.Uri.file(storage), api.index, log, () => ({
-        keep: 10,
-        intervalMinutes: 10,
-      }));
+      const backups = new BackupService(vscode.Uri.file(storage), api.index, log, {
+        settings: () => ({ keep: 10, intervalMinutes: 10 }),
+      });
       const backup = await backups.create('manual');
       assert.ok(backup);
       for (const uri of files) {

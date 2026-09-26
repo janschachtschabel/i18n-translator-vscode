@@ -59,13 +59,10 @@ suite('Backups', () => {
     storage = mkdtempSync(join(tmpdir(), 'edu-i18n-backups-'));
     settings = { keep: 10, intervalMinutes: 10 };
     now = Date.parse('2026-09-25T10:00:00Z');
-    backups = new BackupService(
-      vscode.Uri.file(storage),
-      api.index,
-      log,
-      () => settings,
-      () => now,
-    );
+    backups = new BackupService(vscode.Uri.file(storage), api.index, log, {
+      settings: () => settings,
+      now: () => now,
+    });
     store = new FileStore(api.index, log, { beforeWrite: (kind, files) => backups.beforeWrite(kind, files) });
   });
 
@@ -220,13 +217,10 @@ suite('Backups', () => {
     // Backups cannot be stored below a file.
     const blocked = join(storage, 'blocked');
     writeFileSync(blocked, 'not a folder');
-    const failing = new BackupService(
-      vscode.Uri.file(blocked),
-      api.index,
-      log,
-      () => settings,
-      () => now,
-    );
+    const failing = new BackupService(vscode.Uri.file(blocked), api.index, log, {
+      settings: () => settings,
+      now: () => now,
+    });
     const failingStore = new FileStore(api.index, log, {
       beforeWrite: (kind, files) => failing.beforeWrite(kind, files),
     });
@@ -241,13 +235,10 @@ suite('Backups', () => {
   test('tries a failed backup again after the interval, not on every save', async () => {
     const blocked = join(storage, 'blocked');
     writeFileSync(blocked, 'not a folder');
-    const failing = new BackupService(
-      vscode.Uri.file(blocked),
-      api.index,
-      log,
-      () => settings,
-      () => now,
-    );
+    const failing = new BackupService(vscode.Uri.file(blocked), api.index, log, {
+      settings: () => settings,
+      now: () => now,
+    });
     let attempts = 0;
     const create = failing.create.bind(failing);
     failing.create = (reason) => {
