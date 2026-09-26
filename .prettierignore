@@ -2,6 +2,8 @@ dist/
 out/
 coverage/
 .vscode-test/
+# Worktrees of Claude Code sessions: full checkouts, with the fixtures that are broken on purpose.
+.claude/
 test/fixtures/
 docs/
 *.md
