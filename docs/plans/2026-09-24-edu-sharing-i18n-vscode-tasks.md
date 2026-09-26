@@ -1440,16 +1440,24 @@ wird nur, was sich ändert; alle anderen Bytes der Datei bleiben.
   `context`-Attribut heißen `name@context`. (Design §6.4 sah dynamische Felder und eine eigene Template-Ansicht vor;
   beides folgt mit der Vorschau.)
 - **T2 Wert = Textinhalt.** Der Wert ist der Textinhalt des Elements, wie `MailTemplate` ihn liest (Entities
-  aufgelöst, CDATA-Inhalt). Leerraum um einen einzelnen CDATA-Abschnitt ist Layout und gehört nicht zum Wert. Felder
-  mit Kindelementen oder Kommentaren melden `non-string-value` und bleiben unberührt; andere Elemente eines Templates
-  (`<style>`) sind keine Einträge.
+  aufgelöst, CDATA-Inhalt, Zeilenenden als `\n`). Leerraum mit Zeilenumbruch an den Enden ist Layout und gehört nicht
+  zum Wert: um den Text und innerhalb eines CDATA-Abschnitts oder einer Folge von Abschnitten, die nur
+  Zeichenreferenzen trennen (so teilt der Schreiber einen Text an `]]>` und in ISO-8859-1). Der Schreiber lässt ihn
+  deshalb auch an den Enden eines neuen Werts weg. Felder mit Kindelementen oder Kommentaren melden
+  `non-string-value` und bleiben unberührt; andere Elemente eines Templates (`<style>`) sind keine Einträge.
 - **T3 Chirurgisch schreiben.** `set` ändert bei `[Leerraum]CDATA[Leerraum]` nur den CDATA-Inhalt, sonst bekommt
   `subject` escapten Text (`& < >`) und `message` einen CDATA-Abschnitt (`]]>` wird geteilt). `insert` legt ein
   fehlendes Feld in seinem Template an (hinter dem Geschwisterfeld, mit dessen Einrückung) oder ein fehlendes Template
   hinter dem Template des Ankers. `delete` entfernt das Feld und ein Template ohne übrige Kindelemente. `rename` wie bei
   JSON. ISO-8859-1-Dateien bekommen Zeichen jenseits von U+00FF als Zeichenreferenz außerhalb von CDATA.
 - **T4 Keys prüfen.** Neue Mail-Keys müssen `TEMPLATE.subject` oder `TEMPLATE.message` lauten (Adapter-Hook
-  `validKey`), sonst Problem `invalid-template-key`.
+  `validKey`), sonst Problem `invalid-template-key`. Texte mit Zeichen, die XML nicht aufnehmen kann, lehnt die
+  Planung ab (`invalidText`, Problem `invalid-text`).
+
+**Nach den Reviews (26.09.2026):** Die Befunde der Reviews von Block E und F sind behoben, unter anderem Backslashes
+am Zeilenende in `.properties`, eine Byte-Order-Mark (Regel `bom-first-key`), verborgene Keys als neue Namen, die
+wörtlich übernommene Wächterzeile, Zeichen, die XML verbietet, doppelte Templates und die Kodierung aus der
+XML-Deklaration. `check-repo --roundtrip` setzt zusätzlich jeden Text auf sich selbst und liest ihn zurück.
 
 ### Task 5.1: Properties lesen
 **Dateien:** Create `src/core/formats/properties/propertiesRead.ts`; Test: `test/unit/core/formats/properties.parse.test.ts`

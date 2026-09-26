@@ -17,16 +17,23 @@ zeigt jetzt alle drei Bereiche, jeden im selben Editor mit einer Spalte je Sprac
   - Gelesen wie von Java, mit Fortsetzungszeilen, Escapes und Kommentaren; doppelte Keys werden gemeldet.
   - Jede Datei behält ihr Encoding. Zeichen, die ISO-8859-1 nicht kennt, schreibt die Extension dort als `\uXXXX`.
   - Platzhalter mit einer Klammer (`{user}`) prüft sie als Platzhalter.
-  - Die Wächterzeile am Anfang der Hauptdateien bleibt verborgen und an erster Stelle.
+  - Die Wächterzeile am Anfang der Hauptdateien bleibt verborgen und an erster Stelle; neue Sprachdateien beginnen
+    mit ihr, so wie die Referenz sie schreibt.
+  - Beginnt eine Datei mit einer Byte-Order-Mark, meldet die neue Regel `bom-first-key` ihren ersten Key: Java liest
+    die Marke als Teil dieses Keys und findet ihn nie.
 - **Mail-Templates (XML):**
   - Eine Einheit `templates`, je Template eine Zeile für den Betreff und eine für die Nachricht.
   - Fehlt einer Sprache ein Feld oder ein ganzes Template, legt das Füllen der Zelle es an der Stelle der Referenz an.
   - Geschrieben wird nur der geänderte Text; CDATA, das Stylesheet, Kommentare und Einrückung bleiben.
+  - Texte mit Zeichen, die XML nicht erlaubt (etwa ein aus Folien kopierter vertikaler Tabulator), lehnt der Editor ab:
+    edu-sharing könnte sonst keine Mail dieser Sprache mehr lesen.
+  - Die Kodierung aus der XML-Deklaration gilt, wie für Java.
 - **Neue Sprache:** Die Abfrage schlägt einen Code in der Form des Bereichs vor (`es` oder `es_ES`).
 - **Eigene Bereiche:** die Formate `properties` und `mail-xml` sowie die Felder `ignoredKeys` und `placeholderSyntax`,
   siehe [Einstellungen](docs/einstellungen.md#edui18nareas).
 - **Geprüft gegen edu-sharing:** Alle 116 Übersetzungsdateien des Repositorys lassen sich lesen und byte-gleich
-  zurückschreiben (`npm run check:repo -- <Checkout> --roundtrip`).
+  zurückschreiben, und jeder Text, auf sich selbst gesetzt, liest sich gleich zurück
+  (`npm run check:repo -- <Checkout> --roundtrip`).
 
 ## 0.2.2 – 26.09.2026
 
