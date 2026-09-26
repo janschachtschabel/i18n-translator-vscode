@@ -1,15 +1,14 @@
 import type { PlaceholderSyntax } from '../../area/areaDefinition';
 import { displayKey } from '../../model/keys';
-import { withoutTags } from '../html';
-import { withoutPlaceholders } from '../placeholders';
+import { readerText } from '../translatable';
 import type { Rule } from '../types';
 import { finding, isFullLocale, translationPairs, valueLocation } from './support';
 
 const MIN_LETTERS = 4;
 
-/** Letters of the words a reader sees: placeholder names and tags are not translated. */
+/** Letters of the words a reader sees. */
 function letterCount(text: string, syntax: PlaceholderSyntax | undefined): number {
-  return withoutTags(withoutPlaceholders(text, syntax)).match(/\p{L}/gu)?.length ?? 0;
+  return readerText(text, syntax).match(/\p{L}/gu)?.length ?? 0;
 }
 
 /** A translation identical to the reference text may be untranslated; short or ignored texts are left out. */

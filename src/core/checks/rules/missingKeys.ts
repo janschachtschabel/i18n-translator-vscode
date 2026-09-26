@@ -2,6 +2,7 @@ import type { Bundle } from '../../model/bundle';
 import { BASE_FILE_LOCALE } from '../../model/locale';
 import { displayKey, type EntryKey } from '../../model/keys';
 import type { LocaleCode } from '../../model/types';
+import { hasTextToTranslate } from '../translatable';
 import type { CheckContext, Finding, Rule } from '../types';
 import {
   entryIds,
@@ -21,9 +22,10 @@ interface Completeness {
 
 /**
  * Compares every readable full locale with the keys every language needs: those of the reference, and those of the
- * file without locale (metadatasets, mail templates), which edu-sharing reads last for every language, so a language
- * without such a key shows the text of that file. A key only a translation has is an orphan, unless a missing key
- * ends with the same segments: then it is probably misplaced (and reported only as such).
+ * file without locale (metadatasets, mail templates) that have words to translate: edu-sharing reads that file last
+ * for every language, so a language without such a key shows its English text. A key whose text there has none, such
+ * as a license link, is right as it falls back. A key only a translation has is an orphan, unless a missing key ends
+ * with the same segments: then it is probably misplaced (and reported only as such).
  */
 function analyze(bundle: Bundle, ctx: CheckContext): Completeness {
   const result: Completeness = { missing: [], orphans: [], misplaced: [] };
@@ -33,7 +35,11 @@ function analyze(bundle: Bundle, ctx: CheckContext): Completeness {
   }
   const referenceIds = entryIds(bundle, reference);
   const base = bundle.locales.includes(BASE_FILE_LOCALE) && isReadable(bundle, BASE_FILE_LOCALE);
-  const needed = base ? new Set([...referenceIds, ...entryIds(bundle, BASE_FILE_LOCALE)]) : referenceIds;
+  const baseIds = base ? [...entryIds(bundle, BASE_FILE_LOCALE)] : [];
+  const translatable = (id: string) =>
+    hasTextToTranslate(bundle.value(id, BASE_FILE_LOCALE) ?? '', ctx.area.placeholderSyntax);
+  const needed = new Set([...referenceIds, ...baseIds.filter(translatable)]);
+  const known = new Set([...referenceIds, ...baseIds]);
   for (const locale of bundle.locales) {
     if (!isFullLocale(ctx, locale) || !isReadable(bundle, locale)) {
       continue;
@@ -44,7 +50,7 @@ function analyze(bundle: Bundle, ctx: CheckContext): Completeness {
     if (locale === reference) {
       continue;
     }
-    const extra = bundle.keys.filter((key) => ids.has(key.id) && !needed.has(key.id));
+    const extra = bundle.keys.filter((key) => ids.has(key.id) && !known.has(key.id));
     const targets = likelyTargets(extra, missing);
     for (const key of extra) {
       const suggestion = targets.get(key.id);

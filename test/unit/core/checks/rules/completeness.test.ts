@@ -58,6 +58,19 @@ describe('missing-key with a file without locale (metadatasets, mail templates)'
   it('takes no key of that file for an orphan, but still a key only a translation has', () => {
     expect(summarize(run(orphanKeyRule, [bundle]))).toEqual(['orphan-key b/fr Y']);
   });
+
+  // The license links of edu-sharing's mds.properties: the English fallback is the right text in every language.
+  it('needs no key of that file whose text has nothing to translate, and takes it for no orphan', () => {
+    const links = bundleOf('b', {
+      default:
+        '{"A":"a","LINK":"http://creativecommons.org/licenses/by/4.0/","N":"{{n}}","T":"Password reset"}',
+      de: '{"A":"A"}',
+      fr: '{"A":"a fr","LINK":"http://creativecommons.org/licenses/by/4.0/deed.fr"}',
+    });
+    expect(summarize(run(missingKeyRule, [links]))).toEqual(['missing-key b/de T', 'missing-key b/fr T']);
+    expect(run(orphanKeyRule, [links])).toEqual([]);
+    expect(run(misplacedKeyRule, [links])).toEqual([]);
+  });
 });
 
 describe('orphan-key and misplaced-key', () => {
