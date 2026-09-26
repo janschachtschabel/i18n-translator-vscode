@@ -62,7 +62,7 @@ function applyOp(text: string, op: FileOp, style: TextStyle): string {
     case 'set':
       return setValue(text, root, op.key, op.value);
     case 'insert':
-      return insertEntry(text, root, op.key, op.value, op.after, style);
+      return insertEntry(text, root, op.key, op.value, op.first ? 'first' : op.after, style);
     case 'delete':
       return deleteEntry(text, root, op.key);
     case 'rename':
@@ -106,7 +106,7 @@ function insertEntry(
   root: Node,
   key: EntryKey,
   value: string,
-  after: EntryKey | undefined,
+  place: EntryKey | 'first' | undefined,
   style: TextStyle,
 ): string {
   // Walk down as far as the parent objects exist; the rest of the path is created.
@@ -130,9 +130,11 @@ function insertEntry(
     throw existsError(key, existing);
   }
   const sibling =
-    after && samePath(after.segments.slice(0, -1), key.segments.slice(0, depth))
-      ? lastNamed(object, after.segments[after.segments.length - 1]!)
-      : undefined;
+    place === 'first'
+      ? place
+      : place && samePath(place.segments.slice(0, -1), key.segments.slice(0, depth))
+        ? lastNamed(object, place.segments[place.segments.length - 1]!)
+        : undefined;
   return insertProperty(
     text,
     object,
@@ -144,20 +146,29 @@ function insertEntry(
 }
 
 /**
- * Inserts `"name": value` into an object: after the sibling (or the last property) with its indentation, or
- * into an empty object one level deeper than the object's line. `renderValue` gets the indentation of the new
- * line, or undefined for objects written on one line.
+ * Inserts `"name": value` into an object: before the first property, after the sibling (or the last property)
+ * with its indentation, or into an empty object one level deeper than the object's line. `renderValue` gets the
+ * indentation of the new line, or undefined for objects written on one line.
  */
 function insertProperty(
   text: string,
   object: Node,
   name: string,
   renderValue: (indent: string | undefined) => string,
-  sibling: Property | undefined,
+  sibling: Property | 'first' | undefined,
   style: TextStyle,
 ): string {
   const properties = propertiesOf(object);
-  const anchor = sibling ?? properties[properties.length - 1];
+  const first = properties[0];
+  if (sibling === 'first' && first) {
+    // The new line takes the comma, so that the line of the old first property stays as it is.
+    const prefix = text.slice(lineStart(text, first.node.offset), first.node.offset);
+    const content = /\S/.test(prefix)
+      ? `${jsonString(name)}: ${renderValue(undefined)}, `
+      : `${jsonString(name)}: ${renderValue(prefix)},${style.eol}${prefix}`;
+    return applyEdits(text, [{ offset: first.node.offset, length: 0, content }]);
+  }
+  const anchor = (sibling === 'first' ? undefined : sibling) ?? properties[properties.length - 1];
   if (!anchor) {
     const outer = indentationOfLine(text, object.offset);
     const inner = outer + style.indent;

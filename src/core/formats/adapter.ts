@@ -39,8 +39,11 @@ export interface ParsedFile {
 /** A change of one entry; the adapter decides how it looks in its format. Only the field `value` so far. */
 export type FileOp =
   | { kind: 'set'; key: EntryKey; value: string }
-  /** `after` names a sibling in the same object; without one (or if it is elsewhere) the entry goes last. */
-  | { kind: 'insert'; key: EntryKey; value: string; after?: EntryKey }
+  /**
+   * `first` puts the entry first in its object, `after` after a sibling in the same object; without either (or
+   * with a sibling elsewhere) the entry goes last.
+   */
+  | { kind: 'insert'; key: EntryKey; value: string; after?: EntryKey; first?: true }
   /** Objects that become empty are removed as well, except the top level. */
   | { kind: 'delete'; key: EntryKey }
   | { kind: 'rename'; from: EntryKey; to: EntryKey };

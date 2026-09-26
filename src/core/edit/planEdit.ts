@@ -97,8 +97,7 @@ function planSetText(
     return fail(editProblem('path-conflict', { key: displayKey(key), other: displayKey(blocker) }));
   }
   const position = bundle.keys.findIndex((candidate) => candidate.id === entryId);
-  const after = insertAnchor(bundle.keys, position - 1, file, key);
-  return edit({ kind: 'insert', key, value, ...(after ? { after } : {}) });
+  return edit({ kind: 'insert', key, value, ...placed(insertAnchor(bundle.keys, position - 1, file, key)) });
 }
 
 function planAddKey(
@@ -134,11 +133,11 @@ function planAddKey(
     if (hasSyntaxError(file.parsed)) {
       return fail(editProblem('unreadable-file', { file: file.relPath }));
     }
-    const after = insertAnchor(bundle.keys, from, file, key);
+    const place = from === -1 ? undefined : insertAnchor(bundle.keys, from, file, key);
     changes.push({
       kind: 'edit',
       relPath: file.relPath,
-      ops: [{ kind: 'insert', key, value, ...(after ? { after } : {}) }],
+      ops: [{ kind: 'insert', key, value, ...placed(place) }],
     });
   }
   return done(changes);
@@ -236,14 +235,15 @@ export function planAddLanguage(
  * Where a new key goes in a file, so that the file keeps the order of the reference: after the nearest key at
  * or before position `from` of `keys` that the file has inside the key's deepest parent object in that file.
  * The anchor is cut to the level where the new entry starts, so a text that follows `OBJ.X` goes after the
- * object `OBJ`, and a missing parent object goes after its predecessor. Undefined: the entry goes last.
+ * object `OBJ`, and a missing parent object goes after its predecessor. `first`: the file has no such key, so the
+ * entry goes first in that parent object.
  */
 function insertAnchor(
   keys: readonly EntryKey[],
   from: number,
   file: LoadedFile,
   key: EntryKey,
-): EntryKey | undefined {
+): EntryKey | 'first' {
   const present = file.parsed.entries.map((entry) => entry.key);
   // The parent objects that the file has are those that contain one of its texts.
   let depth = key.segments.length - 1;
@@ -258,5 +258,10 @@ function insertAnchor(
       return keyFromSegments(candidate.segments.slice(0, depth + 1));
     }
   }
-  return undefined;
+  return 'first';
+}
+
+/** The position of an inserted entry: first in its object, after a sibling, or (undefined) last. */
+function placed(place: EntryKey | 'first' | undefined): { after?: EntryKey; first?: true } {
+  return place === 'first' ? { first: true } : place ? { after: place } : {};
 }

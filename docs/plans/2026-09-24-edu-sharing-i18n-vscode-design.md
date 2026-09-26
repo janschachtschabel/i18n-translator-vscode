@@ -262,7 +262,7 @@ export type FileOp =
 
 | Format | Parser | Schreibstrategie |
 |---|---|---|
-| `json-nested` | `jsonc-parser` `parseTree` (Positionen, doppelte Keys, Nicht-String-Werte) | `jsonc-parser` `modify`/`applyEdits` mit Segment-Pfad. Einrückung und Zeilenende werden aus der Datei erkannt (edu-sharing: 2 Leerzeichen, LF, Newline am Ende); Einfügen nach einem Geschwister-Key über `getInsertionIndex` |
+| `json-nested` | `jsonc-parser` `parseTree` (Positionen, doppelte Keys, Nicht-String-Werte) | `jsonc-parser` `modify`/`applyEdits` mit Segment-Pfad. Einrückung und Zeilenende werden aus der Datei erkannt (edu-sharing: 2 Leerzeichen, LF, Newline am Ende); Einfügen nach dem nächsten vorangehenden Key der Referenz, den die Datei hat; hat sie keinen, als Erstes im Objekt (Audit L-07) |
 | `json-flat` | wie oben, Keys = ganze Strings | wie oben |
 | `properties` | eigener zeilenerhaltender Parser: logische Zeilen, Fortsetzungen `\`, Escapes (`\uXXXX \: \= \t \n \\`), Kommentare `#`/`!`, Trennzeichen `:`/`=`/Leerraum | Nur der Wertbereich der Zeile wird ersetzt; Trennzeichen und Abstände bleiben. Encoding: strikt UTF-8, sonst ISO-8859-1. Zeichen außerhalb von Latin-1 werden als `\uXXXX` geschrieben |
 | `mail-xml` | eigener Tokenizer mit Positionen: `<template name context>`, Kindelemente, CDATA/Text, Entities | `subject` mit XML-Escaping; `message` als CDATA (enthaltenes `]]>` wird auf zwei CDATA-Abschnitte verteilt). Alles andere bleibt unberührt |

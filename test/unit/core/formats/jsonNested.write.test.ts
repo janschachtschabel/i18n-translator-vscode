@@ -138,6 +138,28 @@ describe('jsonNestedAdapter.applyOps and encode', () => {
       );
     });
 
+    // A key that comes first in the reference goes first in a translation too (audit L-07).
+    it('adds one line before the first sibling when the entry goes first', () => {
+      expect(apply(NESTED, { kind: 'insert', key: key('A.NEW'), value: 'n', first: true })).toBe(
+        '{\n  "A": {\n    "NEW": "n",\n    "FIRST": "1",\n    "LAST": "2"\n  },\n  "B": "x"\n}\n',
+      );
+      expect(apply(NESTED, { kind: 'insert', key: key('NEW'), value: 'n', first: true })).toBe(
+        '{\n  "NEW": "n",\n  "A": {\n    "FIRST": "1",\n    "LAST": "2"\n  },\n  "B": "x"\n}\n',
+      );
+      expect(apply(NESTED, { kind: 'insert', key: key('A.SUB.DEEP'), value: 'n', first: true })).toBe(
+        '{\n  "A": {\n    "SUB": {\n      "DEEP": "n"\n    },\n    "FIRST": "1",\n    "LAST": "2"\n  },\n  "B": "x"\n}\n',
+      );
+      expect(apply('{}\n', { kind: 'insert', key: key('A'), value: 'n', first: true })).toBe(
+        '{\n  "A": "n"\n}\n',
+      );
+      const inline = apply('{"A":"1","B":"2"}', { kind: 'insert', key: key('NEW'), value: 'n', first: true });
+      expect(jsonNestedAdapter.parse(doc(inline)).entries.map((entry) => entry.key.segments[0])).toEqual([
+        'NEW',
+        'A',
+        'B',
+      ]);
+    });
+
     it('fills empty objects', () => {
       expect(apply('{}\n', { kind: 'insert', key: key('A'), value: 'n' })).toBe('{\n  "A": "n"\n}\n');
       expect(apply('{\n  "A": {}\n}\n', { kind: 'insert', key: key('A.B'), value: 'n' })).toBe(

@@ -23,7 +23,7 @@ function describeOp(op: FileOp): string {
     case 'set':
       return `set ${displayKey(op.key)} = ${op.value}`;
     case 'insert':
-      return `insert ${displayKey(op.key)}${op.after ? ` after ${displayKey(op.after)}` : ''} = ${op.value}`;
+      return `insert ${displayKey(op.key)}${op.first ? ' first' : op.after ? ` after ${displayKey(op.after)}` : ''} = ${op.value}`;
     case 'delete':
       return `delete ${displayKey(op.key)}`;
     case 'rename':
@@ -82,6 +82,20 @@ describe('planEdit: setText', () => {
     expect(
       summary(planEdit(order!, { kind: 'setText', entryId: id('NEW'), locale: 'fr', value: 'n' })),
     ).toEqual(['order/fr.json: insert NEW after OBJ = n']);
+  });
+
+  // The file keeps the order of the reference for its first keys too (audit L-07).
+  it('adds a text first in its object when the reference has it before every key the file has there', () => {
+    const [order] = analyzeTexts({
+      'order/de.json':
+        '{\n  "FIRST": "f",\n  "A": "a",\n  "B": "b",\n  "OBJ": {\n    "X": "x",\n    "Y": "y"\n  }\n}\n',
+      'order/fr.json': '{\n  "B": "b",\n  "OBJ": {\n    "Y": "y"\n  }\n}\n',
+    }).bundles;
+    const set = (dotted: string) =>
+      summary(planEdit(order!, { kind: 'setText', entryId: id(dotted), locale: 'fr', value: 'n' }));
+    expect(set('FIRST')).toEqual(['order/fr.json: insert FIRST first = n']);
+    expect(set('A')).toEqual(['order/fr.json: insert A first = n']);
+    expect(set('OBJ.X')).toEqual(['order/fr.json: insert OBJ.X first = n']);
   });
 
   it('deletes a cleared translation, so that the fallback applies', () => {
@@ -229,6 +243,27 @@ describe('planEdit: keys', () => {
       'common/de.json: insert WORKSPACE.FILE.NAME after WORKSPACE.FILE.TITLE = Name',
       'common/fr.json: insert WORKSPACE.FILE.NAME after WORKSPACE.TITLE = Nom',
     ]);
+  });
+
+  it('puts a new key first where a file has no key at or before `after`, and last without `after`', () => {
+    const [order] = analyzeTexts({
+      'order/de.json': '{\n  "A": "a",\n  "B": "b",\n  "C": "c"\n}\n',
+      'order/fr.json': '{\n  "C": "c"\n}\n',
+    }).bundles;
+    const add = (after?: string) =>
+      summary(
+        planEdit(order!, {
+          kind: 'addKey',
+          key: key('NEW'),
+          values: { de: 'Neu', fr: 'Nouveau' },
+          ...(after ? { after: id(after) } : {}),
+        }),
+      );
+    expect(add('B')).toEqual([
+      'order/de.json: insert NEW after B = Neu',
+      'order/fr.json: insert NEW first = Nouveau',
+    ]);
+    expect(add()).toEqual(['order/de.json: insert NEW = Neu', 'order/fr.json: insert NEW = Nouveau']);
   });
 
   it('needs a reference text for a new key', () => {
