@@ -299,9 +299,10 @@ Befunde vom Typ „Hinweis" erscheinen standardmäßig nur im Editor (Filter und
 | `review-required` / `reference-changed` | Hinweis / Warnung | ja | Metadaten: KI- oder Import-Wert noch ungeprüft; Referenztext seit dem Review geändert | Phase 7 |
 | `lowercase-key` | aus | – | optionale Heuristik aus der Anforderungsliste | – |
 
-**Vollständige vs. Varianten-Sprachen:** Ein Key fehlt in Sprache L, wenn er in einer anderen vollständigen Sprache
-der Einheit existiert (Anforderungsliste: „reference: all other languages"). Fehlt er ausgerechnet in der Referenz,
-wird er als `orphan-key` bei den Sprachen gemeldet, die ihn haben. Varianten gelten nur dann als lückenhaft, wenn
+**Vollständige vs. Varianten-Sprachen:** Ein Key fehlt in Sprache L, wenn die Referenz ihn hat und L nicht; so zählt
+auch der Probelauf in 2.3 („gegenüber de"). Keys, die nur Übersetzungen haben, meldet `orphan-key` (oder
+`misplaced-key` mit Vorschlag) bei den Sprachen, die sie haben. Die Anforderungsliste sprach von „reference: all other
+languages"; umgesetzt ist der Vergleich mit der Referenz (angeglichen im Audit vom 26.09.2026, M-04). Varianten gelten nur dann als lückenhaft, wenn
 `requiredWhen` auf den Basistext zutrifft.
 
 **Warnungen akzeptieren:** „Als OK markieren" speichert einen Fingerabdruck (Regel, Eintrag, Sprache und Hash der
@@ -584,6 +585,13 @@ Texte beim Start vom Host. Die Anzeigesprache folgt VS Code.
 
 ## 9. Einstellungen (`contributes.configuration`)
 
+> **Stand 26.09.2026 (nach Phase 2):** Die Tabelle beschreibt den geplanten Endausbau. Umgesetzt sind
+> `referenceLanguage`, `baseFileLanguage`, `areas`, `roots`, `exclude`, `variants`, `checks.severity`,
+> `checks.ignoreSameAsReference` (neu gegenüber der Tabelle), `diagnostics.missing` und `backup.*`; die gültige
+> Liste steht im Manifest und im README. Entfallen sind `presets.enabled` (Presets gelten immer, eigene Bereiche und
+> Ersatz über `areas`), `editor.defaultView` (die Ansicht gilt je Einheit, B7) und `log.level` (VS Codes
+> „Developer: Set Log Level" für den Kanal). Die übrigen folgen mit ihren Phasen.
+
 | Einstellung | Standard | Bedeutung |
 |---|---|---|
 | `eduI18n.presets.enabled` | `["edu-sharing.angular","edu-sharing.mds","edu-sharing.mail"]` | aktive Presets |
@@ -613,6 +621,12 @@ Texte beim Start vom Host. Die Anzeigesprache folgt VS Code.
 | `eduI18n.log.level` | `"info"` | Protokollierung |
 
 ## 10. Befehle und Menüs (Kategorie „edu-sharing i18n")
+
+> **Stand 26.09.2026 (nach Phase 2):** Umgesetzt sind `openEditor`, `check`, `configureRoots`, die Key- und
+> Sprachbefehle, `backupNow`, `restoreBackup` und `undoLastChange`, dazu `openBundle` (Einheit aus der Seitenleiste)
+> und `revealInExplorer`. Menüs: Kontextmenü der Seitenleiste (Öffnen, Prüfen, Im Explorer zeigen, Key und Sprache
+> hinzufügen), Titelleiste und Kontextmenü des Editors (Key- und Sprachbefehle). Die übrigen Befehle folgen mit ihren
+> Phasen.
 
 | Befehl | Zweck |
 |---|---|
