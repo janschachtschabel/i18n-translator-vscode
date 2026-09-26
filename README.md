@@ -36,6 +36,7 @@ als Liste:
 - Hat sich ein Text außerhalb des Editors geändert, fragt der Editor, welcher gilt.
 - Ein geleerter Text wird nach Rückfrage in dieser Sprache gelöscht, damit der Rückfall auf die Referenz greift.
 - **Rückgängig:** Strg+Z im Editor oder der Befehl „Letzte Änderung an Übersetzungsdateien rückgängig machen".
+  Betrifft die letzte Änderung eine andere Einheit, fragt der Editor vorher nach.
 - **Sicherungen:** vor der ersten Änderung einer Sitzung, vor Änderungen mehrerer Einheiten und alle 10 Minuten
   während der Arbeit. Sie liegen im Speicher der Extension für diesen Arbeitsbereich, nie im Repository; die letzten
   10 bleiben. Zurückholen mit „Übersetzungsdateien aus einer Sicherung wiederherstellen…".

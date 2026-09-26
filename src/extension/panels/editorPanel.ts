@@ -24,6 +24,7 @@ import type { IndexedRoot, IndexSnapshot, WorkspaceIndex } from '../services/wor
 import { findBundle } from './findBundle';
 import { applyEdit, type EditAnswer, type EditRequest } from './editHandler';
 import { routeMessage } from './messageRouter';
+import { undoFromEditor } from './undoHandler';
 import { pageLanguage, webviewHtml } from './webviewHtml';
 
 export const EDITOR_VIEW_TYPE = 'eduI18n.editor';
@@ -39,8 +40,6 @@ export interface EditorServices {
   /** Asks before a text is cleared (B2). */
   prompts: Prompts;
   log: vscode.LogOutputChannel;
-  /** Undoes the last change to the translation files and tells the user how it went. */
-  undo: () => Promise<void>;
   /** Runs a key or language command on the editor's bundle, starting from the key it names. */
   command: (command: EditorCommand, target: PanelState, entryId: string | undefined) => Promise<void>;
 }
@@ -182,7 +181,7 @@ export class EditorPanel implements vscode.Disposable {
         uiState: async ({ state }) => {
           await this.services.workspaceState.update(this.stateKey(), copyUiState(state));
         },
-        undo: () => this.services.undo(),
+        undo: () => undoFromEditor(this.target, this.services),
         command: ({ command, entryId }) => this.services.command(command, this.target, entryId),
       },
       this.services.log,

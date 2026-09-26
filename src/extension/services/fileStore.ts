@@ -58,7 +58,8 @@ export type WriteResult =
 type WriteError = Extract<WriteResult, { reason: 'error' }>;
 
 /** What an undo did: which files got their bytes back, or why none did. */
-export type UndoResult = { ok: true; files: vscode.Uri[] } | Exclude<WriteResult, { ok: true }>;
+export type UndoResult =
+  { ok: true; files: vscode.Uri[] } | { ok: false; reason: 'declined' } | Exclude<WriteResult, { ok: true }>;
 
 /** Plans per write: when files change on disk between planning and writing, the edit is planned again. */
 const PLAN_ATTEMPTS = 3;
@@ -115,9 +116,12 @@ export class FileStore {
     return this.enqueue(() => this.restoreNow(files));
   }
 
-  /** Restores the files of the last write, if they still have the bytes it wrote. Undefined: nothing to undo. */
-  undo(): Promise<UndoResult | undefined> {
-    return this.enqueue(() => this.undoNow());
+  /**
+   * Restores the files of the last write, if they still have the bytes it wrote. `accept` is asked first, with
+   * the files the undo would restore; if it declines, the undo stays. Undefined: nothing to undo.
+   */
+  undo(accept?: (files: readonly vscode.Uri[]) => Promise<boolean>): Promise<UndoResult | undefined> {
+    return this.enqueue(() => this.undoNow(accept));
   }
 
   /**
@@ -222,7 +226,9 @@ export class FileStore {
     }
   }
 
-  private async undoNow(): Promise<UndoResult | undefined> {
+  private async undoNow(
+    accept: ((files: readonly vscode.Uri[]) => Promise<boolean>) | undefined,
+  ): Promise<UndoResult | undefined> {
     const entry = this.history.pop();
     if (!entry) {
       return undefined;
@@ -234,14 +240,18 @@ export class FileStore {
     }
     let result: UndoResult;
     try {
-      result = await this.undoEntry(entry);
+      // Asked in the queue: no write comes between the question and the undo of the files it names.
+      result =
+        accept && !(await accept(entry.files.map((file) => file.uri)))
+          ? { ok: false, reason: 'declined' }
+          : await this.undoEntry(entry);
     } catch (error) {
       // A read or write error says nothing about the state the write left: the undo stays for another try.
       this.history.push(entry);
       throw error;
     }
-    // Only a changed file ends an undo for good: the state the write left is gone. Unsaved editors and
-    // failed writes leave it for another try.
+    // Only a changed file ends an undo for good: the state the write left is gone. A declined undo, unsaved
+    // editors and failed writes leave it for another try.
     if (!result.ok && result.reason !== 'changed') {
       this.history.push(entry);
     }

@@ -2,11 +2,12 @@ import * as assert from 'node:assert';
 import * as vscode from 'vscode';
 import { planEdit } from '../../src/core/edit/planEdit';
 import { keyFromSegments } from '../../src/core/model/keys';
+import { undoFromEditor } from '../../src/extension/panels/undoHandler';
 import { rootRef } from '../../src/extension/services/workspaceIndex';
 import { sameBytes } from '../../src/extension/services/files';
 import { DEFAULT_FILTER } from '../../src/shared/filter';
 import { DEFAULT_UI_STATE, type UiState } from '../../src/shared/protocol';
-import { activateExtension, nextPost } from './helpers';
+import { activateExtension, answering, nextPost } from './helpers';
 
 function editorTabs(): string[] {
   return vscode.window.tabGroups.all
@@ -177,4 +178,55 @@ suite('editor panel', () => {
     await editors.open(root, common).receive({ type: 'undo' });
     assert.ok(sameBytes(await vscode.workspace.fs.readFile(fr), before));
   });
+
+  // The last change may be in a bundle that is not on screen (audit S-07).
+  test('undoes a change of its own bundle at once, and asks before it undoes one of another bundle', async () => {
+    const { index, fileStore } = await activateExtension();
+    const root = (await index.refresh()).roots[0]!;
+    const bundle = (name: string) => root.analysis.bundles.find((candidate) => candidate.name === name)!;
+    const fileOf = (name: string, locale: string) =>
+      vscode.Uri.joinPath(root.folder.uri, bundle(name).file(locale)!.relPath);
+    const write = (name: string, locale: string, key: string, value: string) =>
+      fileStore.write(rootRef(root), (analysis) =>
+        planEdit(
+          analysis.bundles.find((candidate) => candidate.name === name)!,
+          {
+            kind: 'setText',
+            entryId: keyFromSegments([key]).id,
+            locale,
+            value,
+          },
+        ),
+      );
+    const target = { folder: root.folder.uri.toString(), bundleId: bundle('common').id };
+    const commonFr = fileOf('common', 'fr');
+    const adminEn = fileOf('admin', 'en');
+    const commonBefore = await read(commonFr);
+    const adminBefore = await read(adminEn);
+    try {
+      assert.deepStrictEqual(await write('common', 'fr', 'ASK', 'Demander ?'), { ok: true });
+      const own = answering();
+      await undoFromEditor(target, { index, fileStore, prompts: own });
+      assert.deepStrictEqual(own.asked, []);
+      assert.ok(sameBytes(await read(commonFr), commonBefore));
+
+      assert.deepStrictEqual(await write('admin', 'en', 'ASK', 'Continue?'), { ok: true });
+      const declined = answering(false);
+      await undoFromEditor(target, { index, fileStore, prompts: declined });
+      assert.strictEqual(declined.asked.length, 1);
+      assert.ok(!sameBytes(await read(adminEn), adminBefore));
+      const confirmed = answering(true);
+      await undoFromEditor(target, { index, fileStore, prompts: confirmed });
+      assert.strictEqual(confirmed.asked.length, 1);
+      assert.ok(sameBytes(await read(adminEn), adminBefore));
+    } finally {
+      await vscode.workspace.fs.writeFile(commonFr, commonBefore);
+      await vscode.workspace.fs.writeFile(adminEn, adminBefore);
+      await index.refresh();
+    }
+  });
 });
+
+function read(uri: vscode.Uri): Thenable<Uint8Array> {
+  return vscode.workspace.fs.readFile(uri);
+}

@@ -126,6 +126,23 @@ suite('FileStore', () => {
     assert.deepEqual(await vscode.workspace.fs.readFile(fr), before);
   });
 
+  // An editor asks before it undoes a change of another bundle (audit S-07).
+  test('offers the files of an undo to `accept` first, and keeps the undo when it declines', async () => {
+    const fr = uriOf('common', 'fr');
+    const before = await vscode.workspace.fs.readFile(fr);
+    assert.deepEqual(await api.fileStore.write(ref, setAsk('Continuer ?')), { ok: true });
+    const offered: string[][] = [];
+    const answer = (accepted: boolean) => async (files: readonly vscode.Uri[]) => {
+      offered.push(files.map((file) => file.toString()));
+      return accepted;
+    };
+    assert.deepEqual(await api.fileStore.undo(answer(false)), { ok: false, reason: 'declined' });
+    assert.ok((await read(fr)).includes('"ASK": "Continuer ?"'));
+    assert.equal((await api.fileStore.undo(answer(true)))?.ok, true);
+    assert.deepEqual(await vscode.workspace.fs.readFile(fr), before);
+    assert.deepEqual(offered, [[fr.toString()], [fr.toString()]]);
+  });
+
   test('does not undo a write whose file changed since', async () => {
     const fr = uriOf('common', 'fr');
     assert.deepEqual(await api.fileStore.write(ref, setAsk('Continuer ?')), { ok: true });
@@ -254,7 +271,10 @@ suite('FileStore', () => {
       ok: false,
       reason: 'untrusted',
     });
-    assert.deepEqual(await store.undo(), { ok: false, reason: 'untrusted' });
+    assert.deepEqual(await store.undo(async () => assert.fail('asked in Restricted Mode')), {
+      ok: false,
+      reason: 'untrusted',
+    });
     assert.equal(await read(fr), written);
     trusted = true;
     assert.equal((await store.undo())?.ok, true);

@@ -46,7 +46,6 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi | undef
     fileStore,
     log,
     prompts: vscodePrompts,
-    undo: () => undoLastChange(fileStore),
     command: (command, target, entryId) => runEditorCommand(keyContext, command, target, entryId),
   });
   const areas = createAreasView(index);

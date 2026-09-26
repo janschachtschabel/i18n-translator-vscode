@@ -423,7 +423,7 @@ Datei `.edu-i18n/metadata.json` im Workspace-Root (Pfad per Einstellung änderba
 | Beobachten | `FileSystemWatcher` je Wurzel, 300 ms Debounce, inkrementelle Neuindizierung. Offene Editor-Tabs erhalten ein Patch-Update |
 | Schreiben | Semantische `FileOp`s → Adapter-`edit` → Bytes → `workspace.fs.writeFile`. Eine Warteschlange je Datei; Revisionsprüfung (Hash). Wurde die Datei extern geändert, wird neu geladen und die Operation auf den neuen Stand angewandt |
 | Dirty-Guard | Ist die Zieldatei in einem Editor **ungespeichert geändert**, wird abgebrochen. Die Meldung „Bitte speichern oder verwerfen" bietet an, die Datei zu zeigen |
-| Undo | Undo-Stapel der Sitzung (Befehl und `Strg+Z` im Editor außerhalb von Eingabefeldern). Wiederhergestellt wird der vorherige Byte-Stand, sofern die Datei seitdem unverändert ist |
+| Undo | Undo-Stapel der Sitzung (Befehl und `Strg+Z` im Editor außerhalb von Eingabefeldern). Wiederhergestellt wird der vorherige Byte-Stand, sofern die Datei seitdem unverändert ist. Betrifft die letzte Änderung andere Dateien als die der Einheit, fragt der Editor vorher nach (Audit S-07) |
 | Backups | vor dem ersten Schreibvorgang einer Sitzung, vor Massenoperationen, alle N Minuten bei Änderungen, manuell. Ablage in `context.storageUri/backups/<Zeitstempel>/…`, **außerhalb des Repos**. Die letzten N bleiben erhalten; Wiederherstellen per QuickPick |
 | Eingeschränkter Modus | `untrustedWorkspaces: limited`: nur Anzeige und Prüfung, kein Schreiben, keine KI |
 | Remote | läuft als Workspace-Extension (WSL, SSH, Dev Container); die KI-Aufrufe erfolgen vom Remote-Host |
