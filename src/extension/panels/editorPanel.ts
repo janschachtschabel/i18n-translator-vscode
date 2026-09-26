@@ -21,6 +21,7 @@ import { localize } from '../localize';
 import { messageOf } from '../services/errors';
 import type { FileStore } from '../services/fileStore';
 import type { IndexedRoot, IndexSnapshot, WorkspaceIndex } from '../services/workspaceIndex';
+import { editorTitle } from './editorTitle';
 import { findBundle } from './findBundle';
 import { applyEdit, type EditAnswer, type EditRequest } from './editHandler';
 import { routeMessage } from './messageRouter';
@@ -147,9 +148,9 @@ export class EditorPanel implements vscode.Disposable {
     readonly target: PanelState,
     private readonly services: EditorServices,
   ) {
-    const { name } = parseBundleId(target.bundleId);
+    const title = editorTitle(services.index.current(), target);
     const files = vscode.Uri.joinPath(services.extensionUri, 'dist', 'webview');
-    panel.title = name;
+    panel.title = title;
     panel.webview.options = { enableScripts: true, localResourceRoots: [files] };
     panel.webview.html = webviewHtml({
       cspSource: panel.webview.cspSource,
@@ -157,7 +158,7 @@ export class EditorPanel implements vscode.Disposable {
       scriptUri: panel.webview.asWebviewUri(vscode.Uri.joinPath(files, 'main.js')).toString(),
       styleUri: panel.webview.asWebviewUri(vscode.Uri.joinPath(files, 'main.css')).toString(),
       language: pageLanguage(vscode.env.language, vscode.l10n.bundle),
-      title: name,
+      title,
     });
     this.subscriptions = [
       this.posted,
@@ -246,6 +247,8 @@ export class EditorPanel implements vscode.Disposable {
    * may have changed another bundle, then this one gets nothing), or that it is gone.
    */
   private show(snapshot: IndexSnapshot): Promise<void> {
+    // Roots may come and go, e.g. with a second checkout: the title names the root while there are several.
+    this.panel.title = editorTitle(snapshot, this.target);
     const found = findBundle(snapshot, this.target);
     if (!found) {
       this.sent = undefined;
