@@ -3,11 +3,14 @@ import { keyFromSegments } from '../../../src/core/model/keys';
 import {
   copyPanelState,
   copyUiState,
+  copyUnsavedTexts,
   DEFAULT_UI_STATE,
   isPanelState,
   isUiState,
+  isUnsavedTexts,
   isWebviewToHost,
   MAX_TEXT_LENGTH,
+  MAX_UNSAVED_TEXTS,
   readableEditRequestId,
 } from '../../../src/shared/protocol';
 
@@ -21,6 +24,14 @@ const edit = {
   before: null,
 };
 const uiState = { ...DEFAULT_UI_STATE, hiddenLocales: ['de-informal'] };
+const unsaved = {
+  entryId,
+  locale: 'fr',
+  text: 'Espace',
+  message: 'Not saved.',
+  shown: null,
+  conflict: false,
+};
 
 describe('isWebviewToHost', () => {
   it('accepts every message the webview sends', () => {
@@ -33,6 +44,8 @@ describe('isWebviewToHost', () => {
       { type: 'command', command: 'addLanguage' },
       { type: 'uiState', state: uiState },
       { type: 'uiState', state: DEFAULT_UI_STATE },
+      { type: 'unsaved', texts: [] },
+      { type: 'unsaved', texts: [unsaved, { ...unsaved, locale: 'it', shown: 'Area', conflict: true }] },
     ]) {
       expect(isWebviewToHost(message), JSON.stringify(message)).toBe(true);
     }
@@ -53,6 +66,12 @@ describe('isWebviewToHost', () => {
       { type: 'uiState', state: { ...uiState, wrap: 'yes' } },
       { type: 'uiState', state: { layout: 'auto' } },
       { type: 'uiState', state: null },
+      { type: 'unsaved', texts: 'Espace' },
+      { type: 'unsaved', texts: [{ ...unsaved, entryId: '' }] },
+      { type: 'unsaved', texts: [{ ...unsaved, conflict: 'no' }] },
+      { type: 'unsaved', texts: [{ ...unsaved, shown: undefined }] },
+      { type: 'unsaved', texts: [{ ...unsaved, text: 'x'.repeat(MAX_TEXT_LENGTH + 1) }] },
+      { type: 'unsaved', texts: [{ ...unsaved, message: 'x'.repeat(1001) }] },
     ]) {
       expect(isWebviewToHost(message), JSON.stringify(message)).toBe(false);
     }
@@ -96,6 +115,18 @@ describe('isWebviewToHost', () => {
     expect(isWebviewToHost({ type: 'uiState', state: { ...uiState, hiddenLocales: codes(201) } })).toBe(
       false,
     );
+  });
+});
+
+// The host keeps them in the workspace state: they are bounded like everything else from the webview (audit L-05).
+describe('isUnsavedTexts', () => {
+  it('limits the number of texts and their characters', () => {
+    expect(isUnsavedTexts(Array.from({ length: MAX_UNSAVED_TEXTS }, () => unsaved))).toBe(true);
+    expect(isUnsavedTexts(Array.from({ length: MAX_UNSAVED_TEXTS + 1 }, () => unsaved))).toBe(false);
+    const long = (count: number) =>
+      Array.from({ length: count }, () => ({ ...unsaved, text: 'x'.repeat(MAX_TEXT_LENGTH) }));
+    expect(isUnsavedTexts(long(10))).toBe(true);
+    expect(isUnsavedTexts(long(11))).toBe(false);
   });
 });
 
@@ -208,5 +239,6 @@ describe('copyUiState and copyPanelState', () => {
       folder: 'file:///repo',
       bundleId: '["a","","b"]',
     });
+    expect(copyUnsavedTexts([{ ...unsaved, extra: 1 } as never])).toEqual([unsaved]);
   });
 });

@@ -34,6 +34,22 @@ export interface PanelState {
   bundleId: string;
 }
 
+/**
+ * A text the user typed that is not in its file: one the host did not write, or one still in an editor. The host
+ * keeps them per bundle, so that closing the editor or reloading the window loses none.
+ */
+export interface UnsavedText {
+  entryId: string;
+  locale: string;
+  text: string;
+  /** Why it is not saved, in the user's language. */
+  message: string;
+  /** The text the cell showed then (null: none); a cell that shows another text now makes it a conflict. */
+  shown: string | null;
+  /** The cell's text had changed already (B5): editing it offers the choice between both texts. */
+  conflict: boolean;
+}
+
 export const EDITOR_COMMANDS = ['addKey', 'renameKey', 'deleteKey', 'addLanguage'] as const;
 export type EditorCommand = (typeof EDITOR_COMMANDS)[number];
 
@@ -45,12 +61,23 @@ export type WebviewToHost =
   /** The host asks for names and confirmations itself; `entryId` is the key the command starts from. */
   | { type: 'command'; command: EditorCommand; entryId?: string }
   | { type: 'uiState'; state: UiState }
+  /** All texts of the bundle that are not saved, for the host to keep instead of those it kept before. */
+  | { type: 'unsaved'; texts: UnsavedText[] }
   | { type: 'undo' };
 
 /** What the host sends; it builds these itself, so the webview does not check them. */
 export type HostToWebview =
-  /** `l10n`: the texts of the editor in the user's language, keyed by their English text. */
-  | { type: 'init'; l10n: Readonly<Record<string, string>>; uiState: UiState; panelState: PanelState }
+  /**
+   * `l10n`: the texts of the editor in the user's language, keyed by their English text; `unsaved`: the texts
+   * the host kept for the bundle.
+   */
+  | {
+      type: 'init';
+      l10n: Readonly<Record<string, string>>;
+      uiState: UiState;
+      panelState: PanelState;
+      unsaved?: UnsavedText[];
+    }
   | { type: 'bundle'; model: BundleViewModel }
   /** What changed since the last model or patch, e.g. a file changed on disk; only once the webview has a model. */
   | { type: 'patch'; patch: BundlePatch }
@@ -68,6 +95,10 @@ const MAX_ID_LENGTH = 200;
 /** Entry ids, bundle ids and folder URIs: far longer than real ones, but bounded before they are parsed. */
 const MAX_LONG_ID_LENGTH = 10_000;
 const MAX_HIDDEN_LOCALES = 200;
+/** Texts that are not saved, which the host keeps: in number and in characters, far beyond any real session. */
+export const MAX_UNSAVED_TEXTS = 500;
+const MAX_UNSAVED_CHARACTERS = 1_000_000;
+const MAX_MESSAGE_LENGTH = 1000;
 
 /**
  * Whether a message from the webview has a known type and valid fields. The webview is a separate context:
@@ -97,6 +128,8 @@ export function isWebviewToHost(value: unknown): value is WebviewToHost {
       );
     case 'uiState':
       return isUiState(value['state']);
+    case 'unsaved':
+      return isUnsavedTexts(value['texts']);
     default:
       return false;
   }
@@ -126,6 +159,39 @@ export function copyUiState(state: UiState): UiState {
     compactLocale: state.compactLocale,
     details: state.details,
   };
+}
+
+export function copyUnsavedTexts(texts: readonly UnsavedText[]): UnsavedText[] {
+  return texts.map(({ entryId, locale, text, message, shown, conflict }) => ({
+    entryId,
+    locale,
+    text,
+    message,
+    shown,
+    conflict,
+  }));
+}
+
+/** Whether texts that are not saved are valid and bounded; the host also reads them back from the workspace state. */
+export function isUnsavedTexts(value: unknown): value is UnsavedText[] {
+  if (!Array.isArray(value) || value.length > MAX_UNSAVED_TEXTS || !value.every(isUnsavedText)) {
+    return false;
+  }
+  const characters = value.reduce((sum, text) => sum + text.text.length + (text.shown?.length ?? 0), 0);
+  return characters <= MAX_UNSAVED_CHARACTERS;
+}
+
+function isUnsavedText(value: unknown): value is UnsavedText {
+  return (
+    isRecord(value) &&
+    isEntryId(value['entryId']) &&
+    isId(value['locale']) &&
+    isText(value['text']) &&
+    typeof value['message'] === 'string' &&
+    value['message'].length <= MAX_MESSAGE_LENGTH &&
+    (value['shown'] === null || isBounded(value['shown'])) &&
+    typeof value['conflict'] === 'boolean'
+  );
 }
 
 export function copyPanelState(state: PanelState): PanelState {

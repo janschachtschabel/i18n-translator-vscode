@@ -155,6 +155,33 @@ suite('editor panel', () => {
     await second.receive({ type: 'uiState', state: DEFAULT_UI_STATE });
   });
 
+  // Closing the editor lost the texts that were not saved (audit L-05).
+  test('keeps the texts that were not saved for the next time the editor opens', async () => {
+    const { index, editors } = await activateExtension();
+    const root = (await index.refresh()).roots[0]!;
+    const common = root.analysis.bundles.find((bundle) => bundle.name === 'common')!;
+    const texts = [
+      {
+        entryId: keyFromSegments(['CANCEL']).id,
+        locale: 'fr',
+        text: 'Annuler',
+        message: 'Le disque est plein.',
+        shown: null,
+        conflict: false,
+      },
+    ];
+
+    const first = editors.open(root, common);
+    await first.receive({ type: 'unsaved', texts: texts.map((text) => ({ ...text, extra: 1 })) });
+    first.panel.dispose();
+    const second = editors.open(root, common);
+    assert.deepStrictEqual((await nextPost(second, 'init')).unsaved, texts);
+    // None left: the workspace state, which outlives the test run, keeps nothing.
+    await second.receive({ type: 'unsaved', texts: [] });
+    second.panel.dispose();
+    assert.deepStrictEqual((await nextPost(editors.open(root, common), 'init')).unsaved, []);
+  });
+
   test('undoes the last change from the editor', async () => {
     const { index, editors, fileStore } = await activateExtension();
     const root = (await index.refresh()).roots[0]!;

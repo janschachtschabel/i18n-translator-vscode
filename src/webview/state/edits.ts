@@ -1,6 +1,6 @@
 import { batch, signal } from '@preact/signals';
 import { displayKey, keyFromId } from '../../core/model/keys';
-import type { HostToWebview, WebviewToHost } from '../../shared/protocol';
+import type { HostToWebview, UnsavedText, WebviewToHost } from '../../shared/protocol';
 import type { BundleViewModel } from '../../shared/viewModel';
 import { l10n } from '../l10n';
 
@@ -271,6 +271,81 @@ export class Edits {
     });
   }
 
+  /**
+   * The bundle left the index for a while (e.g. a branch switch): the texts that were not saved stay for its
+   * return, and a typed text of the open editor joins them. Texts on their way get their answers as usual.
+   */
+  bundleGone(): void {
+    const open = this.open.value;
+    if (!open) {
+      return;
+    }
+    const draft = this.draft.value;
+    batch(() => {
+      this.close(open);
+      if (draft !== toTyped(open.before ?? '')) {
+        const reason = open.conflict ? conflictNotice(open) : (open.error ?? closedNotice());
+        this.reject(open, draft, reason, open.conflict !== undefined);
+      }
+    });
+  }
+
+  /**
+   * The texts that are not in the files, for the host to keep: those it did not write, and a typed text of the
+   * open editor, which takes the place of a text that was not saved in its cell.
+   */
+  unsaved(): UnsavedText[] {
+    const open = this.open.value;
+    const typed = open && this.draft.value !== toTyped(open.before ?? '') ? open : undefined;
+    const texts = [...this.rejected.value.values()]
+      .filter((rejection) => !typed || !sameCell(rejection, typed))
+      .map(({ entryId, locale, text, message, conflict }) => ({
+        entryId,
+        locale,
+        text,
+        message,
+        shown: this.textOf({ entryId, locale }) ?? null,
+        conflict,
+      }));
+    if (typed) {
+      texts.push({
+        entryId: typed.entryId,
+        locale: typed.locale,
+        text: this.draft.value,
+        message: typed.error ?? closedNotice(),
+        shown: typed.before ?? null,
+        conflict: typed.conflict !== undefined,
+      });
+    }
+    return texts;
+  }
+
+  /**
+   * Brings the texts the host kept back into the cells the model has, as not saved; a cell that shows another
+   * text than it did then makes its text a conflict. How many came back.
+   */
+  restore(texts: readonly UnsavedText[]): number {
+    const rejected = new Map(this.rejected.value);
+    let count = 0;
+    for (const kept of texts) {
+      const now = this.textOf(kept);
+      if (!this.shows(kept) || now === kept.text) {
+        continue;
+      }
+      const conflict = kept.conflict || (now ?? null) !== kept.shown;
+      rejected.set(cellKey(kept), {
+        entryId: kept.entryId,
+        locale: kept.locale,
+        text: kept.text,
+        message: conflict ? conflictNotice(kept) : kept.message,
+        conflict,
+      });
+      count++;
+    }
+    this.rejected.value = rejected;
+    return count;
+  }
+
   /** Starts afresh, e.g. when the webview loads again; the numbers of requests go on, so that none repeats. */
   reset(): void {
     this.model = undefined;
@@ -344,6 +419,15 @@ export class Edits {
     }
   }
 
+  /** Whether the last model has the cell: its key and its language. */
+  private shows(cell: CellRef): boolean {
+    return (
+      this.model !== undefined &&
+      this.model.rows.some((row) => row.entryId === cell.entryId) &&
+      this.model.locales.some((locale) => locale.code === cell.locale)
+    );
+  }
+
   /** The text a cell has in the last model. */
   private textOf(cell: CellRef): string | undefined {
     return this.model?.rows.find((row) => row.entryId === cell.entryId)?.cells[cell.locale]?.value;
@@ -360,6 +444,11 @@ function sameCell(a: CellRef, b: CellRef): boolean {
 
 function names(cell: CellRef): { key: string; locale: string } {
   return { key: displayKey(keyFromId(cell.entryId)), locale: cell.locale };
+}
+
+/** Why the text of an editor that closed before saving is not saved. */
+function closedNotice(): string {
+  return l10n.t('The editor closed before this text was saved.');
 }
 
 function conflictNotice(cell: CellRef): string {

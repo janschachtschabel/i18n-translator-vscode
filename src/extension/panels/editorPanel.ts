@@ -4,15 +4,18 @@ import { parseBundleId, type Bundle } from '../../core/model/bundle';
 import {
   copyPanelState,
   copyUiState,
+  copyUnsavedTexts,
   DEFAULT_UI_STATE,
   isPanelState,
   isUiState,
+  isUnsavedTexts,
   isWebviewToHost,
   readableEditRequestId,
   type EditorCommand,
   type HostToWebview,
   type PanelState,
   type UiState,
+  type UnsavedText,
 } from '../../shared/protocol';
 import { diffModels } from '../../shared/patch';
 import { buildBundleViewModel, type BundleViewModel } from '../../shared/viewModel';
@@ -182,6 +185,13 @@ export class EditorPanel implements vscode.Disposable {
         uiState: async ({ state }) => {
           await this.services.workspaceState.update(this.stateKey(), copyUiState(state));
         },
+        // Kept per bundle like the view state, so that closing the editor or reloading the window loses no text.
+        unsaved: async ({ texts }) => {
+          await this.services.workspaceState.update(
+            this.unsavedKey(),
+            texts.length > 0 ? copyUnsavedTexts(texts) : undefined,
+          );
+        },
         undo: () => undoFromEditor(this.target, this.services),
         command: ({ command, entryId }) => this.services.command(command, this.target, entryId),
       },
@@ -234,6 +244,7 @@ export class EditorPanel implements vscode.Disposable {
       l10n: vscode.l10n.bundle ?? {},
       uiState: this.storedUiState(),
       panelState: this.target,
+      unsaved: this.storedUnsaved(),
     });
     // Before the first index run (a panel restored at startup), `update` brings the bundle.
     const snapshot = this.services.index.current();
@@ -293,6 +304,16 @@ export class EditorPanel implements vscode.Disposable {
 
   private stateKey(): string {
     return `eduI18n.view:${JSON.stringify([this.target.folder, this.target.bundleId])}`;
+  }
+
+  /** The texts of the bundle that were not saved when its editor was last used; unreadable ones are left out. */
+  private storedUnsaved(): UnsavedText[] {
+    const stored = this.services.workspaceState.get<unknown>(this.unsavedKey());
+    return isUnsavedTexts(stored) ? copyUnsavedTexts(stored) : [];
+  }
+
+  private unsavedKey(): string {
+    return `eduI18n.unsaved:${JSON.stringify([this.target.folder, this.target.bundleId])}`;
   }
 
   /** Sends a message to the webview; an editor that closed meanwhile (e.g. during a save) gets nothing. */

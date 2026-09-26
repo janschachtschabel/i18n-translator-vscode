@@ -6,6 +6,7 @@ import {
   type EditorCommand,
   type HostToWebview,
   type UiState,
+  type UnsavedText,
   type WebviewToHost,
 } from '../../shared/protocol';
 import type { BundleViewModel, LocaleView } from '../../shared/viewModel';
@@ -40,6 +41,9 @@ export type View =
   | { kind: 'loading' }
   | { kind: 'bundle'; model: BundleViewModel }
   | { kind: 'missing'; name: string };
+
+/** How long typing rests before the texts that are not saved go to the host. */
+const UNSAVED_DELAY_MS = 300;
 
 /** A text for screen readers; a new `id` has them read it again, even if the text is the same. */
 export interface Announcement {
@@ -108,6 +112,13 @@ export class EditorStore {
   });
   /** The key of the table's active cell, whose details the table shows; null before it has one. */
   readonly detailsKey = signal<string | null>(null);
+  /** The texts the host kept for the bundle, until the first model after `init` has them back in their cells. */
+  private restoring: readonly UnsavedText[] | undefined;
+  /** Whether the texts that are not saved go to the host: only once those it kept are back, or they would be lost. */
+  private readonly keepsUnsaved = signal(false);
+  /** The texts the host has (as JSON), so that only a change goes to it. */
+  private keptUnsaved = '[]';
+  private unsavedTimer: ReturnType<typeof setTimeout> | undefined;
   /** The row the details show: that of their open editor, else of the table's active key; undefined: none. */
   readonly detailsRow = computed(() => {
     const open = this.edits.open.value;
@@ -132,6 +143,15 @@ export class EditorStore {
         this.edits.park();
       }
     });
+    // The texts that are not saved go to the host, which keeps them per bundle; while typing, a moment later.
+    effect(() => {
+      const texts = this.edits.unsaved();
+      if (!this.keepsUnsaved.value) {
+        return;
+      }
+      clearTimeout(this.unsavedTimer);
+      this.unsavedTimer = setTimeout(() => this.keepUnsaved(texts), UNSAVED_DELAY_MS);
+    });
   }
 
   receive(message: HostToWebview): void {
@@ -141,6 +161,9 @@ export class EditorStore {
         this.uiState.value = message.uiState;
         this.host.setState(message.panelState);
         this.edits.reset();
+        this.restoring = message.unsaved ?? [];
+        this.keptUnsaved = JSON.stringify(this.restoring);
+        this.keepsUnsaved.value = false;
         // The host follows up with the bundle, or with it once the first index run is done.
         this.view.value = { kind: 'loading' };
         break;
@@ -151,14 +174,27 @@ export class EditorStore {
           this.announce('');
         }
         this.edits.update(message.model);
+        const restored = this.restoring ? this.edits.restore(this.restoring) : 0;
+        this.restoring = undefined;
+        this.keepsUnsaved.value = true;
         this.view.value = { kind: 'bundle', model: message.model };
+        const back =
+          restored > 0
+            ? l10n.t('Texts not saved before, back in their cells: {count}', {
+                count: formatNumber(restored),
+              })
+            : '';
         if (before === 'loading') {
           // The texts appear while the focus is elsewhere; screen readers would not notice.
           const counts = l10n.t('Keys: {keys} · Languages: {languages}', {
             keys: formatNumber(message.model.rows.length),
             languages: formatNumber(message.model.locales.length),
           });
-          this.announce(`${l10n.t('{name} is open.', { name: message.model.name })} ${counts}`);
+          this.announce(
+            `${l10n.t('{name} is open.', { name: message.model.name })} ${counts} ${back}`.trim(),
+          );
+        } else if (back) {
+          this.announce(back);
         }
         break;
       }
@@ -167,7 +203,7 @@ export class EditorStore {
         if (this.view.value.kind === 'bundle') {
           this.announce(missingNotice(message.name));
         }
-        this.edits.reset();
+        this.edits.bundleGone();
         this.view.value = { kind: 'missing', name: message.name };
         break;
       case 'patch': {
@@ -188,6 +224,15 @@ export class EditorStore {
   /** Has screen readers read `text` once they have finished what they are reading. */
   announce(text: string): void {
     this.announcement.value = { text, id: this.announcement.value.id + 1 };
+  }
+
+  /** Gives the host the texts that are not saved, if they are not what it has. */
+  private keepUnsaved(texts: UnsavedText[]): void {
+    const json = JSON.stringify(texts);
+    if (json !== this.keptUnsaved) {
+      this.keptUnsaved = json;
+      this.host.postMessage({ type: 'unsaved', texts });
+    }
   }
 
   /**

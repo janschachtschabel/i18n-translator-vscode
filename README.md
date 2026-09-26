@@ -35,6 +35,8 @@ als Liste:
 - Eine Datei mit ungespeicherten Änderungen in einem Editor wird nie überschrieben.
 - Hat sich ein Text außerhalb des Editors geändert, fragt der Editor, welcher gilt.
 - Ein geleerter Text wird nach Rückfrage in dieser Sprache gelöscht, damit der Rückfall auf die Referenz greift.
+- Ein Text, der nicht gespeichert werden konnte oder beim Schließen des Editors noch in Bearbeitung war, bleibt je
+  Einheit erhalten und steht beim nächsten Öffnen wieder als „nicht gespeichert“ in seiner Zelle.
 - **Rückgängig:** Strg+Z im Editor oder der Befehl „Letzte Änderung an Übersetzungsdateien rückgängig machen".
   Betrifft die letzte Änderung eine andere Einheit, fragt der Editor vorher nach.
 - **Sicherungen:** vor der ersten Änderung einer Sitzung, vor Änderungen mehrerer Einheiten und alle 10 Minuten
