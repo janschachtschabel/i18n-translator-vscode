@@ -100,6 +100,11 @@
   flex: none;
 }
 
+/* Several statuses would leave the text no room: they go below it instead. */
+.table-scroller:not(.wrap) .grid-body .grid-cell:has(.cell-status ~ .cell-status) {
+  flex-wrap: wrap;
+}
+
 .table-scroller.wrap .cell-text {
   white-space: pre-wrap;
   overflow-wrap: anywhere;

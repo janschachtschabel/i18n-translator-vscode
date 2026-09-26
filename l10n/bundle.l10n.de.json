@@ -31,6 +31,7 @@
   "{key} needs a text in the reference language {locale}.": "{key} braucht einen Text in der Referenzsprache {locale}.",
   "{locale} is not a valid language code for {area}.": "{locale} ist kein gültiger Sprachcode für {area}.",
   "{name} is no longer in the workspace. It may have been renamed, moved or deleted.": "{name} ist nicht mehr im Arbeitsbereich. Die Einheit wurde vielleicht umbenannt, verschoben oder gelöscht.",
+  "{name} is open: {keys} keys in {languages} languages.": "{name} ist geöffnet: {keys} Keys in {languages} Sprachen.",
   "{name}: keys {keys}, errors {errors}, warnings {warnings}, infos {infos}": "{name}: Keys {keys}, Fehler {errors}, Warnungen {warnings}, Hinweise {infos}",
   "{top} also exists in {bundles}. At runtime, the bundle that comes last in the merge order replaces {top} of the others as a whole.": "{top} gibt es auch in {bundles}. Zur Laufzeit ersetzt die Einheit, die in der Merge-Reihenfolge zuletzt kommt, {top} der anderen vollständig.",
   "Add Key": "Key hinzufügen",

@@ -124,9 +124,10 @@ it('announces the result once typing pauses, not after every key', () => {
     const { open } = renderEditor();
     open();
     const live = () => screen.getAllByRole('status').find((region) => !region.closest('[role="search"]'))!;
+    const opened = live().textContent;
     type('s');
     type('speichern');
-    expect(live().textContent).toBe('');
+    expect(live().textContent).toBe(opened);
     act(() => void vi.advanceTimersByTime(700));
     expect(live().textContent).toBe('Keys: 1 von 2');
   } finally {

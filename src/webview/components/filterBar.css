@@ -2,8 +2,8 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px 16px;
-  margin-block: 16px 8px;
+  gap: 6px 16px;
+  margin-block: 10px 6px;
 }
 
 .filter input[type='search'] {

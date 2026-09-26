@@ -55,6 +55,16 @@ describe('EditorStore', () => {
     expect(sentAfterFiltering).toEqual([true]);
   });
 
+  it('says which bundle opened once its texts are there, which screen readers do not see appear', () => {
+    const { editor } = store();
+    editor.receive({ type: 'init', l10n: {}, uiState: DEFAULT_UI_STATE, panelState });
+    editor.receive({ type: 'bundle', model: findingsModel });
+    expect(editor.announcement.value.text).toBe('common is open: 4 keys in 4 languages.');
+    const { id } = editor.announcement.value;
+    editor.receive({ type: 'bundle', model: findingsModel });
+    expect(editor.announcement.value.id).toBe(id);
+  });
+
   it('clears an announcement that is no longer true when the bundle comes back', () => {
     const { editor } = store();
     editor.receive({ type: 'init', l10n: {}, uiState: DEFAULT_UI_STATE, panelState });

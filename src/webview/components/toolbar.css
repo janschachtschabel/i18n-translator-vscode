@@ -2,6 +2,6 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px 24px;
-  margin-block: 16px 12px;
+  gap: 6px 16px;
+  margin-block: 10px 6px;
 }

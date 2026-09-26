@@ -13,7 +13,8 @@
   padding: 2px 4px;
   overflow: hidden;
   resize: none;
-  border: 1px solid var(--vscode-input-border, var(--vscode-panel-border));
+  /* As the search field: input.border is unset in many themes (e.g. Light+). */
+  border: 1px solid var(--vscode-input-border, var(--vscode-dropdown-border));
   border-radius: 2px;
   color: var(--vscode-input-foreground);
   background-color: var(--vscode-input-background);

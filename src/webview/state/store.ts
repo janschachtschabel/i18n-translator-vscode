@@ -9,7 +9,7 @@ import {
   type WebviewToHost,
 } from '../../shared/protocol';
 import type { BundleViewModel, LocaleView } from '../../shared/viewModel';
-import { l10n, setTranslations } from '../l10n';
+import { formatNumber, l10n, setTranslations } from '../l10n';
 import {
   Edits,
   nextCell,
@@ -107,14 +107,26 @@ export class EditorStore {
         // The host follows up with the bundle, or with it once the first index run is done.
         this.view.value = { kind: 'loading' };
         break;
-      case 'bundle':
-        if (this.announcement.value.text !== '') {
+      case 'bundle': {
+        const before = this.view.value.kind;
+        if (before === 'missing') {
           // "The bundle is gone" is no longer true; browsing screen reader users would still find it.
           this.announce('');
         }
         this.edits.update(message.model);
         this.view.value = { kind: 'bundle', model: message.model };
+        if (before === 'loading') {
+          // The texts appear while the focus is elsewhere; screen readers would not notice.
+          this.announce(
+            l10n.t('{name} is open: {keys} keys in {languages} languages.', {
+              name: message.model.name,
+              keys: formatNumber(message.model.rows.length),
+              languages: formatNumber(message.model.locales.length),
+            }),
+          );
+        }
         break;
+      }
       case 'missing':
         // Someone working in the bundle should hear that it is gone; on opening, the page says it.
         if (this.view.value.kind === 'bundle') {

@@ -14,6 +14,16 @@ body {
   outline-offset: -1px;
 }
 
+/*
+ * Around text fields and selects, not inside them: in dark themes the focus color reaches 3:1 against the
+ * editor's background but not against the field's (Dark Modern 3.64 and 2.87, WCAG 1.4.11).
+ */
+input:not([type='checkbox'], [type='radio']):focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline-offset: 1px;
+}
+
 /* Read by screen readers, not shown. */
 .visually-hidden {
   position: absolute;
@@ -88,6 +98,16 @@ button:hover {
 
 .option :focus-visible {
   outline: none;
+}
+
+/* The name of the bundle and its counts, compact: in a low editor, the table keeps the height. */
+.bundle > h1 {
+  margin: 12px 0 2px;
+  font-size: 1.5em;
+}
+
+.bundle > h1 + p {
+  margin: 0;
 }
 
 /* With the table, the editor fills the panel and the table scrolls in the space that is left. */

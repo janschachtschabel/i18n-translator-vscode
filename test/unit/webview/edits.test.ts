@@ -136,10 +136,11 @@ describe('editing', () => {
 
   it('gives the text back without a mark when the user decided to keep it', () => {
     const { store, cell, type } = open();
+    const { id } = store.announcement.value;
     type('SAVE', 'fr', '');
     store.receive({ type: 'writeResult', requestId: 'edit-1', ok: false });
     expect(cell('SAVE', 'fr')).toEqual(model.rows[0]!.cells['fr']);
-    expect(store.announcement.value.text).toBe('');
+    expect(store.announcement.value.id).toBe(id);
   });
 
   it('closes the editor of a key that went, says that its text was not saved, and drops its marks', () => {
