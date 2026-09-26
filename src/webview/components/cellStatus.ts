@@ -32,6 +32,8 @@ export function statusWord(rule: string): string {
       return l10n.t('lost');
     case 'same-as-reference':
       return l10n.t('as reference');
+    case 'lost-character':
+      return l10n.t('character lost');
     case 'duplicate-key':
       return l10n.t('duplicate');
     case 'bom-first-key':

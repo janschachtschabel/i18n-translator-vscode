@@ -26,6 +26,7 @@ export const RULE_IDS = [
   'key-overridden',
   'subtree-lost',
   'same-as-reference',
+  'lost-character',
 ] as const;
 export type RuleId = (typeof RULE_IDS)[number];
 

@@ -54,7 +54,7 @@ describe('issue arguments', () => {
       '"EMPTY":"","SAME":"Dokument","TOP":{"ONLY_COMMON":"x"},"OVER":"Text"}',
     'common/de-informal.json': '{"ASK":"Möchten Sie?","EXTRA":"v"}',
     'common/de-no-binnen-i.json': '{}',
-    'admin/de.json': '{"OVER":"Text B","TOP":{"OTHER":"y"}}',
+    'admin/de.json': '{"OVER":"Text B","TOP":{"OTHER":"y"},"LOST":"Gr?ße"}',
     'broken/de.json': '{"a": }',
   };
   const files = [

@@ -299,6 +299,7 @@ Standard: `{}`. Der Schweregrad je Prüfregel ist `error` (Fehler), `warning` (W
 | `key-overridden` | Warnung | Ein Key der obersten Ebene steht in mehreren Einheiten mit anderem Text; die spätere Einheit gewinnt. |
 | `subtree-lost` | Fehler | Ein Objekt der obersten Ebene steht in mehreren Einheiten; die Keys der früheren gehen zur Laufzeit verloren. |
 | `same-as-reference` | Hinweis | Ein Text gleicht der Referenz und ist vielleicht unübersetzt. |
+| `lost-character` | Warnung | Ein Fragezeichen zwischen Buchstaben (`l?apprentissage`, `n?ud`) oder ein Ersatzzeichen (U+FFFD): Beim Speichern in einer Kodierung, die das Zeichen nicht kennt, ging es verloren. Fragezeichen in Links, Tags und Platzhaltern zählen nicht. |
 
 `key-overridden` und `subtree-lost` prüft die Extension nur in Bereichen mit `"mergeSemantics": "shallow-toplevel"`,
 wie dem eingebauten.

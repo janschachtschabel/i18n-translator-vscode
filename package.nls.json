@@ -72,5 +72,6 @@
   "config.rule.variant-orphan": "A variant has a key that its base does not have.",
   "config.rule.key-overridden": "A top-level key occurs in several bundles with another text; the later bundle wins.",
   "config.rule.subtree-lost": "A top-level object occurs in several bundles; the keys of the earlier ones are lost at runtime.",
-  "config.rule.same-as-reference": "A text is the same as the reference and may be untranslated."
+  "config.rule.same-as-reference": "A text is the same as the reference and may be untranslated.",
+  "config.rule.lost-character": "A question mark between letters or a replacement character: a character lost when the file was saved in another encoding."
 }

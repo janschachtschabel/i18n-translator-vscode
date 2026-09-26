@@ -2,6 +2,7 @@ import type { Rule } from '../types';
 import { emptyValueRule } from './emptyValue';
 import { fileProblemRules } from './fileProblems';
 import { htmlMismatchRule } from './htmlMismatch';
+import { lostCharacterRule } from './lostCharacter';
 import { keyOverriddenRule, subtreeLostRule } from './mergeRules';
 import { missingFileRule } from './missingFile';
 import { misplacedKeyRule, missingKeyRule, orphanKeyRule } from './missingKeys';
@@ -27,4 +28,5 @@ export const ALL_RULES: readonly Rule[] = [
   keyOverriddenRule,
   subtreeLostRule,
   sameAsReferenceRule,
+  lostCharacterRule,
 ];

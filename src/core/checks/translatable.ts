@@ -10,7 +10,12 @@ export function readerText(text: string, syntax: PlaceholderSyntax | undefined):
 /** An address such as `http://…`: letters in it are no words. */
 const URL = /[a-z][a-z0-9+.-]*:\/\/\S*/gi;
 
+/** The words of a text alone: without placeholders, tags and links. */
+export function wordsOnly(text: string, syntax: PlaceholderSyntax | undefined): string {
+  return readerText(text, syntax).replace(URL, ' ');
+}
+
 /** Whether a text has words to translate: letters outside links, placeholders and tags (a license link has none). */
 export function hasTextToTranslate(text: string, syntax: PlaceholderSyntax | undefined): boolean {
-  return /\p{L}/u.test(readerText(text, syntax).replace(URL, ' '));
+  return /\p{L}/u.test(wordsOnly(text, syntax));
 }

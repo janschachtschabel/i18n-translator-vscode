@@ -32,6 +32,8 @@ export const ISSUE_MESSAGES: Readonly<Record<RuleId, string>> = {
   'subtree-lost':
     '{key} is unreachable in {locale}: {winner}, which comes later in the merge order, replaces the whole top-level key {topKey}.',
   'same-as-reference': '{key} in {locale} is identical to the reference text and may be untranslated.',
+  'lost-character':
+    '{key} in {locale} has a question mark between letters or a replacement character: probably a character lost when the file was saved in another encoding.',
 };
 
 /** Several missing-key findings of one file, combined into one diagnostic (always two or more keys). */

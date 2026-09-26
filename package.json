@@ -633,6 +633,16 @@
                 "off"
               ],
               "description": "%config.rule.same-as-reference%"
+            },
+            "lost-character": {
+              "type": "string",
+              "enum": [
+                "error",
+                "warning",
+                "info",
+                "off"
+              ],
+              "description": "%config.rule.lost-character%"
             }
           }
         },

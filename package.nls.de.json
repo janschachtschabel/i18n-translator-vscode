@@ -72,5 +72,6 @@
   "config.rule.variant-orphan": "Eine Variante hat einen Key, den ihre Basis nicht hat.",
   "config.rule.key-overridden": "Ein Key der obersten Ebene kommt in mehreren Einheiten mit anderem Text vor; die spätere Einheit gewinnt.",
   "config.rule.subtree-lost": "Ein Objekt der obersten Ebene kommt in mehreren Einheiten vor; die Keys der früheren gehen zur Laufzeit verloren.",
-  "config.rule.same-as-reference": "Ein Text gleicht der Referenz und ist vielleicht unübersetzt."
+  "config.rule.same-as-reference": "Ein Text gleicht der Referenz und ist vielleicht unübersetzt.",
+  "config.rule.lost-character": "Ein Fragezeichen zwischen Buchstaben oder ein Ersatzzeichen: ein Zeichen, das beim Speichern in einer anderen Kodierung verloren ging."
 }
