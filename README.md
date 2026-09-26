@@ -10,7 +10,7 @@
 ## Was die Extension kann
 
 **Prüfen.** Beim Öffnen eines Arbeitsbereichs mit `common/de.json` sucht die Extension die Übersetzungsordner und
-prüft sie:
+prüft sie auf:
 - fehlende Keys und Sprachdateien;
 - Platzhalter und HTML-Tags, die von der Referenzsprache abweichen, und kaputte Platzhalter;
 - leere Texte;
@@ -19,8 +19,10 @@ prüft sie:
 - verwaiste oder vermutlich verschobene Keys;
 - Texte, die mit der Referenz übereinstimmen.
 
-Die Befunde stehen in der Ansicht „Probleme", in der Seitenleiste „edu-sharing i18n" (je Bereich und Einheit mit
-Zählern) und in der Statusleiste.
+Die Befunde stehen an drei Stellen:
+- in der Ansicht „Probleme“;
+- in der Seitenleiste „edu-sharing i18n“, je Bereich und Einheit mit Zählern;
+- in der Statusleiste.
 
 **Bearbeiten.** Der Übersetzungseditor zeigt eine Einheit (etwa `common`) als Tabelle oder, in schmalen Fenstern,
 als Liste:
@@ -30,42 +32,109 @@ als Liste:
 - Keys hinzufügen, umbenennen und löschen; Sprachen hinzufügen.
 
 **Daten sicher halten.**
-- Geschrieben wird nur, was sich ändert: Eine Zelle ändert genau eine Zeile. Einrückung, Zeilenenden und Reihenfolge
-  der Datei bleiben.
-- Eine Datei mit ungespeicherten Änderungen in einem Editor wird nie überschrieben.
-- Hat sich ein Text außerhalb des Editors geändert, fragt der Editor, welcher gilt.
-- Ein geleerter Text wird nach Rückfrage in dieser Sprache gelöscht, damit der Rückfall auf die Referenz greift.
-- Ein Text, der nicht gespeichert werden konnte oder beim Schließen des Editors noch in Bearbeitung war, bleibt je
-  Einheit erhalten und steht beim nächsten Öffnen wieder als „nicht gespeichert“ in seiner Zelle.
-- **Rückgängig:** Strg+Z im Editor oder der Befehl „Letzte Änderung an Übersetzungsdateien rückgängig machen".
+- **Nur das Nötige schreiben:** Eine Zelle ändert genau eine Zeile. Einrückung, Zeilenenden und Reihenfolge der
+  Datei bleiben.
+- **Offene Editoren respektieren:** Eine Datei mit ungespeicherten Änderungen in einem Editor wird nie
+  überschrieben.
+- **Konflikte:** Hat sich ein Text außerhalb des Editors geändert, fragt der Editor, welcher gilt.
+- **Leeren heißt löschen:** Ein geleerter Text wird nach Rückfrage in dieser Sprache gelöscht, damit der Rückfall auf
+  die Referenz greift.
+- **Nichts Getipptes geht verloren:** Ein Text, der nicht gespeichert werden konnte oder beim Schließen des Editors
+  noch in Bearbeitung war, bleibt je Einheit erhalten. Beim nächsten Öffnen steht er wieder als „nicht gespeichert“
+  in seiner Zelle.
+- **Rückgängig:** Strg+Z im Editor oder der Befehl „Letzte Änderung an Übersetzungsdateien rückgängig machen“.
   Betrifft die letzte Änderung eine andere Einheit, fragt der Editor vorher nach.
-- **Sicherungen:** vor der ersten Änderung einer Sitzung, vor Änderungen mehrerer Einheiten und alle 10 Minuten
-  während der Arbeit. Sie liegen im Speicher der Extension für diesen Arbeitsbereich, nie im Repository; die letzten
-  10 bleiben. Zurückholen mit „Übersetzungsdateien aus einer Sicherung wiederherstellen…".
-- Im eingeschränkten Modus (nicht vertrauenswürdiger Arbeitsbereich) lässt sich nur prüfen und ansehen, nichts
-  schreiben.
+- **Sicherungen:**
+  - Wann: vor der ersten Änderung einer Sitzung, vor Änderungen mehrerer Einheiten und alle 10 Minuten während der
+    Arbeit.
+  - Wo: im Speicher der Extension für diesen Arbeitsbereich, nie im Repository; die letzten 10 bleiben.
+  - Zurückholen: „Übersetzungsdateien aus einer Sicherung wiederherstellen…“.
+- **Eingeschränkter Modus:** In einem nicht vertrauenswürdigen Arbeitsbereich lässt sich nur prüfen und ansehen,
+  nichts schreiben.
 
 ## Installation
 
-1. Die VSIX-Datei aus dem Artefakt „vsix" eines CI-Laufs herunterladen oder selbst bauen (`npm run package`).
-2. In VS Code „Extensions: Install from VSIX…" ausführen, oder: `code --install-extension edu-sharing-i18n-0.0.1.vsix`.
+Voraussetzungen:
+- VS Code 1.90 oder neuer unter Windows, macOS oder Linux.
+- Die Extension steht noch nicht im Marketplace; man installiert sie als VSIX-Datei.
+- Die Oberfläche folgt der Sprache von VS Code (Deutsch oder Englisch).
 
-Voraussetzung: VS Code 1.90 oder neuer. Die Oberfläche folgt der Sprache von VS Code (Deutsch oder Englisch).
+**1. VSIX-Datei besorgen.** Der Dateiname enthält die Version, derzeit `0.0.1`. Es gibt zwei Wege:
+- *Aus der CI:* Auf GitHub unter „Actions“ einen erfolgreichen Lauf des Workflows „CI“ öffnen und unten das Artefakt
+  „vsix“ herunterladen. Das ZIP enthält `edu-sharing-i18n-0.0.1.vsix`.
+- *Selbst bauen:* Mit Node.js 22.12 oder neuer im Ordner dieses Repositorys ausführen:
+
+  ```bash
+  npm ci
+  npm run package
+  ```
+
+  Danach liegt `edu-sharing-i18n-0.0.1.vsix` im selben Ordner.
+
+**2. Installieren.** In VS Code die Ansicht „Erweiterungen“ öffnen (Strg+Umschalt+X). Im Menü „…“ oben in der Ansicht
+„Aus VSIX installieren…“ („Install from VSIX…“) wählen und die Datei angeben. Oder im Terminal:
+
+```bash
+code --install-extension edu-sharing-i18n-0.0.1.vsix
+```
+
+- **Aktualisieren:** eine neuere VSIX genauso über die alte installieren.
+- **Entfernen:** in der Ansicht „Erweiterungen“ „Deinstallieren“ wählen.
+- **VS-Code-Forks:** Windsurf oder Cursor installieren VSIX-Dateien auf demselben Weg. Getestet ist die Extension dort
+  nicht.
+
+**Ohne Installation ausprobieren** (mit Node.js 22.12 oder neuer):
+1. Dieses Repository in VS Code öffnen und einmal `npm ci` ausführen.
+2. **F5** drücken. Es öffnet sich ein zweites Fenster („Extension Development Host“) mit einer frischen Kopie der
+   Beispieldaten unter `out/dev-workspace`.
+3. Änderungen dort berühren nichts Eingechecktes.
+
+## Erste Schritte
+
+1. **Repository öffnen:** den Ordner eines edu-sharing-Checkouts öffnen („Datei“ → „Ordner öffnen…“).
+   - Die Extension startet, sobald der Arbeitsbereich eine Datei `common/de.json` enthält.
+   - Dann sucht sie die Übersetzungsordner, bei edu-sharing `Frontend/src/assets/i18n`.
+2. **Vertrauen:** Fragt VS Code, ob man den Autoren der Dateien vertraut, „Ja“ wählen. Nur in einem
+   vertrauenswürdigen Arbeitsbereich schreibt die Extension; im eingeschränkten Modus prüft und zeigt sie nur.
+3. **Befunde ansehen:**
+   - **Seitenleiste:** Das Symbol „edu-sharing i18n“ in der Aktivitätsleiste öffnet die Ansicht „Bereiche“. Sie
+     zeigt Bereich, Übersetzungsordner und Einheiten (`common`, `admin`, …) mit ihren Zählern.
+   - **Probleme** (Strg+Umschalt+M): die Befunde je Datei; ein Klick springt an die Stelle.
+   - **Statusleiste:** `i18n` mit der Zahl der Fehler und Warnungen; ein Klick öffnet die Seitenleiste.
+   - **Nichts gefunden:** Dann bietet die Seitenleiste „Ordner festlegen“ an (siehe [Befehle](#befehle)).
+4. **Editor öffnen:** eine Einheit in der Seitenleiste anklicken oder in der Befehlspalette (Strg+Umschalt+P)
+   „edu-sharing i18n: Übersetzungseditor öffnen…“ wählen.
+   - Die Einheit erscheint als Tabelle, mit dem Key und einer Spalte je Sprache.
+   - In schmalen Fenstern erscheint sie als Liste.
+5. **Text bearbeiten:** eine Zelle wählen, Enter oder F2 drücken, tippen und mit Enter speichern. Bei mehrzeiligen
+   Texten speichert Strg+Enter; Esc bricht ab.
+   - Der Editor prüft schon beim Tippen, etwa Platzhalter und HTML-Tags.
+   - Er schreibt nur die geänderte Zeile.
+   - Ein geleerter Text wird nach Rückfrage in dieser Sprache gelöscht; dann erscheint der Text der Referenz.
+6. **Keys und Sprachen:**
+   - Kontextmenü der Key-Spalte: Key hinzufügen, umbenennen oder löschen, Sprache hinzufügen.
+   - Schaltflächen in der Titelleiste des Editors: Key oder Sprache hinzufügen.
+   - Kontextmenü einer Einheit in der Seitenleiste: Key oder Sprache hinzufügen, dazu „Im Explorer zeigen“.
+7. **Zurücknehmen:** Strg+Z im Editor nimmt die letzte Änderung zurück. Ältere Stände holt
+   „Übersetzungsdateien aus einer Sicherung wiederherstellen…“ zurück.
 
 ## Befehle
 
-Alle in der Befehlspalette unter „edu-sharing i18n":
+In der Befehlspalette unter „edu-sharing i18n“:
 
 | Befehl | Zweck |
 |---|---|
 | Übersetzungseditor öffnen… | eine Einheit wählen und im Editor öffnen |
 | Übersetzungen prüfen | alle Übersetzungsordner neu einlesen und prüfen |
-| Übersetzungsordner festlegen… | die Ordner selbst wählen, wenn die Erkennung sie nicht findet |
-| Key hinzufügen… · Key umbenennen… · Key löschen… | Keys in allen Sprachen einer Einheit; mit Rückfragen |
+| Übersetzungsordner festlegen… | die Ordner selbst wählen, wenn die Erkennung sie nicht findet; speichert `eduI18n.roots` für den Arbeitsbereichsordner (nur in einem vertrauenswürdigen Arbeitsbereich) |
+| Key hinzufügen… | einen Key in allen Sprachen einer Einheit anlegen, mit Rückfragen |
 | Sprache hinzufügen… | eine Sprachdatei je Einheit anlegen (leer, der Rückfall greift) |
 | Letzte Änderung an Übersetzungsdateien rückgängig machen | das letzte Schreiben dieser Sitzung zurücknehmen |
 | Übersetzungsdateien jetzt sichern | eine Sicherung von Hand |
 | Übersetzungsdateien aus einer Sicherung wiederherstellen… | eine Sicherung wählen und zurückholen; der aktuelle Stand wird vorher gesichert |
+
+„Key umbenennen…“ und „Key löschen…“ gibt es nur im Editor: im Kontextmenü der Key-Spalte oder dort mit F2 bzw.
+Entf.
 
 ## Tastatur im Editor
 
@@ -83,46 +152,106 @@ Alle in der Befehlspalette unter „edu-sharing i18n":
 
 ## Einstellungen
 
+Für edu-sharing ist keine Einstellung nötig: Die Standardwerte passen auf das Repository. Ändern lassen sich die
+Einstellungen mit Strg+, (Suche: `edu-sharing i18n`) oder in `settings.json`. Sie gelten wahlweise für alle
+Arbeitsbereiche („Benutzer“) oder nur für diesen („Arbeitsbereich“).
+
 | Einstellung | Standard | Bedeutung |
 |---|---|---|
 | `eduI18n.referenceLanguage` | `de` | Sprache, mit der verglichen wird |
 | `eduI18n.baseFileLanguage` | `en` | Sprache der Dateien ohne Sprachsuffix |
-| `eduI18n.areas` | `[]` | eigene Übersetzungsbereiche oder Ersatz eines eingebauten |
+| `eduI18n.areas` | `[]` | eigene Übersetzungsbereiche oder Ersatz des eingebauten |
 | `eduI18n.roots` | `{}` | feste Wurzelordner je Bereich; ohne Eintrag erkennt die Extension sie |
-| `eduI18n.exclude` | `node_modules`, `.git`, `dist`, `out` u. a. | Ordner, die nie durchsucht werden |
+| `eduI18n.exclude` | `node_modules`, `.git`, `dist`, `out`, `target`, `build` | Ordner, die nie durchsucht werden |
 | `eduI18n.variants` | `de-informal`, `de-no-binnen-i` | dünn besetzte Sprachvarianten und ihre Regeln |
 | `eduI18n.checks.severity` | `{}` | Schweregrad je Prüfregel (`error`, `warning`, `info`, `off`) |
 | `eduI18n.checks.ignoreSameAsReference` | `OK`, `E-Mail`, `CC-0`, `ID` | Texte, die wie die Referenz lauten dürfen |
-| `eduI18n.diagnostics.missing` | `aggregate` | fehlende Keys in „Probleme": je Datei, je Key oder gar nicht |
+| `eduI18n.diagnostics.missing` | `aggregate` | fehlende Keys in „Probleme“: je Datei, je Key oder gar nicht |
 | `eduI18n.backup.intervalMinutes` | `10` | Abstand der Sicherungen während der Arbeit (`0`: nur die festen Anlässe) |
 | `eduI18n.backup.keep` | `10` | Anzahl der aufbewahrten Sicherungen |
 
-`areas`, `variants` und `roots` aus den Einstellungen des Arbeitsbereichs gelten erst, wenn der Arbeitsbereich
-vertrauenswürdig ist.
+- `areas`, `variants` und `roots` aus den Einstellungen des Arbeitsbereichs gelten erst, wenn der Arbeitsbereich
+  vertrauenswürdig ist.
+- Ungültige Werte meldet die Extension oben in der Seitenleiste „Bereiche“ und im Protokoll; dann gilt der Standard.
+- Jede Einstellung mit Beispielen, die Liste der Prüfregeln und die Grenzen der Extension stehen in
+  [docs/einstellungen.md](docs/einstellungen.md).
 
-Grenzen: Die Extension erkennt höchstens 20 Wurzeln je Bereich und Arbeitsbereichsordner (mehr lassen sich in
-`eduI18n.roots` festlegen), prüft keine Wurzel mit mehr als 5.000 Dateien und liest keine Übersetzungsdatei über 5 MB.
-Hinter symbolischen Verknüpfungen im Arbeitsbereichsordner liest und schreibt sie keine Datei: Eine Verknüpfung könnte
-aus dem Ordner herausführen.
-Reguläre Ausdrücke aus den Einstellungen dürfen höchstens 1.000 Zeichen lang sein und keine mehr als dreimal
-wiederholte Gruppe haben, die mit einem wiederholten Teil beginnt, wie `(a+)+` oder `(a+){1,20}`.
+## KI-Füllen und b-api-Schlüssel
+
+**Heute ist kein Schlüssel nötig.** Die Extension prüft und bearbeitet nur lokale Dateien und baut keine
+Netzwerkverbindung auf. Einen gesetzten `B_API_KEY` liest diese Version nicht.
+
+**Wofür er gebraucht wird:** Ab Phase 3 schlägt die Extension Übersetzungen per KI vor und füllt fehlende auf Wunsch,
+immer mit Prüfliste.
+- Die Anfragen gehen an die b-api von OpenEduHub (Voreinstellung `https://b-api.staging.openeduhub.net`, Modell
+  `gpt-6-luna`).
+- Der Schlüssel weist sie dort aus (Header `X-API-KEY`).
+- Es ist derselbe Schlüssel, den die bisherige Standalone-App als `B_API_KEY` nutzt. Wer keinen hat, bekommt ihn bei
+  den Betreibern der b-api.
+
+**Wo und wie man ihn hinterlegt.** So ist es geplant (siehe
+[Design, Abschnitt 6.8](docs/plans/2026-09-24-edu-sharing-i18n-vscode-design.md#68-ki-anbindung-b-api--gpt-6-luna)):
+1. **Empfohlen:** der Befehl „edu-sharing i18n: API-Schlüssel setzen“.
+   - Er legt den Schlüssel im Schlüsselspeicher von VS Code ab (SecretStorage), den das Betriebssystem verschlüsselt.
+   - „API-Schlüssel entfernen“ löscht ihn wieder.
+2. **Rückfall:** die Umgebungsvariable `B_API_KEY`. Sie muss gesetzt sein, bevor VS Code startet.
+   - Windows, dauerhaft für den eigenen Benutzer: in PowerShell `setx B_API_KEY "<Schlüssel>"` ausführen, danach
+     alle VS-Code-Fenster schließen und VS Code neu starten.
+   - macOS und Linux: `export B_API_KEY="<Schlüssel>"` in `~/.zshrc` bzw. `~/.bashrc` eintragen und VS Code neu
+     starten.
+   - `setx` und die Shell-Datei speichern den Schlüssel im Klartext; der Befehl aus Punkt 1 ist sicherer.
+3. **Nie** in `settings.json`, im Repository oder in anderen Dateien des Arbeitsbereichs. Die Extension liest ihn dort
+   nicht und schreibt ihn nie in Protokoll, Editor oder Meldungen.
+
+**Geplante Einstellungen:**
+- `eduI18n.ai.enabled`: KI an oder aus.
+- `eduI18n.ai.baseUrl`: Adresse der b-api, etwa die Produktion statt Staging.
+- `eduI18n.ai.provider`, `eduI18n.ai.model`: Anbieter und Modell.
+- `eduI18n.ai.reasoningEffort`: Denkaufwand des Modells.
+- `eduI18n.ai.batchSize`, `eduI18n.ai.maxConcurrency`, `eduI18n.ai.timeoutSeconds`: Größe und Zahl der Anfragen.
+
+Zur b-api gehen nur UI-Texte, Keys und Hinweise, keine personenbezogenen Daten. Im eingeschränkten Modus bleibt die KI
+aus.
 
 ## Protokoll
 
-Ausgabe → „edu-sharing i18n" zeigt, was die Extension einliest, prüft und schreibt, mit Dauer, aber ohne Texte der
-Dateien. Mehr Einzelheiten: „Developer: Set Log Level…" für diesen Kanal.
+Ausgabe → „edu-sharing i18n“ zeigt, was die Extension einliest, prüft und schreibt, mit Dauer, aber ohne Texte der
+Dateien. Mehr Einzelheiten: „Developer: Set Log Level…“ für diesen Kanal.
+
+## Datenschutz
+
+- Keine Telemetrie und keine Netzwerkzugriffe.
+- Sicherungen liegen im Speicher der Extension für diesen Arbeitsbereich, nie im Repository.
+- Die Ansicht je Einheit und die nicht gespeicherten Texte liegen im Arbeitsbereichsspeicher von VS Code.
+
+## Wenn etwas nicht klappt
+
+**Die Seitenleiste findet keine Übersetzungen:**
+- Enthält der geöffnete Ordner `…/i18n/common/de.json`?
+- Liegt der Ordner unter einem Muster aus `eduI18n.exclude`?
+- Ist eine der [Grenzen](docs/einstellungen.md#grenzen) erreicht?
+- Dann hilft „Übersetzungsordner festlegen…“.
+
+**Speichern geht nicht:**
+- Im eingeschränkten Modus schreibt die Extension nicht; „Arbeitsbereichsvertrauen verwalten“ hebt ihn auf.
+- Hat die Datei ungespeicherte Änderungen in einem Texteditor, diese erst speichern oder verwerfen.
+- Hat sich ein Text außerhalb des Editors geändert, fragt der Editor, welcher gilt.
+
+**Eine Einstellung wirkt nicht:** Warum, steht oben in der Seitenleiste „Bereiche“ und im Protokoll.
 
 ## Geplant
 
 Phase 3 bis 8 laut [Taskliste](docs/plans/2026-09-24-edu-sharing-i18n-vscode-tasks.md):
-- Füllen aus einem Übersetzungsspeicher oder per KI (b-api), immer mit Prüfliste;
+- Füllen aus einem Übersetzungsspeicher oder per KI (b-api, siehe [oben](#ki-füllen-und-b-api-schlüssel)), immer mit
+  Prüfliste;
 - Import und Export (CSV, JSON);
 - Metadataset-`.properties` und Mail-Templates;
 - Kontext, Review-Status und eine Übersicht;
 - Release über GitHub.
 
-Das [Design-Dokument](docs/plans/2026-09-24-edu-sharing-i18n-vscode-design.md) beschreibt den vollen Umfang, die
-Abnahmen stehen unter [`docs/verification`](docs/verification).
+Weitere Unterlagen:
+- Das [Design-Dokument](docs/plans/2026-09-24-edu-sharing-i18n-vscode-design.md) beschreibt den vollen Umfang.
+- Die Abnahmen stehen unter [`docs/verification`](docs/verification).
 
 ## Mitentwickeln
 
@@ -130,10 +259,17 @@ Siehe [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## English
 
-A VS Code extension to check and edit the translation files of edu-sharing (Angular JSON): findings in the Problems
-panel, a translation editor with table and list, writes that change only the edited line, undo and backups. Work in
-progress (phase 2 of 8); filling, import/export, `.properties` and mail templates follow. The design documents are
-in German.
+A VS Code extension to check and edit the translation files of edu-sharing (Angular JSON). It shows findings in the
+Problems panel and offers a translation editor with table and list. Writes change only the edited line, with undo and
+backups.
+
+- **Status:** work in progress (phase 2 of 8).
+- **Install:** take the VSIX from a CI run, or build it with `npm ci` and `npm run package`. Then run "Extensions:
+  Install from VSIX…".
+- **API key:** none is needed yet. AI filling via the b-api comes with phase 3. The key will be kept in VS Code's
+  secret storage or in the `B_API_KEY` environment variable.
+- **Documentation:** the settings are described in German in [docs/einstellungen.md](docs/einstellungen.md), as are
+  the design documents.
 
 ## Lizenz
 

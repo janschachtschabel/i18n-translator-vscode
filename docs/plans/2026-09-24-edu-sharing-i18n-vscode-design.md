@@ -595,7 +595,7 @@ Texte beim Start vom Host. Die Anzeigesprache folgt VS Code.
 > **Stand 26.09.2026 (nach Phase 2):** Die Tabelle beschreibt den geplanten Endausbau. Umgesetzt sind
 > `referenceLanguage`, `baseFileLanguage`, `areas`, `roots`, `exclude`, `variants`, `checks.severity`,
 > `checks.ignoreSameAsReference` (neu gegenüber der Tabelle), `diagnostics.missing` und `backup.*`; die gültige
-> Liste steht im Manifest und im README. Entfallen sind `presets.enabled` (Presets gelten immer, eigene Bereiche und
+> Liste steht im Manifest, im README und mit Beispielen in [`docs/einstellungen.md`](../einstellungen.md). Entfallen sind `presets.enabled` (Presets gelten immer, eigene Bereiche und
 > Ersatz über `areas`), `editor.defaultView` (die Ansicht gilt je Einheit, B7) und `log.level` (VS Codes
 > „Developer: Set Log Level" für den Kanal). Die übrigen folgen mit ihren Phasen.
 
