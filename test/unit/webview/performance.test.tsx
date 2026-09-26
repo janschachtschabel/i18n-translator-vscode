@@ -75,6 +75,25 @@ describe('a bundle of 2,000 keys in six languages', { timeout: 20_000 }, () => {
     expect(bodyRows()).toBe(2000);
   });
 
+  // Once all rows were there, a wider filter brought them back in one task (audit P-01).
+  it('renders rows that a wider filter brings back in steps too', () => {
+    vi.useFakeTimers();
+    const { store } = open({}, largeModel(2000));
+    for (let step = 0; step < 20 && bodyRows() < 2000; step++) {
+      act(() => void vi.runOnlyPendingTimers());
+    }
+    expect(bodyRows()).toBe(2000);
+    act(() => store.toggleMissing());
+    const missing = bodyRows();
+    expect(missing).toBeLessThan(400);
+    act(() => store.toggleMissing());
+    expect(bodyRows()).toBeLessThanOrEqual(missing + 200);
+    for (let step = 0; step < 20 && bodyRows() < 2000; step++) {
+      act(() => void vi.runOnlyPendingTimers());
+    }
+    expect(bodyRows()).toBe(2000);
+  });
+
   it('renders two rows when the focus moves, one for a changed text, and none while typing', () => {
     const model = largeModel(2000);
     const { send } = open({}, model);
