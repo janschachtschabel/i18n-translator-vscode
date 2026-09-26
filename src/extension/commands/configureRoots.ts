@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import type { AreaDefinition } from '../../core/area/areaDefinition';
 import { readSettings } from '../config';
 import { relativeUriPath } from '../services/uriPaths';
-import { showError, showWarning } from '../notify';
+import { showError, showInfo, showWarning } from '../notify';
 
 type Roots = Readonly<Record<string, readonly string[]>>;
 
@@ -11,6 +11,20 @@ type Roots = Readonly<Record<string, readonly string[]>>;
  * choice in `eduI18n.roots` of the workspace folder. The index re-runs on the configuration change.
  */
 export async function configureRoots(): Promise<void> {
+  // A window without a folder has no folder to store the choice in: opening one is the way in.
+  if (!vscode.workspace.workspaceFolders?.length) {
+    const open = vscode.l10n.t('Open Folder…');
+    const choice = await showInfo(
+      vscode.l10n.t(
+        'Open a folder with edu-sharing translations first: an edu-sharing checkout, or its translation folder or a copy of it.',
+      ),
+      open,
+    );
+    if (choice === open) {
+      await vscode.commands.executeCommand('vscode.openFolder');
+    }
+    return;
+  }
   if (!vscode.workspace.isTrusted) {
     // eduI18n.roots is a restricted setting: workspace values are ignored until the workspace is trusted.
     const manage = vscode.l10n.t('Manage Workspace Trust');

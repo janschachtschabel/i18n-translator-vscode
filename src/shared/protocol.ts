@@ -60,6 +60,8 @@ export type WebviewToHost =
   | { type: 'edit'; requestId: string; entryId: string; locale: string; value: string; before: string | null }
   /** The host asks for names and confirmations itself; `entryId` is the key the command starts from. */
   | { type: 'command'; command: EditorCommand; entryId?: string }
+  /** Shows the mail of the key's template beside the editor; only reads, so also in Restricted Mode. */
+  | { type: 'preview'; entryId: string }
   | { type: 'uiState'; state: UiState }
   /** All texts of the bundle that are not saved, for the host to keep instead of those it kept before. */
   | { type: 'unsaved'; texts: UnsavedText[] }
@@ -126,6 +128,8 @@ export function isWebviewToHost(value: unknown): value is WebviewToHost {
         isOneOf(EDITOR_COMMANDS, value['command']) &&
         (value['entryId'] === undefined || isEntryId(value['entryId']))
       );
+    case 'preview':
+      return isEntryId(value['entryId']);
     case 'uiState':
       return isUiState(value['state']);
     case 'unsaved':

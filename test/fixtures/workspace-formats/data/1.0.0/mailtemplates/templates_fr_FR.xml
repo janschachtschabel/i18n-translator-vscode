@@ -1,0 +1,5 @@
+<templates>
+	<template name="invited">
+		<subject>Invitation</subject>
+	</template>
+</templates>

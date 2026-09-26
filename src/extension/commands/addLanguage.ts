@@ -10,12 +10,16 @@ import { rootLabel, writeChange, type KeyCommandContext } from './commandTarget'
  */
 export async function addLanguage(context: KeyCommandContext, root: IndexedRoot): Promise<void> {
   const plan = (code: string) => planAddLanguage(root.analysis.bundles, root.analysis.area, code.trim());
+  // Metadatasets and mail templates write es_ES, Angular es.
+  const pattern = new RegExp(`^(?:${root.analysis.area.localePattern})$`);
+  const example = ['es', 'es_ES', 'es-ES'].find((candidate) => pattern.test(candidate)) ?? 'es';
   const code = await context.prompts.input({
     title: vscode.l10n.t('Add Language to {root}', { root: rootLabel(root) }),
     prompt: vscode.l10n.t(
-      'The language code, e.g. es. Every bundle gets an empty file; until its texts are translated, those of the fallback show.',
+      'The language code, e.g. {example}. Every bundle gets an empty file; until its texts are translated, those of the fallback show.',
+      { example },
     ),
-    placeHolder: 'es',
+    placeHolder: example,
     check: (text) => {
       const result = plan(text);
       return result.ok ? undefined : { message: localize(result.problem.message) };

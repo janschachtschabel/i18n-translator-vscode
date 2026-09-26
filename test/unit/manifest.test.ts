@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { FORMAT_IDS, MERGE_SEMANTICS } from '../../src/core/area/areaDefinition';
+import { FORMAT_IDS, MERGE_SEMANTICS, PLACEHOLDER_SYNTAXES } from '../../src/core/area/areaDefinition';
 import { PRESETS } from '../../src/core/area/presets';
 import { RULE_IDS } from '../../src/core/checks/types';
 import {
@@ -13,6 +13,7 @@ import {
 } from '../../src/core/config/settings';
 
 interface SettingSchema {
+  type?: string;
   default?: unknown;
   enum?: unknown[];
   properties?: Record<string, SettingSchema>;
@@ -22,11 +23,15 @@ interface SettingSchema {
   maximum?: number;
 }
 
-const manifest = JSON.parse(readFileSync(join(__dirname, '..', '..', 'package.json'), 'utf8')) as {
+const read = (file: string) => readFileSync(join(__dirname, '..', '..', file), 'utf8');
+const manifest = JSON.parse(read('package.json')) as {
   files: string[];
   activationEvents: string[];
   keywords: string[];
-  contributes: { configuration: { properties: Record<string, SettingSchema> } };
+  contributes: {
+    configuration: { properties: Record<string, SettingSchema> };
+    viewsWelcome: { view: string; contents: string; when: string }[];
+  };
 };
 const properties = manifest.contributes.configuration.properties;
 const setting = (key: string): SettingSchema => properties[`eduI18n.${key}`]!;
@@ -68,15 +73,39 @@ describe('package.json configuration', () => {
     expect(Object.keys(setting('checks.severity').properties ?? {}).sort()).toEqual([...RULE_IDS].sort());
   });
 
-  it('offers the supported formats and merge semantics for custom areas', () => {
+  it('offers the supported formats, merge semantics and placeholder syntaxes for custom areas', () => {
     const area = setting('areas').items?.properties ?? {};
     expect(area['format']?.enum).toEqual([...FORMAT_IDS]);
     expect(area['mergeSemantics']?.enum).toEqual([...MERGE_SEMANTICS]);
+    expect(area['placeholderSyntax']?.enum).toEqual([...PLACEHOLDER_SYNTAXES]);
+    expect(area['overrideBundlePattern']?.type).toBe('string');
   });
 });
 
-// The listing and the activation name only what the extension can do (audit DOC-02): phases 5 and 6 bring the
-// presets for .properties and mail templates, and their activation with them.
+// A window without a folder said that its workspace held no translations, and its button did nothing there.
+describe('package.json welcome views', () => {
+  const welcome = manifest.contributes.viewsWelcome.filter((entry) => entry.view === 'eduI18n.areas');
+  const empty = 'workbenchState == empty';
+
+  it('asks a window without a folder to open one, with a link to the folder dialog', () => {
+    expect(welcome.filter((entry) => entry.when === empty).map((entry) => entry.contents)).toEqual([
+      '%view.areas.noFolder%',
+    ]);
+    for (const file of ['package.nls.json', 'package.nls.de.json']) {
+      const texts = JSON.parse(read(file)) as Record<string, string>;
+      expect(texts['view.areas.noFolder'], file).toMatch(/\]\(command:vscode\.openFolder\)$/);
+    }
+  });
+
+  it('speaks of the translations only in a window with a folder', () => {
+    const others = welcome.filter((entry) => entry.when !== empty);
+    expect(others.length).toBeGreaterThan(0);
+    expect(others.filter((entry) => !entry.when.includes('workbenchState != empty'))).toEqual([]);
+  });
+});
+
+// The listing and the activation name only what the extension can do (audit DOC-02): a format comes with its
+// preset, and its activation with it.
 describe('package.json activation', () => {
   it('activates for the marker files of the presets, and for no format without one', () => {
     const markers = manifest.activationEvents
@@ -85,8 +114,10 @@ describe('package.json activation', () => {
     expect(markers).toEqual(PRESETS.flatMap((preset) => (preset.detect ? [preset.detect.glob] : [])));
   });
 
-  it('names no format that has no preset yet', () => {
-    expect(manifest.keywords).not.toContain('properties');
+  it('names the .properties format once a preset reads it', () => {
+    expect(manifest.keywords.includes('properties')).toBe(
+      PRESETS.some((preset) => preset.format === 'properties'),
+    );
   });
 });
 

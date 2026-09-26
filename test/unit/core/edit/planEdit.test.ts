@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ANGULAR_PRESET } from '../../../../src/core/area/presets';
+import { ANGULAR_PRESET, MAIL_PRESET, MDS_PRESET } from '../../../../src/core/area/presets';
 import { formatMessage } from '../../../../src/core/checks/messages';
 import {
   planAddLanguage,
@@ -450,5 +450,123 @@ describe('planAddLanguage', () => {
     for (const locale of ['../x', 'de/x', 'de\\x', 'c:x', '.', '..']) {
       expect(summary(planAddLanguage(analysis.bundles, permissive, locale)), locale).toBe('invalid-locale');
     }
+  });
+});
+
+describe('planEdit and planAddLanguage with the hidden guard line of metadatasets', () => {
+  const GUARD = 'this_is_a_bug_the_first_line_will_not_be_translated: guard\n';
+  const mdsAnalysis = analyzeTexts(
+    {
+      'mds_de_DE.properties': `${GUARD}a: A\nb: B\n`,
+      'mds_fr_FR.properties': `${GUARD}b: B fr\n`,
+      'mds_it_IT.properties': GUARD,
+    },
+    MDS_PRESET,
+  );
+  const mds = mdsAnalysis.bundles[0]!;
+  const flat = (name: string) => keyFromSegments([name]).id;
+
+  it('puts a missing first text after the guard line, never before it', () => {
+    for (const locale of ['fr_FR', 'it_IT']) {
+      expect(summary(planEdit(mds, { kind: 'setText', entryId: flat('a'), locale, value: 'A2' }))).toEqual([
+        `mds_${locale}.properties: insert a after this_is_a_bug_the_first_line_will_not_be_translated = A2`,
+      ]);
+    }
+  });
+
+  it('takes the guard line over as the reference writes it, with its separator and line break', () => {
+    const crlf = analyzeTexts(
+      { 'mds_de_DE.properties': `${GUARD.replace('\n', '\r\n')}a: A\r\n` },
+      MDS_PRESET,
+    );
+    expect(summary(planAddLanguage(crlf.bundles, MDS_PRESET, 'es_ES'))).toEqual([
+      `create mds_es_ES.properties: ${JSON.stringify(GUARD.replace('\n', '\r\n'))}`,
+    ]);
+  });
+
+  it('starts a new language file with the guard line of its reference', () => {
+    expect(summary(planAddLanguage(mdsAnalysis.bundles, MDS_PRESET, 'es_ES'))).toEqual([
+      `create mds_es_ES.properties: ${JSON.stringify(GUARD)}`,
+    ]);
+  });
+});
+
+describe('planEdit with mail templates', () => {
+  const mail = analyzeTexts(
+    {
+      'templates_de_DE.xml':
+        '<templates><template name="a"><subject>A</subject><message>MA</message></template>' +
+        '<template name="b"><message>MB</message></template></templates>',
+      'templates_fr_FR.xml': '<templates><template name="a"><subject>A fr</subject></template></templates>',
+    },
+    MAIL_PRESET,
+  ).bundles[0]!;
+  const field = (...segments: string[]) => keyFromSegments(segments).id;
+
+  it('fills a missing field in its template, after the field before it', () => {
+    expect(
+      summary(
+        planEdit(mail, { kind: 'setText', entryId: field('a', 'message'), locale: 'fr_FR', value: 'M' }),
+      ),
+    ).toEqual(['templates_fr_FR.xml: insert a.message after a.subject = M']);
+  });
+
+  it('fills a missing template after the template before it', () => {
+    expect(
+      summary(
+        planEdit(mail, { kind: 'setText', entryId: field('b', 'message'), locale: 'fr_FR', value: 'M' }),
+      ),
+    ).toEqual(['templates_fr_FR.xml: insert b.message after a = M']);
+  });
+
+  it('refuses a text with a character XML cannot hold, before anything is written', () => {
+    const value = `a${String.fromCharCode(11)}b`;
+    expect(
+      summary(planEdit(mail, { kind: 'setText', entryId: field('a', 'subject'), locale: 'fr_FR', value })),
+    ).toBe('invalid-text');
+    expect(
+      summary(
+        planEdit(mail, {
+          kind: 'addKey',
+          key: keyFromSegments(['neu', 'subject']),
+          values: { de_DE: value },
+        }),
+      ),
+    ).toBe('invalid-text');
+  });
+
+  it('refuses a new key that names no field of a template', () => {
+    expect(
+      summary(
+        planEdit(mail, { kind: 'addKey', key: keyFromSegments(['neu', 'titel']), values: { de_DE: 'T' } }),
+      ),
+    ).toBe('invalid-template-key');
+    expect(
+      summary(
+        planEdit(mail, { kind: 'addKey', key: keyFromSegments(['neu', 'subject']), values: { de_DE: 'T' } }),
+      ),
+    ).toEqual(['templates_de_DE.xml: insert neu.subject = T']);
+    // A name and at most one context, each without "@" or white space, which XML would turn into spaces.
+    for (const template of ['a@', '@b', 'a@b@c', 'a b', 'a\tb']) {
+      expect(
+        summary(
+          planEdit(mail, {
+            kind: 'addKey',
+            key: keyFromSegments([template, 'subject']),
+            values: { de_DE: 'T' },
+          }),
+        ),
+        template,
+      ).toBe('invalid-template-key');
+    }
+    expect(
+      summary(
+        planEdit(mail, {
+          kind: 'addKey',
+          key: keyFromSegments(['a@school', 'subject']),
+          values: { de_DE: 'T' },
+        }),
+      ),
+    ).toEqual(['templates_de_DE.xml: insert a@school.subject = T']);
   });
 });

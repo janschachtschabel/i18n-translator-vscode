@@ -2,7 +2,27 @@ import { describe, expect, it } from 'vitest';
 import { htmlMismatchRule } from '../../../../../src/core/checks/rules/htmlMismatch';
 import { placeholderMalformedRule } from '../../../../../src/core/checks/rules/placeholderMalformed';
 import { placeholderMismatchRule } from '../../../../../src/core/checks/rules/placeholderMismatch';
-import { bundleOf, run, summarize } from './helpers';
+import { ANGULAR_PRESET } from '../../../../../src/core/area/presets';
+import { bundleOf, contextOf, run, summarize } from './helpers';
+
+describe('placeholder rules of an area with single braces', () => {
+  const area = { ...ANGULAR_PRESET, placeholderSyntax: 'single-brace' as const };
+  const bundle = bundleOf(
+    'mds',
+    { de: '{"A":"{user} lädt zu {placeholder} ein"}', fr: '{"A":"{user} invite à {objet}"}' },
+    area,
+  );
+
+  it('compares the {name} parameters and names them that way', () => {
+    expect(summarize(placeholderMismatchRule.run(contextOf([bundle], area)), 'missing', 'extra')).toEqual([
+      'placeholder-mismatch mds/fr A missing=["{placeholder}"] extra=["{objet}"]',
+    ]);
+  });
+
+  it('takes them for no syntax error', () => {
+    expect(placeholderMalformedRule.run(contextOf([bundle], area))).toEqual([]);
+  });
+});
 
 describe('placeholder-mismatch', () => {
   it('reports parameters that differ from the reference (edu-sharing COMMON_API_ERROR_TITLE)', () => {

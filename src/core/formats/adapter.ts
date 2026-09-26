@@ -18,7 +18,8 @@ export interface ParsedEntry {
   fields: Record<FieldId, ParsedField>;
 }
 
-export type FileProblemCode = 'parse-error' | 'non-string-value' | 'duplicate-key' | 'not-utf8';
+export type FileProblemCode =
+  'parse-error' | 'non-string-value' | 'duplicate-key' | 'not-utf8' | 'bom-first-key';
 
 export interface FileProblem {
   code: FileProblemCode;
@@ -71,6 +72,21 @@ export class EditError extends Error {
 /** Reads and writes one file format without touching anything an operation does not ask for. */
 export interface FormatAdapter {
   readonly id: FormatId;
+  /** A key is one segment, dots included (.properties); otherwise it is a path of segments. */
+  readonly flatKeys: boolean;
+  /**
+   * Whether a new key fits the format, where not every path does (mail templates: `[template, field]`). A key it
+   * rejects is reported as `invalid-template-key`, whose message speaks of mail templates: a second format with
+   * this hook needs a message of its own.
+   */
+  validKey?(key: EntryKey): boolean;
+  /** Whether the format cannot hold a text (mail templates: characters XML forbids, such as most controls). */
+  invalidText?(value: string): boolean;
+  /**
+   * An entry as its file writes it, for formats of one entry per (logical) line: a new file begins with the hidden
+   * entries of its reference written the same way, separator included.
+   */
+  entryLine?(doc: DecodedText, entry: ParsedEntry): string;
   decode(bytes: Uint8Array): DecodedText;
   parse(doc: DecodedText): ParsedFile;
   /** Applies the operations in order; encoding and byte order mark stay. Throws {@link EditError}. */

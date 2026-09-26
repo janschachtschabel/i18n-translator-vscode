@@ -1,11 +1,13 @@
 import {
   FORMAT_IDS,
   MERGE_SEMANTICS,
+  PLACEHOLDER_SYNTAXES,
   type AreaDefinition,
   type FormatId,
   type MergeSemantics,
+  type PlaceholderSyntax,
 } from './areaDefinition';
-import { compileFilePattern } from './filePattern';
+import { assertEmbeddableRegex, compileFilePattern } from './filePattern';
 import { normalizeRoot } from './rootPath';
 
 export type ParseAreaResult = { ok: true; area: AreaDefinition } | { ok: false; errors: string[] };
@@ -68,6 +70,29 @@ export function parseAreaDefinition(raw: unknown): ParseAreaResult {
     `"mergeSemantics" must be one of: ${MERGE_SEMANTICS.join(', ')}.`,
   );
   const detect = check(raw.detect, raw.detect === undefined || isDetect(raw.detect), detectMessage());
+  const ignoredKeys = check(
+    raw.ignoredKeys,
+    raw.ignoredKeys === undefined || isStringArray(raw.ignoredKeys),
+    '"ignoredKeys" must be a list of keys.',
+  );
+  const placeholderSyntax = check(
+    raw.placeholderSyntax,
+    raw.placeholderSyntax === undefined ||
+      PLACEHOLDER_SYNTAXES.includes(raw.placeholderSyntax as PlaceholderSyntax),
+    `"placeholderSyntax" must be one of: ${PLACEHOLDER_SYNTAXES.join(', ')}.`,
+  );
+  const overrideBundlePattern = check(
+    raw.overrideBundlePattern,
+    isOptionalString(raw.overrideBundlePattern),
+    '"overrideBundlePattern" must be a string.',
+  );
+  if (typeof overrideBundlePattern === 'string') {
+    try {
+      assertEmbeddableRegex(overrideBundlePattern, 'overrideBundlePattern');
+    } catch (error) {
+      errors.push((error as Error).message);
+    }
+  }
   const roots = parseRoots(raw.roots, raw.detect !== undefined, errors);
 
   if (typeof files === 'string' && typeof localePattern === 'string') {
@@ -101,6 +126,9 @@ export function parseAreaDefinition(raw: unknown): ParseAreaResult {
       bundleOrder: bundleOrder as string[] | undefined,
       mergeSemantics: mergeSemantics as MergeSemantics | undefined,
       detect: detect as AreaDefinition['detect'],
+      ignoredKeys: ignoredKeys as string[] | undefined,
+      placeholderSyntax: placeholderSyntax as PlaceholderSyntax | undefined,
+      overrideBundlePattern: overrideBundlePattern as string | undefined,
     }),
   };
 }

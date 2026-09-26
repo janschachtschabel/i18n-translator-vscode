@@ -4,8 +4,10 @@ import { runChecks } from '../checks/runChecks';
 import type { Issue, SeverityOverrides } from '../checks/types';
 import type { CompiledVariant } from '../checks/variants';
 import { classifyFiles } from '../discovery/discover';
+import type { ParsedEntry, ParsedFile } from '../formats/adapter';
 import { ADAPTERS } from '../formats/registry';
 import { buildBundle, type Bundle, type BundleOptions, type LoadedFile } from '../model/bundle';
+import { displayKey, type EntryKey } from '../model/keys';
 import type { LocaleCode } from '../model/types';
 
 /** A file the host has read; the core never touches the file system itself. */
@@ -63,7 +65,7 @@ export function analyzeRoot(
       continue;
     }
     const doc = adapter.decode(byPath.get(relPath)!.bytes);
-    group.push({ locale, relPath, doc, parsed: adapter.parse(doc) });
+    group.push({ locale, relPath, doc, ...withoutHidden(adapter.parse(doc), area.ignoredKeys ?? []) });
     groups.set(bundle, group);
   }
 
@@ -76,4 +78,24 @@ export function analyzeRoot(
     options.severityOverrides,
   );
   return { area, root, bundles, issues, warnings };
+}
+
+/** The parsed file without the entries the area hides, and those entries apart; checks never see them. */
+function withoutHidden(
+  parsed: ParsedFile,
+  ignoredKeys: readonly string[],
+): { parsed: ParsedFile; hidden?: ParsedEntry[] } {
+  const hides = (key: EntryKey | undefined) => key !== undefined && ignoredKeys.includes(displayKey(key));
+  const hidden = parsed.entries.filter((entry) => hides(entry.key));
+  if (hidden.length === 0) {
+    return { parsed };
+  }
+  return {
+    parsed: {
+      entries: parsed.entries.filter((entry) => !hides(entry.key)),
+      problems: parsed.problems.filter((problem) => !hides(problem.key)),
+      topLevelKeys: parsed.topLevelKeys.filter((top) => !ignoredKeys.includes(top)),
+    },
+    hidden,
+  };
 }

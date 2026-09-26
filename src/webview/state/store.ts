@@ -1,4 +1,5 @@
 import { computed, effect, signal } from '@preact/signals';
+import { keyFromId } from '../../core/model/keys';
 import { filterRows, type FilterResult, type RowFilter } from '../../shared/filter';
 import { applyPatch } from '../../shared/patch';
 import {
@@ -54,6 +55,16 @@ export class EditorStore {
   readonly width = signal(window.innerWidth);
   /** Table, list or compact list: as the user chose, or by width. Changes only when the layout does. */
   readonly layout = computed(() => layoutFor(this.uiState.value.layout, this.width.value));
+  /** How the texts of the bundle write placeholders, for the check while typing. */
+  readonly placeholderSyntax = computed(() => {
+    const view = this.view.value;
+    return (view.kind === 'bundle' && view.model.placeholderSyntax) || 'double-brace';
+  });
+  /** Whether the bundle holds mail templates, whose rows the host can preview as the mail. */
+  readonly mailPreview = computed(() => {
+    const view = this.view.value;
+    return view.kind === 'bundle' && view.model.mailPreview === true;
+  });
   // Their own signals, so that a change of one part of the view state recomputes only what depends on it: a new
   // filter makes no new list of languages (the rows render again only when their props change), and wrapping
   // filters no rows again.
@@ -286,6 +297,13 @@ export class EditorStore {
   /** Asks the host for a key or language command; it asks the user for names and confirmations itself. */
   command(command: EditorCommand, entryId?: string): void {
     this.host.postMessage({ type: 'command', command, ...(entryId !== undefined ? { entryId } : {}) });
+  }
+
+  /** Has the host show the mail of the key's template beside the editor, which keeps the focus; says it opens. */
+  previewMail(entryId: string): void {
+    this.host.postMessage({ type: 'preview', entryId });
+    const template = keyFromId(entryId).segments[0] ?? '';
+    this.announce(l10n.t('The mail {template} opens in the preview beside the editor.', { template }));
   }
 
   /** Undoes the last change of this session to the translation files, in whichever bundle it was. */

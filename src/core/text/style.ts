@@ -1,6 +1,7 @@
 /** How a file is laid out, so that written lines look like the ones around them. */
 export interface TextStyle {
-  eol: '\n' | '\r\n';
+  /** `\r` alone: files of classic Mac OS, which Java, JSON and XML all read. */
+  eol: '\n' | '\r\n' | '\r';
   /** One level of indentation, e.g. two spaces or a tab. */
   indent: string;
   finalNewline: boolean;
@@ -15,11 +16,11 @@ export const DEFAULT_STYLE: TextStyle = { eol: '\n', indent: '  ', finalNewline:
  * {@link DEFAULT_STYLE}.
  */
 export function detectStyle(text: string): TextStyle {
-  const firstBreak = text.indexOf('\n');
+  const firstBreak = /\r\n|\r|\n/.exec(text)?.[0] as TextStyle['eol'] | undefined;
   const indent = /^([ \t]+)\S/m.exec(text)?.[1];
   return {
-    eol: firstBreak > 0 && text[firstBreak - 1] === '\r' ? '\r\n' : DEFAULT_STYLE.eol,
+    eol: firstBreak ?? DEFAULT_STYLE.eol,
     indent: indent ?? DEFAULT_STYLE.indent,
-    finalNewline: text === '' ? DEFAULT_STYLE.finalNewline : text.endsWith('\n'),
+    finalNewline: text === '' ? DEFAULT_STYLE.finalNewline : /[\r\n]$/.test(text),
   };
 }

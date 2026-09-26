@@ -19,6 +19,13 @@ describe('inlineCheck', () => {
     ]);
   });
 
+  it('checks the placeholders in the syntax of the area', () => {
+    expect(inlineCheck('{user} lädt ein', '{usr} invite', 'single-brace')).toEqual([
+      { severity: 'error', text: 'Fehlende Platzhalter: {user}' },
+      { severity: 'error', text: 'Platzhalter, die die Referenz nicht hat: {usr}' },
+    ]);
+  });
+
   it('says when they match, once the reference has any', () => {
     expect(inlineCheck('Am {{date}}', 'Le {{date}}')).toEqual([
       { severity: 'ok', text: 'Platzhalter und HTML-Tags wie in der Referenz.' },

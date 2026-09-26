@@ -10,7 +10,9 @@ export interface MessageText {
 export const ISSUE_MESSAGES: Readonly<Record<RuleId, string>> = {
   'parse-error': 'The file cannot be read: {detail}.',
   'non-string-value': '{key} has a value that is not text.',
-  'duplicate-key': '{key} is defined more than once in this file; only the last definition is used.',
+  'duplicate-key': '{key} is defined more than once in this file; only one of the definitions counts.',
+  'bom-first-key':
+    '{key} is never read: the file begins with a byte order mark, which Java reads as part of its first key.',
   'not-utf8': 'The file is not valid UTF-8.',
   'missing-file': 'The {locale} file of {bundle} is missing.',
   'missing-key': '{key} is missing in {locale}.',
@@ -30,6 +32,8 @@ export const ISSUE_MESSAGES: Readonly<Record<RuleId, string>> = {
   'subtree-lost':
     '{key} is unreachable in {locale}: {winner}, which comes later in the merge order, replaces the whole top-level key {topKey}.',
   'same-as-reference': '{key} in {locale} is identical to the reference text and may be untranslated.',
+  'lost-character':
+    '{key} in {locale} has a question mark between letters or a replacement character: probably a character lost when the file was saved in another encoding.',
 };
 
 /** Several missing-key findings of one file, combined into one diagnostic (always two or more keys). */

@@ -7,7 +7,9 @@ import {
   missingKeyRule,
   orphanKeyRule,
 } from '../../../../../src/core/checks/rules/missingKeys';
+import { placeholderMismatchRule } from '../../../../../src/core/checks/rules/placeholderMismatch';
 import { compileVariants } from '../../../../../src/core/checks/variants';
+import { ANGULAR_PRESET } from '../../../../../src/core/area/presets';
 import { bundleOf, contextOf, run, summarize } from './helpers';
 
 describe('missing-key', () => {
@@ -40,6 +42,36 @@ describe('missing-key', () => {
     const common = bundleOf('common', { de: '{"a":"A"}', fr: '{"a":"A"}' });
     const editorial = bundleOf('editorial', { de: '{"b":"B"}' });
     expect(run(missingKeyRule, [common, editorial])).toEqual([]);
+  });
+});
+
+describe('missing-key with a file without locale (metadatasets, mail templates)', () => {
+  // edu-sharing falls back to the file without locale last: its keys exist for every language.
+  const bundle = bundleOf('b', {
+    default: '{"A":"a","X":"x"}',
+    de: '{"A":"A"}',
+    fr: '{"A":"a fr","Y":"y"}',
+  });
+
+  it('reports a key of that file as missing in every language that lacks it, the reference included', () => {
+    expect(summarize(run(missingKeyRule, [bundle]))).toEqual(['missing-key b/de X', 'missing-key b/fr X']);
+  });
+
+  it('takes no key of that file for an orphan, but still a key only a translation has', () => {
+    expect(summarize(run(orphanKeyRule, [bundle]))).toEqual(['orphan-key b/fr Y']);
+  });
+
+  // The license links of edu-sharing's mds.properties: the English fallback is the right text in every language.
+  it('needs no key of that file whose text has nothing to translate, and takes it for no orphan', () => {
+    const links = bundleOf('b', {
+      default:
+        '{"A":"a","LINK":"http://creativecommons.org/licenses/by/4.0/","N":"{{n}}","T":"Password reset"}',
+      de: '{"A":"A"}',
+      fr: '{"A":"a fr","LINK":"http://creativecommons.org/licenses/by/4.0/deed.fr"}',
+    });
+    expect(summarize(run(missingKeyRule, [links]))).toEqual(['missing-key b/de T', 'missing-key b/fr T']);
+    expect(run(orphanKeyRule, [links])).toEqual([]);
+    expect(run(misplacedKeyRule, [links])).toEqual([]);
   });
 });
 
@@ -112,6 +144,23 @@ describe('orphan-key and misplaced-key', () => {
   it('points to the key in the translation', () => {
     const [finding] = run(orphanKeyRule, [bundleOf('common', { de: '{}', it: '{"OLD":"x"}' })]);
     expect(finding?.location).toEqual({ relPath: 'i18n/common/it.json', range: [1, 6] });
+  });
+});
+
+describe('override bundles', () => {
+  // edu-sharing reads mds_override_de_DE before mds_de_DE: an override file holds only what it changes.
+  const area = { ...ANGULAR_PRESET, overrideBundlePattern: 'override' };
+  const override = bundleOf('override', { de: '{"a":"{{n}} A","b":"B"}', fr: '{"a":"a","c":"c"}' }, area);
+  const common = bundleOf('common', { de: '{"a":"A"}', fr: '{}', en: '{"a":"a"}' }, area);
+  const ctx = contextOf([override, common], area);
+
+  it('get no findings about missing keys or files', () => {
+    const rules = [missingKeyRule, orphanKeyRule, misplacedKeyRule, missingFileRule];
+    expect(summarize(rules.flatMap((rule) => rule.run(ctx)))).toEqual(['missing-key common/fr a']);
+  });
+
+  it('get the findings about their texts', () => {
+    expect(summarize(placeholderMismatchRule.run(ctx))).toEqual(['placeholder-mismatch override/fr a']);
   });
 });
 
@@ -192,6 +241,7 @@ describe('file problems', () => {
       ['non-string-value', 'warning'],
       ['duplicate-key', 'warning'],
       ['not-utf8', 'error'],
+      ['bom-first-key', 'warning'],
     ]);
   });
 });

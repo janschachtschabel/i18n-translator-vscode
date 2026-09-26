@@ -2,7 +2,7 @@
   "name": "edu-sharing-i18n",
   "displayName": "%displayName%",
   "description": "%description%",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "publisher": "janschachtschabel",
   "license": "Apache-2.0",
   "repository": {
@@ -24,7 +24,8 @@
     "i18n",
     "translation",
     "edu-sharing",
-    "ngx-translate"
+    "ngx-translate",
+    "properties"
   ],
   "main": "./dist/extension.js",
   "files": [
@@ -40,6 +41,8 @@
   "l10n": "./l10n",
   "activationEvents": [
     "workspaceContains:**/common/de.json",
+    "workspaceContains:**/metadatasets/i18n/mds.properties",
+    "workspaceContains:**/mailtemplates/templates.xml",
     "onWebviewPanel:eduI18n.editor"
   ],
   "capabilities": {
@@ -74,13 +77,18 @@
     "viewsWelcome": [
       {
         "view": "eduI18n.areas",
+        "contents": "%view.areas.noFolder%",
+        "when": "workbenchState == empty"
+      },
+      {
+        "view": "eduI18n.areas",
         "contents": "%view.areas.searching%",
-        "when": "!eduI18n.indexed"
+        "when": "workbenchState != empty && !eduI18n.indexed"
       },
       {
         "view": "eduI18n.areas",
         "contents": "%view.areas.welcome%",
-        "when": "eduI18n.indexed"
+        "when": "workbenchState != empty && eduI18n.indexed"
       }
     ],
     "commands": [
@@ -149,6 +157,11 @@
         "title": "%cmd.addLanguage%",
         "category": "edu-sharing i18n",
         "enablement": "isWorkspaceTrusted"
+      },
+      {
+        "command": "eduI18n.previewMail",
+        "title": "%cmd.previewMail%",
+        "category": "edu-sharing i18n"
       }
     ],
     "menus": {
@@ -213,6 +226,11 @@
       ],
       "webview/context": [
         {
+          "command": "eduI18n.previewMail",
+          "when": "webviewId == 'eduI18n.editor' && webviewSection == 'key' && mailTemplate",
+          "group": "0_preview@1"
+        },
+        {
           "command": "eduI18n.addKey",
           "when": "webviewId == 'eduI18n.editor' && webviewSection == 'key'",
           "group": "1_key@1"
@@ -275,7 +293,9 @@
               "format": {
                 "type": "string",
                 "enum": [
-                  "json-nested"
+                  "json-nested",
+                  "properties",
+                  "mail-xml"
                 ],
                 "description": "%config.areas.format%"
               },
@@ -338,6 +358,25 @@
                   }
                 },
                 "description": "%config.areas.detect%"
+              },
+              "ignoredKeys": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "%config.areas.ignoredKeys%"
+              },
+              "placeholderSyntax": {
+                "type": "string",
+                "enum": [
+                  "double-brace",
+                  "single-brace"
+                ],
+                "description": "%config.areas.placeholderSyntax%"
+              },
+              "overrideBundlePattern": {
+                "type": "string",
+                "description": "%config.areas.overrideBundlePattern%"
               }
             }
           }
@@ -454,6 +493,16 @@
                 "off"
               ],
               "description": "%config.rule.not-utf8%"
+            },
+            "bom-first-key": {
+              "type": "string",
+              "enum": [
+                "error",
+                "warning",
+                "info",
+                "off"
+              ],
+              "description": "%config.rule.bom-first-key%"
             },
             "missing-file": {
               "type": "string",
@@ -594,6 +643,16 @@
                 "off"
               ],
               "description": "%config.rule.same-as-reference%"
+            },
+            "lost-character": {
+              "type": "string",
+              "enum": [
+                "error",
+                "warning",
+                "info",
+                "off"
+              ],
+              "description": "%config.rule.lost-character%"
             }
           }
         },

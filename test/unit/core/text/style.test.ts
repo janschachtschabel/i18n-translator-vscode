@@ -14,6 +14,11 @@ describe('detectStyle', () => {
     expect(detectStyle('{\r\n  "A": "x"\r\n}\r\n').eol).toBe('\r\n');
   });
 
+  it('detects carriage returns alone as line endings (classic Mac OS)', () => {
+    expect(detectStyle('{\r  "A": "x"\r}\r')).toEqual({ eol: '\r', indent: '  ', finalNewline: true });
+    expect(detectStyle('{\r  "A": "x"\r}').finalNewline).toBe(false);
+  });
+
   it('takes the indentation of the first indented line', () => {
     expect(detectStyle('{\n\t"A": "x"\n}\n').indent).toBe('\t');
     expect(detectStyle('{\n    "A": {\n        "B": "x"\n    }\n}\n').indent).toBe('    ');

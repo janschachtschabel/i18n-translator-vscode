@@ -1,31 +1,38 @@
 # edu-sharing i18n – VS-Code-Extension
 
 Übersetzungsdateien von [edu-sharing](https://github.com/edu-sharing/edu-sharing-community-repository) in VS Code
-**prüfen und bearbeiten**: Angular-JSON unter `Frontend/src/assets/i18n`.
+**prüfen und bearbeiten**, mit allen Sprachen nebeneinander:
+- Angular-JSON (`Frontend/src/assets/i18n`);
+- Metadatasets (`.properties` unter `config/defaults/src/main/resources/metadatasets/i18n`);
+- Mail-Templates (`templates*.xml` unter `config/defaults/src/main/resources/mailtemplates`).
 
-> **Status:** in Entwicklung, Phase 2 von 8 ist abgeschlossen (Prüfen und Bearbeiten). Noch nicht für den produktiven
-> Einsatz gedacht: bitte auf einer Kopie oder in einem Git-Arbeitsstand testen, dessen Änderungen sich zurücknehmen
-> lassen.
+Das geht in einem edu-sharing-Checkout ebenso wie in einem Datenordner mit Kopien davon, etwa dem der alten
+i18n-App (`data/1.0.0/` mit `json/`, `metadatasets/i18n/` und `mailtemplates/`).
+
+> **Status:** in Entwicklung. Prüfen und Bearbeiten sind fertig, für alle drei Bereiche (Phasen 2, 5 und der Kern von
+> 6 der [Taskliste](docs/plans/2026-09-24-edu-sharing-i18n-vscode-tasks.md)). Noch nicht für den produktiven Einsatz
+> gedacht: bitte auf einer Kopie oder in einem Git-Arbeitsstand testen, dessen Änderungen sich zurücknehmen lassen.
 
 ## Was die Extension kann
 
-**Prüfen.** Beim Öffnen eines Arbeitsbereichs mit `common/de.json` sucht die Extension die Übersetzungsordner und
-prüft sie auf:
+**Prüfen.** Beim Öffnen eines Arbeitsbereichs sucht die Extension die Übersetzungsordner (siehe
+[Die drei Bereiche](#die-drei-bereiche)) und prüft sie auf:
 - fehlende Keys und Sprachdateien;
 - Platzhalter und HTML-Tags, die von der Referenzsprache abweichen, und kaputte Platzhalter;
 - leere Texte;
 - Sprachvarianten (`de-informal`, `de-no-binnen-i`);
 - Keys, die eine andere Einheit überschreibt;
 - verwaiste oder vermutlich verschobene Keys;
-- Texte, die mit der Referenz übereinstimmen.
+- Texte, die mit der Referenz übereinstimmen;
+- Zeichen, die beim Speichern in einer anderen Kodierung verloren gingen (`l?apprentissage`).
 
 Die Befunde stehen an drei Stellen:
 - in der Ansicht „Probleme“;
 - in der Seitenleiste „edu-sharing i18n“, je Bereich und Einheit mit Zählern;
 - in der Statusleiste.
 
-**Bearbeiten.** Der Übersetzungseditor zeigt eine Einheit (etwa `common`) als Tabelle oder, in schmalen Fenstern,
-als Liste:
+**Bearbeiten.** Der Übersetzungseditor zeigt eine Einheit (etwa `common`, `mds` oder die Mail-Templates) als
+Tabelle mit einer Spalte je Sprache oder, in schmalen Fenstern, als Liste:
 - einen Text bearbeiten und speichern, mit Prüfung beim Tippen;
 - filtern und suchen, Sprachen aus- und einblenden;
 - die Details eines Keys mit Erklärungen und Hinweisen zu jedem Befund;
@@ -33,7 +40,8 @@ als Liste:
 
 **Daten sicher halten.**
 - **Nur das Nötige schreiben:** Eine Zelle ändert genau eine Zeile. Einrückung, Zeilenenden und Reihenfolge der
-  Datei bleiben.
+  Datei bleiben, ebenso das Encoding einer `.properties`-Datei (UTF-8 oder ISO-8859-1) und in Mail-Templates CDATA,
+  Kommentare und das Stylesheet.
 - **Offene Editoren respektieren:** Eine Datei mit ungespeicherten Änderungen in einem Editor wird nie
   überschrieben.
 - **Konflikte:** Hat sich ein Text außerhalb des Editors geändert, fragt der Editor, welcher gilt.
@@ -51,6 +59,45 @@ als Liste:
   - Zurückholen: „Übersetzungsdateien aus einer Sicherung wiederherstellen…“.
 - **Eingeschränkter Modus:** In einem nicht vertrauenswürdigen Arbeitsbereich lässt sich nur prüfen und ansehen,
   nichts schreiben.
+
+## Die drei Bereiche
+
+| Bereich | Erkannt an | Einheiten | Referenz |
+|---|---|---|---|
+| **Angular JSON** | `common/de.json`; der Ordner darüber ist die Wurzel | je Unterordner eine (`common`, `admin`, …), je Datei eine Sprache (`de.json`, `en.json`, …) | `de` |
+| **Metadatasets** | `metadatasets/i18n/mds.properties` | je Gruppe eine (`mds`, `valuespaces_i18n`, …); `mds_de_DE.properties` ist `de_DE` | `de_DE` |
+| **Mail templates** | `mailtemplates/templates.xml` | eine: `templates`; `templates_fr_FR.xml` ist `fr_FR` | `de_DE` |
+
+Gut zu wissen:
+- **Die Datei ohne Sprachkürzel** (`mds.properties`, `templates.xml`) liest edu-sharing als letzten Rückfall. Der
+  Editor nennt sie `default (en)`; die Sprache legt `eduI18n.baseFileLanguage` fest. Ein Key, den nur sie hat, fehlt
+  deshalb den anderen Sprachen, auch der Referenz: Dort erscheint der englische Text. Ausgenommen sind Texte ohne
+  Wörter, etwa die Lizenz-Links von `mds.properties`: Für sie ist der englische Rückfall richtig.
+- **Override-Einheiten** wie `mds_override` und die Angular-Kategorie `override` legen sich zur Laufzeit über die
+  anderen und enthalten nur, was sie ändern. Für sie meldet die Extension keine fehlenden Keys oder Dateien (Feld
+  `overrideBundlePattern`, siehe [Einstellungen](docs/einstellungen.md#edui18nareas)).
+- **Metadatasets:**
+  - Ein Key ist der ganze Name, Punkte eingeschlossen (`ccm:lrt.video`).
+  - Platzhalter haben eine Klammer (`{user}`), nur `{{GENDER_SEPARATOR}}` hat zwei.
+  - Die erste Zeile der Hauptdateien (`this_is_a_bug_the_first_line_will_not_be_translated`) liest edu-sharing nie.
+    Der Editor blendet sie aus, sie bleibt aber an erster Stelle in der Datei, und neue Sprachdateien beginnen mit ihr.
+- **Mail-Templates:**
+  - Jedes Template steht mit zwei Zeilen im Editor: `invited.subject` für den Betreff, `invited.message` für die
+    Nachricht (HTML).
+  - Fehlt einer Sprache ein Feld oder das ganze Template, legt das Füllen der Zelle es dort an, an der Stelle der
+    Referenz.
+  - Ein neuer Key heißt `Template.subject` oder `Template.message`.
+  - Templates ohne Betreff und Nachricht, etwa das Stylesheet, erscheinen nicht und bleiben unverändert.
+  - **Mail-Vorschau:** „Mail-Vorschau“ in den Details einer Zeile, im Kontextmenü einer Zeile oder in der
+    Befehlspalette zeigt neben dem Editor die Mail des Templates in jeder Sprache, die Referenz zuerst, so
+    zusammengesetzt, wie edu-sharing sie verschickt: Stylesheet, Kopf, Text und Fuß. Fehlen einer Sprache Texte, sagt
+    ein Hinweis, dass die Mail die der Basisdatei zeigt. Kann edu-sharing die Datei einer Sprache nicht lesen, steht
+    dort statt der Mail der Grund: edu-sharing verschickt dann in dieser Sprache keine Mail. Die Vorschau führt keine Skripte aus und lädt nichts nach,
+    auch keine Bilder; Platzhalter wie `{{firstName}}` bleiben stehen.
+  - Override-Dateien (`templates_de_DE_override.xml`) ersetzen zur Laufzeit ganze Templates; die Extension zeigt sie
+    nicht.
+- **Andere Ordner:** Für Übersetzungen, die anders liegen, lassen sich Wurzeln festlegen oder eigene Bereiche
+  anlegen, siehe [Einstellungen](docs/einstellungen.md#bereiche-und-ordner).
 
 ## Installation
 
@@ -114,7 +161,7 @@ Gut zu wissen:
   - In VS Code steht sie in der Ansicht „Erweiterungen“ (Strg+Umschalt+X) unter „Installiert“ als „edu-sharing i18n“.
   - Im Terminal zeigt `code --list-extensions --show-versions` die Zeile `janschachtschabel.edu-sharing-i18n@<Version>`.
   - Ihr Symbol erscheint in der Aktivitätsleiste links. Übersetzungen zeigt die Seitenleiste erst in einem Ordner mit
-    `common/de.json`.
+    `common/de.json`, `metadatasets/i18n/mds.properties` oder `mailtemplates/templates.xml`.
   - War VS Code beim Installieren offen, einmal „Developer: Reload Window“ ausführen.
 - **Eigene VS-Code-Profile:** Die Kommandozeile installiert ins Standardprofil. Für ein anderes Profil die VSIX dort
   über „Aus VSIX installieren…“ installieren oder die Erweiterung über ihr Zahnradmenü auf alle Profile anwenden.
@@ -145,9 +192,11 @@ Gut zu wissen:
 
 ## Erste Schritte
 
-1. **Repository öffnen:** den Ordner eines edu-sharing-Checkouts öffnen („Datei“ → „Ordner öffnen…“).
-   - Die Extension startet, sobald der Arbeitsbereich eine Datei `common/de.json` enthält.
-   - Dann sucht sie die Übersetzungsordner, bei edu-sharing `Frontend/src/assets/i18n`.
+1. **Ordner öffnen** („Datei“ → „Ordner öffnen…“): einen edu-sharing-Checkout, einen Datenordner mit Kopien der
+   Übersetzungsdateien (etwa den der alten i18n-App) oder direkt `Frontend/src/assets/i18n`.
+   - Die Extension findet die Bereiche auch in Unterordnern, siehe [Die drei Bereiche](#die-drei-bereiche).
+   - Ohne geöffneten Ordner zeigt die Seitenleiste „Ordner öffnen“ an.
+   - Zum Ausprobieren eignet sich eine Kopie, denn die Extension schreibt beim Bearbeiten.
 2. **Vertrauen:** Fragt VS Code, ob man den Autoren der Dateien vertraut, „Ja“ wählen. Nur in einem
    vertrauenswürdigen Arbeitsbereich schreibt die Extension; im eingeschränkten Modus prüft und zeigt sie nur.
 3. **Befunde ansehen:**
@@ -160,6 +209,11 @@ Gut zu wissen:
    „edu-sharing i18n: Übersetzungseditor öffnen…“ wählen.
    - Die Einheit erscheint als Tabelle, mit dem Key und einer Spalte je Sprache.
    - In schmalen Fenstern erscheint sie als Liste.
+   - **Lücken finden:** Die Sprach-Chips über der Tabelle zeigen je Sprache, wie viele Texte fehlen, und blenden
+     Sprachen aus oder ein, etwa um nur Referenz und Französisch nebeneinander zu sehen. Alt+M (Filter „fehlend“)
+     zeigt nur die Keys, denen in einer sichtbaren Sprache ein Text fehlt; eine fehlende Zelle zeigt „–“.
+   - Lange Texte wie die Nachrichten der Mail-Templates zeigt „Lange Texte umbrechen“ ganz.
+   - **Mail-Templates ansehen:** „Mail-Vorschau“ in den Details zeigt die Mail in jeder Sprache neben dem Editor.
 5. **Text bearbeiten:** eine Zelle wählen, Enter oder F2 drücken, tippen und mit Enter speichern. Bei mehrzeiligen
    Texten speichert Strg+Enter; Esc bricht ab.
    - Der Editor prüft schon beim Tippen, etwa Platzhalter und HTML-Tags.
@@ -183,6 +237,7 @@ In der Befehlspalette unter „edu-sharing i18n“:
 | Übersetzungsordner festlegen… | die Ordner selbst wählen, wenn die Erkennung sie nicht findet; speichert `eduI18n.roots` für den Arbeitsbereichsordner (nur in einem vertrauenswürdigen Arbeitsbereich) |
 | Key hinzufügen… | einen Key in allen Sprachen einer Einheit anlegen, mit Rückfragen |
 | Sprache hinzufügen… | eine Sprachdatei je Einheit anlegen (leer, der Rückfall greift) |
+| Mail-Vorschau | die Mail eines Templates in jeder Sprache neben dem Editor zeigen, wie edu-sharing sie verschickt |
 | Letzte Änderung an Übersetzungsdateien rückgängig machen | das letzte Schreiben dieser Sitzung zurücknehmen |
 | Übersetzungsdateien jetzt sichern | eine Sicherung von Hand |
 | Übersetzungsdateien aus einer Sicherung wiederherstellen… | eine Sicherung wählen und zurückholen; der aktuelle Stand wird vorher gesichert |
@@ -214,7 +269,7 @@ Arbeitsbereiche („Benutzer“) oder nur für diesen („Arbeitsbereich“).
 |---|---|---|
 | `eduI18n.referenceLanguage` | `de` | Sprache, mit der verglichen wird |
 | `eduI18n.baseFileLanguage` | `en` | Sprache der Dateien ohne Sprachsuffix |
-| `eduI18n.areas` | `[]` | eigene Übersetzungsbereiche oder Ersatz des eingebauten |
+| `eduI18n.areas` | `[]` | eigene Übersetzungsbereiche oder Ersatz eines eingebauten |
 | `eduI18n.roots` | `{}` | feste Wurzelordner je Bereich; ohne Eintrag erkennt die Extension sie |
 | `eduI18n.exclude` | `node_modules`, `.git`, `dist`, `out`, `target`, `build` | Ordner, die nie durchsucht werden |
 | `eduI18n.variants` | `de-informal`, `de-no-binnen-i` | dünn besetzte Sprachvarianten und ihre Regeln |
@@ -281,7 +336,10 @@ Dateien. Mehr Einzelheiten: „Developer: Set Log Level…“ für diesen Kanal.
 ## Wenn etwas nicht klappt
 
 **Die Seitenleiste findet keine Übersetzungen:**
-- Enthält der geöffnete Ordner `…/i18n/common/de.json`?
+- Ist überhaupt ein Ordner geöffnet? „Configure folders“ bzw. „Übersetzungsordner festlegen…“ braucht einen.
+- Enthält der geöffnete Ordner irgendwo `common/de.json`, `metadatasets/i18n/mds.properties` oder
+  `mailtemplates/templates.xml`? Wer den Ordner `metadatasets/i18n` oder `mailtemplates` selbst öffnet, legt ihn mit
+  „Übersetzungsordner festlegen…“ als Wurzel fest.
 - Liegt der Ordner unter einem Muster aus `eduI18n.exclude`?
 - Ist eine der [Grenzen](docs/einstellungen.md#grenzen) erreicht?
 - Dann hilft „Übersetzungsordner festlegen…“.
@@ -295,11 +353,11 @@ Dateien. Mehr Einzelheiten: „Developer: Set Log Level…“ für diesen Kanal.
 
 ## Geplant
 
-Phase 3 bis 8 laut [Taskliste](docs/plans/2026-09-24-edu-sharing-i18n-vscode-tasks.md):
+Laut [Taskliste](docs/plans/2026-09-24-edu-sharing-i18n-vscode-tasks.md):
 - Füllen aus einem Übersetzungsspeicher oder per KI (b-api, siehe [oben](#ki-füllen-und-b-api-schlüssel)), immer mit
   Prüfliste;
-- Import und Export (CSV, JSON);
-- Metadataset-`.properties` und Mail-Templates;
+- Import und Export (CSV, JSON, `.properties`, Mail-XML);
+- Mail-Templates: hervorgehobener HTML-Code, die Vorschau schon beim Tippen und im Farbschema von VS Code;
 - Kontext, Review-Status und eine Übersicht;
 - Feinschliff: Doku auch auf Englisch, vollständige Übersetzung der Meldungen, Rauchtest in VS-Code-Forks.
 
@@ -313,11 +371,12 @@ Siehe [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## English
 
-A VS Code extension to check and edit the translation files of edu-sharing (Angular JSON). It shows findings in the
-Problems panel and offers a translation editor with table and list. Writes change only the edited line, with undo and
-backups.
+A VS Code extension to check and edit the translation files of edu-sharing: Angular JSON, metadatasets (`.properties`)
+and mail templates (XML), in a checkout or in a data folder with copies of them. It shows findings in the Problems
+panel and offers a translation editor with a column per language, with a preview of each mail template in every
+language. Writes change only the edited line and keep each file's encoding and layout, with undo and backups.
 
-- **Status:** work in progress (phase 2 of 8).
+- **Status:** work in progress: checking and editing are done for all three areas.
 - **Install:** on Windows, run
   `powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://github.com/janschachtschabel/i18n-translator-vscode/releases/latest/download/install.ps1 | iex"`;
   on Linux and macOS,

@@ -1,7 +1,9 @@
 import { parseTree, type Node, type ParseError } from 'jsonc-parser';
 import { displayKey, keyFromSegments, type EntryKey } from '../../model/keys';
 import { applyEdits } from '../../text/edits';
+import { lineStartAt } from '../../text/lineIndex';
 import { detectStyle, type TextStyle } from '../../text/style';
+import { escapeUnits } from '../../text/unicodeEscape';
 import { EditError, type FileOp } from '../adapter';
 
 /** A property of a JSON object with its key and value nodes. */
@@ -29,31 +31,9 @@ export function emptyJsonObject(style: TextStyle): string {
   return `{}${style.finalNewline ? style.eol : ''}`;
 }
 
-/**
- * For a file read as ISO-8859-1: writes the characters it cannot hold as `\uXXXX`. The read text has none of
- * them, so they can only come from string literals written here, where the escape is exact.
- */
-export function escapeBeyondLatin1(text: string): string {
-  return escapeUnits(text, (unit) => unit > 0xff);
-}
-
 /** A JSON string literal. Line and paragraph separators are escaped, because editors offer to remove them. */
 function jsonString(value: string): string {
   return escapeUnits(JSON.stringify(value), (unit) => unit === 0x2028 || unit === 0x2029);
-}
-
-/** Writes every UTF-16 code unit for which `escape` holds as `\uXXXX`. */
-function escapeUnits(text: string, escape: (unit: number) => boolean): string {
-  let result = '';
-  let start = 0;
-  for (let index = 0; index < text.length; index++) {
-    const unit = text.charCodeAt(index);
-    if (escape(unit)) {
-      result += `${text.slice(start, index)}\\u${unit.toString(16).padStart(4, '0')}`;
-      start = index + 1;
-    }
-  }
-  return result + text.slice(start);
 }
 
 function applyOp(text: string, op: FileOp, style: TextStyle): string {
@@ -162,7 +142,7 @@ function insertProperty(
   const first = properties[0];
   if (sibling === 'first' && first) {
     // The new line takes the comma, so that the line of the old first property stays as it is.
-    const prefix = text.slice(lineStart(text, first.node.offset), first.node.offset);
+    const prefix = text.slice(lineStartAt(text, first.node.offset), first.node.offset);
     const content = /\S/.test(prefix)
       ? `${jsonString(name)}: ${renderValue(undefined)}, `
       : `${jsonString(name)}: ${renderValue(prefix)},${style.eol}${prefix}`;
@@ -175,7 +155,7 @@ function insertProperty(
     const content = `${style.eol}${inner}${jsonString(name)}: ${renderValue(inner)}${style.eol}${outer}`;
     return applyEdits(text, [{ offset: object.offset + 1, length: object.length - 2, content }]);
   }
-  const prefix = text.slice(lineStart(text, anchor.node.offset), anchor.node.offset);
+  const prefix = text.slice(lineStartAt(text, anchor.node.offset), anchor.node.offset);
   const inline = /\S/.test(prefix);
   const line = `${inline ? ' ' : style.eol + prefix}${jsonString(name)}: ${renderValue(inline ? undefined : prefix)}`;
   const valueEnd = anchor.value.offset + anchor.value.length;
@@ -253,8 +233,8 @@ function removeProperty(text: string, object: Node, property: Property): string 
   if (next) {
     // The whole line including its comma, or on one-line objects the property up to the next one.
     const ownLines = onOwnLine(text, property.node) && onOwnLine(text, next.node);
-    const start = ownLines ? lineStart(text, property.node.offset) : property.node.offset;
-    const end = ownLines ? lineStart(text, next.node.offset) : next.node.offset;
+    const start = ownLines ? lineStartAt(text, property.node.offset) : property.node.offset;
+    const end = ownLines ? lineStartAt(text, next.node.offset) : next.node.offset;
     return applyEdits(text, [{ offset: start, length: end - start, content: '' }]);
   }
   // The last property: from the end of the previous value, which takes the comma with it.
@@ -336,16 +316,12 @@ function samePath(a: readonly string[], b: readonly string[]): boolean {
   return a.length === b.length && a.every((segment, index) => segment === b[index]);
 }
 
-function lineStart(text: string, offset: number): number {
-  return text.lastIndexOf('\n', offset - 1) + 1;
-}
-
 function indentationOfLine(text: string, offset: number): string {
-  return /^[ \t]*/.exec(text.slice(lineStart(text, offset)))![0];
+  return /^[ \t]*/.exec(text.slice(lineStartAt(text, offset)))![0];
 }
 
 function onOwnLine(text: string, node: Node): boolean {
-  return !/\S/.test(text.slice(lineStart(text, node.offset), node.offset));
+  return !/\S/.test(text.slice(lineStartAt(text, node.offset), node.offset));
 }
 
 function nextNonSpace(text: string, offset: number): number {

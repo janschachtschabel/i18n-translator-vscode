@@ -30,4 +30,10 @@ describe('keyInput and parseKeyInput', () => {
     expect(parseKeyInput('A..B')).toEqual(keyFromSegments(['A', '', 'B']));
     expect(parseKeyInput('')).toEqual(keyFromSegments(['']));
   });
+
+  it('take the key of a flat format as typed: dots and backslashes belong to the name', () => {
+    expect(parseKeyInput('ccm:search.title', true)).toEqual(keyFromSegments(['ccm:search.title']));
+    expect(parseKeyInput('a\\.b\\\\c', true)).toEqual(keyFromSegments(['a\\.b\\\\c']));
+    expect(keyInput(keyFromSegments(['ccm:search.title']), true)).toBe('ccm:search.title');
+  });
 });

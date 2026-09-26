@@ -10,7 +10,11 @@ export const placeholderMismatchRule: Rule = {
   run: (ctx) =>
     ctx.bundles.flatMap((bundle) =>
       translationPairs(bundle).flatMap(({ locale, key, referenceText, text }) => {
-        const { missing, extra } = compareParams(scanPlaceholders(referenceText), scanPlaceholders(text));
+        const syntax = ctx.area.placeholderSyntax;
+        const { missing, extra } = compareParams(
+          scanPlaceholders(referenceText, syntax),
+          scanPlaceholders(text, syntax),
+        );
         if (missing.length === 0 && extra.length === 0) {
           return [];
         }
@@ -21,8 +25,8 @@ export const placeholderMismatchRule: Rule = {
             args: {
               key: displayKey(key),
               reference: bundle.reference ?? '',
-              missing: missing.map(asPlaceholder),
-              extra: extra.map(asPlaceholder),
+              missing: missing.map((name) => asPlaceholder(name, syntax)),
+              extra: extra.map((name) => asPlaceholder(name, syntax)),
             },
             location: valueLocation(bundle, locale, key),
           }),

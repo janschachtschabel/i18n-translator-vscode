@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { MAIL_PRESET, MDS_PRESET } from '../../../src/core/area/presets';
 import { formatMessage } from '../../../src/core/checks/messages';
 import type { Issue } from '../../../src/core/checks/types';
 import { keyFromSegments } from '../../../src/core/model/keys';
@@ -53,6 +54,36 @@ describe('buildBundleViewModel', () => {
       ['fr', false, false, true, 2, 6],
       ['it', false, false, true, 1, 4],
     ]);
+    expect(common.locales.map((locale) => locale.label)).toEqual(Array(6).fill(undefined));
+  });
+
+  it('names the file without locale by its language, as edu-sharing reads it', () => {
+    const mds = analyzeTexts({ 'mds.properties': 'a: A\n', 'mds_de_DE.properties': 'a: B\n' }, MDS_PRESET);
+    const model = buildBundleViewModel(mds.bundles[0]!, {
+      issues: mds.issues,
+      variants: [],
+      baseFileLanguage: 'en',
+      localize: (message) => formatMessage(message.template, message.args),
+    });
+    expect(model.locales.map(({ code, label, lang }) => [code, label, lang])).toEqual([
+      ['de_DE', undefined, 'de-DE'],
+      ['default', 'default (en)', 'en'],
+    ]);
+  });
+
+  it('offers the mail preview for mail templates only', () => {
+    const mail = analyzeTexts(
+      { 'templates.xml': '<templates><template name="t"><subject>S</subject></template></templates>' },
+      MAIL_PRESET,
+    );
+    const options = {
+      issues: [],
+      variants: [],
+      baseFileLanguage: 'en',
+      localize: (message: { template: string }) => message.template,
+    };
+    expect(buildBundleViewModel(mail.bundles[0]!, options).mailPreview).toBe(true);
+    expect(common.mailPreview).toBeUndefined();
   });
 
   it('puts the texts and the findings into their cells', () => {

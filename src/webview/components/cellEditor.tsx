@@ -6,6 +6,7 @@ import { SEVERITY_SYMBOLS, severityWord } from './cellStatus';
 import './cellEditor.css';
 import { focusIsLost } from './focus';
 import { inlineCheck, type CheckLine } from './inlineCheck';
+import { localeName } from './localeName';
 
 // One editor is open at a time, so these ids are unique.
 const ERROR_ID = 'cell-editor-error';
@@ -42,7 +43,8 @@ export function CellEditor({ store, editor, locale, keyText, referenceText }: Ce
   const choice = useRef<HTMLButtonElement>(null);
   const { edits } = store;
   const text = edits.draft.value;
-  const check = useMemo(() => inlineCheck(referenceText, text), [referenceText, text]);
+  const syntax = store.placeholderSyntax.value;
+  const check = useMemo(() => inlineCheck(referenceText, text, syntax), [referenceText, text, syntax]);
 
   useLayoutEffect(() => {
     const element = field.current!;
@@ -149,7 +151,7 @@ export function CellEditor({ store, editor, locale, keyText, referenceText }: Ce
         value={text}
         lang={locale.lang}
         dir="auto"
-        aria-label={l10n.t('{key} in {locale}', { key: keyText, locale: locale.code })}
+        aria-label={l10n.t('{key} in {locale}', { key: keyText, locale: localeName(locale) })}
         aria-describedby={describedBy}
         onInput={(event) => {
           edits.draft.value = event.currentTarget.value;

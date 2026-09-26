@@ -1,4 +1,6 @@
-/** `{{…}}` placeholders as used by ngx-translate and edu-sharing mail templates. */
+import type { PlaceholderSyntax } from '../area/areaDefinition';
+
+/** Placeholders as an area writes them: `{{…}}` (ngx-translate, mail templates) or `{…}` (metadatasets). */
 export interface PlaceholderScan {
   /** Parameter names, trimmed, sorted and unique. */
   params: string[];
@@ -16,11 +18,15 @@ export interface MalformedPlaceholder {
   text: string;
 }
 
-const TOKEN = /\{\{([^{}]*)\}\}/g;
-// edu-sharing replaces exactly this token (translation-loader.ts, I18nAngular.java); other spellings stay visible.
+// edu-sharing replaces exactly this token (translation-loader.ts, I18nAngular.java, MetadataReader.java), also in
+// texts with single-brace placeholders; other spellings stay visible.
 const GENDER_MARKER = '{{GENDER_SEPARATOR}}';
+const TOKENS: Readonly<Record<PlaceholderSyntax, RegExp>> = {
+  'double-brace': /\{\{([^{}]*)\}\}/g,
+  'single-brace': /\{\{GENDER_SEPARATOR\}\}|\{([^{}]*)\}/g,
+};
 
-export function scanPlaceholders(text: string): PlaceholderScan {
+export function scanPlaceholders(text: string, syntax: PlaceholderSyntax = 'double-brace'): PlaceholderScan {
   const params = new Set<string>();
   const conditions = new Set<string>();
   const malformed: MalformedPlaceholder[] = [];
@@ -29,9 +35,9 @@ export function scanPlaceholders(text: string): PlaceholderScan {
   let residual = '';
   let last = 0;
 
-  for (const match of text.matchAll(TOKEN)) {
+  for (const match of text.matchAll(TOKENS[syntax])) {
     const index = match.index;
-    const name = match[1]!.trim();
+    const name = (match[1] ?? '').trim();
     // Blank out valid tokens so that the remaining braces can be reported at their original index.
     residual += text.slice(last, index) + ' '.repeat(match[0].length);
     last = index + match[0].length;
@@ -62,14 +68,14 @@ export function scanPlaceholders(text: string): PlaceholderScan {
   };
 }
 
-/** The text with its `{{…}}` placeholders blanked out. */
-export function withoutPlaceholders(text: string): string {
-  return text.replace(TOKEN, ' ');
+/** The text with its placeholders blanked out. */
+export function withoutPlaceholders(text: string, syntax: PlaceholderSyntax = 'double-brace'): string {
+  return text.replace(TOKENS[syntax], ' ');
 }
 
-/** A parameter name as it is written in a text: `date` → `{{date}}`. */
-export function asPlaceholder(name: string): string {
-  return `{{${name}}}`;
+/** A parameter name as it is written in a text: `date` → `{{date}}`, or `{date}` with single braces. */
+export function asPlaceholder(name: string, syntax: PlaceholderSyntax = 'double-brace'): string {
+  return syntax === 'single-brace' ? `{${name}}` : `{{${name}}}`;
 }
 
 /** Parameters of the reference that the translation lacks, and parameters only the translation has. */

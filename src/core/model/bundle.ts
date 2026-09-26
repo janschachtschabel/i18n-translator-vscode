@@ -1,4 +1,4 @@
-import type { AreaDefinition } from '../area/areaDefinition';
+import type { AreaDefinition, FormatId } from '../area/areaDefinition';
 import type { ParsedEntry, ParsedFile } from '../formats/adapter';
 import type { DecodedText } from '../text/decode';
 import type { EntryKey } from './keys';
@@ -10,12 +10,19 @@ export interface LoadedFile {
   /** Workspace-relative path with `/` separators. */
   relPath: string;
   doc: DecodedText;
+  /** Without the entries the area hides (`ignoredKeys`). */
   parsed: ParsedFile;
+  /** The hidden entries the file has, in file order; the file keeps them. */
+  hidden?: readonly ParsedEntry[];
 }
 
 /** All locale files of one bundle (an Angular category, a metadataset group, the mail templates). */
 export interface Bundle {
   readonly areaId: AreaId;
+  /** The file format of the area, for what depends on it (e.g. which keys are valid). */
+  readonly format: FormatId;
+  /** Keys the area hides (dotted): no entries, and taken for new keys, see {@link AreaDefinition.ignoredKeys}. */
+  readonly ignoredKeys: readonly string[];
   /** Unique across areas and roots, see {@link parseBundleId}. */
   readonly id: BundleId;
   /** Area root the bundle lies below; two roots are two separate installations. */
@@ -84,6 +91,8 @@ export function buildBundle(
 
   return {
     areaId: area.id,
+    format: area.format,
+    ignoredKeys: area.ignoredKeys ?? [],
     id: JSON.stringify([area.id, root, name]),
     root,
     name,

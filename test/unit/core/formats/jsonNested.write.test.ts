@@ -277,6 +277,22 @@ describe('jsonNestedAdapter.applyOps and encode', () => {
     });
   });
 
+  it('keeps carriage returns as the line endings of a file that has only them (classic Mac OS)', () => {
+    const cr = (text: string) => text.replace(/\n/g, '\r');
+    const ops: FileOp[] = [
+      { kind: 'insert', key: key('A.NEW'), value: 'n', after: key('A.FIRST') },
+      { kind: 'insert', key: key('NEW'), value: 'n', first: true },
+      { kind: 'insert', key: key('C.D'), value: 'n' },
+      { kind: 'delete', key: key('A.FIRST') },
+      { kind: 'delete', key: key('B') },
+      { kind: 'rename', from: key('A.FIRST'), to: key('B2') },
+    ];
+    for (const op of ops) {
+      expect(apply(cr(NESTED), op)).toBe(cr(apply(NESTED, op)));
+    }
+    expect(apply('{\r  "A": "1"\r}\r', { kind: 'delete', key: key('A') })).toBe('{}\r');
+  });
+
   it('applies several operations in order', () => {
     expect(
       apply(

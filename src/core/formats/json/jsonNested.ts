@@ -4,12 +4,14 @@ import { VALUE_FIELD } from '../../model/types';
 import { decodeText } from '../../text/decode';
 import { encodeText } from '../../text/encode';
 import { DEFAULT_STYLE } from '../../text/style';
+import { escapeBeyondLatin1 } from '../../text/unicodeEscape';
 import type { FileProblem, FormatAdapter, ParsedEntry, ParsedFile, TextRange } from '../adapter';
-import { applyJsonOps, emptyJsonObject, escapeBeyondLatin1 } from './jsonWrite';
+import { applyJsonOps, emptyJsonObject } from './jsonWrite';
 
 /** Nested JSON objects with string leaves, as used by ngx-translate (edu-sharing Angular i18n). */
 export const jsonNestedAdapter: FormatAdapter = {
   id: 'json-nested',
+  flatKeys: false,
   decode: decodeText,
   parse(doc): ParsedFile {
     const problems: FileProblem[] = doc.encoding === 'utf-8' ? [] : [{ code: 'not-utf8', range: [0, 0] }];

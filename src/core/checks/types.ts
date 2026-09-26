@@ -11,6 +11,7 @@ export const RULE_IDS = [
   'non-string-value',
   'duplicate-key',
   'not-utf8',
+  'bom-first-key',
   'missing-file',
   'missing-key',
   'empty-value',
@@ -25,6 +26,7 @@ export const RULE_IDS = [
   'key-overridden',
   'subtree-lost',
   'same-as-reference',
+  'lost-character',
 ] as const;
 export type RuleId = (typeof RULE_IDS)[number];
 

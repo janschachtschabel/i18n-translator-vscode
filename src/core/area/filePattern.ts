@@ -187,11 +187,11 @@ function toRegexSource(spec: FilePatternSpec): {
 }
 
 /**
- * The expression is embedded into the whole-path pattern: anchors would never match there and numbered
- * backreferences would point at the wrong group, so both are rejected along with invalid syntax and expressions
- * that could take exponential time.
+ * The expression is embedded into a larger one (the whole-path pattern, or `^(?:…)$` for a whole name): anchors
+ * would never match there and numbered backreferences would point at the wrong group, so both are rejected along
+ * with invalid syntax and expressions that could take exponential time. Throws a SyntaxError that names the setting.
  */
-function assertEmbeddableRegex(source: string, name: string): void {
+export function assertEmbeddableRegex(source: string, name: string): void {
   try {
     new RegExp(source);
   } catch (error) {
@@ -212,9 +212,7 @@ function assertEmbeddableRegex(source: string, name: string): void {
     } else if (char === ']') {
       inClass = false;
     } else if (!inClass && (char === '^' || char === '$')) {
-      throw new SyntaxError(
-        `${name} must not contain an anchor (^ or $); it is embedded into the path pattern.`,
-      );
+      throw new SyntaxError(`${name} must not contain an anchor (^ or $): the extension anchors it itself.`);
     }
   }
   const risk = riskyPattern(source);

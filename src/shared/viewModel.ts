@@ -1,3 +1,4 @@
+import type { PlaceholderSyntax } from '../core/area/areaDefinition';
 import { ISSUE_MESSAGES, type MessageText } from '../core/checks/messages';
 import type { Issue, Severity } from '../core/checks/types';
 import type { Bundle } from '../core/model/bundle';
@@ -13,6 +14,8 @@ export interface IssueView {
 
 export interface LocaleView {
   code: string;
+  /** How the editor names the language where its code says little: `default (en)` for the file without locale. */
+  label?: string;
   /** BCP 47 tag for the `lang` of its texts, so that screen readers pick the right voice; undefined if none. */
   lang?: string;
   reference: boolean;
@@ -48,6 +51,10 @@ export interface RowView {
 export interface BundleViewModel {
   bundleId: string;
   name: string;
+  /** How the texts write placeholders, for the check while typing; `double-brace` if not set. */
+  placeholderSyntax?: PlaceholderSyntax;
+  /** The bundle holds mail templates: the editor offers the preview of a row's mail. */
+  mailPreview?: true;
   locales: LocaleView[];
   rows: RowView[];
   /** Findings about the bundle as a whole, without a language. */
@@ -61,6 +68,8 @@ export interface ViewModelOptions {
   variants: readonly string[];
   /** Language of the base file (`default`), for its language tag. */
   baseFileLanguage: string;
+  /** Placeholder syntax of the bundle's area. */
+  placeholderSyntax?: PlaceholderSyntax;
   /** Turns a message template into the user's language (vscode.l10n in the host, formatMessage in tests). */
   localize: (message: MessageText) => string;
 }
@@ -92,11 +101,15 @@ export function buildBundleViewModel(bundle: Bundle, options: ViewModelOptions):
   return {
     bundleId: bundle.id,
     name: bundle.name,
+    ...(options.placeholderSyntax === 'single-brace' ? { placeholderSyntax: options.placeholderSyntax } : {}),
+    ...(bundle.format === 'mail-xml' ? { mailPreview: true as const } : {}),
     locales: codes.map((code) => {
       const inLocale = issues.filter((issue) => issue.locale === code);
-      const lang = languageTag(parseLocale(code, { baseFileLanguage: options.baseFileLanguage }));
+      const info = parseLocale(code, { baseFileLanguage: options.baseFileLanguage });
+      const lang = languageTag(info);
       return {
         code,
+        ...(info.isBaseFile ? { label: `${code} (${info.language})` } : {}),
         ...(lang !== undefined ? { lang } : {}),
         reference: code === bundle.reference,
         variant: options.variants.includes(code),

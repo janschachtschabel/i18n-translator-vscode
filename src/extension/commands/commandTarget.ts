@@ -34,36 +34,44 @@ export interface TargetSources extends KeyCommandContext {
  * The bundle a command acts on, as the index has it now, and the key it starts from: the bundle of the node of
  * the areas view it was chosen on, else of the editor in front (whose context menu names the key), else one the
  * user picks. The argument comes from a menu, and that of an editor from its webview: it only selects, by
- * identifiers, among what the index has.
+ * identifiers, among what the index has. `accepts` limits the bundles to those the command can act on: an editor
+ * in front with another bundle leads to the pick, which offers only those.
  */
 export async function bundleTarget(
   arg: unknown,
   sources: TargetSources,
+  accepts: (bundle: Bundle) => boolean = () => true,
 ): Promise<{ target: BundleTarget; entryId?: string } | undefined> {
   const snapshot = await sources.index.latest();
   const node = nodeTarget(arg, snapshot);
   if (node) {
-    return node.bundle ? { target: { root: node.root, bundle: node.bundle } } : undefined;
+    return node.bundle && accepts(node.bundle)
+      ? { target: { root: node.root, bundle: node.bundle } }
+      : undefined;
   }
   const panel = sources.editors.active();
   const found = panel && findBundle(snapshot, panel.target);
-  if (found) {
+  if (found && accepts(found.bundle)) {
     const entryId = contextKey(arg);
     const known = entryId !== undefined && found.bundle.keys.some((key) => key.id === entryId);
     return { target: found, ...(known ? { entryId } : {}) };
   }
-  const picked = await pickBundle(snapshot, sources.prompts);
+  const picked = await pickBundle(snapshot, sources.prompts, accepts);
   return picked && { target: picked };
 }
 
-/** A bundle the user picks from all roots. */
-export function pickBundle(snapshot: IndexSnapshot, prompts: Prompts): Promise<BundleTarget | undefined> {
+/** A bundle the user picks from all roots, among those `accepts` lets through. */
+export function pickBundle(
+  snapshot: IndexSnapshot,
+  prompts: Prompts,
+  accepts: (bundle: Bundle) => boolean = () => true,
+): Promise<BundleTarget | undefined> {
   if (snapshot.roots.length === 0) {
     return nothingFound();
   }
   return prompts.pick(
     snapshot.roots.flatMap((root) =>
-      root.analysis.bundles.map((bundle) => ({
+      root.analysis.bundles.filter(accepts).map((bundle) => ({
         label: bundle.name,
         description: rootLabel(root),
         value: { root, bundle },

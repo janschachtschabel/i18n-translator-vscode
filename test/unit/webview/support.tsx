@@ -118,6 +118,31 @@ export const findingsModel: BundleViewModel = {
   issues: [],
 };
 
+/** Mail templates: the subject and message of one template, the file without locale named by its language. */
+export const mailModel: BundleViewModel = {
+  bundleId: JSON.stringify(['edu-sharing.mail', 'mail', 'templates']),
+  name: 'templates',
+  mailPreview: true,
+  locales: [
+    locale('de_DE', { reference: true, lang: 'de-DE' }),
+    locale('default', { label: 'default (en)', lang: 'en' }),
+    locale('fr_FR', { lang: 'fr-FR' }),
+  ],
+  rows: [
+    row('invited.subject', {
+      de_DE: text('Einladung'),
+      default: text('Invitation'),
+      fr_FR: text('Invitation'),
+    }),
+    row('invited.message', {
+      de_DE: text('<p>Hallo</p>'),
+      default: text('<p>Hello</p>'),
+      fr_FR: text(undefined, 'missing-key'),
+    }),
+  ],
+  issues: [],
+};
+
 /** Opens the editor with a view state that differs from the default in `uiState`. */
 export function openWith(uiState: Partial<UiState> = {}, bundle: BundleViewModel = findingsModel) {
   const editor = renderEditor();

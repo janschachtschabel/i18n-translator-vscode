@@ -32,8 +32,10 @@ export function workspaceUri(relPath: string): vscode.Uri {
  * `teardown`, so that no test sees the changes of another, also after a failed assertion (audit T-08). Files that
  * appeared go, the others get their bytes back; unchanged files are left alone.
  */
-export async function keepTranslationFiles(): Promise<() => Promise<void>> {
-  const files = () => vscode.workspace.findFiles('Frontend/src/assets/i18n/**/*.json');
+export async function keepTranslationFiles(
+  glob = 'Frontend/src/assets/i18n/**/*.json',
+): Promise<() => Promise<void>> {
+  const files = () => vscode.workspace.findFiles(glob);
   const original = await Promise.all(
     (await files()).map(async (uri) => [uri, await vscode.workspace.fs.readFile(uri)] as const),
   );

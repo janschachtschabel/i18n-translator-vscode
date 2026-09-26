@@ -1,12 +1,16 @@
 import type { AreaId } from '../model/types';
 import type { FilePatternSpec } from './filePattern';
 
-/** File formats with an adapter. Further formats (properties, mail XML) arrive with their adapters. */
-export const FORMAT_IDS = ['json-nested'] as const;
+/** File formats with an adapter. */
+export const FORMAT_IDS = ['json-nested', 'properties', 'mail-xml'] as const;
 export type FormatId = (typeof FORMAT_IDS)[number];
 
 export const MERGE_SEMANTICS = ['shallow-toplevel', 'none'] as const;
 export type MergeSemantics = (typeof MERGE_SEMANTICS)[number];
+
+/** How the texts of an area write placeholders: `{{name}}` (ngx-translate, mail templates) or `{name}` (metadatasets). */
+export const PLACEHOLDER_SYNTAXES = ['double-brace', 'single-brace'] as const;
+export type PlaceholderSyntax = (typeof PLACEHOLDER_SYNTAXES)[number];
 
 /** Declarative description of a translation area; presets and user settings share this shape. */
 export interface AreaDefinition extends FilePatternSpec {
@@ -26,4 +30,17 @@ export interface AreaDefinition extends FilePatternSpec {
   mergeSemantics?: MergeSemantics;
   /** Finds roots automatically: every match of `glob` minus the trailing `marker` path is a root. */
   detect?: { glob: string; marker: string };
+  /**
+   * Keys (dotted, as displayed) that are no translations, e.g. the guard line that opens edu-sharing's metadataset
+   * files: bundles, checks and editor leave them out, the files keep them, and new keys never go before them.
+   */
+  ignoredKeys?: string[];
+  /** How the texts write placeholders; `double-brace` if not set. */
+  placeholderSyntax?: PlaceholderSyntax;
+  /**
+   * Regular expression for the whole name of the bundles that override others at runtime (edu-sharing reads
+   * `mds_override_de_DE` before `mds_de_DE`): they hold only what they change, so no key or file of theirs is
+   * reported missing, and no key orphaned.
+   */
+  overrideBundlePattern?: string;
 }

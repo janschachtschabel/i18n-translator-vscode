@@ -2,6 +2,7 @@ import { Fragment } from 'preact';
 import type { LocaleView } from '../../shared/viewModel';
 import { formatNumber, l10n } from '../l10n';
 import type { EditorStore } from '../state/store';
+import { localeName } from './localeName';
 import './languageChips.css';
 
 /** A checkbox per language to show or hide it, with its marks and what is open in it. */
@@ -17,7 +18,7 @@ export function LanguageChips({ store, locales }: { store: EditorStore; locales:
             checked={!hidden.includes(locale.code)}
             onChange={() => store.toggleLocale(locale.code)}
           />
-          <span>{locale.code}</span>
+          <span>{localeName(locale)}</span>
           {marks(locale).map((mark) => (
             // The space keeps the parts apart in the name screen readers read.
             <Fragment key={mark}>

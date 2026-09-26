@@ -4,7 +4,7 @@ import type { LocaleView } from '../../shared/viewModel';
  * What the rows and headers show of a language: not its counts, which the chips take from the model, so that a
  * new count renders no row again.
  */
-export type LocaleColumn = Pick<LocaleView, 'code' | 'lang' | 'reference' | 'variant' | 'hasFile'>;
+export type LocaleColumn = Pick<LocaleView, 'code' | 'label' | 'lang' | 'reference' | 'variant' | 'hasFile'>;
 
 /**
  * A memo for the languages the rows show: it gives back the array it gave last as long as the columns are the
@@ -23,6 +23,7 @@ function sameColumns(a: readonly LocaleColumn[], b: readonly LocaleColumn[]): bo
       const other = b[index]!;
       return (
         locale.code === other.code &&
+        locale.label === other.label &&
         locale.lang === other.lang &&
         locale.reference === other.reference &&
         locale.variant === other.variant &&

@@ -68,7 +68,7 @@ export const TableRow = memo(
         aria-rowindex={index + 1}
         class="grid-row"
         data-entry={entryAttribute(row.entryId)}
-        data-vscode-context={keyContext(row.entryId)}
+        data-vscode-context={keyContext(row.entryId, store.mailPreview.value)}
       >
         <div
           role="rowheader"

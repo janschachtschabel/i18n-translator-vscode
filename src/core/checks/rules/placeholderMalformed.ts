@@ -4,7 +4,7 @@ import { scanPlaceholders } from '../placeholders';
 import type { Rule } from '../types';
 import { finding, isReadable, valueLocation } from './support';
 
-/** Stray or empty braces in any readable file, e.g. `{{{count}}`: ngx-translate renders them literally. */
+/** Stray or empty braces in any readable file, e.g. `{{{count}}`: the runtime shows them literally. */
 export const placeholderMalformedRule: Rule = {
   id: 'placeholder-malformed',
   defaultSeverity: 'error',
@@ -14,7 +14,8 @@ export const placeholderMalformedRule: Rule = {
         .filter((locale) => isReadable(bundle, locale))
         .flatMap((locale) =>
           (bundle.file(locale)?.parsed.entries ?? []).flatMap((entry) => {
-            const { malformed } = scanPlaceholders(entry.fields[VALUE_FIELD]?.value ?? '');
+            const text = entry.fields[VALUE_FIELD]?.value ?? '';
+            const { malformed } = scanPlaceholders(text, ctx.area.placeholderSyntax);
             if (malformed.length === 0) {
               return [];
             }

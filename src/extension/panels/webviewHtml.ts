@@ -41,8 +41,8 @@ export function webviewHtml(page: WebviewPage): string {
 
 const ENTITIES: Readonly<Record<string, string>> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' };
 
-/** For text and double-quoted attribute values, the only places the page inserts values. */
-function escapeHtml(text: string): string {
+/** For text and double-quoted attribute values, the only places the pages insert values. */
+export function escapeHtml(text: string): string {
   return text.replace(/[&<>"]/g, (char) => ENTITIES[char]!);
 }
 

@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { createLineIndex } from '../../../../src/core/text/lineIndex';
+import { createLineIndex, lineStartAt } from '../../../../src/core/text/lineIndex';
+
+describe('lineStartAt', () => {
+  it('finds the start of the line after \\n, \\r\\n or a lone \\r', () => {
+    const text = 'a\nb\r\nc\rd';
+    expect([0, 1, 2, 3, 5, 6, 7, 8].map((offset) => lineStartAt(text, offset))).toEqual([
+      0, 0, 2, 2, 5, 5, 7, 7,
+    ]);
+  });
+});
 
 describe('createLineIndex', () => {
   it('maps offsets to zero-based line and character', () => {

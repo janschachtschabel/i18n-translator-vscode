@@ -3,11 +3,12 @@ import { formatFilePattern } from '../area/filePattern';
 import { hasSyntaxError, type FileOp } from '../formats/adapter';
 import { ADAPTERS } from '../formats/registry';
 import { parseBundleId, type Bundle, type LoadedFile } from '../model/bundle';
-import { displayKey, isKeyPrefix, keyFromId, keyFromSegments, type EntryKey } from '../model/keys';
-import type { LocaleCode } from '../model/types';
+import { displayKey, keyFromId, type EntryKey } from '../model/keys';
+import { VALUE_FIELD, type LocaleCode } from '../model/types';
 import { detectStyle } from '../text/style';
 import { editProblem, type EditProblem } from './editMessages';
 import { collidingKey, newKeyProblem } from './keyCheck';
+import { insertAnchor, placed } from './placement';
 
 export type BundleEdit =
   /** `before` is the text the user started from (null: absent); a different current text is a conflict. */
@@ -67,6 +68,9 @@ function planSetText(
   const current = bundle.value(entryId, locale);
   // A text of only white space shows as nothing: it clears the text like an empty one.
   const cleared = value.trim() === '';
+  if (!cleared && ADAPTERS[bundle.format].invalidText?.(value)) {
+    return fail(editProblem('invalid-text', { key: displayKey(key), locale }));
+  }
   // Nothing to do, whatever the user saw before: the text already reads as wanted, or there is nothing to
   // clear (intentionally empty reference texts stay).
   const unchanged = cleared
@@ -120,6 +124,12 @@ function planAddKey(
   const withoutFile = Object.keys(values).find((locale) => values[locale]?.trim() && !bundle.file(locale));
   if (withoutFile !== undefined) {
     return fail(editProblem('missing-file', { bundle: bundle.name, locale: withoutFile }));
+  }
+  const invalid = Object.keys(values).find((locale) =>
+    ADAPTERS[bundle.format].invalidText?.(values[locale]!),
+  );
+  if (invalid !== undefined) {
+    return fail(editProblem('invalid-text', { key: displayKey(key), locale: invalid }));
   }
   // Without `after` (or with a key that is gone) the new key goes last.
   const from = bundle.keys.findIndex((candidate) => candidate.id === afterId);
@@ -225,43 +235,28 @@ export function planAddLanguage(
     changes.push({
       kind: 'create',
       relPath: bundle.root ? `${bundle.root}/${path}` : path,
-      content: ADAPTERS[area.format].createEmpty(detectStyle(reference?.doc.text ?? '')),
+      content: newFileContent(area, reference),
     });
   }
   return done(changes);
 }
 
-/**
- * Where a new key goes in a file, so that the file keeps the order of the reference: after the nearest key at
- * or before position `from` of `keys` that the file has inside the key's deepest parent object in that file.
- * The anchor is cut to the level where the new entry starts, so a text that follows `OBJ.X` goes after the
- * object `OBJ`, and a missing parent object goes after its predecessor. `first`: the file has no such key, so the
- * entry goes first in that parent object.
- */
-function insertAnchor(
-  keys: readonly EntryKey[],
-  from: number,
-  file: LoadedFile,
-  key: EntryKey,
-): EntryKey | 'first' {
-  const present = file.parsed.entries.map((entry) => entry.key);
-  // The parent objects that the file has are those that contain one of its texts.
-  let depth = key.segments.length - 1;
-  while (depth > 0 && !present.some((other) => isKeyPrefix(key.segments.slice(0, depth), other.segments))) {
-    depth--;
+/** An empty file in the layout of the reference file, beginning with the hidden entries the reference has. */
+function newFileContent(area: AreaDefinition, reference: LoadedFile | undefined): string {
+  const adapter = ADAPTERS[area.format];
+  const style = detectStyle(reference?.doc.text ?? '');
+  const empty = adapter.createEmpty(style);
+  const hidden = reference?.hidden ?? [];
+  if (reference && hidden.length > 0 && adapter.entryLine) {
+    // Line formats take the lines over as the reference writes them, separator and line break included.
+    return empty + hidden.map((entry) => adapter.entryLine!(reference.doc, entry) + style.eol).join('');
   }
-  const parent = key.segments.slice(0, depth);
-  const inFile = new Set(present.map((other) => other.id));
-  for (let position = from; position >= 0; position--) {
-    const candidate = keys[position]!;
-    if (inFile.has(candidate.id) && isKeyPrefix(parent, candidate.segments)) {
-      return keyFromSegments(candidate.segments.slice(0, depth + 1));
-    }
-  }
-  return 'first';
-}
-
-/** The position of an inserted entry: first in its object, after a sibling, or (undefined) last. */
-function placed(place: EntryKey | 'first' | undefined): { after?: EntryKey; first?: true } {
-  return place === 'first' ? { first: true } : place ? { after: place } : {};
+  const ops: FileOp[] = hidden.map((entry) => ({
+    kind: 'insert',
+    key: entry.key,
+    value: entry.fields[VALUE_FIELD]!.value,
+  }));
+  return ops.length === 0
+    ? empty
+    : adapter.applyOps({ text: empty, encoding: 'utf-8', bom: false }, ops).text;
 }

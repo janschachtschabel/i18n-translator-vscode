@@ -20,6 +20,12 @@ export function decodeText(bytes: Uint8Array): DecodedText {
   }
 }
 
+/** Decodes file bytes as ISO-8859-1 whether they are valid UTF-8 or not, for a file that declares it (XML). */
+export function decodeAsLatin1(bytes: Uint8Array): DecodedText {
+  const bom = bytes.length >= 3 && bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf;
+  return { text: decodeLatin1(bom ? bytes.subarray(3) : bytes), encoding: 'latin-1', bom };
+}
+
 /** Exact ISO-8859-1: every byte becomes the code point of the same value (TextDecoder('latin1') is windows-1252). */
 function decodeLatin1(bytes: Uint8Array): string {
   let text = '';

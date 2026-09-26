@@ -2,7 +2,7 @@
 import { act, cleanup, fireEvent, screen, within } from '@testing-library/preact';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_FILTER } from '../../../src/shared/filter';
-import { findingsModel as model, openWith as open, row, text, axeProblems } from './support';
+import { findingsModel as model, openWith as open, row, text, axeProblems, mailModel } from './support';
 
 const grid = () => screen.getByRole('grid', { name: 'common' });
 const rowOf = (key: string) => within(grid()).getByRole('rowheader', { name: key }).parentElement!;
@@ -221,6 +221,18 @@ describe('table', () => {
     expect(JSON.parse(rowOf('CANCEL').dataset['vscodeContext']!)).toEqual({
       webviewSection: 'key',
       entryId: JSON.stringify(['CANCEL']),
+    });
+  });
+
+  it('marks the rows of mail templates, whose context menu offers the preview', () => {
+    open({}, mailModel);
+    const mailRow = within(screen.getByRole('grid', { name: 'templates' })).getByRole('rowheader', {
+      name: 'invited.message',
+    }).parentElement!;
+    expect(JSON.parse(mailRow.dataset['vscodeContext']!)).toEqual({
+      webviewSection: 'key',
+      entryId: JSON.stringify(['invited', 'message']),
+      mailTemplate: true,
     });
   });
 

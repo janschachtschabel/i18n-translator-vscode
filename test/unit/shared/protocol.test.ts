@@ -43,6 +43,7 @@ describe('isWebviewToHost', () => {
       { ...edit, before: 'Espace' },
       { type: 'command', command: 'addKey', entryId },
       { type: 'command', command: 'addLanguage' },
+      { type: 'preview', entryId },
       { type: 'uiState', state: uiState },
       { type: 'uiState', state: DEFAULT_UI_STATE },
       { type: 'unsaved', texts: [] },
@@ -94,6 +95,9 @@ describe('isWebviewToHost', () => {
       { ...edit, before: 42 },
       { type: 'command', command: 'renameKey', entryId: 'ASK' },
       { type: 'command', command: 'renameKey', entryId: null },
+      { type: 'preview' },
+      { type: 'preview', entryId: 'invited.message' },
+      { type: 'preview', entryId: 42 },
     ];
     for (const message of invalid) {
       expect(isWebviewToHost(message), JSON.stringify(message)).toBe(false);

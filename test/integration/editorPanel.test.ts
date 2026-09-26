@@ -154,6 +154,7 @@ suite('editor panel', () => {
         prompts: answering(),
         log: log as unknown as vscode.LogOutputChannel,
         command: async () => undefined,
+        preview: quiet,
       },
     );
     panel.onDidDispose(() => editor.dispose());

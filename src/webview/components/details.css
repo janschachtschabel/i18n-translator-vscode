@@ -9,8 +9,12 @@
   min-block-size: 0;
 }
 
+/*
+ * They keep their share: shrinking with the table, whose basis is the height of all its rows, would leave them a few
+ * pixels, as the space taken away is shared out by the basis.
+ */
 .details {
-  flex: 0 1 auto;
+  flex: 0 0 auto;
   max-block-size: 40%;
   overflow: auto;
   /* Room for the focus ring around the texts, which the scroll area would cut off. */
@@ -22,6 +26,10 @@
   margin: 0 0 8px;
   font-size: 1.1em;
   overflow-wrap: anywhere;
+}
+
+.details-action {
+  margin-block-end: 8px;
 }
 
 /* The term above its text: the details are too narrow for both side by side. */

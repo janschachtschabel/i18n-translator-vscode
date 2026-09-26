@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { checkNewKey } from '../../core/edit/keyCheck';
 import { planInBundles } from '../../core/edit/planEdit';
+import { ADAPTERS } from '../../core/formats/registry';
 import { keyInput, parseKeyInput } from '../../core/model/keyInput';
 import { displayKey, keyFromId } from '../../core/model/keys';
 import { localize } from '../localize';
@@ -19,21 +20,24 @@ export async function renameKey(
 ): Promise<void> {
   const { root, bundle } = target;
   const key = keyFromId(entryId);
-  const check = (text: string) =>
-    checkNewKey(parseKeyInput(text.trim()), bundle, root.analysis.bundles, root.analysis.area);
+  const flat = ADAPTERS[root.analysis.area.format].flatKeys;
+  const parse = (text: string) => parseKeyInput(text.trim(), flat);
+  const check = (text: string) => checkNewKey(parse(text), bundle, root.analysis.bundles, root.analysis.area);
   const typed = await context.prompts.input({
     title: vscode.l10n.t('Rename {key}', { key: displayKey(key) }),
-    prompt: vscode.l10n.t('The new name, with a dot between its parts. A dot inside a part is written \\.'),
-    value: keyInput(key),
+    prompt: flat
+      ? vscode.l10n.t('The new name as it stands in the file.')
+      : vscode.l10n.t('The new name, with a dot between its parts. A dot inside a part is written \\.'),
+    value: keyInput(key, flat),
     check: (text) => {
-      const to = parseKeyInput(text.trim());
+      const to = parse(text);
       return to.id === key.id ? undefined : keyCheckMessage(to, check(text));
     },
   });
   if (typed === undefined) {
     return;
   }
-  const to = parseKeyInput(typed.trim());
+  const to = parse(typed);
   if (to.id === key.id) {
     return;
   }

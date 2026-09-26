@@ -46,6 +46,8 @@ export interface EditorServices {
   log: vscode.LogOutputChannel;
   /** Runs a key or language command on the editor's bundle, starting from the key it names. */
   command: (command: EditorCommand, target: PanelState, entryId: string | undefined) => Promise<void>;
+  /** Shows the mail of the key's template beside the editor. */
+  preview: (target: PanelState, entryId: string) => void;
 }
 
 /** The editors of the bundles: one per bundle, restored after a restart, updated after every index run. */
@@ -194,6 +196,7 @@ export class EditorPanel implements vscode.Disposable {
         },
         undo: () => undoFromEditor(this.target, this.services),
         command: ({ command, entryId }) => this.services.command(command, this.target, entryId),
+        preview: ({ entryId }) => this.services.preview(this.target, entryId),
       },
       this.services.log,
     );
@@ -279,18 +282,27 @@ export class EditorPanel implements vscode.Disposable {
       issues: found.root.analysis.issues,
       variants: Object.keys(found.root.settings.variants),
       baseFileLanguage: found.root.settings.baseFileLanguage,
+      ...(found.root.analysis.area.placeholderSyntax
+        ? { placeholderSyntax: found.root.analysis.area.placeholderSyntax }
+        : {}),
       localize,
     });
     const before = this.sent;
     this.sent = model;
-    const patch = before && diffModels(before, model);
     const name = found.bundle.name;
-    if (!before) {
+    // A patch carries neither the placeholder syntax nor the mail preview; they change only with the area settings,
+    // then the whole model goes.
+    if (
+      !before ||
+      before.placeholderSyntax !== model.placeholderSyntax ||
+      before.mailPreview !== model.mailPreview
+    ) {
       this.services.log.debug(
         `Built the model of ${name} (${model.rows.length} keys) in ${Date.now() - started} ms.`,
       );
       return this.post({ type: 'bundle', model });
     }
+    const patch = diffModels(before, model);
     if (!patch) {
       return Promise.resolve();
     }

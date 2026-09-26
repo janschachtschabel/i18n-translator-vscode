@@ -59,3 +59,19 @@ Not reported on purpose:
 - `broken/en.json` contains `b`, which the other locales lack. Without the parse-error suppression above
   it would show up as `orphan-key` (en) and `missing-key` (fr, it).
 - `CCMAIL.mail.smtp.server` and `MIME.application/vnd.ms-excel` keep their dotted/slashed segments.
+
+## `workspace-formats` – a data folder with all three areas
+
+Laid out like the data folder of the old standalone app (`data/1.0.0/`): Angular JSON in `json/`, metadatasets in
+`metadatasets/i18n/` and mail templates in `mailtemplates/`. Used by the integration profile `formats`.
+
+- Metadatasets: `mds.properties` (base file, English, UTF-8), `mds_de_DE.properties` (reference, ISO-8859-1 with
+  `ü`), `mds_fr_FR.properties` (lacks `group_hint`); each begins with the guard line
+  `this_is_a_bug_the_first_line_will_not_be_translated`. `valuespaces_i18n.properties` has only its base file and a
+  key with dots.
+- Mail templates: `templates_fr_FR.xml` lacks the message of `invited` and the template `added_inbox`.
+
+## `golden/` – byte-exact round trips
+
+One file per layout for each format (`json/`, `properties/`, `mail/`): CRLF, tabs, a byte order mark, ISO-8859-1,
+no final newline. The golden tests apply the operation table of their task to each and compare bytes.

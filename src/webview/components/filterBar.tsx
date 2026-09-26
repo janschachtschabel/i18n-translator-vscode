@@ -4,6 +4,7 @@ import type { BundleViewModel } from '../../shared/viewModel';
 import { formatNumber, l10n } from '../l10n';
 import type { EditorStore } from '../state/store';
 import './filterBar.css';
+import { localeName } from './localeName';
 
 /** Ctrl+F puts the cursor here (shortcuts.ts). */
 export const SEARCH_FIELD_ID = 'filter-query';
@@ -65,9 +66,9 @@ export function FilterBar({ store, model }: { store: EditorStore; model: BundleV
           <option value="all">{l10n.t('keys and texts')}</option>
           <option value="keys">{l10n.t('keys')}</option>
           <option value="texts">{l10n.t('texts')}</option>
-          {model.locales.map(({ code }) => (
-            <option key={code} value={`texts:${code}`}>
-              {l10n.t('texts in {locale}', { locale: code })}
+          {model.locales.map((locale) => (
+            <option key={locale.code} value={`texts:${locale.code}`}>
+              {l10n.t('texts in {locale}', { locale: localeName(locale) })}
             </option>
           ))}
         </select>

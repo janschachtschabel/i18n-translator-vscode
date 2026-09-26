@@ -1,8 +1,8 @@
 # Taskliste: edu-sharing i18n – VS-Code-Extension
 
 > Gehört zu [`2026-09-24-edu-sharing-i18n-vscode-design.md`](2026-09-24-edu-sharing-i18n-vscode-design.md).
-> **Phasen 0 bis 2 sind vollständig ausgearbeitet** (Phase 2 am 24.09.2026, vor ihrem Start). Die Phasen 3–8 stehen
-> hier als Gliederung. Ihre Tasks werden vor dem Start der jeweiligen Phase im selben Detailgrad ausgearbeitet und kurz
+> **Phasen 0 bis 2 sind vollständig ausgearbeitet** (Phase 2 am 24.09.2026, vor ihrem Start), ebenso die am
+> 26.09.2026 vorgezogenen Phasen 5 und 6 (Kern) und die offenen Punkte aus 0.3.0. Die übrigen Phasen stehen hier als Gliederung. Ihre Tasks werden vor dem Start der jeweiligen Phase im selben Detailgrad ausgearbeitet und kurz
 > abgenommen. So stecken Entscheidungen aus der Abnahme (E1–E9) nicht in bereits geschriebenem Plan-Code fest.
 
 ## Arbeitsweise je Task (gilt für alle Tasks)
@@ -1399,6 +1399,291 @@ schreibt nichts.
 
 ---
 
+## Phasen 5 und 6 (Kern) – Metadatasets und Mail-Templates (vorgezogen am 26.09.2026)
+
+**Anlass:** Der Nutzer öffnet den Datenordner der alten App (`data/1.0.0/` mit `json/`, `metadatasets/i18n/` und
+`mailtemplates/`) und möchte in allen drei Bereichen wie dort die Sprachen nebeneinander sehen, Lücken erkennen und
+schließen. Bisher erscheint nur Angular-JSON. Die Reihenfolge aus E5 ändert sich deshalb: Metadatasets und der Kern
+der Mail-Templates kommen vor Füllen (Phase 3) und Import/Export (Phase 4). Die Tasks ersetzen die Gliederung von
+Phase 5 und die Punkte 6.1–6.3 und 6.6 von Phase 6; Template-Ansicht mit Vorschau (6.4) und KI für Templates (6.5)
+bleiben später.
+
+**Schritt 0:** `/better-coding-workflow` (für die UI-Anteile zusätzlich `/better-coding-frontend`). Nach Block E
+(5.1–5.5) und Block F (6.1–6.3) folgt je ein Review mit `/better-coding-review`, Block G (6.6–6.8) schließt ab.
+
+**Ziel:** In einem Arbeitsbereich mit edu-sharing-Checkout oder Datenordner zeigt die Seitenleiste die Bereiche
+„Angular JSON", „Metadatasets" und „Mail templates". Jede Einheit öffnet im selben Übersetzungseditor: eine Spalte je
+Sprache, fehlende Texte markiert und über Filter und Zähler auffindbar, direkt in der Zelle zu füllen. Geschrieben
+wird nur, was sich ändert; alle anderen Bytes der Datei bleiben.
+
+**Entwurfsentscheidungen:**
+- **M1 Flache Keys.** Ein Key einer `.properties`-Datei ist ein einziges Segment, Punkte gehören zum Namen. Der
+  Adapter meldet das (`flatKeys`); Key-Eingaben in solchen Bereichen werden nicht an Punkten geteilt.
+- **M2 Lesen wie `java.util.Properties.load`.** Logische Zeilen (Fortsetzung bei ungerader Zahl von `\` am
+  Zeilenende, führender Leerraum der Folgezeile entfällt), Kommentarzeilen `#`/`!`, Trennzeichen `=`, `:` oder
+  Leerraum, Escapes `\t \n \r \f \uXXXX`, sonst `\x` → `x`. Bei doppelten Keys gilt die letzte Definition an der
+  Position der ersten, jede Wiederholung meldet `duplicate-key`. Ein ungültiges `\u` bricht Java beim Laden ab:
+  `parse-error`. Encoding je Datei wie `PropertyResourceBundle`: gültiges UTF-8, sonst ISO-8859-1; `not-utf8`
+  entfällt.
+- **M3 Zeilengenau schreiben.** `set` ersetzt nur den Wertteil der logischen Zeile, der neue Wert steht auf einer
+  physischen Zeile. `insert` schreibt `Key<Trenner>Wert` mit dem Trenner der Nachbarzeile hinter die logische Zeile
+  des Ankers. `delete` entfernt jede Definition samt Zeilenende. `rename` ersetzt den Key der letzten Definition und
+  entfernt frühere. Escapes: `\\ \t \n \r \f`, führendes Leerzeichen als `\ `, im Key zusätzlich `= : # !` und
+  Leerzeichen. ISO-8859-1-Dateien bekommen Zeichen jenseits von U+00FF als `\uXXXX`; UTF-8 bleibt, wie es ist.
+- **M4 Verborgene Keys.** Das Bereichsattribut `ignoredKeys` (MDS: `this_is_a_bug_the_first_line_will_not_be_translated`)
+  blendet Einträge aus Einheit, Prüfungen und Editor aus; die Dateien behalten sie. Ein neuer Key landet nie davor. Eine
+  neue Sprachdatei beginnt mit den verborgenen Einträgen ihrer Referenzdatei.
+- **M5 Basisdatei.** `default` erscheint als `default (en)` (Sprache aus `eduI18n.baseFileLanguage`); die Referenz
+  `de` findet `de_DE`.
+- **T1 Eine Zeile je Feld.** Ein Mail-Eintrag hat den Key `[Template, Feld]` mit Feld `subject` oder `message`; der
+  Editor zeigt `invited.subject` und `invited.message` als Zeilen mit einer Spalte je Sprache. Templates mit
+  `context`-Attribut heißen `name@context`. (Design §6.4 sah dynamische Felder und eine eigene Template-Ansicht vor;
+  beides folgt mit der Vorschau.)
+- **T2 Wert = Textinhalt.** Der Wert ist der Textinhalt des Elements, wie `MailTemplate` ihn liest (Entities
+  aufgelöst, CDATA-Inhalt, Zeilenenden als `\n`). Leerraum mit Zeilenumbruch an den Enden ist Layout und gehört nicht
+  zum Wert: um den Text und innerhalb eines CDATA-Abschnitts oder einer Folge von Abschnitten, die nur
+  Zeichenreferenzen trennen (so teilt der Schreiber einen Text an `]]>` und in ISO-8859-1). Der Schreiber lässt ihn
+  deshalb auch an den Enden eines neuen Werts weg. Felder mit Kindelementen oder Kommentaren melden
+  `non-string-value` und bleiben unberührt; andere Elemente eines Templates (`<style>`) sind keine Einträge.
+- **T3 Chirurgisch schreiben.** `set` ändert bei `[Leerraum]CDATA[Leerraum]` nur den CDATA-Inhalt, sonst bekommt
+  `subject` escapten Text (`& < >`) und `message` einen CDATA-Abschnitt (`]]>` wird geteilt). `insert` legt ein
+  fehlendes Feld in seinem Template an (hinter dem Geschwisterfeld, mit dessen Einrückung) oder ein fehlendes Template
+  hinter dem Template des Ankers. `delete` entfernt das Feld und ein Template ohne übrige Kindelemente. `rename` wie bei
+  JSON. ISO-8859-1-Dateien bekommen Zeichen jenseits von U+00FF als Zeichenreferenz außerhalb von CDATA.
+- **T4 Keys prüfen.** Neue Mail-Keys müssen `TEMPLATE.subject` oder `TEMPLATE.message` lauten (Adapter-Hook
+  `validKey`), sonst Problem `invalid-template-key`. Texte mit Zeichen, die XML nicht aufnehmen kann, lehnt die
+  Planung ab (`invalidText`, Problem `invalid-text`).
+
+**Nach den Reviews (26.09.2026):** Die Befunde der Reviews von Block E und F sind behoben, unter anderem Backslashes
+am Zeilenende in `.properties`, eine Byte-Order-Mark (Regel `bom-first-key`), verborgene Keys als neue Namen, die
+wörtlich übernommene Wächterzeile, Zeichen, die XML verbietet, doppelte Templates und die Kodierung aus der
+XML-Deklaration. `check-repo --roundtrip` setzt zusätzlich jeden Text auf sich selbst und liest ihn zurück.
+
+### Task 5.1: Properties lesen
+**Dateien:** Create `src/core/formats/properties/propertiesRead.ts`; Test: `test/unit/core/formats/properties.parse.test.ts`
+**Testfälle:** Trenner (`a=b`, `a: b`, `a b`, `a = b`, `a\:b=c`), Fortsetzungen (`a=b\` + `  c` → `bc`; `a=b\\` ist
+keine), Kommentare und Leerzeilen, eine `#`-Zeile als Fortsetzung gehört zum Wert, Escapes (`\t`, `\u00e4`, `\=`,
+`\\`), `a=\u12` → `parse-error`, leere Werte (`a=`, `a`), doppelter Key (letzter Wert, erste Position,
+`duplicate-key` am zweiten Key), `keyRange`/`valueRange` (Wert bis Ende der logischen Zeile ohne Zeilenende),
+ISO-8859-1-Datei.
+**Commit:** `feat(core): read .properties files like java.util.Properties`
+
+### Task 5.2: Properties schreiben
+**Dateien:** Create `src/core/formats/properties/propertiesWrite.ts`, `properties.ts` (Adapter, Formatliste); Test:
+`test/unit/core/formats/properties.write.test.ts`, `properties.golden.test.ts` mit Dateien unter
+`test/fixtures/golden/properties/`
+**Golden-Testfälle** (UTF-8, ISO-8859-1, CRLF, ohne Newline am Ende, Fortsetzungen):
+| Operation | Erwartung |
+|---|---|
+| keine | Bytes identisch, auch ISO-8859-1 |
+| `set` | genau eine Zeile anders; ein fortgesetzter Wert wird zu einer Zeile |
+| `insert` in der Mitte / am Ende / `first` / in leere Datei / ohne Newline am Ende | eine Zeile neu, Trenner der Nachbarzeile |
+| `delete` in der Mitte / am Ende / fortgesetzte Zeile | nur deren Zeilen weg |
+| `rename` | genau eine Zeile anders, frühere Definitionen weg |
+| Werte mit `\`, Zeilenumbruch, führendem Leerzeichen, `#`, `ä`/`€` in ISO-8859-1 und UTF-8 | Wert nach erneutem Lesen identisch; `€` in ISO-8859-1 als `\u20ac` |
+| `set` auf fehlenden Key, `insert` auf vorhandenen | `EditError` mit passendem Code |
+**Commit:** `feat(core): write .properties files line by line, keeping encoding and escapes`
+
+### Task 5.3: Flache Keys
+**Dateien:** Modify `src/core/formats/adapter.ts` (`flatKeys`), `src/core/model/keyInput.ts`,
+`src/extension/commands/addKey.ts`, `renameKey.ts`, l10n; Test: `keyInput.test.ts`
+**Testfälle:** flach: `a.b` bleibt ein Segment, `\` bleibt, wie es ist; verschachtelt unverändert.
+**Commit:** `feat: take the keys of flat formats as typed`
+
+### Task 5.4: Bereich Metadatasets
+**Dateien:** Modify `src/core/area/presets.ts`, `areaDefinition.ts` (`properties`, `ignoredKeys`), `parseArea.ts`,
+`src/core/model/bundle.ts`, `src/core/edit/planEdit.ts`, `src/shared/viewModel.ts`, Webview-Beschriftung der Sprache,
+`package.json` (Formate, `ignoredKeys`, Aktivierung, Stichwort), l10n; Test: `presets.test.ts`, `analyze.test.ts`,
+`planEdit.test.ts`, `viewModel.test.ts`, `manifest.test.ts`
+**Testfälle:** Muster ordnet `mds.properties` → `mds`/`default`, `mds_override_de_DE.properties` →
+`mds_override`/`de_DE`, `valuespaces_i18n.properties` → `valuespaces_i18n`/`default` zu; Wächterzeile weder als
+Zeile noch als Befund sichtbar; neuer erster Key landet hinter ihr; neue Sprache beginnt mit ihr; Referenz `de_DE`;
+Beschriftung `default (en)`.
+**Commit:** `feat(core): add the metadataset area of edu-sharing`
+
+### Task 5.5: Rundlauf gegen das Repo
+**Dateien:** Modify `scripts/check-repo.ts`, `scripts/lib/checkRepo.ts`; Test: `test/unit/scripts/…`
+**Umsetzung:** `--roundtrip` liest jede Datei jedes Bereichs, schreibt sie ohne Änderung und vergleicht die Bytes.
+**Abnahme gegen den Clone (nur lesend):** 0 Abweichungen; Zahlen aus Design §2.3 (fehlende Keys gegenüber `de_DE`,
+14 doppelte Keys, 13 Dateien in ISO-8859-1) stimmen oder die Abweichung ist begründet.
+**Ergebnis (26.09.2026):** 112 Dateien (87 JSON, 25 `.properties`) byte-identisch; 2.605 fehlende Keys, 14 doppelte
+Keys, 7 Einheiten wie in §2.3. **Befund der Abnahme:** 60 Fehler `placeholder-malformed` in `mds*.properties` waren
+Fehlalarme: Metadatasets schreiben Platzhalter mit einer Klammer (`{user}`), nur `{{GENDER_SEPARATOR}}` mit zwei. Behoben
+mit dem Bereichsattribut `placeholderSyntax` (`single-brace` im MDS-Preset); Prüfregeln und Prüfung beim Tippen lesen
+Platzhalter danach. Danach 0 Platzhalter-Befunde in den Metadatasets. Seit Keys der Basisdatei allen Sprachen fehlen,
+die sie nicht haben, sind es 2.632 fehlende Keys (27 davon nur in der Basisdatei); Protokoll in
+[`docs/verification/phasen-5-6.md`](../verification/phasen-5-6.md).
+**Commit:** `feat(scripts): check that every translation file survives a round trip`,
+`fix(core): read the single-brace placeholders of metadatasets`
+
+### Task 6.1: Mail-Templates lesen
+**Dateien:** Create `src/core/formats/mail/xmlTokens.ts`, `mailRead.ts`, `mail.ts`; Test: `mail.parse.test.ts`
+**Testfälle:** Prolog `<?xml …?>`, Kommentare zwischen Templates, Attribute mit `'` und `"`, Entities im Betreff,
+CDATA mit umgebendem Leerraum, leeres `<subject/>`, Template nur mit `<style>` (kein Eintrag), `context` → `name@context`,
+doppeltes Template (`duplicate-key`, letztes gilt), Feld mit Kindelement → `non-string-value`, kaputtes XML (offenes
+Tag, falsches End-Tag, loses `&`) und Wurzel ≠ `templates` → `parse-error`.
+**Commit:** `feat(core): read mail template files with positions`
+
+### Task 6.2: Mail-Templates schreiben
+**Dateien:** Create `src/core/formats/mail/mailWrite.ts`; Modify `mail.ts`; Test: `mail.write.test.ts`,
+`mail.golden.test.ts` mit Dateien unter `test/fixtures/golden/mail/`
+**Golden-Testfälle** (Tabs/CRLF, Leerzeichen/LF ohne Newline am Ende):
+| Operation | Erwartung |
+|---|---|
+| keine | Bytes identisch |
+| `set` Betreff / Nachricht in CDATA | nur der Text bzw. der CDATA-Inhalt ändert sich |
+| Werte mit `& < >`, `]]>`, Zeilenumbrüchen | Wert nach erneutem Lesen identisch |
+| `insert` Feld in vorhandenes Template (nach Geschwister, `first`) | eine Zeile neu |
+| `insert` neues Template (nach Anker, `first`, am Ende, in leeres `<templates>`) | Template im Stil der Datei |
+| `delete` Feld / letztes Feld / Template mit `<style>` | Zeile weg / Template weg / Template bleibt |
+| `rename` im Template / in anderes Template | Tag-Namen / Feld zieht um |
+| `set` auf fehlendes Feld, `insert` auf vorhandenes | `EditError` mit passendem Code |
+**Commit:** `feat(core): write mail templates without touching the rest of the file`
+
+### Task 6.3: Bereich Mail-Templates
+**Dateien:** Modify `src/core/area/presets.ts`, `areaDefinition.ts` (`mail-xml`), `src/core/formats/adapter.ts`
+(`validKey`), `src/core/model/bundle.ts` (`format`), `src/core/edit/keyCheck.ts`, `editMessages.ts`, `package.json`, l10n; Test: `presets.test.ts`,
+`analyze.test.ts`, `planEdit.test.ts`, `keyCheck.test.ts`
+**Testfälle:** `templates.xml` → `default`, `templates_de_DE.xml` → `de_DE`, `templates_de_DE_override.xml` gehört
+nicht dazu; fehlendes Template in `fr_FR` → `missing-key` für seine Felder; fehlendes Feld füllen legt es im
+Template an, fehlendes Template legt es hinter dem vorigen an; `neu.titel` als neuer Key → `invalid-template-key`.
+**Commit:** `feat(core): add the mail template area of edu-sharing`
+
+### Task 6.6: Integrationstest aller Formate
+**Dateien:** Create `test/fixtures/workspace-formats/` (synthetisch: Datenordner mit Metadatasets und Mail-Templates),
+`test/integration/formats.test.ts`; Modify `.vscode-test.mjs` (Profil `formats`), `test/fixtures/README.md`
+**Testfälle:** Bereiche und Einheiten in der Seitenleiste; Editor einer MDS-Einheit und der Mail-Templates öffnet;
+fehlenden Text setzen schreibt genau eine Zeile, ISO-8859-1 bleibt; fehlendes Mail-Feld füllen; neue Sprache legt
+MDS-Dateien mit Wächterzeile an.
+**Commit:** `test: check metadatasets and mail templates in VS Code`
+
+### Task 6.7: Doku und Version
+**Dateien:** `README.md`, `docs/einstellungen.md`, `CHANGELOG.md`, `CONTRIBUTING.md`, Design §11 (E5), `package.json`
+(0.3.0: die Version zählt ab jetzt die Ausbaustufen, weil die Phasen nicht mehr in Zahlenreihenfolge kommen)
+**Commit:** `docs: describe metadatasets and mail templates`, `build: version 0.3.0`
+
+### Task 6.8: Abnahme mit dem Datenordner
+Isolierte VS-Code-Instanz über CDP mit einer Kopie des Datenordners der alten App (nie committet): drei Bereiche in der
+Seitenleiste, Editor einer MDS-Einheit und der Mail-Templates mit Lücken, eine Lücke geschlossen, `git diff` der Kopie
+zeigt genau die Änderung. Bilder im Scratchpad, Zahlen in `docs/verification/`.
+**Commit:** `docs: record the verification of metadatasets and mail templates`
+
+---
+
+## Offene Punkte aus 0.3.0 (26.09.2026)
+
+**Anlass:** Der Nutzer bittet, die offenen Punkte aus der Abnahme der Phasen 5 und 6
+([`docs/verification/phasen-5-6.md`](../verification/phasen-5-6.md), Abschnitt 6) zu beheben. Die Entscheidungen stützen
+sich auf den Clone und den Datenordner (nur lesend ausgewertet, nichts daraus zitiert oder committet).
+
+**Schritt 0:** `/better-coding-workflow`, für O6 zusätzlich `/better-coding-frontend`. Nach O6 prüft ein Reviewer mit
+frischem Kontext den ganzen Block mit `/better-coding-review`.
+
+**Entscheidungen:**
+- **P1 Keys der Basisdatei ohne Übersetzbares.** Ein Key, den nur die Basisdatei hat, fehlt den anderen Sprachen nur,
+  wenn sein Text etwas zu übersetzen hat: Buchstaben außerhalb von URLs, Platzhaltern und Tags. Die 9 Lizenz-URLs von
+  `mds` im Clone (9 von 10 im Datenordner) sind dann keine Lücken mehr, `passwordRequest` bleibt eine. Eine Sprache,
+  die einen solchen Key hat, bekommt dafür auch keinen `orphan-key`.
+- **P2 Override-Einheiten sind dünn besetzt.** edu-sharing liest `{gruppe}_override_{locale}` vor `{gruppe}_{locale}`
+  und `{gruppe}_override` vor `{gruppe}` (`MetadataReader.getTranslation`); Angular lädt die Kategorie `override`
+  zuletzt. Eine Override-Datei enthält also nur, was sie ändert. Neues Bereichsattribut `overrideBundlePattern`
+  (regulärer Ausdruck für den ganzen Einheitennamen, geprüft wie `bundlePattern`); MDS-Preset `.+_override`,
+  Angular-Preset `override`. Solche Einheiten bekommen keine Befunde zu fehlenden Keys oder Dateien
+  (`missing-key`, `orphan-key`, `misplaced-key`, `missing-file`); die übrigen Regeln gelten. Mail-Overrides
+  (`templates[_{locale}]_override.xml`) ersetzen ganze Templates und gibt es weder im Clone noch im Datenordner: Sie
+  bleiben außerhalb des Mail-Bereichs (keine Änderung).
+- **P3 Verlorene Zeichen.** Neue Regel `lost-character` (Warnung): ein `?` zwischen zwei Buchstaben außerhalb von Tags
+  und URLs oder ein U+FFFD im Text. Das bleibt, wenn eine Datei beim Speichern ein Zeichen nicht aufnehmen konnte
+  (im Clone und im Datenordner je 62 Stellen in `fr_FR`, etwa `l?apprentissage` und `n?ud` für `nœud`, kein
+  Fehlalarm). Die Dateien selbst ändert die Extension nicht; der Filter „Fehler“ und die Befundliste führen zu den
+  Stellen.
+- **P4 Zeilenenden nur mit CR.** `detectStyle` erkennt `\r` als Zeilenende; JSON- und Mail-Schreiber finden
+  Zeilenanfänge über einen gemeinsamen Helfer, der `\r` kennt. Neue Zeilen in solchen Dateien enden dann mit `\r`.
+- **P5 `validKey`.** Die Meldung `invalid-template-key` spricht von Mail-Templates. Solange nur der Mail-Adapter den
+  Hook hat, genügt ein Hinweis am Hook; ein zweites Format bräuchte eine eigene Meldung (keine neue Mechanik, YAGNI).
+- **P6 Mail-Vorschau (Kern von Task 6.4).** „Mail-Vorschau“ öffnet neben dem Editor einen Tab mit der Mail eines
+  Templates in jeder Sprache der Einheit, die Referenz zuerst, so zusammengesetzt wie `MailTemplate.getContent`
+  (`<style>` des Templates `stylesheet` aus der Basisdatei, `header`, der Text in `<div class='content'>`, `footer` in
+  `<div class='footer'>`, jedes Teil mit Rückfall auf die Basisdatei und auf das Template ohne Kontext), dazu der
+  Betreff und ein Hinweis, wo eine Sprache Texte der Basisdatei zeigt. Aufruf über einen Knopf in den Details, das
+  Kontextmenü einer Zeile oder Karte (wie Umbenennen und Löschen) und die Befehlspalette (dort mit Auswahl des
+  Templates). Ein Knopf je Sprachfeld hätte in der Liste 150 Tabstopps mehr bedeutet; alle Sprachen nebeneinander
+  entsprechen dem Wunsch, Sprachfassungen gegenüberzustellen. Der Tab hat keine Skripte (`enableScripts: false`) und
+  eine eigene CSP ohne Netzwerk; jede Mail steht in einem `iframe sandbox="" srcdoc`. Er folgt jedem Indexlauf. Die
+  CSP des Editors bleibt unverändert; die Nachricht `preview` liest nur und geht deshalb nicht über die
+  Key-Befehle, die im eingeschränkten Modus nichts tun. Später: hervorgehobener HTML-Code, Umschalten auf das Theme,
+  Vorschau beim Tippen.
+
+### Task O1: Zeilenenden nur mit CR
+**Dateien:** Modify `src/core/text/style.ts`, `src/core/text/lineIndex.ts` (`lineStartAt`), `src/core/formats/json/jsonWrite.ts`,
+`src/core/formats/mail/mailWrite.ts`; Test: `style.test.ts`, `json.write.test.ts`, `properties.write.test.ts`, `mail.write.test.ts`
+**Testfälle:** `detectStyle('a\rb\r')` → `eol: '\r'`, `finalNewline: true`; `insert`/`delete` in einer JSON-, `.properties`- und
+Mail-Datei nur mit CR ergeben dasselbe wie in der LF-Datei, nur mit `\r`.
+**Commit:** `fix(core): keep carriage-return line endings when writing`
+
+### Task O2: Hinweis am Hook `validKey`
+**Dateien:** Modify `src/core/formats/adapter.ts`
+**Commit:** `docs(core): say which message a rejected key gets`
+
+### Task O3: Keys der Basisdatei ohne Übersetzbares
+**Dateien:** Create `src/core/checks/translatable.ts`; Modify `src/core/checks/rules/missingKeys.ts`; Test: `missingKeys.test.ts`,
+`translatable.test.ts`
+**Testfälle:** Basis-Key mit `http://example.org/licenses/by/4.0/` fehlt in `de_DE`, `fr_FR` → kein `missing-key`; `fr_FR`
+hat ihn → kein `orphan-key`; Basis-Key mit `Password reset` → `missing-key` wie bisher; `{count}`, `1.0` und `<br>`
+haben nichts zu übersetzen, `PDF` und `Ja` schon.
+**Commit:** `fix(core): leave out base-file keys without text to translate when counting gaps`
+
+### Task O4: Override-Einheiten dünn besetzt
+**Dateien:** Modify `src/core/area/areaDefinition.ts`, `parseArea.ts`, `presets.ts`, `src/core/checks/rules/support.ts`,
+`missingKeys.ts`, `missingFile.ts`, `package.json` (Schema), `package.nls*.json`; Test: `parseArea.test.ts`, `presets.test.ts`,
+`missingKeys.test.ts`, `missingFile.test.ts`, `manifest.test.ts`
+**Testfälle:** `mds_override_de_DE` mit einem Key, `mds_override` ohne ihn → kein `missing-key`, kein `missing-file` für
+`fr_FR`; `mds` wie bisher; Placeholder-Befunde in der Override-Einheit bleiben; `overrideBundlePattern: '(a+)+'` →
+Fehler; ungültiger Ausdruck → Fehler.
+**Commit:** `feat(core): treat override bundles as sparse`
+
+### Task O5: Regel `lost-character`
+**Dateien:** Create `src/core/checks/rules/lostCharacter.ts`; Modify `rules/index.ts`, `types.ts`, `messages.ts`,
+`src/webview/components/findingHints.ts`, `cellStatus.ts`, `package.json` (Schwere), l10n, Doku; Test: `lostCharacter.test.ts`,
+`messages.test.ts`, `findingHints.test.ts`
+**Testfälle:** `l?apprentissage` und `Gr\uFFFDße` → Befund am Wert; `Quoi ?`, `Warum?` und `?` → keiner;
+`<a href="/s?q=x">Suche</a>` und `siehe https://x.org/a?b=c` → keiner (Tag, URL); in jeder Sprache, auch der Referenz.
+**Commit:** `feat(core): report characters lost when a file was saved in a narrower encoding`
+
+### Task O6: Mail-Vorschau
+**Dateien:** Create `src/core/formats/mail/mailCompose.ts`, `src/extension/panels/mailPreview.ts`,
+`src/extension/panels/mailPreviewHtml.ts`, `src/extension/commands/previewMail.ts`; Modify `src/shared/protocol.ts`
+(`preview`), `src/shared/viewModel.ts` (`mailPreview`), `src/webview/components/details.tsx`, `keyContext.ts`,
+`store.ts`, `editorPanel.ts`, `extension.ts`, `package.json` (Befehl, Kontextmenü), l10n, Doku; Test:
+`mail.compose.test.ts`, `mailPreviewHtml.test.ts`, `protocol.test.ts`, `viewModel.test.ts`, `details.test.tsx`,
+`table.test.tsx`, `list.test.tsx`, `formats.test.ts` (Integration)
+**Testfälle:** Zusammensetzung in der Reihenfolge von `getContent`; fehlender Text in `fr_FR` → Text der Basisdatei;
+`name@ctx` nimmt `header@ctx`, sonst `header`; ohne `stylesheet` ein leeres `<style>` (edu-sharing schreibt `<style>null</style>`); `srcdoc` escapt `& " < >`; jedes `iframe`
+hat `sandbox=""` und einen Titel; CSP ohne `script-src` und ohne Netzwerk; `preview` mit ungültigem Key wird
+verworfen; Knopf und Kontextmenü nur in Mail-Einheiten; Integration: Vorschau öffnet neben dem Editor, der den Fokus
+behält, zeigt alle Sprachen und folgt einem gespeicherten Text.
+**Abnahme:** CDP mit der Kopie des Datenordners: Vorschau von `invited` in `de_DE` und `fr_FR`, Stylesheet greift, keine
+Netzwerkanfrage.
+**Commit:** `feat: preview mail templates beside the editor`
+
+### Task O7: Doku, Review, Abnahme
+README, `docs/einstellungen.md`, CHANGELOG (0.3.0), Design (6.4), Abnahmeprotokoll (Abschnitt „Offene Punkte“);
+Review-Befunde in eigenen Commits; `npm run test:integration`; Push auf `feat/extension-v1`, CI einmal prüfen.
+
+**Ergebnis (26.09.2026):** O1–O6 umgesetzt, Nachweise in
+[`docs/verification/phasen-5-6.md`](../verification/phasen-5-6.md), Abschnitt 7. Befund der Abnahme: Unter der Tabelle
+schrumpften die Details mit ihr auf etwa 40 px und verdeckten den Knopf der Vorschau; sie behalten jetzt ihren Anteil
+(`734dc58`).
+
+**Nach dem Review (26.09.2026):** Ein Reviewer mit frischem Kontext fand 2 MAJOR, 4 MINOR und 4 NIT, alle behoben:
+Links fand ein Ausdruck in quadratischer Zeit (`e99c8c1`); eine Sprache, deren Datei edu-sharing nicht lesen kann,
+zeigte die Mail der Basisdatei, obwohl edu-sharing dann gar keine verschickt (`composeMails`, `0d7f230`, mit Kopf
+und Fuß im Hinweis, der Sprache jedes Texts, dem Template des Kontexts wie in edu-sharing und dem Stylesheet einmal je
+Seite); die Befehlspalette bietet nur Mail-Templates an (`bc9488e`); die Ansage sagt, dass die Vorschau öffnet
+(`ac60ac2`). Zurückgestellt: `editorPanel.ts` und `store.ts` sind länger als 300 Zeilen (schon vorher).
+
+---
+
 ## Phasen 3–8 (Gliederung – Detailtasks folgen vor Phasenstart)
 
 **Phase 3 – Füllen (Übersetzungsspeicher und KI).**
@@ -1428,7 +1713,7 @@ schreibt nichts.
 - 4.8 Befehl Export (Umfang, Sprachen, Filter, Format → Untitled-Dokument oder Datei).
 - 4.9 Integrationstest des Rundlaufs.
 
-**Phase 5 – Metadatasets.**
+**Phase 5 – Metadatasets.** Vorgezogen und ausgearbeitet: siehe „Phasen 5 und 6 (Kern)" oben.
 - Schritt 0: `/better-coding-workflow`.
 - 5.1 Properties-Codec (Encoding-Erkennung, `\uXXXX`).
 - 5.2 Zeilenerhaltender Parser (Fortsetzungen, Escapes, Kommentare, Wächterzeile).
@@ -1436,7 +1721,7 @@ schreibt nichts.
 - 5.4 Golden-Tests (UTF-8, Latin-1, CRLF, ohne Newline am Ende) und `check-repo --roundtrip`.
 - 5.5 MDS-Preset, Regel `duplicate-key`, Anzeige „default (en)".
 
-**Phase 6 – Mail-Templates.**
+**Phase 6 – Mail-Templates.** 6.1–6.3 und 6.6 vorgezogen und ausgearbeitet (siehe oben); 6.4 und 6.5 folgen.
 - Schritt 0: `/better-coding-workflow` und `/better-coding-frontend`.
 - 6.1 XML-Tokenizer mit Positionen.
 - 6.2 Schreib-Operationen (Betreff escapen, CDATA-sicher, Template in allen Sprachen anlegen oder löschen, Feld hinzufügen).
