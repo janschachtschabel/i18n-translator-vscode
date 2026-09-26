@@ -91,9 +91,10 @@ describe('package.json activation', () => {
 });
 
 // An allow-list, so that a copy of the (GPL) edu-sharing files in any folder of the repository is never packed;
-// the notices of the bundled packages must be packed (audit D-01, D-03).
+// the notices of the bundled packages must be packed (audit D-01, D-03). The changelog shows in the extension's
+// details in VS Code.
 describe('package.json files', () => {
-  it('packs the build, the texts, the icon, the license and the notices, and nothing else', () => {
+  it('packs the build, the texts, the icon, the license, the notices and the changelog, and nothing else', () => {
     expect(manifest.files).toEqual([
       'dist/**/*.js',
       'dist/**/*.css',
@@ -102,6 +103,7 @@ describe('package.json files', () => {
       'package.nls*.json',
       'LICENSE',
       'ThirdPartyNotices.txt',
+      'CHANGELOG.md',
     ]);
   });
 });
