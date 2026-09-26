@@ -66,3 +66,5 @@ Meldungen zu Links macht und Namen aus dem Arbeitsbereich darin stehen.
 
 `npm audit` meldet Schwachstellen in `mocha` (über `@vscode/test-cli`: `diff`, `serialize-javascript`).
 Sie betreffen nur den lokalen Testlauf und landen nicht in der VSIX.
+Die CI prüft deshalb nur die Laufzeitabhängigkeiten (`npm audit --omit=dev`), und Dependabot schlägt
+Aktualisierungen der Pakete und der gepinnten Actions vor.

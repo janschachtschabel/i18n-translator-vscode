@@ -20,25 +20,35 @@ jobs:
         os: [ubuntu-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      # Actions by commit, so that a moved tag cannot change what builds the VSIX; Dependabot updates them.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          # npm ci runs install scripts; they need no token.
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
+      # The packages the VSIX bundles; advisories of the dev tools are listed in CONTRIBUTING.
+      - run: npm audit --omit=dev --audit-level=moderate
       - run: npm run lint
       - run: npm run format:check
       - run: npm run typecheck
       - run: npm run test:coverage
       - run: npm run build
-      # Integration tests need a display; they run once, on Linux, against VS Code 1.90.0 and stable.
+      # Integration tests need a display on Linux; there they run against VS Code 1.90.0 and stable.
       - name: Integration tests
         if: runner.os == 'Linux'
         run: xvfb-run -a npm run test:integration
+      # On Windows, where paths ignore letter case (e.g. in the guard for unsaved editors), against stable.
+      - name: Integration tests (Windows)
+        if: runner.os == 'Windows'
+        run: npm run test:integration -- --label stable
       - name: Package VSIX
         if: runner.os == 'Linux'
         run: npm run package
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         if: runner.os == 'Linux'
         with:
           name: vsix
