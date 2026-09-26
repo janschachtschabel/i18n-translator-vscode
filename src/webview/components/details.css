@@ -13,7 +13,8 @@
   flex: 0 1 auto;
   max-block-size: 40%;
   overflow: auto;
-  padding: 8px 0;
+  /* Room for the focus ring around the texts, which the scroll area would cut off. */
+  padding: 8px 3px;
   border-block-start: 1px solid var(--vscode-panel-border);
 }
 
@@ -40,7 +41,7 @@
   .details {
     flex: 0 0 22em;
     max-block-size: none;
-    padding: 0 0 0 12px;
+    padding: 0 3px 0 12px;
     border-block-start: 0;
     border-inline-start: 1px solid var(--vscode-panel-border);
   }

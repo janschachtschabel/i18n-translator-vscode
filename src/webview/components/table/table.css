@@ -127,3 +127,9 @@
   display: block;
   white-space: normal;
 }
+
+/* Which keys edit, rename and delete: the grid's description. */
+.grid-help {
+  margin: 4px 0;
+  color: var(--vscode-descriptionForeground);
+}

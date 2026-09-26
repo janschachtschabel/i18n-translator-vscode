@@ -1,9 +1,9 @@
 import { useLayoutEffect, useRef, useState } from 'preact/hooks';
-import type { LocaleView } from '../../../shared/viewModel';
 import { moveInGrid, type GridPosition } from '../../a11y/gridKeys';
-import type { ShownRow } from '../../state/edits';
-import type { EditorStore } from '../../state/store';
+import type { ShownRow } from '../../state/shownRows';
+import type { EditorStore, LocaleColumn } from '../../state/store';
 import { EDITOR_CLASS } from '../cellEditor';
+import { focusIsLost, onFocusLeaving } from '../focus';
 import { useIncrementalCount } from '../useIncrementalCount';
 import { useScrollAnchor } from '../useScrollAnchor';
 import { cellAt, nextOpenPoint, pageSize, positionOf, type ActiveCell } from './gridPosition';
@@ -14,24 +14,27 @@ interface TableProps {
   store: EditorStore;
   rows: readonly ShownRow[];
   /** The languages shown, in the bundle's order. */
-  locales: readonly LocaleView[];
+  locales: readonly LocaleColumn[];
   /** The code of the reference language, whose texts the editor checks against. */
   reference: string | undefined;
   wrap: boolean;
   /** The id of the heading that names the grid. */
   labelledBy: string;
+  /** The id of the line that says which keys edit, rename and delete. */
+  describedBy: string;
 }
 
 /**
  * The bundle as an ARIA grid (design §7.4): one tab stop, moved with the keys of a data grid. It stays when no
  * row matches the filter, so that its tab stop, the focus and the active key stay too.
  */
-export function Table({ store, rows, locales, reference, wrap, labelledBy }: TableProps) {
+export function Table({ store, rows, locales, reference, wrap, labelledBy, describedBy }: TableProps) {
   const scroller = useRef<HTMLDivElement>(null);
-  const [active, setActive] = useState<ActiveCell>(() => ({
-    entryId: rows[0]?.entryId ?? null,
-    locale: locales[0]?.code ?? null,
-  }));
+  // Taken once, on the first render (Preact unmounts the old layout first): where the focus was in the list.
+  const [handoff] = useState(() => store.takeFocusHandoff());
+  const [active, setActive] = useState<ActiveCell>(
+    () => handoff ?? { entryId: rows[0]?.entryId ?? null, locale: locales[0]?.code ?? null },
+  );
   const lastPosition = useRef<GridPosition>({ row: 1, column: 1 });
   const position = positionOf(active, rows, locales, lastPosition.current);
   lastPosition.current = position;
@@ -41,9 +44,10 @@ export function Table({ store, rows, locales, reference, wrap, labelledBy }: Tab
   const editorRow = editor ? rows.findIndex((row) => row.entryId === editor.entryId) + 1 : 0;
   const count = useIncrementalCount(rows.length, Math.max(position.row, editorRow));
   /** Whether the focus is in the grid; after a render it goes back to the active cell if it got lost. */
-  const focused = useRef(false);
+  const focused = useRef(handoff !== undefined);
+  // The cell at the active position: the key that took the place of one that went, not the one that went.
   const lastActive = useRef(active);
-  lastActive.current = active;
+  lastActive.current = cellAt(position, rows, locales);
   useScrollAnchor(store, scroller);
 
   useLayoutEffect(() => {
@@ -53,9 +57,7 @@ export function Table({ store, rows, locales, reference, wrap, labelledBy }: Tab
     // Only a focus that got lost comes back, not one the user took elsewhere meanwhile (e.g. with Ctrl+F),
     // and not one in an editor, which takes it before the cell it is in becomes the active one.
     const lost =
-      current === null ||
-      current === document.body ||
-      ((element?.contains(current) ?? false) && !current.closest(`.${EDITOR_CLASS}`));
+      focusIsLost() || ((element?.contains(current) ?? false) && !current?.closest(`.${EDITOR_CLASS}`));
     if (focused.current && cell && !cell.contains(current) && lost) {
       cell.focus({ preventScroll: true });
       cell.scrollIntoView({ block: 'nearest', inline: 'nearest' });
@@ -70,11 +72,11 @@ export function Table({ store, rows, locales, reference, wrap, labelledBy }: Tab
     }
   }, [store, activeKey]);
 
-  // When the list takes the table's place with the focus in it, the list gives it to the card of the key.
+  // When the list takes the table's place with the focus in the grid, the list gives it to the card of the key.
   useLayoutEffect(
     () => () => {
       if (scroller.current?.contains(document.activeElement)) {
-        store.handOffFocus(lastActive.current.entryId);
+        store.handOffFocus('table', lastActive.current);
       }
     },
     [store],
@@ -149,27 +151,19 @@ export function Table({ store, rows, locales, reference, wrap, labelledBy }: Tab
       }
     }
   };
-  const onFocusOut = (event: FocusEvent) => {
-    const target = event.relatedTarget as Node | null;
-    if (target !== null) {
-      focused.current = scroller.current?.contains(target) ?? false;
-      return;
-    }
-    // No new target: a click beside the controls, or the cell went away with its row. Only then does the
-    // focus come back to the active cell (in the layout effect, which runs before this check).
-    const cell = event.target as HTMLElement;
-    queueMicrotask(() => {
-      if (cell.isConnected) {
-        focused.current = false;
-      }
+  // When the cell with the focus went away with its row, the focus comes back to the active cell (in the layout
+  // effect, which runs before this check).
+  const onFocusOut = (event: FocusEvent) =>
+    onFocusLeaving(event, scroller.current, () => {
+      focused.current = false;
     });
-  };
 
   return (
     <div ref={scroller} class={wrap ? 'table-scroller wrap' : 'table-scroller'}>
       <div
         role="grid"
         aria-labelledby={labelledBy}
+        aria-describedby={describedBy}
         aria-rowcount={rows.length + 1}
         aria-colcount={locales.length + 1}
         class={locales.length > 0 ? 'grid' : 'grid no-languages'}
@@ -201,8 +195,14 @@ export function Table({ store, rows, locales, reference, wrap, labelledBy }: Tab
   );
 }
 
-/** In the key column, F2 renames the key and Delete deletes it; the host asks first. */
+/**
+ * In the key column, F2 renames the key and Delete deletes it (on macOS, whose keyboards have no Delete key, also
+ * Cmd+Backspace, as in VS Code's lists); the host asks first.
+ */
 function keyCommandOf(event: KeyboardEvent): 'renameKey' | 'deleteKey' | undefined {
+  if (event.key === 'Backspace' && event.metaKey && !event.altKey && !event.ctrlKey && !event.shiftKey) {
+    return 'deleteKey';
+  }
   if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) {
     return undefined;
   }

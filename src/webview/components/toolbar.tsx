@@ -44,8 +44,16 @@ export function Toolbar({ store }: { store: EditorStore }) {
           {l10n.t('Show details')}
         </label>
       )}
-      {/* A new key goes after the active one of the table. */}
-      <button type="button" onClick={() => store.command('addKey', store.detailsKey.value ?? undefined)}>
+      {/* A new key goes after the active one of the table; the list has none. */}
+      <button
+        type="button"
+        onClick={() =>
+          store.command(
+            'addKey',
+            store.layout.value === 'table' ? (store.detailsKey.value ?? undefined) : undefined,
+          )
+        }
+      >
         {l10n.t('Add Key…')}
       </button>
       <button type="button" onClick={() => store.command('addLanguage')}>

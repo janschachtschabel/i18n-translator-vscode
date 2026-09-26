@@ -1,4 +1,4 @@
-import { computed, signal } from '@preact/signals';
+import { computed, effect, signal } from '@preact/signals';
 import { filterRows, type FilterResult, type RowFilter } from '../../shared/filter';
 import { applyPatch } from '../../shared/patch';
 import {
@@ -10,16 +10,22 @@ import {
 } from '../../shared/protocol';
 import type { BundleViewModel, LocaleView } from '../../shared/viewModel';
 import { formatNumber, l10n, setTranslations } from '../l10n';
-import {
-  Edits,
-  nextCell,
-  showEdits,
-  type CellRef,
-  type EditorPlace,
-  type OpenEditor,
-  type ShownRow,
-} from './edits';
+import { Edits, type CellRef, type EditorPlace } from './edits';
 import { compactLocales, layoutFor } from './layout';
+import { nextCell } from './navigation';
+import { showEdits, withRowOf, type ShownRow } from './shownRows';
+
+/**
+ * What the rows and headers show of a language: not its counts, which the chips take from the model, so that a
+ * new count renders no row again.
+ */
+export type LocaleColumn = Pick<LocaleView, 'code' | 'lang' | 'reference' | 'variant' | 'hasFile'>;
+
+/** Where the focus was in a layout that gave way to the other: a key (null: the header row) and a language (null: the key). */
+export interface FocusHandoff {
+  entryId: string | null;
+  locale: string | null;
+}
 
 /** The part of the webview API (`acquireVsCodeApi()`) the editor uses. */
 export interface HostApi {
@@ -54,13 +60,13 @@ export class EditorStore {
   // render again only when their props change.
   private readonly hiddenLocales = computed(() => this.uiState.value.hiddenLocales);
   private readonly compactLocale = computed(() => this.uiState.value.compactLocale);
-  private columns: LocaleView[] = [];
+  private columns: readonly LocaleColumn[] = [];
   /**
    * The languages the rows show: the visible ones, in the compact list the reference and one more. The same array
    * as long as the columns are the same, also with new counts of findings: the rows, which show no counts, then
    * render again only where a text changed (the chips take the counts from the model).
    */
-  readonly shownLocales = computed((): LocaleView[] => {
+  readonly shownLocales = computed((): readonly LocaleColumn[] => {
     const view = this.view.value;
     const hiddenLocales = this.hiddenLocales.value;
     const compactLocale = this.compactLocale.value;
@@ -89,22 +95,44 @@ export class EditorStore {
     (message) => this.host.postMessage(message),
     (text) => this.announce(text),
   );
-  /** The rows the filter lets through, as the editor shows them: with the texts on their way to the files. */
-  readonly rows = computed((): readonly ShownRow[] =>
-    showEdits(this.filtered.value?.rows ?? [], this.edits.pending.value, this.edits.rejected.value),
-  );
+  /**
+   * The rows the filter lets through, as the editor shows them: with the texts on their way to the files, and
+   * with the row of the open editor while it is open, so that it stays while the user types.
+   */
+  readonly rows = computed((): readonly ShownRow[] => {
+    const view = this.view.value;
+    const filtered = this.filtered.value?.rows ?? [];
+    const open = this.edits.open.value;
+    const rows = view.kind === 'bundle' ? withRowOf(filtered, view.model.rows, open?.entryId) : filtered;
+    return showEdits(rows, this.edits.pending.value, this.edits.rejected.value);
+  });
   /** The key of the table's active cell, whose details the table shows; null before it has one. */
   readonly detailsKey = signal<string | null>(null);
-  /** The row the details show; undefined when the filter does not let it through. */
+  /** The row the details show: that of their open editor, else of the table's active key; undefined: none. */
   readonly detailsRow = computed(() => {
-    const key = this.detailsKey.value;
+    const open = this.edits.open.value;
+    const key = open?.place === 'details' ? open.entryId : this.detailsKey.value;
     return key === null ? undefined : this.rows.value.find((row) => row.entryId === key);
   });
 
-  /** The key whose card takes the focus when the list replaces a table that had it; null: the first card. */
-  private focusHandoff: string | null | undefined;
+  /** Where the focus goes when one layout takes the place of the other, which had it. */
+  private focusHandoff: FocusHandoff | undefined;
 
-  constructor(private readonly host: HostApi) {}
+  constructor(private readonly host: HostApi) {
+    // A new layout may leave out the language of the open editor (e.g. the compact list): it cannot stay open.
+    effect(() => {
+      const shown = this.shownLocales.value;
+      const table = this.layout.value === 'table';
+      const open = this.edits.open.peek();
+      if (
+        open &&
+        !(table && open.place === 'details') &&
+        !shown.some((locale) => locale.code === open.locale)
+      ) {
+        this.edits.park();
+      }
+    });
+  }
 
   receive(message: HostToWebview): void {
     switch (message.type) {
@@ -126,13 +154,11 @@ export class EditorStore {
         this.view.value = { kind: 'bundle', model: message.model };
         if (before === 'loading') {
           // The texts appear while the focus is elsewhere; screen readers would not notice.
-          this.announce(
-            l10n.t('{name} is open: {keys} keys in {languages} languages.', {
-              name: message.model.name,
-              keys: formatNumber(message.model.rows.length),
-              languages: formatNumber(message.model.locales.length),
-            }),
-          );
+          const counts = l10n.t('Keys: {keys} · Languages: {languages}', {
+            keys: formatNumber(message.model.rows.length),
+            languages: formatNumber(message.model.locales.length),
+          });
+          this.announce(`${l10n.t('{name} is open.', { name: message.model.name })} ${counts}`);
         }
         break;
       }
@@ -199,20 +225,29 @@ export class EditorStore {
     this.updateFilter({ status: this.uiState.value.filter.status === 'missing' ? 'all' : 'missing' });
   }
 
-  /** Called by a table that goes while it has the focus, with its active key (null: its header row). */
-  handOffFocus(entryId: string | null): void {
-    this.focusHandoff = entryId;
+  /**
+   * Called by the table (grid or details) or the list when it goes while it has the focus, with where the focus
+   * was: for the other layout, if that takes its place. One that just goes (e.g. no key matches the filter) hands
+   * nothing on, so that nothing takes the focus later.
+   */
+  handOffFocus(from: 'table' | 'list', place: FocusHandoff): void {
+    const replaced = from === 'table' ? this.layout.peek() !== 'table' : this.layout.peek() === 'table';
+    if (replaced) {
+      this.focusHandoff = place;
+    }
   }
 
-  /** The key the focus was handed off with, once; undefined: nothing was handed off. */
-  takeFocusHandoff(): string | null | undefined {
-    const entryId = this.focusHandoff;
+  /** Where the focus was handed off, once; undefined: nothing was handed off. */
+  takeFocusHandoff(): FocusHandoff | undefined {
+    const place = this.focusHandoff;
     this.focusHandoff = undefined;
-    return entryId;
+    return place;
   }
 
   /** Opens the editor of a cell in the rows or in the details, with the text the cell shows. */
   edit(entryId: string, locale: string, place: EditorPlace = 'rows'): void {
+    // The open editor first: when it is the same cell's, the cell then shows the text just sent.
+    this.edits.commit();
     this.edits.start({ entryId, locale }, this.shownText(entryId, locale), place);
   }
 
@@ -222,12 +257,14 @@ export class EditorStore {
    */
   editNext(direction: 1 | -1): boolean {
     const open = this.edits.open.value;
-    const next = open ? this.nextCell(open, direction) : undefined;
+    // Without the details (the list), an editor that opened there goes on in the rows.
+    const place = open?.place === 'details' && this.layout.value === 'table' ? 'details' : 'rows';
+    const next = open ? this.nextCell(open, place, direction) : undefined;
     this.edits.commit();
-    if (!open || !next) {
+    if (!next) {
       return false;
     }
-    this.edit(next.entryId, next.locale, open.place);
+    this.edit(next.entryId, next.locale, place);
     return true;
   }
 
@@ -251,8 +288,8 @@ export class EditorStore {
     return this.rows.value.find((row) => row.entryId === entryId)?.cells[locale]?.value;
   }
 
-  private nextCell(open: OpenEditor, direction: 1 | -1): CellRef | undefined {
-    if (open.place === 'rows') {
+  private nextCell(open: CellRef, place: EditorPlace, direction: 1 | -1): CellRef | undefined {
+    if (place === 'rows') {
       return nextCell(this.rows.value, this.shownLocales.value, open, direction);
     }
     const view = this.view.value;
@@ -261,8 +298,8 @@ export class EditorStore {
   }
 }
 
-/** Whether two lists of languages make the same columns: what rows and headers show of a language. */
-function sameColumns(a: readonly LocaleView[], b: readonly LocaleView[]): boolean {
+/** Whether two lists of languages make the same columns. */
+function sameColumns(a: readonly LocaleColumn[], b: readonly LocaleColumn[]): boolean {
   return (
     a.length === b.length &&
     a.every((locale, index) => {

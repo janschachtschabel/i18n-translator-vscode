@@ -20,7 +20,10 @@ function tabStops(): HTMLElement[] {
   );
 }
 
-/** Tab as the browser does it, unless the focused element handles the key itself, as the cell editor does. */
+/**
+ * Tab as the browser does it, unless the focused element handles the key itself, as the cell editor does. Past
+ * the last stop (or before the first), the browser takes the focus out of the page to VS Code: here it comes round.
+ */
 function tab(shiftKey = false): string {
   const current = document.activeElement as HTMLElement;
   if (fireEvent.keyDown(current, { key: 'Tab', shiftKey })) {
@@ -29,6 +32,11 @@ function tab(shiftKey = false): string {
     act(() => next?.focus());
   }
   return focusLine();
+}
+
+/** Whether the page leaves Tab to the browser on the focused element: no key handler holds the focus there. */
+function leavesTab(shiftKey = false): boolean {
+  return fireEvent.keyDown(document.activeElement!, { key: 'Tab', shiftKey });
 }
 
 function press(key: string, init: KeyboardEventInit = {}): string {
@@ -92,16 +100,18 @@ afterEach(cleanup);
 describe('keyboard walk', () => {
   it('reaches every control with Tab in the order of the page: toolbar, filter, grid, details, and round again', () => {
     open();
-    const walk = Array.from({ length: TOOLBAR_TO_GRID.length + 5 }, () => tab());
+    const walk = Array.from({ length: TOOLBAR_TO_GRID.length + 4 }, () => tab());
     expect(walk).toEqual([
       ...TOOLBAR_TO_GRID,
       'button de: Speichern',
       'button de-informal: –kein eigener Text',
       'button fr: Enregistrer',
       'button it: Salva',
-      // No trap: after the last stop, Tab goes round the page again.
-      'a Zur Suche',
     ]);
+    // No trap: on the last stop, Tab goes on out of the page, and Shift+Tab on the first.
+    expect(leavesTab()).toBe(true);
+    expect(tab()).toBe('a Zur Suche');
+    expect(leavesTab(true)).toBe(true);
   });
 
   it('moves in the grid, edits a text, goes on to the details and back, with the keys alone', () => {

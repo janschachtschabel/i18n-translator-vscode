@@ -47,6 +47,7 @@ function Content({ store, view }: { store: EditorStore; view: View }) {
 }
 
 const TITLE_ID = 'bundle-title';
+const GRID_HELP_ID = 'grid-help';
 
 function BundleView({ store, model }: { store: EditorStore; model: BundleViewModel }) {
   const rows = store.rows.value;
@@ -78,19 +79,27 @@ function BundleView({ store, model }: { store: EditorStore; model: BundleViewMod
         </p>
       )}
       {layout === 'table' && model.rows.length > 0 ? (
-        <div class="workspace">
-          <Table
-            store={store}
-            rows={rows}
-            locales={shown}
-            reference={reference}
-            wrap={store.uiState.value.wrap}
-            labelledBy={TITLE_ID}
-          />
-          {store.uiState.value.details && (
-            <Details store={store} locales={model.locales} reference={reference} />
-          )}
-        </div>
+        <>
+          <p id={GRID_HELP_ID} class="grid-help">
+            {l10n.t(
+              'Enter or F2 edits a text; in the key column, F2 renames the key and Delete (on macOS Cmd+Backspace) deletes it.',
+            )}
+          </p>
+          <div class="workspace">
+            <Table
+              store={store}
+              rows={rows}
+              locales={shown}
+              reference={reference}
+              wrap={store.uiState.value.wrap}
+              labelledBy={TITLE_ID}
+              describedBy={GRID_HELP_ID}
+            />
+            {store.uiState.value.details && (
+              <Details store={store} locales={model.locales} reference={reference} />
+            )}
+          </div>
+        </>
       ) : rows.length > 0 ? (
         <List store={store} rows={rows} locales={shown} reference={reference} labelledBy={TITLE_ID} />
       ) : null}

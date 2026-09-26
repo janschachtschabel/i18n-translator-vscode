@@ -2,7 +2,7 @@ import type { LocaleView } from '../../shared/viewModel';
 import { l10n } from '../l10n';
 
 /** A language code with its mark: the reference, or a variant that leaves most texts to its base. */
-export function LocaleLabel({ locale }: { locale: LocaleView }) {
+export function LocaleLabel({ locale }: { locale: Pick<LocaleView, 'code' | 'reference' | 'variant'> }) {
   return (
     <>
       {locale.code}

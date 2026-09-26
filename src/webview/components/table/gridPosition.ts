@@ -1,4 +1,4 @@
-import type { LocaleView, RowView } from '../../../shared/viewModel';
+import type { RowView } from '../../../shared/viewModel';
 import type { GridPosition } from '../../a11y/gridKeys';
 
 /** The grid's tab stop by what it shows, so it stays on its key when rows come and go: null is the header row or the key column. */
@@ -14,7 +14,7 @@ export interface ActiveCell {
 export function positionOf(
   active: ActiveCell,
   rows: readonly RowView[],
-  locales: readonly LocaleView[],
+  locales: readonly { code: string }[],
   last: GridPosition,
 ): GridPosition {
   const row =
@@ -35,7 +35,7 @@ function inside(index: number, count: number): number {
 export function cellAt(
   at: GridPosition,
   rows: readonly RowView[],
-  locales: readonly LocaleView[],
+  locales: readonly { code: string }[],
 ): ActiveCell {
   return {
     entryId: at.row === 0 ? null : (rows[at.row - 1]?.entryId ?? null),
@@ -51,7 +51,7 @@ export function nextOpenPoint(
   from: GridPosition,
   direction: 1 | -1,
   rows: readonly RowView[],
-  locales: readonly LocaleView[],
+  locales: readonly { code: string }[],
 ): GridPosition {
   const codes = from.column === 0 ? locales.map((locale) => locale.code) : [locales[from.column - 1]!.code];
   for (let row = from.row + direction; row >= 1 && row <= rows.length; row += direction) {

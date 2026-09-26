@@ -2,6 +2,7 @@
 import { act, cleanup, fireEvent, screen, within } from '@testing-library/preact';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { DEFAULT_FILTER } from '../../../src/shared/filter';
+import type { WebviewToHost } from '../../../src/shared/protocol';
 import { findingsModel as model, openWith as open, row, text, axeProblems } from './support';
 
 const id = (key: string) => JSON.stringify(key.split('.'));
@@ -17,7 +18,20 @@ const press = (key: string, init: KeyboardEventInit = {}) =>
   act(() => void fireEvent.keyDown(document.activeElement!, { key, ...init }));
 const typeText = (value: string) => act(() => void fireEvent.input(field(), { target: { value } }));
 const nextTask = () => act(() => new Promise((resolve) => setTimeout(resolve, 0)));
-const edits = (posted: readonly { type: string }[]) => posted.filter((message) => message.type === 'edit');
+const edits = (posted: readonly WebviewToHost[]) =>
+  posted.filter((message): message is Extract<WebviewToHost, { type: 'edit' }> => message.type === 'edit');
+/** The id of the last text sent, which the host's answer names. */
+const lastRequest = (posted: readonly WebviewToHost[]) => edits(posted).at(-1)!.requestId;
+/** The text of SAVE in French, changed outside the editor. */
+const saveInFrench = (value: string | undefined) => {
+  const save = model.rows[0]!;
+  return {
+    type: 'patch' as const,
+    patch: { rows: [{ ...save, cells: { ...save.cells, fr: text(value) } }] },
+  };
+};
+const CONFLICT_NOTICE =
+  'SAVE in fr wurde außerhalb des Editors geändert. Übernehmen Sie den neuen Text, oder behalten Sie Ihren.';
 
 function setWidth(width: number) {
   Object.defineProperty(window, 'innerWidth', { value: width, configurable: true });
@@ -65,7 +79,7 @@ describe('cell editor in the table', () => {
     press('Enter');
     expect(posted.at(-1)).toEqual({
       type: 'edit',
-      requestId: 'edit-1',
+      requestId: expect.any(String),
       entryId: id('SAVE'),
       locale: 'fr',
       value: 'Sauvegarder',
@@ -162,16 +176,16 @@ describe('cell editor in the table', () => {
   });
 
   it('shows the old text again when saving fails, marks the cell and brings the typed text back', () => {
-    const { store, send } = open();
+    const { store, send, posted } = open();
     act(() => cellOf('CANCEL', 0).focus());
     press('Enter');
     typeText('Abbruch');
     press('Enter');
     const message = 'CANCEL in de wurde zwischenzeitlich geändert.';
-    send({ type: 'writeResult', requestId: 'edit-1', ok: false, message });
+    send({ type: 'writeResult', requestId: lastRequest(posted), ok: false, message });
     expect(cellOf('CANCEL', 0).textContent).toBe('Abbrechen ✖ nicht gespeichert');
     expect(description(cellOf('CANCEL', 0))).toBe(`Nicht gespeichert: ${message}`);
-    expect(store.announcement.value.text).toBe(`Nicht gespeichert: ${message}`);
+    expect(store.announcement.value.text).toBe(`CANCEL in de: nicht gespeichert. ${message}`);
 
     press('Enter');
     expect(field().value).toBe('Abbruch');
@@ -180,16 +194,29 @@ describe('cell editor in the table', () => {
     expect(field().getAttribute('aria-describedby')?.split(' ')).toContain(error.id);
   });
 
+  it('takes a failure into the editor when the text is edited again meanwhile', () => {
+    const { send, posted } = open();
+    act(() => cellOf('CANCEL', 0).focus());
+    press('Enter');
+    typeText('Abbruch');
+    press('Enter');
+    press('Enter');
+    typeText('Abbruch!');
+    const message = 'Die Datei ist schreibgeschützt.';
+    send({ type: 'writeResult', requestId: lastRequest(posted), ok: false, message });
+    expect(field().value).toBe('Abbruch!');
+    expect(document.getElementById('cell-editor-error')!.textContent).toBe(`✖ Nicht gespeichert: ${message}`);
+    expect(document.activeElement).toBe(field());
+    press('Enter');
+    expect(posted.at(-1)).toMatchObject({ type: 'edit', value: 'Abbruch!', before: 'Abbrechen' });
+  });
+
   it('shows a change of its text outside the editor, with the choice to take it or keep the draft', async () => {
     const { send, posted } = open();
     act(() => cellOf('SAVE', 2).focus());
     press('Enter');
     typeText('Sauver');
-    const save = model.rows[0]!;
-    send({
-      type: 'patch',
-      patch: { rows: [{ ...save, cells: { ...save.cells, fr: text('Sauvegarder') } }] },
-    });
+    send(saveInFrench('Sauvegarder'));
     const conflict = document.getElementById('cell-editor-conflict')!;
     expect(conflict.textContent).toContain('Außerhalb des Editors geändert: Sauvegarder');
     expect(field().getAttribute('aria-describedby')?.split(' ')).toContain(conflict.id);
@@ -198,11 +225,79 @@ describe('cell editor in the table', () => {
     expect(await axeProblems()).toEqual([]);
     // Tab leads to the choice instead of saving.
     expect(fireEvent.keyDown(field(), { key: 'Tab' })).toBe(true);
-    act(() => void fireEvent.click(within(conflict).getByRole('button', { name: 'Meinen behalten' })));
+    act(() => void fireEvent.click(screen.getByRole('button', { name: 'Meinen Text behalten' })));
     expect(document.getElementById('cell-editor-conflict')).toBeNull();
     expect(document.activeElement).toBe(field());
     press('Enter');
     expect(posted.at(-1)).toMatchObject({ type: 'edit', value: 'Sauver', before: 'Sauvegarder' });
+  });
+
+  it('leads Enter to the choice in a conflict, sends nothing, and Esc gives up the draft', () => {
+    const { send, posted } = open();
+    act(() => cellOf('SAVE', 2).focus());
+    press('Enter');
+    typeText('Sauver');
+    send(saveInFrench('Sauvegarder'));
+    expect(document.getElementById('cell-editor-hint')!.textContent).toBe(
+      'Tab führt zur Wahl zwischen dem neuen Text und Ihrem; Esc verwirft Ihren.',
+    );
+    press('Enter');
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Neuen Text übernehmen' }));
+    press('Escape');
+    expect(screen.queryByRole('textbox')).toBeNull();
+    expect(edits(posted)).toEqual([]);
+    expect(cellOf('SAVE', 2).textContent).toBe('Sauvegarder');
+    expect(document.activeElement).toBe(cellOf('SAVE', 2));
+  });
+
+  it('gives the focus back to the field when the choice goes, once the text is back as it was', () => {
+    const { send } = open();
+    act(() => cellOf('SAVE', 2).focus());
+    press('Enter');
+    typeText('Sauver');
+    send(saveInFrench('Sauvegarder'));
+    press('Enter');
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Neuen Text übernehmen' }));
+    send(saveInFrench('Enregistrer'));
+    expect(document.getElementById('cell-editor-conflict')).toBeNull();
+    expect(document.activeElement).toBe(field());
+  });
+
+  it('keeps the choice when a model for another key comes', async () => {
+    const { send } = open();
+    act(() => cellOf('SAVE', 2).focus());
+    press('Enter');
+    typeText('Sauver');
+    send(saveInFrench('Sauvegarder'));
+    act(() => screen.getByRole('searchbox').focus());
+    await nextTask();
+    act(() => cellOf('SAVE', 2).focus());
+    press('Enter');
+    press('Enter');
+    const cancel = model.rows[1]!;
+    send({
+      type: 'patch',
+      patch: { rows: [{ ...cancel, cells: { ...cancel.cells, fr: text('Annuler') } }] },
+    });
+    expect(document.getElementById('cell-editor-conflict')).not.toBeNull();
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Neuen Text übernehmen' }));
+  });
+
+  it('keeps the draft of a conflict as not saved when the focus leaves, and offers the choice again', async () => {
+    const { store, send, posted } = open();
+    act(() => cellOf('SAVE', 2).focus());
+    press('Enter');
+    typeText('Sauver');
+    send(saveInFrench('Sauvegarder'));
+    act(() => screen.getByRole('searchbox').focus());
+    await nextTask();
+    expect(edits(posted)).toEqual([]);
+    expect(cellOf('SAVE', 2).textContent).toBe('Sauvegarder ✖ nicht gespeichert');
+    expect(store.announcement.value.text).toBe(`SAVE in fr: nicht gespeichert. ${CONFLICT_NOTICE}`);
+    act(() => cellOf('SAVE', 2).focus());
+    press('Enter');
+    expect(field().value).toBe('Sauver');
+    expect(document.getElementById('cell-editor-conflict')!.textContent).toContain('Sauvegarder');
   });
 
   it('says while typing how placeholders and tags compare with the reference', () => {
@@ -211,8 +306,9 @@ describe('cell editor in the table', () => {
     press('Enter');
     const check = document.getElementById('cell-editor-check')!;
     expect(check.getAttribute('role')).toBe('status');
+    // The symbols are hidden from screen readers, which read the severity instead.
     expect(check.textContent).toBe(
-      '✖ Fehlende Platzhalter: {{date}}✖ Platzhalter, die die Referenz nicht hat: {{data}}',
+      '✖ Fehler: Fehlende Platzhalter: {{date}}✖ Fehler: Platzhalter, die die Referenz nicht hat: {{data}}',
     );
     typeText('Erreur ({{date}})');
     expect(check.textContent).toBe('✓ Platzhalter und HTML-Tags wie in der Referenz.');
@@ -225,7 +321,7 @@ describe('cell editor in the table', () => {
     press('Enter');
     const hint = document.getElementById('cell-editor-hint')!;
     expect(hint.textContent).toBe(
-      'Enter speichert, Umschalt+Enter beginnt eine neue Zeile, Tab speichert und geht weiter, Esc bricht ab.',
+      'Enter speichert · Umschalt+Enter: neue Zeile · Tab: speichern und weiter · Esc: abbrechen',
     );
     expect(field().getAttribute('aria-describedby')?.split(' ')).toContain(hint.id);
   });
@@ -312,6 +408,41 @@ describe('cell editor in the list', () => {
     await Promise.resolve();
     send({ type: 'bundle', model: { ...model, rows: withText('ERROR_TITLE', 'it') } });
     expect(document.activeElement).toBe(document.body);
+  });
+
+  it('keeps the focus on the text when its button to delete it goes, deleted or not', () => {
+    setWidth(600);
+    const { send, posted } = open();
+    const textOf = () => within(cardOf('WORKSPACE.TITLE')).getByRole('button', { name: /^it: / });
+    act(
+      () => void fireEvent.click(screen.getByRole('button', { name: 'Text löschen WORKSPACE.TITLE in it' })),
+    );
+    expect(edits(posted)).toEqual([expect.objectContaining({ locale: 'it', value: '' })]);
+    expect(screen.queryByRole('button', { name: /^Text löschen/ })).toBeNull();
+    expect(document.activeElement).toBe(textOf());
+    // The user declined in the host's question: the empty text is back, and its button.
+    send({ type: 'writeResult', requestId: lastRequest(posted), ok: false });
+    expect(screen.getByRole('button', { name: /^Text löschen/ })).toBeTruthy();
+    expect(document.activeElement).toBe(textOf());
+  });
+
+  it('keeps the card whose editor closed, also beyond the cards shown so far', () => {
+    setWidth(600);
+    const keys = Array.from({ length: 250 }, (_, index) => `K${String(index).padStart(3, '0')}`);
+    const rows = keys.map((key) =>
+      row(key, {
+        de: text(`${key} de`),
+        'de-informal': text(undefined),
+        fr: text(`${key} fr`),
+        it: text(''),
+      }),
+    );
+    open({}, { ...model, rows });
+    act(() => void fireEvent.click(within(cardOf('K199')).getByRole('button', { name: /^it: / })));
+    press('Tab');
+    expect(field()).toBe(screen.getByRole('textbox', { name: 'K200 in de' }));
+    press('Escape');
+    expect(document.activeElement).toBe(within(cardOf('K200')).getByRole('button', { name: 'de: K200 de' }));
   });
 
   it('keeps the editor and its text when the table gives way to the list', () => {

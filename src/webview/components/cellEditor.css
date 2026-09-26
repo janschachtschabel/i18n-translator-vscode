@@ -10,6 +10,8 @@
 .cell-input {
   box-sizing: border-box;
   inline-size: 100%;
+  /* A target of 24 px at least (WCAG 2.5.8), also for one line of a small font. */
+  min-block-size: 24px;
   padding: 2px 4px;
   overflow: hidden;
   resize: none;

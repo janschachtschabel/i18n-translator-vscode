@@ -97,7 +97,7 @@ describe('details', () => {
     );
     expect(posted.at(-1)).toEqual({
       type: 'edit',
-      requestId: 'edit-1',
+      requestId: expect.any(String),
       entryId: id('WORKSPACE.TITLE'),
       locale: 'it',
       value: '',

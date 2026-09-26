@@ -63,6 +63,11 @@ button:hover {
   background-color: var(--vscode-button-secondaryHoverBackground);
 }
 
+/* Around buttons, as in VS Code: inside, the focus color does not reach 3:1 against the button's (WCAG 1.4.11). */
+button:focus-visible {
+  outline-offset: 2px;
+}
+
 /* Controls that belong together, their name in front: "View (•) Automatic ( ) Table ( ) List". */
 .group {
   display: flex;

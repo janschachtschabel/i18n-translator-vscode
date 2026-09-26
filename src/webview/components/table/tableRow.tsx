@@ -1,8 +1,8 @@
 import type { ComponentChildren } from 'preact';
-import type { LocaleView } from '../../../shared/viewModel';
 import { l10n } from '../../l10n';
-import type { OpenEditor, ShownCell, ShownRow } from '../../state/edits';
-import type { EditorStore } from '../../state/store';
+import type { OpenEditor } from '../../state/edits';
+import { NO_TEXT, referenceTextOf, type ShownCell, type ShownRow } from '../../state/shownRows';
+import type { EditorStore, LocaleColumn } from '../../state/store';
 import { CellEditor } from '../cellEditor';
 import { SEVERITY_SYMBOLS, severityWord, statusWord } from '../cellStatus';
 import { EmptyValue } from '../emptyValue';
@@ -18,10 +18,8 @@ export function cellSelector(row: number, column: number): string {
 
 const describedBy = (row: number, column: number) => `grid-finding-${row}-${column}`;
 
-const NO_TEXT: ShownCell = { value: undefined, issues: [] };
-
 interface RowProps {
-  locales: readonly LocaleView[];
+  locales: readonly LocaleColumn[];
   /** The column of the cell that is the grid's tab stop, if it is in this row. */
   activeColumn: number | undefined;
 }
@@ -64,7 +62,6 @@ interface TableRowProps extends RowProps {
 export const TableRow = memo(
   ({ row, index, locales, activeColumn, store, reference, editor }: TableRowProps) => {
     const cells = locales.map((locale) => row.cells[locale.code] ?? NO_TEXT);
-    const referenceText = reference === undefined ? undefined : row.cells[reference]?.value;
     return (
       <div
         role="row"
@@ -73,7 +70,14 @@ export const TableRow = memo(
         data-entry={entryAttribute(row.entryId)}
         data-vscode-context={keyContext(row.entryId)}
       >
-        <div role="rowheader" aria-colindex={1} class="grid-key" {...focusable(index, 0, activeColumn)}>
+        <div
+          role="rowheader"
+          aria-colindex={1}
+          class="grid-key"
+          // The keys the grid's help names, on the cell with the focus.
+          aria-keyshortcuts={activeColumn === 0 ? 'F2 Delete' : undefined}
+          {...focusable(index, 0, activeColumn)}
+        >
           {row.key}
         </div>
         {cells.map((cell, position) => {
@@ -93,7 +97,7 @@ export const TableRow = memo(
                   editor={editor}
                   locale={locale}
                   keyText={row.key}
-                  referenceText={locale.code === reference ? undefined : referenceText}
+                  referenceText={referenceTextOf(row, reference, locale.code)}
                 />
               )}
             </Cell>
@@ -117,7 +121,7 @@ export const TableRow = memo(
 
 interface CellProps {
   cell: ShownCell;
-  locale: LocaleView;
+  locale: LocaleColumn;
   row: number;
   column: number;
   activeColumn: number | undefined;
@@ -137,6 +141,7 @@ function Cell({ cell, locale, row, column, activeColumn, children }: CellProps) 
       aria-colindex={column + 1}
       class={editing ? 'grid-cell editing' : 'grid-cell'}
       aria-describedby={description(cell) !== undefined ? describedBy(row, column) : undefined}
+      aria-keyshortcuts={activeColumn === column && !editing ? 'Enter F2' : undefined}
       {...focusable(row, column, activeColumn)}
     >
       {editing ? (

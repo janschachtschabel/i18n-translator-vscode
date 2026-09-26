@@ -1,7 +1,7 @@
 import { batch, signal } from '@preact/signals';
 import { displayKey, keyFromId } from '../../core/model/keys';
 import type { HostToWebview, WebviewToHost } from '../../shared/protocol';
-import type { BundleViewModel, CellView, LocaleView, RowView } from '../../shared/viewModel';
+import type { BundleViewModel } from '../../shared/viewModel';
 import { l10n } from '../l10n';
 
 /** A text of the bundle: a key in a language. */
@@ -15,11 +15,16 @@ export type EditorPlace = 'rows' | 'details';
 
 /** The cell whose editor is open. */
 export interface OpenEditor extends CellRef {
-  /** The text the cell showed when editing began (undefined: none); the host compares it with the file (B5). */
+  /**
+   * The text saving compares with (undefined: none), which the host checks against the file (B5): the text the
+   * cell showed, or the newer one of a conflict or a failure the editor took in.
+   */
   before: string | undefined;
-  /** Why the text the editor starts with was not saved before, if it was not. */
+  /** Why the text in the editor was not saved before, if it was not. */
   error: string | undefined;
   place: EditorPlace;
+  /** Whether the text had several lines when editing began: then Enter starts a line and Ctrl+Enter saves. */
+  multiline: boolean;
   /** The cell's text changed outside the editor while it was open: to this text (undefined: deleted). */
   conflict?: { text: string | undefined } | undefined;
 }
@@ -28,7 +33,9 @@ export interface OpenEditor extends CellRef {
 export interface PendingEdit extends CellRef {
   requestId: string;
   value: string;
-  /** The host wrote it; the next model has it. */
+  /** The text it was sent against. */
+  before: string | undefined;
+  /** The host wrote it; a model that no longer shows `before` has it. */
   written: boolean;
 }
 
@@ -36,31 +43,16 @@ export interface PendingEdit extends CellRef {
 export interface Rejection extends CellRef {
   text: string;
   message: string;
-}
-
-/** A cell as the editor shows it. */
-export interface ShownCell extends CellView {
-  /** Why the text typed for this cell was not saved. */
-  notSaved?: string;
-}
-
-export interface ShownRow extends RowView {
-  cells: Readonly<Record<string, ShownCell>>;
+  /** The cell's text changed in the meantime (B5): editing it again offers the choice between both texts. */
+  conflict: boolean;
 }
 
 type WriteResult = Extract<HostToWebview, { type: 'writeResult' }>;
 
-/** What editing changed in a cell: a text sent (undefined: cleared), and why a text was not saved. */
-interface CellChange {
-  sent?: string | undefined;
-  notSaved?: string;
-}
-
-const NO_TEXT: CellView = { value: undefined, issues: [] };
-
 /**
  * The editing of texts: the open editor, the texts on their way to the files and those the host did not write.
- * The host has the truth (B1); the rows show a sent text at once, and the old one again if writing fails.
+ * The host has the truth (B1); the rows show a sent text at once, and the old one again if writing fails. A text
+ * the user typed is never lost without Esc: a text that could not be saved stays, marked, in its cell.
  */
 export class Edits {
   readonly open = signal<OpenEditor | null>(null);
@@ -71,36 +63,95 @@ export class Edits {
   /** By {@link cellKey}. */
   readonly rejected = signal<ReadonlyMap<string, Rejection>>(new Map());
   private requests = 0;
+  /** The last model, for the texts the cells have now. */
+  private model: BundleViewModel | undefined;
 
   constructor(
     private readonly post: (message: WebviewToHost) => void,
     private readonly announce: (text: string) => void,
   ) {}
 
-  /** Opens the editor of a cell that shows `shown`, with the text that was not saved there, if there is one. */
+  /**
+   * Opens the editor of a cell that shows `shown`, with the text that was not saved there, if there is one; that
+   * of a conflict offers the choice again.
+   */
   start(cell: CellRef, shown: string | undefined, place: EditorPlace): void {
     this.commit();
     const rejection = this.rejected.value.get(cellKey(cell));
+    const draft = toTyped(rejection?.text ?? shown ?? '');
     batch(() => {
-      const { entryId, locale } = cell;
-      this.open.value = { entryId, locale, before: shown, error: rejection?.message, place };
-      this.draft.value = rejection?.text ?? shown ?? '';
+      this.open.value = {
+        entryId: cell.entryId,
+        locale: cell.locale,
+        before: shown,
+        error: rejection && !rejection.conflict ? rejection.message : undefined,
+        place,
+        multiline: draft.includes('\n'),
+        conflict: rejection?.conflict ? { text: shown } : undefined,
+      };
+      this.draft.value = draft;
     });
   }
 
-  /** Closes the editor and sends its text, unless it is the one the cell showed. */
+  /**
+   * Closes the editor and sends its text, unless it is the one the cell showed. In a conflict it sends nothing
+   * against the old text: a typed text stays as not saved, and editing the cell again offers the choice.
+   */
   commit(): void {
     const open = this.open.value;
     if (!open) {
       return;
     }
-    const value = this.draft.value;
+    const draft = this.draft.value;
+    const typed = draft !== toTyped(open.before ?? '');
     batch(() => {
       this.close(open);
-      if (value !== (open.before ?? '')) {
-        this.send(open, value, open.before);
+      if (typed && open.conflict) {
+        this.reject(open, draft, conflictNotice(open), true);
+      } else if (typed) {
+        this.send(open, withLineBreaksOf(open.before, draft), open.before);
       }
     });
+    if (typed && open.conflict) {
+      this.announce(
+        l10n.t('{key} in {locale}: not saved. {message}', { ...names(open), message: conflictNotice(open) }),
+      );
+    }
+  }
+
+  /** Closes the editor without sending its text; a text that was not saved in its cell is given up too. */
+  cancel(): void {
+    const open = this.open.value;
+    if (open) {
+      this.close(open);
+    }
+  }
+
+  /**
+   * Closes the editor when its cell cannot be shown (e.g. the list left out its language), and screen readers
+   * hear why. A typed text stays as not saved in the cell, with a reason that is still true when the cell shows
+   * again: the one it had, or that its language left the view.
+   */
+  park(): void {
+    const open = this.open.value;
+    if (!open) {
+      return;
+    }
+    const draft = this.draft.value;
+    if (draft === toTyped(open.before ?? '')) {
+      this.close(open);
+      return;
+    }
+    const reason = open.conflict
+      ? conflictNotice(open)
+      : (open.error ?? l10n.t('The editor closed when this language left the view.'));
+    batch(() => {
+      this.close(open);
+      this.reject(open, draft, reason, open.conflict !== undefined);
+    });
+    this.announce(
+      l10n.t('{key} in {locale} is not shown here; your text was kept as not saved.', names(open)),
+    );
   }
 
   /**
@@ -117,8 +168,8 @@ export class Edits {
     const conflict = open?.conflict;
     if (open && conflict) {
       batch(() => {
-        this.open.value = { ...open, before: conflict.text, conflict: undefined };
-        this.draft.value = conflict.text ?? '';
+        this.open.value = { ...open, before: conflict.text, error: undefined, conflict: undefined };
+        this.draft.value = toTyped(conflict.text ?? '');
       });
     }
   }
@@ -127,61 +178,69 @@ export class Edits {
   keepMine(): void {
     const open = this.open.value;
     if (open?.conflict) {
-      this.open.value = { ...open, before: open.conflict.text, conflict: undefined };
-    }
-  }
-
-  /** Closes the editor without sending its text; a text that was not saved in its cell is given up too. */
-  cancel(): void {
-    const open = this.open.value;
-    if (open) {
-      this.close(open);
-    }
-  }
-
-  /** Takes the host's answer to a sent text. Without a message the user kept the old text (e.g. declined to clear). */
-  answer({ requestId, ok, message }: WriteResult): void {
-    const edit = this.pending.value.find((candidate) => candidate.requestId === requestId);
-    if (ok) {
-      if (edit) {
-        this.pending.value = this.pending.value.map((candidate) =>
-          candidate === edit ? { ...candidate, written: true } : candidate,
-        );
-      }
-      this.announce(l10n.t('Saved.'));
-      return;
-    }
-    batch(() => {
-      if (edit) {
-        this.pending.value = this.pending.value.filter((candidate) => candidate !== edit);
-        if (message !== undefined) {
-          const { entryId, locale, value } = edit;
-          this.rejected.value = new Map(this.rejected.value).set(cellKey(edit), {
-            entryId,
-            locale,
-            text: value,
-            message,
-          });
-        }
-      }
-    });
-    if (message !== undefined) {
-      this.announce(l10n.t('Not saved: {message}', { message }));
+      this.open.value = { ...open, before: open.conflict.text, error: undefined, conflict: undefined };
     }
   }
 
   /**
-   * Takes a new model: it has the texts that were written. A text for a key or a language it no longer has
-   * cannot be saved, so its editor closes and its mark goes.
+   * Takes the host's answer to a sent text. Without a message the user kept the old text (e.g. declined to
+   * clear it). A text that failed takes the texts sent for its cell after it along: they were sent against it,
+   * and the host would refuse them as changed. The newest of them stays as not saved, unless the cell's editor
+   * is open again: then the failure goes into that editor, with the text the file has.
+   */
+  answer({ requestId, ok, message, conflict }: WriteResult): void {
+    const pending = this.pending.value;
+    const edit = pending.find((candidate) => candidate.requestId === requestId);
+    if (ok) {
+      if (edit) {
+        this.pending.value = pending.map((candidate) =>
+          candidate === edit ? { ...candidate, written: true } : candidate,
+        );
+      }
+      this.announce(edit?.value === '' ? l10n.t('Text deleted.') : l10n.t('Saved.'));
+      return;
+    }
+    if (!edit) {
+      return;
+    }
+    const later =
+      message === undefined
+        ? []
+        : pending.slice(pending.indexOf(edit) + 1).filter((other) => sameCell(other, edit));
+    const newest = later.at(-1) ?? edit;
+    batch(() => {
+      this.pending.value = pending.filter((candidate) => candidate !== edit && !later.includes(candidate));
+      if (message === undefined) {
+        return;
+      }
+      const open = this.open.value;
+      if (open && sameCell(open, edit)) {
+        const now = this.textOf(edit);
+        this.open.value = conflict
+          ? { ...open, before: now, error: undefined, conflict: { text: now } }
+          : { ...open, before: now, error: message };
+      } else {
+        this.reject(edit, newest.value, message, conflict === true);
+      }
+    });
+    if (message !== undefined) {
+      this.announce(l10n.t('{key} in {locale}: not saved. {message}', { ...names(edit), message }));
+    }
+  }
+
+  /**
+   * Takes a new model. A written text is in it once the cell no longer shows the text it was sent against. A
+   * text for a key or a language the model no longer has cannot be saved: its editor closes and its mark goes.
    */
   update(model: BundleViewModel): void {
+    this.model = model;
     let entries: ReadonlySet<string> | undefined;
     const exists = (cell: CellRef) => {
       entries ??= new Set(model.rows.map((row) => row.entryId));
       return entries.has(cell.entryId) && model.locales.some((locale) => locale.code === cell.locale);
     };
     batch(() => {
-      const pending = this.pending.value.filter((edit) => !edit.written);
+      const pending = this.pending.value.filter((edit) => !edit.written || this.textOf(edit) === edit.before);
       if (pending.length < this.pending.value.length) {
         this.pending.value = pending;
       }
@@ -193,18 +252,22 @@ export class Edits {
       if (open && !exists(open)) {
         this.open.value = null;
         this.announce(
-          l10n.t('{key} is no longer in this bundle; the text you typed was not saved.', {
-            key: displayKey(keyFromId(open.entryId)),
-          }),
+          this.draft.value === toTyped(open.before ?? '')
+            ? l10n.t('{key} in {locale} is no longer in this bundle.', names(open))
+            : l10n.t(
+                '{key} in {locale} is no longer in this bundle; the text you typed was not saved.',
+                names(open),
+              ),
         );
       } else if (open) {
-        this.checkConflict(open, model);
+        this.checkConflict(open);
       }
     });
   }
 
-  /** Starts afresh, e.g. when the webview loads again; answers to earlier texts are still announced. */
+  /** Starts afresh, e.g. when the webview loads again; the numbers of requests go on, so that none repeats. */
   reset(): void {
+    this.model = undefined;
     batch(() => {
       this.open.value = null;
       this.pending.value = [];
@@ -214,37 +277,59 @@ export class Edits {
 
   /**
    * The text of the open editor's cell changed outside it (another program, a merge): the draft stays, and the
-   * editor offers to take the new text or keep the draft. Back to the text editing began with, there is none.
+   * editor offers to take the new text or keep the draft. Back to the text editing began with, there is none;
+   * an editor that opened with a conflict does not know that text, so its choice stays until the user makes it.
+   * While texts of the cell are on their way, their models are no conflict; the host checks them (B5).
    */
-  private checkConflict(open: OpenEditor, model: BundleViewModel): void {
-    const current = model.rows.find((row) => row.entryId === open.entryId)?.cells[open.locale]?.value;
+  private checkConflict(open: OpenEditor): void {
+    if (this.pending.value.some((edit) => sameCell(edit, open))) {
+      return;
+    }
+    const current = this.textOf(open);
+    if (open.conflict && open.conflict.text === current) {
+      return;
+    }
     if (current === open.before) {
       if (open.conflict) {
         this.open.value = { ...open, conflict: undefined };
       }
       return;
     }
-    if (open.conflict && open.conflict.text === current) {
-      return;
-    }
     this.open.value = { ...open, conflict: { text: current } };
-    this.announce(
-      l10n.t('{key} in {locale} changed outside the editor. Take the new text, or keep yours.', {
-        key: displayKey(keyFromId(open.entryId)),
-        locale: open.locale,
-      }),
-    );
+    this.announce(conflictNotice(open));
   }
 
   private send(cell: CellRef, value: string, before: string | undefined): void {
     const requestId = `edit-${++this.requests}`;
     const { entryId, locale } = cell;
-    this.pending.value = [...this.pending.value, { entryId, locale, requestId, value, written: false }];
+    batch(() => {
+      this.forget(cell);
+      this.pending.value = [
+        ...this.pending.value,
+        { entryId, locale, requestId, value, before, written: false },
+      ];
+    });
     this.post({ type: 'edit', requestId, entryId, locale, value, before: before ?? null });
   }
 
+  private reject(cell: CellRef, text: string, message: string, conflict: boolean): void {
+    const { entryId, locale } = cell;
+    this.rejected.value = new Map(this.rejected.value).set(cellKey(cell), {
+      entryId,
+      locale,
+      text,
+      message,
+      conflict,
+    });
+  }
+
+  /** Closes the editor; the text that was not saved in its cell is its own now, saved or given up with it. */
   private close(cell: CellRef): void {
     this.open.value = null;
+    this.forget(cell);
+  }
+
+  private forget(cell: CellRef): void {
     const key = cellKey(cell);
     if (this.rejected.value.has(key)) {
       const rejected = new Map(this.rejected.value);
@@ -252,79 +337,38 @@ export class Edits {
       this.rejected.value = rejected;
     }
   }
+
+  /** The text a cell has in the last model. */
+  private textOf(cell: CellRef): string | undefined {
+    return this.model?.rows.find((row) => row.entryId === cell.entryId)?.cells[cell.locale]?.value;
+  }
 }
 
 export function cellKey(cell: CellRef): string {
   return JSON.stringify([cell.entryId, cell.locale]);
 }
 
-/**
- * The rows with the texts on their way to the files and the marks of texts that were not saved. A sent text
- * takes the place of its cell, without the findings of the old text, until the model has it. Rows without
- * either stay the same objects, so that only the changed ones render again.
- */
-export function showEdits(
-  rows: readonly RowView[],
-  pending: readonly PendingEdit[],
-  rejected: ReadonlyMap<string, Rejection>,
-): readonly ShownRow[] {
-  if (pending.length === 0 && rejected.size === 0) {
-    return rows;
-  }
-  const changes = new Map<string, Map<string, CellChange>>();
-  const changeOf = (cell: CellRef): CellChange => {
-    let row = changes.get(cell.entryId);
-    if (!row) {
-      row = new Map();
-      changes.set(cell.entryId, row);
-    }
-    let change = row.get(cell.locale);
-    if (!change) {
-      change = {};
-      row.set(cell.locale, change);
-    }
-    return change;
-  };
-  for (const edit of pending) {
-    // A later text for the same cell replaces an earlier one. Clearing deletes the text (B2): none is left.
-    changeOf(edit).sent = edit.value === '' ? undefined : edit.value;
-  }
-  for (const rejection of rejected.values()) {
-    changeOf(rejection).notSaved = rejection.message;
-  }
-  return rows.map((row) => {
-    const cells = changes.get(row.entryId);
-    if (!cells) {
-      return row;
-    }
-    const shown: Record<string, ShownCell> = { ...row.cells };
-    for (const [locale, change] of cells) {
-      const cell = row.cells[locale] ?? NO_TEXT;
-      const sent = 'sent' in change && change.sent !== cell.value ? { value: change.sent, issues: [] } : cell;
-      shown[locale] = change.notSaved === undefined ? sent : { ...sent, notSaved: change.notSaved };
-    }
-    return { ...row, cells: shown };
-  });
+function sameCell(a: CellRef, b: CellRef): boolean {
+  return a.entryId === b.entryId && a.locale === b.locale;
 }
 
-/** The cell after (1) or before (-1) `from` in reading order: along its row, then on to the next row. */
-export function nextCell(
-  rows: readonly RowView[],
-  locales: readonly LocaleView[],
-  from: CellRef,
-  direction: 1 | -1,
-): CellRef | undefined {
-  const row = rows.findIndex((candidate) => candidate.entryId === from.entryId);
-  const column = locales.findIndex((locale) => locale.code === from.locale);
-  if (row === -1 || column === -1) {
-    return undefined;
-  }
-  const index = row * locales.length + column + direction;
-  if (index < 0 || index >= rows.length * locales.length) {
-    return undefined;
-  }
-  return {
-    entryId: rows[Math.floor(index / locales.length)]!.entryId,
-    locale: locales[index % locales.length]!.code,
-  };
+function names(cell: CellRef): { key: string; locale: string } {
+  return { key: displayKey(keyFromId(cell.entryId)), locale: cell.locale };
+}
+
+function conflictNotice(cell: CellRef): string {
+  return l10n.t(
+    '{key} in {locale} changed outside the editor. Take the new text, or keep yours.',
+    names(cell),
+  );
+}
+
+/** A text as a field holds it: browsers turn every line break of a text field into "\n". */
+function toTyped(text: string): string {
+  return text.replace(/\r\n?/g, '\n');
+}
+
+/** The typed text with the line breaks of the text it replaces, so that a file keeps its "\r\n" inside texts. */
+function withLineBreaksOf(before: string | undefined, typed: string): string {
+  return before?.includes('\r\n') ? typed.replace(/\r?\n/g, '\r\n') : typed;
 }
