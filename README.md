@@ -60,34 +60,47 @@ Datei `edu-sharing-i18n.vsix`. Die Oberfläche folgt der Sprache von VS Code (De
 
 ### Direkt von GitHub
 
-**Im Browser**, ohne weitere Werkzeuge:
+Ein Installationsskript lädt die vorkompilierte VSIX der neuesten Release und installiert sie in jeden Editor, den es
+findet: VS Code, VS Code Insiders, VSCodium, Cursor und Windsurf.
+
+**Windows:** Die Zeile funktioniert in PowerShell, in der Eingabeaufforderung (cmd) und im Ausführen-Dialog (Win+R):
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://github.com/janschachtschabel/i18n-translator-vscode/releases/latest/download/install.ps1 | iex"
+```
+
+**Linux und macOS:** im Terminal, ohne `sudo`:
+
+```bash
+curl -fsSL https://github.com/janschachtschabel/i18n-translator-vscode/releases/latest/download/install.sh | bash
+```
+
+Danach in schon offenen VS-Code-Fenstern „Developer: Reload Window“ ausführen und einen edu-sharing-Checkout öffnen.
+
+Was die Skripte tun und wie man sie steuert:
+- **Editoren finden:** über ihren Befehl im PATH (`code`, `code-insiders`, `codium`, `cursor`, `windsurf`). Unter
+  Windows finden sie VS Code, Insiders und VSCodium auch in deren Standardordnern.
+- **Nur bestimmte Editoren:** vorher `EDU_I18N_EDITORS` setzen.
+  - PowerShell: `$env:EDU_I18N_EDITORS = 'code'`, dann die Zeile oben.
+  - Linux und macOS: `… | EDU_I18N_EDITORS=code bash`.
+- **Eine schon heruntergeladene VSIX:** `EDU_I18N_VSIX` auf ihren Pfad setzen.
+- **Vorher lesen:** [install.ps1](scripts/install.ps1) und [install.sh](scripts/install.sh) liegen im Repository und bei
+  jeder Release.
+
+**Ohne Skript**, im Browser:
 1. Die [neueste VSIX](https://github.com/janschachtschabel/i18n-translator-vscode/releases/latest/download/edu-sharing-i18n.vsix)
    herunterladen.
 2. In VS Code die Ansicht „Erweiterungen“ öffnen (Strg+Umschalt+X).
 3. Im Menü „…“ oben in der Ansicht „Aus VSIX installieren…“ („Install from VSIX…“) wählen und die heruntergeladene
    Datei angeben.
 
-**Mit einem Befehl**, der die neueste Version lädt und installiert:
-- Windows (PowerShell):
-
-  ```powershell
-  Invoke-WebRequest https://github.com/janschachtschabel/i18n-translator-vscode/releases/latest/download/edu-sharing-i18n.vsix -OutFile "$env:TEMP\edu-sharing-i18n.vsix" -UseBasicParsing; code --install-extension "$env:TEMP\edu-sharing-i18n.vsix"
-  ```
-
-- macOS und Linux:
-
-  ```bash
-  curl -fsSL -o /tmp/edu-sharing-i18n.vsix https://github.com/janschachtschabel/i18n-translator-vscode/releases/latest/download/edu-sharing-i18n.vsix && code --install-extension /tmp/edu-sharing-i18n.vsix
-  ```
-
 Gut zu wissen:
 - **Aktualisieren:** denselben Weg noch einmal gehen; die neue Version ersetzt die alte. Was sich geändert hat, steht
   im [CHANGELOG](CHANGELOG.md).
 - **Entfernen:** in der Ansicht „Erweiterungen“ „Deinstallieren“ wählen.
-- **Befehl `code` fehlt:** Unter macOS in VS Code „Shell Command: Install 'code' command in PATH“ ausführen. Unter
-  Windows und Linux richtet ihn die Installation von VS Code ein; sonst den Weg im Browser nehmen.
-- **VS-Code-Forks** wie Windsurf oder Cursor: im Menü „Aus VSIX installieren…“, oder im Befehl deren Aufruf statt
-  `code`. Getestet ist die Extension dort nicht.
+- **Kein Editor gefunden:** Unter macOS in VS Code „Shell Command: Install 'code' command in PATH“ ausführen. Unter
+  Windows und Linux richtet die Installation von VS Code den Befehl ein; sonst den Weg im Browser nehmen.
+- **VS-Code-Forks** wie Windsurf oder Cursor installieren die VSIX genauso. Getestet ist die Extension dort nicht.
 - **Eine bestimmte Version:** Alle Versionen stehen unter
   [Releases](https://github.com/janschachtschabel/i18n-translator-vscode/releases), jeweils auch mit der Version im
   Dateinamen.
@@ -285,10 +298,13 @@ Problems panel and offers a translation editor with table and list. Writes chang
 backups.
 
 - **Status:** work in progress (phase 2 of 8).
-- **Install:** download
+- **Install:** on Windows, run
+  `powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://github.com/janschachtschabel/i18n-translator-vscode/releases/latest/download/install.ps1 | iex"`;
+  on Linux and macOS,
+  `curl -fsSL https://github.com/janschachtschabel/i18n-translator-vscode/releases/latest/download/install.sh | bash`.
+  Or download
   [edu-sharing-i18n.vsix](https://github.com/janschachtschabel/i18n-translator-vscode/releases/latest/download/edu-sharing-i18n.vsix)
-  from the latest GitHub release and run "Extensions: Install from VSIX…", or use one of the commands under
-  „Installation“ above.
+  and run "Extensions: Install from VSIX…".
 - **API key:** none is needed yet. AI filling via the b-api comes with phase 3. The key will be kept in VS Code's
   secret storage or in the `B_API_KEY` environment variable.
 - **Documentation:** the settings are described in German in [docs/einstellungen.md](docs/einstellungen.md), as are

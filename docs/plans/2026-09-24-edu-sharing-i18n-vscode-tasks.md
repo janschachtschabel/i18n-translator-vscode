@@ -1468,5 +1468,6 @@ schreibt nichts.
 - 8.5 Release-Workflow (Tag → VSIX → GitHub Release).
   > **Vorgezogen (26.09.2026):** Ein Tag `v*` durchläuft die CI; danach veröffentlicht der Job `release` die geprüfte
   > VSIX, auch als `edu-sharing-i18n.vsix` für den Link auf die neueste Version. Version je Phase (0.2.0 nach
-  > Phase 2), `CHANGELOG.md`, Ablauf in CONTRIBUTING.
+  > Phase 2), `CHANGELOG.md`, Ablauf in CONTRIBUTING. Seit 0.2.1 gehören Installationsskripte für Windows sowie
+  > Linux und macOS zu jeder Release; die CI prüft das Linux-Skript.
 - 8.6 Rauchtests in VS Code, Antigravity und Windsurf/Cursor.
