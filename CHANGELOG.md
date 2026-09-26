@@ -34,15 +34,12 @@ zeigt jetzt alle drei Bereiche, jeden im selben Editor mit einer Spalte je Sprac
 - **Geprüft gegen edu-sharing:** Alle 116 Übersetzungsdateien des Repositorys lassen sich lesen und byte-gleich
   zurückschreiben, und jeder Text, auf sich selbst gesetzt, liest sich gleich zurück
   (`npm run check:repo -- <Checkout> --roundtrip`).
-
-## 0.2.2 – 26.09.2026
-
-- **Fenster ohne Ordner:**
+- **Fenster ohne Ordner** (vorgesehen als 0.2.2, das nicht erschien):
   - Die Seitenleiste bittet darum, einen Ordner zu öffnen: einen edu-sharing-Checkout oder dessen Übersetzungsordner.
     Bisher meldete sie „keine Übersetzungsdateien gefunden“.
   - „Übersetzungsordner festlegen…“ sagt dort, was zu tun ist, und bietet „Ordner öffnen…“ an. Bisher geschah nichts.
-- **Übersetzungsordner direkt öffnen:** Ein Ordner wie `Frontend/src/assets/i18n` oder eine Kopie davon funktioniert
-  als Arbeitsbereichsordner. Das ging schon vorher; jetzt prüft es ein Integrationstest.
+  - Ein Übersetzungsordner wie `Frontend/src/assets/i18n` oder eine Kopie davon funktioniert als
+    Arbeitsbereichsordner; das ging schon vorher, jetzt prüft es ein Integrationstest.
 
 ## 0.2.1 – 26.09.2026
 
