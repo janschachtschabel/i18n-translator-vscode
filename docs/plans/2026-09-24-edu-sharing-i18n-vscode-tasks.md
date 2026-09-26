@@ -1510,7 +1510,9 @@ Beschriftung `default (en)`.
 Keys, 7 Einheiten wie in §2.3. **Befund der Abnahme:** 60 Fehler `placeholder-malformed` in `mds*.properties` waren
 Fehlalarme: Metadatasets schreiben Platzhalter mit einer Klammer (`{user}`), nur `{{GENDER_SEPARATOR}}` mit zwei. Behoben
 mit dem Bereichsattribut `placeholderSyntax` (`single-brace` im MDS-Preset); Prüfregeln und Prüfung beim Tippen lesen
-Platzhalter danach. Danach 0 Platzhalter-Befunde in den Metadatasets.
+Platzhalter danach. Danach 0 Platzhalter-Befunde in den Metadatasets. Seit Keys der Basisdatei allen Sprachen fehlen,
+die sie nicht haben, sind es 2.632 fehlende Keys (27 davon nur in der Basisdatei); Protokoll in
+[`docs/verification/phasen-5-6.md`](../verification/phasen-5-6.md).
 **Commit:** `feat(scripts): check that every translation file survives a round trip`,
 `fix(core): read the single-brace placeholders of metadatasets`
 

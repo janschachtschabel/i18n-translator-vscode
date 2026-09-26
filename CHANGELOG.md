@@ -28,6 +28,8 @@ zeigt jetzt alle drei Bereiche, jeden im selben Editor mit einer Spalte je Sprac
   - Texte mit Zeichen, die XML nicht erlaubt (etwa ein aus Folien kopierter vertikaler Tabulator), lehnt der Editor ab:
     edu-sharing könnte sonst keine Mail dieser Sprache mehr lesen.
   - Die Kodierung aus der XML-Deklaration gilt, wie für Java.
+- **Lücken gegenüber der Basisdatei:** Einen Key, den nur die Datei ohne Sprachkürzel hat, meldet die Extension als
+  fehlend in jeder Sprache ohne ihn, die Referenz eingeschlossen; dort erscheint zur Laufzeit der englische Text.
 - **Neue Sprache:** Die Abfrage schlägt einen Code in der Form des Bereichs vor (`es` oder `es_ES`).
 - **Eigene Bereiche:** die Formate `properties` und `mail-xml` sowie die Felder `ignoredKeys` und `placeholderSyntax`,
   siehe [Einstellungen](docs/einstellungen.md#edui18nareas).

@@ -69,7 +69,8 @@ Tabelle mit einer Spalte je Sprache oder, in schmalen Fenstern, als Liste:
 
 Gut zu wissen:
 - **Die Datei ohne Sprachkürzel** (`mds.properties`, `templates.xml`) liest edu-sharing als letzten Rückfall. Der
-  Editor nennt sie `default (en)`; die Sprache legt `eduI18n.baseFileLanguage` fest.
+  Editor nennt sie `default (en)`; die Sprache legt `eduI18n.baseFileLanguage` fest. Ein Key, den nur sie hat, fehlt
+  deshalb den anderen Sprachen, auch der Referenz: Dort erscheint der englische Text.
 - **Metadatasets:**
   - Ein Key ist der ganze Name, Punkte eingeschlossen (`ccm:lrt.video`).
   - Platzhalter haben eine Klammer (`{user}`), nur `{{GENDER_SEPARATOR}}` hat zwei.
