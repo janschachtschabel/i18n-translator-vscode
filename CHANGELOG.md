@@ -4,6 +4,15 @@ Die nennenswerten Änderungen der Extension je Version. Die Version folgt den Ph
 [Taskliste](docs/plans/2026-09-24-edu-sharing-i18n-vscode-tasks.md): `0.<Phase>.<Korrektur>`. Die Installation
 beschreibt das [README](README.md#installation).
 
+## 0.2.1 – 26.09.2026
+
+Die Extension selbst ist unverändert; neu ist, wie sie auf den Rechner kommt.
+
+- **Installationsskripte** für Windows (auch aus cmd.exe) sowie für Linux und macOS laden die VSIX der neuesten
+  Release und installieren sie in jeden gefundenen Editor: VS Code, Insiders, VSCodium, Cursor, Windsurf. Jede Release
+  enthält die Skripte; das [README](README.md#installation) nennt die Einzeiler.
+- **Dependabot** schlägt nur noch Updates vor, die zur unterstützten VS-Code-Version und zu den Werkzeugen passen.
+
 ## 0.2.0 – 26.09.2026
 
 Die erste veröffentlichte Version prüft und bearbeitet die Angular-JSON-Übersetzungen von edu-sharing. Sie ist eine
