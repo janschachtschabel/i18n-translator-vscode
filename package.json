@@ -264,50 +264,61 @@
             "additionalProperties": false,
             "properties": {
               "id": {
-                "type": "string"
+                "type": "string",
+                "description": "%config.areas.id%"
               },
               "label": {
-                "type": "string"
+                "type": "string",
+                "description": "%config.areas.label%"
               },
               "format": {
                 "type": "string",
                 "enum": [
                   "json-nested"
-                ]
+                ],
+                "description": "%config.areas.format%"
               },
               "roots": {
                 "type": "array",
                 "items": {
                   "type": "string"
-                }
+                },
+                "description": "%config.areas.roots%"
               },
               "files": {
-                "type": "string"
+                "type": "string",
+                "description": "%config.areas.files%"
               },
               "localePattern": {
-                "type": "string"
+                "type": "string",
+                "description": "%config.areas.localePattern%"
               },
               "bundlePattern": {
-                "type": "string"
+                "type": "string",
+                "description": "%config.areas.bundlePattern%"
               },
               "bundleName": {
-                "type": "string"
+                "type": "string",
+                "description": "%config.areas.bundleName%"
               },
               "referenceLanguage": {
-                "type": "string"
+                "type": "string",
+                "description": "%config.areas.referenceLanguage%"
               },
               "bundleOrder": {
                 "type": "array",
                 "items": {
                   "type": "string"
-                }
+                },
+                "description": "%config.areas.bundleOrder%"
               },
               "mergeSemantics": {
                 "type": "string",
                 "enum": [
                   "shallow-toplevel",
                   "none"
-                ]
+                ],
+                "description": "%config.areas.mergeSemantics%"
               },
               "detect": {
                 "type": "object",
@@ -317,12 +328,15 @@
                 ],
                 "properties": {
                   "glob": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "%config.areas.detect.glob%"
                   },
                   "marker": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "%config.areas.detect.marker%"
                   }
-                }
+                },
+                "description": "%config.areas.detect%"
               }
             }
           }
@@ -379,13 +393,16 @@
             ],
             "properties": {
               "base": {
-                "type": "string"
+                "type": "string",
+                "description": "%config.variants.base%"
               },
               "requiredWhen": {
-                "type": "string"
+                "type": "string",
+                "description": "%config.variants.requiredWhen%"
               },
               "forbidden": {
-                "type": "string"
+                "type": "string",
+                "description": "%config.variants.forbidden%"
               }
             }
           }
@@ -404,7 +421,8 @@
                 "warning",
                 "info",
                 "off"
-              ]
+              ],
+              "description": "%config.rule.parse-error%"
             },
             "non-string-value": {
               "type": "string",
@@ -413,7 +431,8 @@
                 "warning",
                 "info",
                 "off"
-              ]
+              ],
+              "description": "%config.rule.non-string-value%"
             },
             "duplicate-key": {
               "type": "string",
@@ -422,7 +441,8 @@
                 "warning",
                 "info",
                 "off"
-              ]
+              ],
+              "description": "%config.rule.duplicate-key%"
             },
             "not-utf8": {
               "type": "string",
@@ -431,7 +451,8 @@
                 "warning",
                 "info",
                 "off"
-              ]
+              ],
+              "description": "%config.rule.not-utf8%"
             },
             "missing-file": {
               "type": "string",
@@ -440,7 +461,8 @@
                 "warning",
                 "info",
                 "off"
-              ]
+              ],
+              "description": "%config.rule.missing-file%"
             },
             "missing-key": {
               "type": "string",
@@ -449,7 +471,8 @@
                 "warning",
                 "info",
                 "off"
-              ]
+              ],
+              "description": "%config.rule.missing-key%"
             },
             "empty-value": {
               "type": "string",
@@ -458,7 +481,8 @@
                 "warning",
                 "info",
                 "off"
-              ]
+              ],
+              "description": "%config.rule.empty-value%"
             },
             "orphan-key": {
               "type": "string",
@@ -467,7 +491,8 @@
                 "warning",
                 "info",
                 "off"
-              ]
+              ],
+              "description": "%config.rule.orphan-key%"
             },
             "misplaced-key": {
               "type": "string",
@@ -476,7 +501,8 @@
                 "warning",
                 "info",
                 "off"
-              ]
+              ],
+              "description": "%config.rule.misplaced-key%"
             },
             "placeholder-malformed": {
               "type": "string",
@@ -485,7 +511,8 @@
                 "warning",
                 "info",
                 "off"
-              ]
+              ],
+              "description": "%config.rule.placeholder-malformed%"
             },
             "placeholder-mismatch": {
               "type": "string",
@@ -494,7 +521,8 @@
                 "warning",
                 "info",
                 "off"
-              ]
+              ],
+              "description": "%config.rule.placeholder-mismatch%"
             },
             "html-mismatch": {
               "type": "string",
@@ -503,7 +531,8 @@
                 "warning",
                 "info",
                 "off"
-              ]
+              ],
+              "description": "%config.rule.html-mismatch%"
             },
             "variant-needed": {
               "type": "string",
@@ -512,7 +541,8 @@
                 "warning",
                 "info",
                 "off"
-              ]
+              ],
+              "description": "%config.rule.variant-needed%"
             },
             "variant-inconsistent": {
               "type": "string",
@@ -521,7 +551,8 @@
                 "warning",
                 "info",
                 "off"
-              ]
+              ],
+              "description": "%config.rule.variant-inconsistent%"
             },
             "variant-orphan": {
               "type": "string",
@@ -530,7 +561,8 @@
                 "warning",
                 "info",
                 "off"
-              ]
+              ],
+              "description": "%config.rule.variant-orphan%"
             },
             "key-overridden": {
               "type": "string",
@@ -539,7 +571,8 @@
                 "warning",
                 "info",
                 "off"
-              ]
+              ],
+              "description": "%config.rule.key-overridden%"
             },
             "subtree-lost": {
               "type": "string",
@@ -548,7 +581,8 @@
                 "warning",
                 "info",
                 "off"
-              ]
+              ],
+              "description": "%config.rule.subtree-lost%"
             },
             "same-as-reference": {
               "type": "string",
@@ -557,7 +591,8 @@
                 "warning",
                 "info",
                 "off"
-              ]
+              ],
+              "description": "%config.rule.same-as-reference%"
             }
           }
         },
