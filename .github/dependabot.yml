@@ -10,7 +10,8 @@ updates:
       # The types of the oldest supported VS Code (engines.vscode): newer ones offer APIs that 1.90 lacks, and vsce
       # refuses to package with them. They move by hand, together with engines.vscode.
       - dependency-name: '@types/vscode'
-      # The types of the Node version the extension targets (engines.node, .nvmrc): minor and patch updates only.
+      # The types of the tools' Node (engines.node, .nvmrc: 22), which vitest needs as a peer; the extension itself runs
+      # on the Node of VS Code (20 in 1.90), so newer majors only offer APIs it lacks. Minor and patch updates only.
       - dependency-name: '@types/node'
         update-types: ['version-update:semver-major']
       # A new major of TypeScript waits until typescript-eslint supports it; 7.0 does not even install with it.

@@ -91,7 +91,8 @@ Aktualisierungen der Pakete und der gepinnten Actions vor.
 
 Einige Updates schlägt Dependabot bewusst nicht vor (`.github/dependabot.yml`):
 - `@types/vscode`: Es folgt von Hand `engines.vscode`, also der ältesten unterstützten VS-Code-Version.
-- Major-Updates von `@types/node`: Die Typen passen zur Node-Version aus `engines.node` und `.nvmrc`.
+- Major-Updates von `@types/node`: Die Typen gehören zum Node der Werkzeuge (`engines.node`, `.nvmrc`: 22), das
+  vitest verlangt. Die Extension selbst läuft auf dem Node von VS Code (in 1.90: Node 20).
 - Major-Updates von TypeScript: Sie warten, bis `typescript-eslint` sie unterstützt.
 - `actions/upload-artifact` und `actions/download-artifact` kommen nur gemeinsam, weil der Release-Job lädt, was der
   Build hochgeladen hat.
