@@ -39,7 +39,7 @@ export interface PendingEdit extends CellRef {
   value: string;
   /** The text it was sent against. */
   before: string | undefined;
-  /** The host wrote it; a model that no longer shows `before` has it. */
+  /** The host wrote it; every model after the answer has it. */
   written: boolean;
 }
 
@@ -234,7 +234,8 @@ export class Edits {
   }
 
   /**
-   * Takes a new model. A written text is in it once the cell no longer shows the text it was sent against. A
+   * Takes a new model. A written text is in every model after the host's answer, which comes from an index run
+   * after the write: the cell shows the file from then on, also when it goes back to the old text (an undo). A
    * text for a key or a language the model no longer has cannot be saved: its editor closes and its mark goes.
    */
   update(model: BundleViewModel): void {
@@ -245,7 +246,7 @@ export class Edits {
       return entries.has(cell.entryId) && model.locales.some((locale) => locale.code === cell.locale);
     };
     batch(() => {
-      const pending = this.pending.value.filter((edit) => !edit.written || this.textOf(edit) === edit.before);
+      const pending = this.pending.value.filter((edit) => !edit.written);
       if (pending.length < this.pending.value.length) {
         this.pending.value = pending;
       }

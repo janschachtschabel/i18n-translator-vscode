@@ -110,6 +110,17 @@ describe('editing', () => {
     expect(cell('ERROR_TITLE', 'fr').value).toBe('Erreur du {{date}}');
   });
 
+  // The model with a written text may come before the answer; when the file goes back to the old text later (an
+  // undo), the cell shows that (audit L-15).
+  it('lets go of a written text with the first model after the answer', () => {
+    const { store, cell, type, lastRequest } = open();
+    type('SAVE', 'fr', 'Sauver');
+    store.receive(saveInFrench('Sauver'));
+    store.receive({ type: 'writeResult', requestId: lastRequest(), ok: true });
+    store.receive(saveInFrench('Enregistrer'));
+    expect(cell('SAVE', 'fr').value).toBe('Enregistrer');
+  });
+
   it('shows the findings of the new model even if it comes before the answer', () => {
     const { store, cell, type, lastRequest } = open();
     type('SAVE', 'fr', 'Sauver {{x}}');
