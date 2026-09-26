@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { moveInGrid, type GridPosition } from '../../a11y/gridKeys';
+import { isCommand } from '../../shortcuts';
 import type { ShownRow } from '../../state/shownRows';
 import type { EditorStore, LocaleColumn } from '../../state/store';
 import { EDITOR_CLASS } from '../cellEditor';
@@ -106,6 +107,14 @@ export function Table({ store, rows, locales, reference, wrap, labelledBy, descr
       event.stopPropagation();
       // The cell the key was pressed in, even if the grid has not caught up with the focus yet.
       editAt(at);
+      return;
+    }
+    // Ctrl+I opens the editor of a text and asks the AI for a suggestion for it.
+    if (isCommand(event, 'i') && at.row > 0 && at.column > 0) {
+      event.preventDefault();
+      event.stopPropagation();
+      editAt(at);
+      store.suggestions.request();
       return;
     }
     const openPoint = openPointDirection(event);

@@ -42,7 +42,7 @@ function handled(event: KeyboardEvent): void {
  * Ctrl (Cmd on macOS) with `key` and nothing else. With a layout whose letters are not Latin (Cyrillic, Greek),
  * `key` is another letter, so the physical key decides. Alt+M keeps to `key`: Option+M types "µ" on macOS.
  */
-function isCommand(event: KeyboardEvent, key: string): boolean {
+export function isCommand(event: KeyboardEvent, key: string): boolean {
   const latin = /^[a-z]$/i.test(event.key);
   const pressed = latin ? event.key.toLowerCase() === key : event.code === `Key${key.toUpperCase()}`;
   return (event.ctrlKey || event.metaKey) && !event.shiftKey && !event.altKey && pressed;

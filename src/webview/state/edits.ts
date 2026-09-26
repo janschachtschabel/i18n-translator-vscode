@@ -31,6 +31,8 @@ export interface OpenEditor extends CellRef {
    * host refused the draft): then only the user's choice ends the conflict, not a text that changes back.
    */
   conflict?: { text: string | undefined; baseUnknown?: true } | undefined;
+  /** The field holds a suggestion of the AI; `before` is the text it replaced, which Esc brings back. */
+  suggestion?: { before: string } | undefined;
 }
 
 /** A text sent to the host. */
@@ -177,6 +179,41 @@ export class Edits {
         this.draft.value = toTyped(conflict.text ?? '');
       });
     }
+  }
+
+  /**
+   * Puts a suggestion into the field of the cell's editor, if it is open; saving it is up to the user, as for a
+   * typed text. A second suggestion keeps the text before the first, which Esc brings back.
+   */
+  suggest(cell: CellRef, text: string): boolean {
+    const open = this.open.value;
+    if (!open || !sameCell(open, cell)) {
+      return false;
+    }
+    const typed = toTyped(text);
+    batch(() => {
+      this.open.value = {
+        ...open,
+        multiline: open.multiline || typed.includes('\n'),
+        suggestion: { before: open.suggestion?.before ?? this.draft.value },
+      };
+      this.draft.value = typed;
+    });
+    return true;
+  }
+
+  /** Brings back the text a suggestion replaced; false without a suggestion in the field. */
+  takeBackSuggestion(): boolean {
+    const open = this.open.value;
+    if (!open?.suggestion) {
+      return false;
+    }
+    const { before } = open.suggestion;
+    batch(() => {
+      this.open.value = { ...open, suggestion: undefined };
+      this.draft.value = before;
+    });
+    return true;
   }
 
   /** Keeps the draft, so that saving it replaces the text that changed outside the editor. */

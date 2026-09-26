@@ -6,8 +6,10 @@ import { SEVERITY_SYMBOLS, severityWord } from './cellStatus';
 import './cellEditor.css';
 import { focusIsLost } from './focus';
 import { inlineCheck, type CheckLine } from './inlineCheck';
+import { isCommand } from '../shortcuts';
 import { localeName } from './localeName';
 import { trackPointer, whenPointerUp } from './pointer';
+import { SUGGESTION_ID, SuggestionBar } from './suggestionBar';
 
 // One editor is open at a time, so these ids are unique.
 const ERROR_ID = 'cell-editor-error';
@@ -79,9 +81,22 @@ export function CellEditor({ store, editor, locale, keyText, referenceText }: Ce
     }
   }, [editor.conflict]);
 
+  // A suggestion of the AI for the text, from the reference (or a variant's base); the field keeps the focus.
+  const hasSource = Boolean(referenceText?.trim());
+  const suggest = () => {
+    if (hasSource) {
+      store.suggestions.request();
+    }
+    field.current?.focus();
+  };
   const onFieldKeyDown = (event: KeyboardEvent) => {
     // Enter picks a word while an input method composes it.
     if (event.isComposing) {
+      return;
+    }
+    if (isCommand(event, 'i') && !editor.conflict) {
+      handled(event);
+      suggest();
       return;
     }
     const command = event.ctrlKey || event.metaKey;
@@ -101,12 +116,15 @@ export function CellEditor({ store, editor, locale, keyText, referenceText }: Ce
       edits.commit();
     }
   };
-  // Esc cancels anywhere in the editor, also on the buttons of a conflict.
+  // Esc cancels anywhere in the editor, also on the buttons of a conflict: first a suggestion on its way, then the
+  // suggestion in the field (the text before it comes back), then the editor.
   const onEditorKeyDown = (event: KeyboardEvent) => {
     const plain = !event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey;
     if (event.key === 'Escape' && plain && !event.isComposing) {
       handled(event);
-      edits.cancel();
+      if (!store.suggestions.escape()) {
+        edits.cancel();
+      }
     }
   };
   // Leaving the editor saves it, e.g. with a click elsewhere. It does not when the focus is still in an editor:
@@ -136,6 +154,7 @@ export function CellEditor({ store, editor, locale, keyText, referenceText }: Ce
   const describedBy = [
     editor.conflict && CONFLICT_ID,
     editor.error !== undefined && ERROR_ID,
+    hasSource && store.suggestions.ai.value.available && SUGGESTION_ID,
     CHECK_ID,
     HINT_ID,
   ]
@@ -211,6 +230,7 @@ export function CellEditor({ store, editor, locale, keyText, referenceText }: Ce
           </p>
         ))}
       </div>
+      <SuggestionBar store={store} editor={editor} hasSource={hasSource} onSuggest={suggest} />
       <p id={HINT_ID} class="editor-note editor-hint">
         {editor.conflict
           ? l10n.t('Tab leads to the choice between the new text and yours; Esc discards yours.')

@@ -17,6 +17,7 @@ import { KeptUnsaved } from './keptUnsaved';
 import { compactLocales, layoutFor } from './layout';
 import { nextCell } from './navigation';
 import { showEdits, withRowsOf, type ShownRow } from './shownRows';
+import { Suggestions } from './suggestions';
 
 export type { LocaleColumn } from './columns';
 
@@ -103,6 +104,8 @@ export class EditorStore {
     (message) => this.host.postMessage(message),
     (text) => this.announce(text),
   );
+  /** Suggestions of the AI for the open editor. */
+  readonly suggestions = new Suggestions((message) => this.host.postMessage(message), this.edits);
   /**
    * The keys whose texts were edited since the filter or the languages shown last changed. Their rows stay when the
    * filter no longer lets them through (e.g. "missing" once the text is there): a row that went would move the
@@ -210,6 +213,10 @@ export class EditorStore {
       }
       case 'writeResult':
         this.edits.answer(message);
+        break;
+      case 'aiState':
+      case 'aiSuggestion':
+        this.suggestions.receive(message);
         break;
     }
   }
