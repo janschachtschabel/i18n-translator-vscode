@@ -31,8 +31,9 @@ zeigt jetzt alle drei Bereiche, jeden im selben Editor mit einer Spalte je Sprac
 - **Mail-Vorschau:** „Mail-Vorschau“ (Details, Kontextmenü einer Zeile, Befehlspalette) zeigt neben dem Editor die Mail
   eines Templates in jeder Sprache, die Referenz zuerst, zusammengesetzt wie von edu-sharing: das Stylesheet der
   Basisdatei, Kopf, Text und Fuß, jedes Teil mit dem Rückfall von edu-sharing. Ein Hinweis nennt jede Sprache, die
-  Texte der Basisdatei zeigt. Die Vorschau führt keine Skripte aus und lädt nichts nach; jede Mail steht in einem
-  abgeschotteten Rahmen.
+  Texte der Basisdatei zeigt. Kann edu-sharing die Datei einer Sprache nicht lesen, verschickt es in ihr keine Mail;
+  die Vorschau zeigt dort den Grund statt einer Mail. Sie führt keine Skripte aus und lädt nichts nach; jede Mail
+  steht in einem abgeschotteten Rahmen.
 - **Lücken gegenüber der Basisdatei:** Einen Key, den nur die Datei ohne Sprachkürzel hat, meldet die Extension als
   fehlend in jeder Sprache ohne ihn, die Referenz eingeschlossen; dort erscheint zur Laufzeit der englische Text.
   Ausgenommen sind Texte ohne Wörter, etwa Lizenz-Links: Für sie ist der englische Rückfall richtig.

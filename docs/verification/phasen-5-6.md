@@ -105,14 +105,14 @@ Offen, mit Begründung:
 ## 7. Offene Punkte behoben (26.09.2026)
 
 Die Punkte aus Abschnitt 6 und die NIT zu `validKey`, umgesetzt nach der Taskliste (Abschnitt „Offene Punkte aus
-0.3.0“, Entscheidungen P1–P6). Code wie in Commit `734dc58`.
+0.3.0“, Entscheidungen P1–P6). Code wie in Commit `ac60ac2`, nach dem Review (unten).
 
 | Prüfung | Aufruf | Ergebnis |
 |---|---|---|
-| Unit- und Komponententests | `npm run test:unit` | 870 bestanden |
-| Integrationstests stable (1.139.1) und 1.90.0 | `npm run test:integration` | je 89 bestanden, 17 ausgelassen |
+| Unit- und Komponententests | `npm run test:unit` | 876 bestanden |
+| Integrationstests stable (1.139.1) und 1.90.0 | `npm run test:integration` | je 89 bestanden, 21 ausgelassen |
 | Profil `multi` | ebenda | 5 bestanden |
-| Profil `formats`, mit der Vorschau aus den Details und dem Kontextmenü | ebenda | 11 bestanden |
+| Profil `formats`, mit der Vorschau aus den Details, dem Kontextmenü und der Befehlspalette, einem fremden Key, einer unlesbaren Datei und einem gelöschten Template | ebenda | 15 bestanden |
 | Typen, Lint, Format | `npm run typecheck`, `npm run lint`, `npm run format:check` | ohne Befund |
 
 | Punkt | Umsetzung | Nachweis |
@@ -137,3 +137,10 @@ Tastaturereignisse über das DevTools-Protokoll):
 | Probe-Template (nur in der Kopie) mit Skript, entferntem Bild, `meta refresh` und Link | das Skript läuft nicht („Blocked script execution … sandboxed“), keine Anfrage an `http(s)` (das Bild: „violates … img-src data:“), keine Weiterleitung (die Rahmen bleiben `about:srcdoc`); in den drei Sprachen ohne das Template steht der Hinweis auf die Basisdatei |
 | Details unter der Tabelle in der geteilten Ansicht | vorher 40 von 434 px, der Knopf verdeckt; behoben (`734dc58`): 190 px (40 %), der Knopf sichtbar |
 | Kopie | danach unverändert (`git status` leer) |
+| Nach dem Review wiederholt | alles wie oben; das Probe-Template steht nur in der Basisdatei, daher tragen jetzt alle vier Rahmen `lang="en"` |
+
+Review mit frischem Kontext (`/better-coding-review`): 2 MAJOR, 4 MINOR, 4 NIT, alle behoben. Links fand ein Ausdruck
+in quadratischer Zeit (`e99c8c1`). Eine Sprache, deren Datei edu-sharing nicht lesen kann, zeigte die Mail der
+Basisdatei, obwohl edu-sharing dann keine verschickt; jetzt steht dort der Grund (`0d7f230`, dazu Kopf und Fuß im
+Hinweis, die Sprache jedes Texts, das Template des Kontexts wie in edu-sharing). Die Befehlspalette bietet nur
+Mail-Templates an (`bc9488e`), die Ansage sagt, dass die Vorschau öffnet (`ac60ac2`).

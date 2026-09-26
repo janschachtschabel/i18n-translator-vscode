@@ -1658,7 +1658,7 @@ Fehler; ungültiger Ausdruck → Fehler.
 `mail.compose.test.ts`, `mailPreviewHtml.test.ts`, `protocol.test.ts`, `viewModel.test.ts`, `details.test.tsx`,
 `table.test.tsx`, `list.test.tsx`, `formats.test.ts` (Integration)
 **Testfälle:** Zusammensetzung in der Reihenfolge von `getContent`; fehlender Text in `fr_FR` → Text der Basisdatei;
-`name@ctx` nimmt `header@ctx`, sonst `header`; ohne `stylesheet` kein `<style>`; `srcdoc` escapt `& " < >`; jedes `iframe`
+`name@ctx` nimmt `header@ctx`, sonst `header`; ohne `stylesheet` ein leeres `<style>` (edu-sharing schreibt `<style>null</style>`); `srcdoc` escapt `& " < >`; jedes `iframe`
 hat `sandbox=""` und einen Titel; CSP ohne `script-src` und ohne Netzwerk; `preview` mit ungültigem Key wird
 verworfen; Knopf und Kontextmenü nur in Mail-Einheiten; Integration: Vorschau öffnet neben dem Editor, der den Fokus
 behält, zeigt alle Sprachen und folgt einem gespeicherten Text.
@@ -1674,6 +1674,13 @@ Review-Befunde in eigenen Commits; `npm run test:integration`; Push auf `feat/ex
 [`docs/verification/phasen-5-6.md`](../verification/phasen-5-6.md), Abschnitt 7. Befund der Abnahme: Unter der Tabelle
 schrumpften die Details mit ihr auf etwa 40 px und verdeckten den Knopf der Vorschau; sie behalten jetzt ihren Anteil
 (`734dc58`).
+
+**Nach dem Review (26.09.2026):** Ein Reviewer mit frischem Kontext fand 2 MAJOR, 4 MINOR und 4 NIT, alle behoben:
+Links fand ein Ausdruck in quadratischer Zeit (`e99c8c1`); eine Sprache, deren Datei edu-sharing nicht lesen kann,
+zeigte die Mail der Basisdatei, obwohl edu-sharing dann gar keine verschickt (`composeMails`, `0d7f230`, mit Kopf
+und Fuß im Hinweis, der Sprache jedes Texts, dem Template des Kontexts wie in edu-sharing und dem Stylesheet einmal je
+Seite); die Befehlspalette bietet nur Mail-Templates an (`bc9488e`); die Ansage sagt, dass die Vorschau öffnet
+(`ac60ac2`). Zurückgestellt: `editorPanel.ts` und `store.ts` sind länger als 300 Zeilen (schon vorher).
 
 ---
 

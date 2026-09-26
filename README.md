@@ -91,7 +91,8 @@ Gut zu wissen:
   - **Mail-Vorschau:** „Mail-Vorschau“ in den Details einer Zeile, im Kontextmenü einer Zeile oder in der
     Befehlspalette zeigt neben dem Editor die Mail des Templates in jeder Sprache, die Referenz zuerst, so
     zusammengesetzt, wie edu-sharing sie verschickt: Stylesheet, Kopf, Text und Fuß. Fehlen einer Sprache Texte, sagt
-    ein Hinweis, dass die Mail die der Basisdatei zeigt. Die Vorschau führt keine Skripte aus und lädt nichts nach,
+    ein Hinweis, dass die Mail die der Basisdatei zeigt. Kann edu-sharing die Datei einer Sprache nicht lesen, steht
+    dort statt der Mail der Grund: edu-sharing verschickt dann in dieser Sprache keine Mail. Die Vorschau führt keine Skripte aus und lädt nichts nach,
     auch keine Bilder; Platzhalter wie `{{firstName}}` bleiben stehen.
   - Override-Dateien (`templates_de_DE_override.xml`) ersetzen zur Laufzeit ganze Templates; die Extension zeigt sie
     nicht.
