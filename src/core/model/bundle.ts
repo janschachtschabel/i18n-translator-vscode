@@ -21,6 +21,8 @@ export interface Bundle {
   readonly areaId: AreaId;
   /** The file format of the area, for what depends on it (e.g. which keys are valid). */
   readonly format: FormatId;
+  /** Keys the area hides (dotted): no entries, and taken for new keys, see {@link AreaDefinition.ignoredKeys}. */
+  readonly ignoredKeys: readonly string[];
   /** Unique across areas and roots, see {@link parseBundleId}. */
   readonly id: BundleId;
   /** Area root the bundle lies below; two roots are two separate installations. */
@@ -90,6 +92,7 @@ export function buildBundle(
   return {
     areaId: area.id,
     format: area.format,
+    ignoredKeys: area.ignoredKeys ?? [],
     id: JSON.stringify([area.id, root, name]),
     root,
     name,

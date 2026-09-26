@@ -15,11 +15,16 @@ export interface KeyCheck {
  * `A.B` would need `A` as a text and as an object at once.
  */
 export function newKeyProblem(key: EntryKey, bundle: Bundle): EditProblem | undefined {
+  const adapter = ADAPTERS[bundle.format];
   if (key.segments.length === 0 || key.segments.some((segment) => segment.trim() === '')) {
-    return editProblem('invalid-key', {});
+    return editProblem(adapter.flatKeys ? 'empty-key' : 'invalid-key', {});
   }
-  if (ADAPTERS[bundle.format].validKey?.(key) === false) {
+  if (adapter.validKey?.(key) === false) {
     return editProblem('invalid-template-key', { key: displayKey(key) });
+  }
+  // A hidden key would vanish from the editor once written, and the files that have it could not take it again.
+  if (bundle.ignoredKeys.includes(displayKey(key))) {
+    return editProblem('hidden-key', { key: displayKey(key), bundle: bundle.name });
   }
   if (bundle.keys.some((existing) => existing.id === key.id)) {
     return editProblem('key-exists', { key: displayKey(key), bundle: bundle.name });

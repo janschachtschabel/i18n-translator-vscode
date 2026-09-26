@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { ANGULAR_PRESET } from '../../../../src/core/area/presets';
+import { ANGULAR_PRESET, MDS_PRESET } from '../../../../src/core/area/presets';
 import { checkNewKey, newKeyProblem } from '../../../../src/core/edit/keyCheck';
 import { keyFromSegments, type EntryKey } from '../../../../src/core/model/keys';
-import { analyzeFixtureWorkspace } from '../../support/fixtureWorkspace';
+import { analyzeFixtureWorkspace, analyzeTexts } from '../../support/fixtureWorkspace';
 
 const { analysis } = analyzeFixtureWorkspace();
 const bundle = (name: string) => analysis.bundles.find((candidate) => candidate.name === name)!;
@@ -58,5 +58,24 @@ describe('checkNewKey', () => {
     expect(checkNewKey(key('ASK'), bundle('admin'), analysis.bundles, ANGULAR_PRESET).problem?.code).toBe(
       'key-exists',
     );
+  });
+});
+
+describe('newKeyProblem in an area with hidden keys and flat keys', () => {
+  const GUARD = 'this_is_a_bug_the_first_line_will_not_be_translated';
+  const texts = (guard: boolean) => ({
+    'mds_de_DE.properties': `${guard ? `${GUARD}: guard\n` : ''}a: A\n`,
+  });
+
+  it('refuses the name of a hidden key, whether the files have it or not', () => {
+    for (const guard of [true, false]) {
+      const mds = analyzeTexts(texts(guard), MDS_PRESET).bundles[0]!;
+      expect(newKeyProblem(keyFromSegments([GUARD]), mds)?.code, String(guard)).toBe('hidden-key');
+    }
+  });
+
+  it('asks a flat key for a name, not for a name of every part', () => {
+    const mds = analyzeTexts(texts(false), MDS_PRESET).bundles[0]!;
+    expect(newKeyProblem(keyFromSegments(['']), mds)?.code).toBe('empty-key');
   });
 });
