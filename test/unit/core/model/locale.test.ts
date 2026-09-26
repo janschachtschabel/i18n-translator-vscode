@@ -32,6 +32,22 @@ describe('parseLocale', () => {
     });
   });
 
+  // Region codes in lower case were taken for variants, which never become the reference (audit L-08).
+  it('takes a two-letter subtag for a region, in any letter case', () => {
+    expect(parseLocale('pt-br', opts)).toEqual({
+      code: 'pt-br',
+      language: 'pt',
+      region: 'BR',
+      isBaseFile: false,
+    });
+    expect(parseLocale('PT_br', opts)).toEqual({
+      code: 'PT_br',
+      language: 'pt',
+      region: 'BR',
+      isBaseFile: false,
+    });
+  });
+
   it('maps the base file to the configured language', () => {
     expect(parseLocale('default', opts)).toEqual({ code: 'default', language: 'en', isBaseFile: true });
   });
@@ -61,6 +77,19 @@ describe('pickReference', () => {
     expect(pickReference(['de-informal', 'de'], 'de-informal', opts)).toBeUndefined();
   });
 
+  it('picks region codes in any letter case, and compares the codes so', () => {
+    expect(pickReference(['en', 'pt-br'], 'pt', opts)).toBe('pt-br');
+    expect(pickReference(['en', 'pt-br'], 'pt-BR', opts)).toBe('pt-br');
+    expect(pickReference(['DE', 'en'], 'de', opts)).toBe('DE');
+  });
+
+  it('never makes a configured variant the reference, whatever its code looks like', () => {
+    const variants = new Map([['de-at', {}]]);
+    expect(pickReference(['de-at', 'en'], 'de', { ...opts, variants })).toBeUndefined();
+    expect(pickReference(['de-at', 'en'], 'de-at', { ...opts, variants })).toBeUndefined();
+    expect(pickReference(['de-at', 'en'], 'de', opts)).toBe('de-at');
+  });
+
   it('returns undefined when no locale matches', () => {
     expect(pickReference(['en', 'fr'], 'de', opts)).toBeUndefined();
   });
@@ -73,6 +102,7 @@ describe('languageTag', () => {
     expect(tag('de')).toBe('de');
     expect(tag('de_DE')).toBe('de-DE');
     expect(tag('pt-BR')).toBe('pt-BR');
+    expect(tag('pt-br')).toBe('pt-BR');
     // Variants are no registered subtags: their language is what matters for the voice.
     expect(tag('de-informal')).toBe('de');
     expect(tag('de-no-binnen-i')).toBe('de');
