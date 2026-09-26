@@ -1,5 +1,6 @@
 import { BASE_FILE_LOCALE } from '../model/locale';
 import type { LocaleCode } from '../model/types';
+import { isPlainRelativePath } from './rootPath';
 
 export interface FilePatternSpec {
   /**
@@ -25,6 +26,12 @@ const DEFAULT_BUNDLE_PATTERN = '[^/]+?';
 
 /** Compiles a file pattern; throws a SyntaxError with a user-readable message if it is invalid. */
 export function compileFilePattern(spec: FilePatternSpec): (relPath: string) => PatternMatch | null {
+  // The files lie below the area root; the host checks the paths it writes too.
+  if (!isPlainRelativePath(spec.files.replace(/\{(?:bundle|locale)\}/g, 'x').replace(/[[\]]/g, ''))) {
+    throw new SyntaxError(
+      `File pattern "${spec.files}" must be a relative path below the area root, with "/" between folders and without "." or "..".`,
+    );
+  }
   assertEmbeddableRegex(spec.localePattern, 'localePattern');
   if (spec.bundlePattern !== undefined) {
     assertEmbeddableRegex(spec.bundlePattern, 'bundlePattern');
@@ -82,7 +89,7 @@ export function formatFilePattern(
         ['{locale}', localeValue],
       ]),
     );
-    if (path !== undefined && readsBack(spec, path, bundle, locale)) {
+    if (path !== undefined && isPlainRelativePath(path) && readsBack(spec, path, bundle, locale)) {
       return path;
     }
   }

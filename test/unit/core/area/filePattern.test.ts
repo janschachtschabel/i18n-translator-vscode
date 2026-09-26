@@ -120,6 +120,25 @@ describe('compileFilePattern', () => {
         /localePattern/,
       );
     });
+
+    // Not only the host keeps writes inside the area root (audit S-09).
+    it('rejects patterns that are no plain paths below the area root', () => {
+      const patterns = [
+        '../{bundle}/{locale}.json',
+        '{bundle}/../{locale}.json',
+        '[..]/{bundle}/{locale}.json',
+        '/{bundle}/{locale}.json',
+        'C:/{bundle}/{locale}.json',
+        '{bundle}\\{locale}.json',
+        '{bundle}/./{locale}.json',
+        '{bundle}//{locale}.json',
+      ];
+      for (const files of patterns) {
+        expect(() => compileFilePattern({ files, localePattern: '[a-z]{2}' }), files).toThrow(
+          /relative path/,
+        );
+      }
+    });
   });
 });
 
@@ -151,5 +170,15 @@ describe('formatFilePattern', () => {
     expect(formatFilePattern(angular, 'common', 'ES')).toBeUndefined();
     expect(formatFilePattern(angular, 'common', 'default')).toBeUndefined();
     expect(formatFilePattern(angular, 'a/b', 'es')).toBeUndefined();
+  });
+
+  it('makes only plain paths below the area root, whatever the names', () => {
+    expect(formatFilePattern(angular, '..', 'es')).toBeUndefined();
+    const byLocale = { files: '{locale}/{bundle}.json', localePattern: '[a-z.]+' };
+    expect(formatFilePattern(byLocale, 'common', 'fr')).toBe('fr/common.json');
+    expect(formatFilePattern(byLocale, 'common', '..')).toBeUndefined();
+    const base = { files: 'i18n/[{locale}]/{bundle}.json', localePattern: '[a-z]{2}' };
+    expect(formatFilePattern(base, 'common', 'fr')).toBe('i18n/fr/common.json');
+    expect(formatFilePattern(base, 'common', 'default')).toBeUndefined();
   });
 });

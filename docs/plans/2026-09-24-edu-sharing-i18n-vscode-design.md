@@ -226,6 +226,10 @@ Beispiel für einen eigenen Bereich (Einstellung `eduI18n.areas`):
 }
 ```
 
+`roots` sind Ordner im Workspace-Ordner, `files` ist ein Pfad unterhalb der Wurzel: Muster mit `..`, absoluten
+Teilen, `\` oder leeren und `.`-Segmenten weist die Erweiterung ab, und neue Dateien entstehen nur unter solchen
+einfachen Pfaden (Audit S-09).
+
 Zusätzliche Preset-Attribute für Angular: `bundleOrder` (Standard: `TRANSLATION_LIST` aus `translation-loader.ts`)
 und `mergeSemantics: "shallow-toplevel"` (aktiviert die Regeln `key-overridden` und `subtree-lost`). MDS kennt außerdem
 `ignoredKeys: ["this_is_a_bug_the_first_line_will_not_be_translated"]`: Diese technische Wächterzeile wird ausgeblendet,

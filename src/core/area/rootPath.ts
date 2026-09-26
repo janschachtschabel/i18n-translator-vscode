@@ -11,3 +11,11 @@ export function normalizeRoot(root: string): string | undefined {
   const segments = path.split('/').filter((segment) => segment !== '' && segment !== '.');
   return segments.includes('..') ? undefined : segments.join('/');
 }
+
+/**
+ * Whether `path` is a plain path below a folder: relative, with `/` between segments that are not empty, `.` or
+ * `..`.
+ */
+export function isPlainRelativePath(path: string): boolean {
+  return path !== '' && normalizeRoot(path) === path;
+}

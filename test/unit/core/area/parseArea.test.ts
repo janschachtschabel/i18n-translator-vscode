@@ -65,6 +65,15 @@ describe('parseAreaDefinition', () => {
     expect(outside.ok ? [] : outside.errors).toHaveLength(2);
   });
 
+  it('rejects file patterns that lead out of the area root', () => {
+    expect(parseAreaDefinition({ ...customArea, files: '../{bundle}/{locale}.json' })).toEqual({
+      ok: false,
+      errors: [
+        'File pattern "../{bundle}/{locale}.json" must be a relative path below the area root, with "/" between folders and without "." or "..".',
+      ],
+    });
+  });
+
   it('rejects an empty root list without detection', () => {
     expect(parseAreaDefinition({ ...customArea, roots: [] }).ok).toBe(false);
   });
