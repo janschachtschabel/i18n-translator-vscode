@@ -1,8 +1,8 @@
 import type { AreaId } from '../model/types';
 import type { FilePatternSpec } from './filePattern';
 
-/** File formats with an adapter. Further formats (properties, mail XML) arrive with their adapters. */
-export const FORMAT_IDS = ['json-nested'] as const;
+/** File formats with an adapter. Mail XML arrives with its adapter. */
+export const FORMAT_IDS = ['json-nested', 'properties'] as const;
 export type FormatId = (typeof FORMAT_IDS)[number];
 
 export const MERGE_SEMANTICS = ['shallow-toplevel', 'none'] as const;

@@ -1452,17 +1452,16 @@ wird nur, was sich ändert; alle anderen Bytes der Datei bleiben.
   `validKey`), sonst Problem `invalid-template-key`.
 
 ### Task 5.1: Properties lesen
-**Dateien:** Create `src/core/formats/properties/propertiesRead.ts`, `src/core/formats/properties/properties.ts`;
-Test: `test/unit/core/formats/properties.parse.test.ts`
+**Dateien:** Create `src/core/formats/properties/propertiesRead.ts`; Test: `test/unit/core/formats/properties.parse.test.ts`
 **Testfälle:** Trenner (`a=b`, `a: b`, `a b`, `a = b`, `a\:b=c`), Fortsetzungen (`a=b\` + `  c` → `bc`; `a=b\\` ist
-keine), Kommentare und Leerzeilen, eine `#`-Zeile als Fortsetzung gehört zum Wert, Escapes (`\t`, `ä`, `\=`,
+keine), Kommentare und Leerzeilen, eine `#`-Zeile als Fortsetzung gehört zum Wert, Escapes (`\t`, `\u00e4`, `\=`,
 `\\`), `a=\u12` → `parse-error`, leere Werte (`a=`, `a`), doppelter Key (letzter Wert, erste Position,
 `duplicate-key` am zweiten Key), `keyRange`/`valueRange` (Wert bis Ende der logischen Zeile ohne Zeilenende),
 ISO-8859-1-Datei.
 **Commit:** `feat(core): read .properties files like java.util.Properties`
 
 ### Task 5.2: Properties schreiben
-**Dateien:** Create `src/core/formats/properties/propertiesWrite.ts`; Modify `properties.ts`; Test:
+**Dateien:** Create `src/core/formats/properties/propertiesWrite.ts`, `properties.ts` (Adapter, Formatliste); Test:
 `test/unit/core/formats/properties.write.test.ts`, `properties.golden.test.ts` mit Dateien unter
 `test/fixtures/golden/properties/`
 **Golden-Testfälle** (UTF-8, ISO-8859-1, CRLF, ohne Newline am Ende, Fortsetzungen):
@@ -1473,7 +1472,7 @@ ISO-8859-1-Datei.
 | `insert` in der Mitte / am Ende / `first` / in leere Datei / ohne Newline am Ende | eine Zeile neu, Trenner der Nachbarzeile |
 | `delete` in der Mitte / am Ende / fortgesetzte Zeile | nur deren Zeilen weg |
 | `rename` | genau eine Zeile anders, frühere Definitionen weg |
-| Werte mit `\`, Zeilenumbruch, führendem Leerzeichen, `#`, `ä`/`€` in ISO-8859-1 und UTF-8 | Wert nach erneutem Lesen identisch; `€` in ISO-8859-1 als `€` |
+| Werte mit `\`, Zeilenumbruch, führendem Leerzeichen, `#`, `ä`/`€` in ISO-8859-1 und UTF-8 | Wert nach erneutem Lesen identisch; `€` in ISO-8859-1 als `\u20ac` |
 | `set` auf fehlenden Key, `insert` auf vorhandenen | `EditError` mit passendem Code |
 **Commit:** `feat(core): write .properties files line by line, keeping encoding and escapes`
 

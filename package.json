@@ -280,7 +280,8 @@
               "format": {
                 "type": "string",
                 "enum": [
-                  "json-nested"
+                  "json-nested",
+                  "properties"
                 ],
                 "description": "%config.areas.format%"
               },
