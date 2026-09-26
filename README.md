@@ -145,9 +145,12 @@ Gut zu wissen:
 
 ## Erste Schritte
 
-1. **Repository öffnen:** den Ordner eines edu-sharing-Checkouts öffnen („Datei“ → „Ordner öffnen…“).
-   - Die Extension startet, sobald der Arbeitsbereich eine Datei `common/de.json` enthält.
-   - Dann sucht sie die Übersetzungsordner, bei edu-sharing `Frontend/src/assets/i18n`.
+1. **Ordner öffnen** („Datei“ → „Ordner öffnen…“): einen edu-sharing-Checkout oder direkt einen Ordner mit den
+   Übersetzungsdateien, etwa `Frontend/src/assets/i18n` oder eine Kopie davon.
+   - Die Extension findet jede Datei `common/de.json` darin und nimmt den Ordner über `common` als Übersetzungsordner,
+     bei edu-sharing `Frontend/src/assets/i18n`.
+   - Ohne geöffneten Ordner zeigt die Seitenleiste „Ordner öffnen“ an.
+   - Zum Ausprobieren eignet sich eine Kopie, denn die Extension schreibt beim Bearbeiten.
 2. **Vertrauen:** Fragt VS Code, ob man den Autoren der Dateien vertraut, „Ja“ wählen. Nur in einem
    vertrauenswürdigen Arbeitsbereich schreibt die Extension; im eingeschränkten Modus prüft und zeigt sie nur.
 3. **Befunde ansehen:**
@@ -281,7 +284,8 @@ Dateien. Mehr Einzelheiten: „Developer: Set Log Level…“ für diesen Kanal.
 ## Wenn etwas nicht klappt
 
 **Die Seitenleiste findet keine Übersetzungen:**
-- Enthält der geöffnete Ordner `…/i18n/common/de.json`?
+- Ist überhaupt ein Ordner geöffnet? „Configure folders“ bzw. „Übersetzungsordner festlegen…“ braucht einen.
+- Enthält der geöffnete Ordner irgendwo `common/de.json`?
 - Liegt der Ordner unter einem Muster aus `eduI18n.exclude`?
 - Ist eine der [Grenzen](docs/einstellungen.md#grenzen) erreicht?
 - Dann hilft „Übersetzungsordner festlegen…“.
