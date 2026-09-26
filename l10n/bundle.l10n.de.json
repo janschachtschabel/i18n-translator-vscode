@@ -192,7 +192,7 @@
   "The file is not valid UTF-8.": "Die Datei ist kein gültiges UTF-8.",
   "the folder holds more than {count} files": "der Ordner enthält mehr als {count} Dateien",
   "The HTML tags of {key} differ from the reference {reference}: missing {missing}, extra {extra}.": "Die HTML-Tags von {key} weichen von der Referenz {reference} ab: fehlend {missing}, zusätzlich {extra}.",
-  "The language code, e.g. es. Every bundle gets an empty file; until its texts are translated, those of the fallback show.": "Der Sprachcode, z. B. es. Jede Einheit bekommt eine leere Datei; bis ihre Texte übersetzt sind, erscheinen die des Rückfalls.",
+  "The language code, e.g. {example}. Every bundle gets an empty file; until its texts are translated, those of the fallback show.": "Der Sprachcode, z. B. {example}. Jede Einheit bekommt eine leere Datei; bis ihre Texte übersetzt sind, erscheinen die des Rückfalls.",
   "The last change was not made in {bundle} but in {files}. Undo it?": "Die letzte Änderung betrifft nicht {bundle}, sondern {files}. Rückgängig machen?",
   "The new key as it stands in the file, e.g. section_title.": "Der neue Key, wie er in der Datei steht, z. B. section_title.",
   "The new key, with a dot between its parts, e.g. SECTION.TITLE. A dot inside a part is written \\.": "Der neue Key, mit einem Punkt zwischen seinen Teilen, z. B. SECTION.TITLE. Ein Punkt innerhalb eines Teils wird als \\. geschrieben.",
