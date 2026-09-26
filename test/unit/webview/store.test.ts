@@ -55,6 +55,19 @@ describe('EditorStore', () => {
     expect(sentAfterFiltering).toEqual([true]);
   });
 
+  // Wrapping, the details or the layout changed the view state, and the rows were filtered again (audit P-05).
+  it('filters the rows again only when the filter or the shown languages change', () => {
+    const { editor } = store();
+    editor.receive({ type: 'init', l10n: {}, uiState: DEFAULT_UI_STATE, panelState });
+    editor.receive({ type: 'bundle', model: findingsModel });
+    const filtered = editor.filtered.value;
+    editor.updateUiState({ wrap: true });
+    editor.updateUiState({ details: false });
+    expect(editor.filtered.value).toBe(filtered);
+    editor.updateFilter({ query: 'Speichern' });
+    expect(editor.filtered.value).not.toBe(filtered);
+  });
+
   it('hands the focus on only to the other layout, once', () => {
     const { editor } = store();
     editor.receive({ type: 'init', l10n: {}, uiState: DEFAULT_UI_STATE, panelState });

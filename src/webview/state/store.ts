@@ -60,10 +60,12 @@ export class EditorStore {
   readonly width = signal(window.innerWidth);
   /** Table, list or compact list: as the user chose, or by width. Changes only when the layout does. */
   readonly layout = computed(() => layoutFor(this.uiState.value.layout, this.width.value));
-  // Their own signals, so that a change of the filter does not make a new list of languages: the rows
-  // render again only when their props change.
+  // Their own signals, so that a change of one part of the view state recomputes only what depends on it: a new
+  // filter makes no new list of languages (the rows render again only when their props change), and wrapping
+  // filters no rows again.
   private readonly hiddenLocales = computed(() => this.uiState.value.hiddenLocales);
   private readonly compactLocale = computed(() => this.uiState.value.compactLocale);
+  private readonly filter = computed(() => this.uiState.value.filter);
   private columns: readonly LocaleColumn[] = [];
   /**
    * The languages the rows show: the visible ones, in the compact list the reference and one more. The same array
@@ -93,7 +95,7 @@ export class EditorStore {
     }
     const shown = new Set(this.shownLocales.value.map((locale) => locale.code));
     const hidden = view.model.locales.map((locale) => locale.code).filter((code) => !shown.has(code));
-    return filterRows(view.model, this.uiState.value.filter, hidden);
+    return filterRows(view.model, this.filter.value, hidden);
   });
   readonly edits = new Edits(
     (message) => this.host.postMessage(message),
