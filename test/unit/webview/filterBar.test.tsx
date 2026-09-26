@@ -3,7 +3,7 @@ import { act, cleanup, fireEvent, screen, within } from '@testing-library/preact
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_FILTER } from '../../../src/shared/filter';
 import { DEFAULT_UI_STATE, type UiState } from '../../../src/shared/protocol';
-import { renderEditor, axeProblems } from './support';
+import { renderEditor, axeProblems, model } from './support';
 
 const search = () => within(screen.getByRole('search'));
 const field = () => search().getByRole('searchbox', { name: 'Suchen' }) as HTMLInputElement;
@@ -128,6 +128,28 @@ it('announces the result once typing pauses, not after every key', () => {
     type('s');
     type('speichern');
     expect(live().textContent).toBe(opened);
+    act(() => void vi.advanceTimersByTime(700));
+    expect(live().textContent).toBe('Keys: 1 von 2');
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+// A saved text or a file that changed changes the count too; announcing it then would interrupt (audit F-03).
+it('announces the result after changes of the filter only, not after changes of the bundle', () => {
+  vi.useFakeTimers();
+  try {
+    const { open, send } = renderEditor();
+    open();
+    const live = () => screen.getAllByRole('status').find((region) => !region.closest('[role="search"]'))!;
+    const opened = live().textContent;
+    send({ type: 'bundle', model: { ...model, rows: model.rows.slice(0, 1) } });
+    act(() => void vi.advanceTimersByTime(700));
+    expect(live().textContent).toBe(opened);
+    // The result of typing is announced all the same when the bundle changes during the pause, as it is then.
+    type('speichern');
+    act(() => void vi.advanceTimersByTime(300));
+    send({ type: 'bundle', model });
     act(() => void vi.advanceTimersByTime(700));
     expect(live().textContent).toBe('Keys: 1 von 2');
   } finally {

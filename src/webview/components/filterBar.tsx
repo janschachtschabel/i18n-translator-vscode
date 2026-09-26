@@ -1,4 +1,4 @@
-import { MAX_QUERY_LENGTH, type FilterScope, type StatusFilter } from '../../shared/filter';
+import { MAX_QUERY_LENGTH, type FilterScope, type RowFilter, type StatusFilter } from '../../shared/filter';
 import { useEffect, useRef } from 'preact/hooks';
 import type { BundleViewModel } from '../../shared/viewModel';
 import { formatNumber, l10n } from '../l10n';
@@ -26,6 +26,7 @@ export function FilterBar({ store, model }: { store: EditorStore; model: BundleV
   useAnnounceAfterPause(
     store,
     invalid !== undefined ? `${l10n.t('The regular expression is invalid:')} ${invalid}` : counted,
+    filter,
   );
   const statuses: [StatusFilter, string][] = [
     ['all', l10n.t('all keys')],
@@ -118,15 +119,26 @@ export function FilterBar({ store, model }: { store: EditorStore; model: BundleV
   );
 }
 
-/** Has screen readers read `text` once it stopped changing for a moment; not when the editor opens. */
-function useAnnounceAfterPause(store: EditorStore, text: string): void {
-  const opened = useRef(false);
+/**
+ * Has screen readers read `text` once it stopped changing for a moment after a change of `filter`: not when the
+ * editor opens, and not when only the bundle changed (a saved text, a file changed on disk), which would
+ * interrupt. A change of the bundle during the pause after a change of the filter has the text read as it is then.
+ */
+function useAnnounceAfterPause(store: EditorStore, text: string, filter: RowFilter): void {
+  const announced = useRef(filter);
+  const due = useRef(false);
   useEffect(() => {
-    if (!opened.current) {
-      opened.current = true;
+    if (filter !== announced.current) {
+      announced.current = filter;
+      due.current = true;
+    }
+    if (!due.current) {
       return undefined;
     }
-    const timer = setTimeout(() => store.announce(text), ANNOUNCE_AFTER_MS);
+    const timer = setTimeout(() => {
+      due.current = false;
+      store.announce(text);
+    }, ANNOUNCE_AFTER_MS);
     return () => clearTimeout(timer);
-  }, [store, text]);
+  }, [store, text, filter]);
 }
