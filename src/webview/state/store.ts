@@ -299,11 +299,11 @@ export class EditorStore {
     this.host.postMessage({ type: 'command', command, ...(entryId !== undefined ? { entryId } : {}) });
   }
 
-  /** Has the host show the mail of the key's template beside the editor, which keeps the focus. */
+  /** Has the host show the mail of the key's template beside the editor, which keeps the focus; says it opens. */
   previewMail(entryId: string): void {
     this.host.postMessage({ type: 'preview', entryId });
     const template = keyFromId(entryId).segments[0] ?? '';
-    this.announce(l10n.t('The preview beside the editor shows the mail {template}.', { template }));
+    this.announce(l10n.t('The mail {template} opens in the preview beside the editor.', { template }));
   }
 
   /** Undoes the last change of this session to the translation files, in whichever bundle it was. */

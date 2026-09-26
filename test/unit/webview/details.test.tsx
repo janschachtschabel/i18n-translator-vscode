@@ -129,13 +129,15 @@ describe('details', () => {
 });
 
 describe('the mail preview in the details', () => {
-  it('opens beside the editor for the template of the active key, and says so', async () => {
+  it('opens beside the editor for the template of the active key, and says that it opens', async () => {
     const { posted, store } = open({}, mailModel);
     act(() => void fireEvent.click(inDetails().getByRole('button', { name: 'Mail-Vorschau' })));
     expect(posted.filter((message) => message.type === 'preview')).toEqual([
       { type: 'preview', entryId: id('invited.subject') },
     ]);
-    expect(store.announcement.value.text).toBe('Die Vorschau neben dem Editor zeigt die Mail invited.');
+    expect(store.announcement.value.text).toBe(
+      'Die Mail invited öffnet sich in der Vorschau neben dem Editor.',
+    );
     expect(await axeProblems()).toEqual([]);
   });
 
