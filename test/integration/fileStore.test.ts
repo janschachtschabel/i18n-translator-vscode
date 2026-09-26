@@ -1,6 +1,7 @@
 import * as assert from 'node:assert/strict';
 import { chmodSync } from 'node:fs';
 import * as vscode from 'vscode';
+import type { Issue } from '../../src/core/checks/types';
 import { planAddLanguage, planEdit, type BundleEdit } from '../../src/core/edit/planEdit';
 import { keyFromSegments } from '../../src/core/model/keys';
 import type { ExtensionApi } from '../../src/extension/extension';
@@ -202,6 +203,41 @@ suite('FileStore', () => {
     assert.deepEqual(await store.write(ref, setAsk('Continuer ?', 'Voulez-vous continuer ?')), { ok: true });
     const text = await read(fr);
     assert.ok(text.includes('"MINUTE": "Minuto"') && text.includes('"ASK": "Continuer ?"'), text);
+  });
+
+  // A run of the index, e.g. one a watcher started, that read a file while it is written would publish it half
+  // written; CI once saw two index changes for one write (audit L-04).
+  test('keeps runs of the index from reading a file while it is written', async () => {
+    const missingInFr = (snapshot: { roots: readonly { analysis: { issues: readonly Issue[] } }[] }) =>
+      snapshot.roots[0]!.analysis.issues.filter(
+        (issue) => issue.rule === 'missing-key' && issue.locale === 'fr',
+      ).length;
+    const expected = missingInFr(await api.index.refresh());
+    const seen: number[] = [];
+    const listener = api.index.onDidChange((snapshot) => seen.push(missingInFr(snapshot)));
+    const runs: Promise<unknown>[] = [];
+    const store = new FileStore(api.index, log, {
+      files: {
+        readFile: (uri) => vscode.workspace.fs.readFile(uri),
+        delete: (uri) => vscode.workspace.fs.delete(uri),
+        writeFile: async (uri, bytes) => {
+          // As a file passes through when it is written in place: first without its text, then with it.
+          await vscode.workspace.fs.writeFile(uri, new Uint8Array());
+          const run = api.index.refreshRoot(ref);
+          runs.push(run);
+          await Promise.race([run, new Promise((resolve) => setTimeout(resolve, 300))]);
+          await vscode.workspace.fs.writeFile(uri, bytes);
+        },
+      },
+    });
+    try {
+      assert.deepEqual(await store.write(ref, setAsk('Continuer ?')), { ok: true });
+      await Promise.all(runs);
+      await store.indexed();
+      assert.deepEqual(seen, [expected]);
+    } finally {
+      listener.dispose();
+    }
   });
 
   // The first backup of a session takes a few hundred milliseconds: time enough to type into the file (audit L-02).

@@ -102,6 +102,14 @@ export class WorkspaceIndex implements vscode.Disposable {
   }
 
   /**
+   * Runs `task` (the file store writing files) while no run of the index reads files: a run that read a file
+   * while it is written would see it empty or half written, and publish that as the model.
+   */
+  whileWriting<T>(task: () => Promise<T>): Promise<T> {
+    return this.exclusive(task);
+  }
+
+  /**
    * Indexes one root again, e.g. after its files were written: without the search for roots, and without a new
    * analysis if its files are as they were. Before the first run it makes a full one; a root the last run did not
    * have is left as it is (e.g. the watcher of a root that a branch switch took away).

@@ -321,7 +321,7 @@ export class FileStore {
 
   /** Writes all files or none; the failure, if any, as a result. */
   private async putAll(files: Put[], restore: Put[]): Promise<WriteError | undefined> {
-    const failure = await putAllOrNone(this.files, files, restore, this.log);
+    const failure = await this.index.whileWriting(() => putAllOrNone(this.files, files, restore, this.log));
     if (!failure) {
       return undefined;
     }
