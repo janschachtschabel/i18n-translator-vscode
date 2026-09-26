@@ -27,7 +27,7 @@ eingecheckten Fixtures bleiben so unberührt.
 | `npm run format` · `npm run format:check` | Prettier schreiben · prüfen |
 | `npm run test:unit` | Unit-Tests (vitest); einzelne Dateien mit `npm run test:unit -- <pfad>` |
 | `npm run test:coverage` | Unit-Tests mit Abdeckung und der Schwelle von 90 % (so läuft es in der CI) |
-| `npm run test:integration` | Integrationstests in VS Code 1.90.0 und stable (`-- --label min` bzw. `-- --label stable` für nur eine Version) |
+| `npm run test:integration` | Integrationstests in VS Code 1.90.0 und stable, dazu ein Arbeitsbereich mit mehreren Ordnern (`-- --label min`, `stable` oder `multi` für nur ein Profil) |
 | `npm run test:perf` | Messung mit echten Dateien (Task 2.17); vorher einmal `node scripts/perf-workspace.mjs <edu-sharing-Checkout>` |
 | `npm run package` | erzeugt die VSIX |
 | `npm run check:repo -- <checkout>` | prüft einen edu-sharing-Checkout auf der Kommandozeile (nur lesend) |
