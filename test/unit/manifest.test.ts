@@ -5,6 +5,13 @@ import { FORMAT_IDS, MERGE_SEMANTICS, PLACEHOLDER_SYNTAXES } from '../../src/cor
 import { PRESETS } from '../../src/core/area/presets';
 import { RULE_IDS } from '../../src/core/checks/types';
 import {
+  AI_LIMITS,
+  AI_PROVIDERS,
+  AI_SETTING_KEYS,
+  DEFAULT_AI_SETTINGS,
+  REASONING_EFFORTS,
+} from '../../src/core/config/aiSettings';
+import {
   BACKUP_KEEP_LIMITS,
   BACKUP_SETTING_KEYS,
   DEFAULT_BACKUP_SETTINGS,
@@ -29,18 +36,47 @@ const manifest = JSON.parse(read('package.json')) as {
   activationEvents: string[];
   keywords: string[];
   contributes: {
-    configuration: { properties: Record<string, SettingSchema> };
+    configuration: { title: string; properties: Record<string, SettingSchema> }[];
     viewsWelcome: { view: string; contents: string; when: string }[];
   };
 };
-const properties = manifest.contributes.configuration.properties;
+// Settings in categories of their own, each a section of the Settings editor.
+const categories = manifest.contributes.configuration;
+const properties: Record<string, SettingSchema> = Object.assign(
+  {},
+  ...categories.map((category) => category.properties),
+);
 const setting = (key: string): SettingSchema => properties[`eduI18n.${key}`]!;
 
 describe('package.json configuration', () => {
   it('declares exactly the settings the extension reads', () => {
     expect(Object.keys(properties).sort()).toEqual(
-      [...SETTING_KEYS, ...BACKUP_SETTING_KEYS].map((key) => `eduI18n.${key}`).sort(),
+      [...SETTING_KEYS, ...BACKUP_SETTING_KEYS, ...AI_SETTING_KEYS].map((key) => `eduI18n.${key}`).sort(),
     );
+  });
+
+  it('puts the AI settings in a category of their own', () => {
+    const ai = categories.find((category) => category.title === '%config.ai.title%');
+    expect(Object.keys(ai?.properties ?? {}).sort()).toEqual(
+      AI_SETTING_KEYS.map((key) => `eduI18n.${key}`).sort(),
+    );
+  });
+
+  it('lets only user settings choose where the AI requests go, with the key', () => {
+    // A workspace setting could send the key to another host (a cloned repository's .vscode/settings.json).
+    expect(setting('ai.baseUrl').scope).toBe('machine');
+    expect(
+      AI_SETTING_KEYS.filter((key) => key !== 'ai.baseUrl' && (setting(key).scope ?? 'window') !== 'window'),
+    ).toEqual([]);
+  });
+
+  it('offers and limits the AI settings as the code does', () => {
+    expect(setting('ai.provider').enum).toEqual([...AI_PROVIDERS]);
+    expect(setting('ai.reasoningEffort').enum).toEqual([...REASONING_EFFORTS]);
+    expect(setting('ai.reviewReasoningEffort').enum).toEqual([...REASONING_EFFORTS]);
+    for (const [key, limits] of Object.entries(AI_LIMITS)) {
+      expect(setting(`ai.${key}`), key).toMatchObject(limits);
+    }
   });
 
   it('gives folder settings the resource scope and backup settings the window scope', () => {
@@ -67,6 +103,17 @@ describe('package.json configuration', () => {
     expect(setting('diagnostics.missing').default).toBe(DEFAULT_SETTINGS.missingDiagnostics);
     expect(setting('backup.intervalMinutes').default).toBe(DEFAULT_BACKUP_SETTINGS.intervalMinutes);
     expect(setting('backup.keep').default).toBe(DEFAULT_BACKUP_SETTINGS.keep);
+    const { enabled, baseUrl, provider, model, reasoningEffort, reviewReasoningEffort } = DEFAULT_AI_SETTINGS;
+    expect(setting('ai.enabled').default).toBe(enabled);
+    expect(setting('ai.baseUrl').default).toBe(baseUrl);
+    expect(setting('ai.provider').default).toBe(provider);
+    expect(setting('ai.model').default).toBe(model);
+    expect(setting('ai.reasoningEffort').default).toBe(reasoningEffort);
+    expect(setting('ai.reviewReasoningEffort').default).toBe(reviewReasoningEffort);
+    expect(setting('ai.batchSize').default).toBe(DEFAULT_AI_SETTINGS.batchSize);
+    expect(setting('ai.maxConcurrency').default).toBe(DEFAULT_AI_SETTINGS.maxConcurrency);
+    expect(setting('ai.timeoutSeconds').default).toBe(DEFAULT_AI_SETTINGS.timeoutSeconds);
+    expect(setting('ai.languageDescriptions').default).toEqual(DEFAULT_AI_SETTINGS.languageDescriptions);
   });
 
   it('offers every rule id for severity overrides', () => {

@@ -1,5 +1,15 @@
-import { keyFromId } from '../core/model/keys';
 import { DEFAULT_FILTER, FILTER_SCOPES, MAX_QUERY_LENGTH, STATUS_FILTERS, type RowFilter } from './filter';
+import {
+  isBounded,
+  isBundleId,
+  isEntryId,
+  isId,
+  isLongId,
+  isOneOf,
+  isRecord,
+  isText,
+  MAX_TEXT_LENGTH,
+} from './messageChecks';
 import type { BundlePatch } from './patch';
 import type { BundleViewModel } from './viewModel';
 
@@ -91,11 +101,7 @@ export type HostToWebview =
    */
   | { type: 'writeResult'; requestId: string; ok: boolean; message?: string; conflict?: true };
 
-/** Longest text an edit may carry; translations are far shorter, this only bounds a runaway message. */
-export const MAX_TEXT_LENGTH = 100_000;
-const MAX_ID_LENGTH = 200;
-/** Entry ids, bundle ids and folder URIs: far longer than real ones, but bounded before they are parsed. */
-const MAX_LONG_ID_LENGTH = 10_000;
+export { MAX_TEXT_LENGTH };
 const MAX_HIDDEN_LOCALES = 200;
 /** Texts that are not saved, which the host keeps: in number and in characters, far beyond any real session. */
 export const MAX_UNSAVED_TEXTS = 500;
@@ -264,61 +270,4 @@ function isRowFilter(value: unknown): value is RowFilter {
     typeof value['matchCase'] === 'boolean' &&
     isOneOf(STATUS_FILTERS, value['status'])
   );
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function isId(value: unknown): value is string {
-  return typeof value === 'string' && value.length > 0 && value.length <= MAX_ID_LENGTH;
-}
-
-/** Text a user typed: bounded, and without incomplete characters, which no file could store faithfully. */
-function isText(value: unknown): value is string {
-  return isBounded(value) && !/\p{Cs}/u.test(value);
-}
-
-function isBounded(value: unknown): value is string {
-  return typeof value === 'string' && value.length <= MAX_TEXT_LENGTH;
-}
-
-function isOneOf<T extends string>(values: readonly T[], value: unknown): value is T {
-  return (values as readonly unknown[]).includes(value);
-}
-
-function isEntryId(value: unknown): value is string {
-  if (typeof value !== 'string' || value.length > MAX_LONG_ID_LENGTH) {
-    return false;
-  }
-  try {
-    keyFromId(value);
-    return true;
-  } catch {
-    // keyFromId throws for anything that is not the id of a key with at least one segment.
-    return false;
-  }
-}
-
-function isLongId(value: unknown): value is string {
-  return typeof value === 'string' && value.length > 0 && value.length <= MAX_LONG_ID_LENGTH;
-}
-
-/** The JSON tuple of area id, root and name that `buildBundle` makes, in exactly its spelling. */
-function isBundleId(value: unknown): value is string {
-  if (!isLongId(value)) {
-    return false;
-  }
-  try {
-    const parts: unknown = JSON.parse(value);
-    return (
-      Array.isArray(parts) &&
-      parts.length === 3 &&
-      parts.every((part) => typeof part === 'string') &&
-      JSON.stringify(parts) === value
-    );
-  } catch {
-    // Not JSON at all.
-    return false;
-  }
 }

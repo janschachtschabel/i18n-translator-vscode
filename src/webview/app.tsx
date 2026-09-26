@@ -91,7 +91,7 @@ function BundleView({ store, model }: { store: EditorStore; model: BundleViewMod
         <>
           <p id={GRID_HELP_ID} class="grid-help">
             {l10n.t(
-              'Enter or F2 edits a text; in the key column, F2 renames the key and Delete (on macOS Cmd+Backspace) deletes it.',
+              'A click, Enter or F2 edits a text; in the key column, F2 renames the key and Delete (on macOS Cmd+Backspace) deletes it.',
             )}
           </p>
           <div class="workspace">

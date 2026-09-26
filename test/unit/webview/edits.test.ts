@@ -388,6 +388,31 @@ describe('editing', () => {
     store.receive({ type: 'bundle', model: withTexts({ CANCEL: { fr: text('Annuler') } }) });
     expect(keys()).toEqual(['CANCEL', 'ERROR_TITLE']);
     store.edits.cancel();
+    // It stays after its editor closed, until the filter changes (see below).
+    expect(keys()).toEqual(['CANCEL', 'ERROR_TITLE']);
+    store.toggleMissing();
+    store.toggleMissing();
+    expect(keys()).toEqual(['ERROR_TITLE']);
+  });
+
+  // A click on the next missing cell saved the row with the filter "missing": the row left the filter before the
+  // mouse button came up, the rows below moved up, and the click opened nothing (review of R1-R3, P1).
+  it('keeps the rows edited under a filter until the filter or the languages shown change', () => {
+    const { store, lastRequest } = open();
+    const keys = () => store.rows.value.map((candidate) => candidate.key);
+    store.toggleMissing();
+    store.edit(id('CANCEL'), 'fr');
+    store.edits.draft.value = 'Annuler';
+    // The click on the next missing cell saves CANCEL and opens that cell.
+    store.edit(id('ERROR_TITLE'), 'it');
+    store.receive({ type: 'writeResult', requestId: lastRequest(), ok: true });
+    store.receive({ type: 'bundle', model: withTexts({ CANCEL: { fr: text('Annuler') } }) });
+    expect(keys()).toEqual(['CANCEL', 'ERROR_TITLE']);
+    expect(store.edits.open.value).toMatchObject({ entryId: id('ERROR_TITLE'), locale: 'it' });
+    store.edits.cancel();
+    expect(keys()).toEqual(['CANCEL', 'ERROR_TITLE']);
+    store.toggleLocale('it');
+    store.toggleLocale('it');
     expect(keys()).toEqual(['ERROR_TITLE']);
   });
 

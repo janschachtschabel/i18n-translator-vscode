@@ -7,6 +7,7 @@ import './cellEditor.css';
 import { focusIsLost } from './focus';
 import { inlineCheck, type CheckLine } from './inlineCheck';
 import { localeName } from './localeName';
+import { trackPointer, whenPointerUp } from './pointer';
 
 // One editor is open at a time, so these ids are unique.
 const ERROR_ID = 'cell-editor-error';
@@ -46,6 +47,8 @@ export function CellEditor({ store, editor, locale, keyText, referenceText }: Ce
   const syntax = store.placeholderSyntax.value;
   const check = useMemo(() => inlineCheck(referenceText, text, syntax), [referenceText, text, syntax]);
 
+  // From the first editor on, a click elsewhere saves when its button comes up (onFocusOut).
+  useLayoutEffect(trackPointer, []);
   useLayoutEffect(() => {
     const element = field.current!;
     // At its full height before it takes the focus, so that scrolling it into view shows the cursor at its end.
@@ -108,18 +111,22 @@ export function CellEditor({ store, editor, locale, keyText, referenceText }: Ce
   };
   // Leaving the editor saves it, e.g. with a click elsewhere. It does not when the focus is still in an editor:
   // this one, when VS Code took the focus from the page (the field gets it back later), or the one that took its
-  // place, when the list replaced the table. An editor that went (its row left the view) saves nothing.
+  // place, when the list replaced the table. An editor that went (its row left the view) saves nothing. A click moves
+  // the focus when its button goes down, and saving closes the editor, which makes its row smaller: it waits for the
+  // button to come up, so that the cells below stay under the pointer and the click lands where it was aimed.
   const onFocusOut = (event: FocusEvent) => {
     if (container.current?.contains(event.relatedTarget as Node | null)) {
       return;
     }
-    setTimeout(() => {
-      const open = edits.open.peek();
-      const same = open?.entryId === editor.entryId && open.locale === editor.locale;
-      if (container.current && same && !document.activeElement?.closest(`.${EDITOR_CLASS}`)) {
-        edits.commit();
-      }
-    }, 0);
+    whenPointerUp(() =>
+      setTimeout(() => {
+        const open = edits.open.peek();
+        const same = open?.entryId === editor.entryId && open.locale === editor.locale;
+        if (container.current && same && !document.activeElement?.closest(`.${EDITOR_CLASS}`)) {
+          edits.commit();
+        }
+      }, 0),
+    );
   };
   const resolve = (resolution: 'takeTheirs' | 'keepMine') => {
     edits[resolution]();

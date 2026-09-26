@@ -13,9 +13,11 @@ export default defineConfig({
         'src/shared/**/*.ts',
         'src/webview/**/*.{ts,tsx}',
         // The modules of the extension host that run without VS Code; the rest runs in the integration tests.
+        'src/extension/commands/inputBox.ts',
         'src/extension/panels/mailPreviewHtml.ts',
         'src/extension/panels/messageRouter.ts',
         'src/extension/panels/webviewHtml.ts',
+        'src/extension/services/apiKeyStore.ts',
         'src/extension/services/serialRunner.ts',
         'src/extension/services/undoHistory.ts',
         'src/extension/services/uriPaths.ts',

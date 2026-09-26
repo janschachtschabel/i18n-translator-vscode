@@ -211,11 +211,17 @@ Gut zu wissen:
    - In schmalen Fenstern erscheint sie als Liste.
    - **Lücken finden:** Die Sprach-Chips über der Tabelle zeigen je Sprache, wie viele Texte fehlen, und blenden
      Sprachen aus oder ein, etwa um nur Referenz und Französisch nebeneinander zu sehen. Alt+M (Filter „fehlend“)
-     zeigt nur die Keys, denen in einer sichtbaren Sprache ein Text fehlt; eine fehlende Zelle zeigt „–“.
+     zeigt nur die Keys, denen in einer sichtbaren Sprache ein Text fehlt. Zeilen, die Sie bearbeitet haben, bleiben
+     stehen, bis Sie den Filter oder die sichtbaren Sprachen ändern.
+   - **Befunde erkennen:** Eine Zelle mit Warnung (etwa „⚠ fehlt“ oder „⚠ leer“) ist gelb hinterlegt, eine mit Fehler
+     (etwa „✖ Platzhalter“) rot, jeweils mit einem Balken am Anfang; im hohen Kontrast bleiben Balken und Symbol.
+     Hinweise wie „ℹ wie Referenz“ bleiben ohne Fläche und Balken. „–“ heißt: kein eigener Text, die Sprache zeigt
+     den Text ihrer Basis (etwa eine Variante den von `de`).
    - Lange Texte wie die Nachrichten der Mail-Templates zeigt „Lange Texte umbrechen“ ganz.
    - **Mail-Templates ansehen:** „Mail-Vorschau“ in den Details zeigt die Mail in jeder Sprache neben dem Editor.
-5. **Text bearbeiten:** eine Zelle wählen, Enter oder F2 drücken, tippen und mit Enter speichern. Bei mehrzeiligen
-   Texten speichert Strg+Enter; Esc bricht ab.
+5. **Text bearbeiten:** eine Zelle anklicken (oder mit den Pfeiltasten wählen und Enter oder F2 drücken), tippen und
+   mit Enter speichern. Bei mehrzeiligen Texten speichert Strg+Enter; Esc bricht ab. Ein Klick in eine andere Zelle
+   speichert ebenfalls und öffnet deren Text.
    - Der Editor prüft schon beim Tippen, etwa Platzhalter und HTML-Tags.
    - Er schreibt nur die geänderte Zeile.
    - Ein geleerter Text wird nach Rückfrage in dieser Sprache gelöscht; dann erscheint der Text der Referenz.
@@ -223,6 +229,8 @@ Gut zu wissen:
    - Kontextmenü der Key-Spalte: Key hinzufügen, umbenennen oder löschen, Sprache hinzufügen.
    - Schaltflächen in der Titelleiste des Editors: Key oder Sprache hinzufügen.
    - Kontextmenü einer Einheit in der Seitenleiste: Key oder Sprache hinzufügen, dazu „Im Explorer zeigen“.
+   - Die Eingabefelder dieser Befehle schließen ohne Änderung mit Esc, dem X in ihrer Titelzeile oder einem Klick
+     daneben.
 7. **Zurücknehmen:** Strg+Z im Editor nimmt die letzte Änderung zurück. Ältere Stände holt
    „Übersetzungsdateien aus einer Sicherung wiederherstellen…“ zurück.
 

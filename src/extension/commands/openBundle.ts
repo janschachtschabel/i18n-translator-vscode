@@ -1,4 +1,5 @@
-import type { EditorPanel, EditorPanels } from '../panels/editorPanel';
+import type { EditorPanel } from '../panels/editorPanel';
+import type { EditorPanels } from '../panels/editorPanels';
 import type { AreaNode } from '../views/areasTree';
 
 /** Opens the editor of the bundle a node of the areas view stands for (clicked or chosen from its menu). */

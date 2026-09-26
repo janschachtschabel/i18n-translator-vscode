@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { AI_SETTING_KEYS, parseAiSettings, type AiSettings } from '../core/config/aiSettings';
 import {
   BACKUP_SETTING_KEYS,
   parseBackupSettings,
@@ -21,6 +22,15 @@ export function readSettings(scope: vscode.Uri): { settings: Settings; errors: s
 export function readBackupSettings(): { settings: BackupSettings; errors: string[] } {
   const config = vscode.workspace.getConfiguration('eduI18n');
   return parseBackupSettings(Object.fromEntries(BACKUP_SETTING_KEYS.map((key) => [key, config.get(key)])));
+}
+
+/**
+ * Reads and validates the `eduI18n.ai.*` settings, which apply to the window. The address of the b-api is read from
+ * the user settings only (scope `machine`), so that no workspace can send the key elsewhere.
+ */
+export function readAiSettings(): { settings: AiSettings; errors: string[] } {
+  const config = vscode.workspace.getConfiguration('eduI18n');
+  return parseAiSettings(Object.fromEntries(AI_SETTING_KEYS.map((key) => [key, config.get(key)])));
 }
 
 /** One glob for the `exclude` argument of `findFiles`; null excludes nothing. */

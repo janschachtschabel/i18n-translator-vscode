@@ -134,10 +134,13 @@ export function Table({ store, rows, locales, reference, wrap, labelledBy, descr
       store.edit(row.entryId, locale.code);
     }
   };
-  const onDblClick = (event: MouseEvent) => {
+  // A click opens the editor, as in the old app; one with a modifier, or one that ends a selection of text, selects.
+  const onClick = (event: MouseEvent) => {
     const target = event.target as HTMLElement;
     const cell = target.closest<HTMLElement>('[data-row]');
-    if (cell && !target.closest(`.${EDITOR_CLASS}`)) {
+    const modified = event.shiftKey || event.ctrlKey || event.altKey || event.metaKey;
+    const selecting = document.getSelection()?.isCollapsed === false;
+    if (cell && !target.closest(`.${EDITOR_CLASS}`) && !modified && !selecting) {
       editAt(cellPosition(cell));
     }
   };
@@ -171,7 +174,7 @@ export function Table({ store, rows, locales, reference, wrap, labelledBy, descr
         onKeyDown={onKeyDown}
         onFocusIn={onFocusIn}
         onFocusOut={onFocusOut}
-        onDblClick={onDblClick}
+        onClick={onClick}
       >
         <div role="rowgroup" class="grid-head">
           <HeaderRow locales={locales} activeColumn={position.row === 0 ? position.column : undefined} />

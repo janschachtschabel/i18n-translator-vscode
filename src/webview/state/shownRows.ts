@@ -74,26 +74,19 @@ export function showEdits(
 }
 
 /**
- * The rows the filter lets through, and the row of the open editor where the model has it, also when the filter
- * no longer lets it through (e.g. once its missing text is there): its editor stays while the user types.
+ * The rows the filter lets through, and those of `kept` where the model has them, also when the filter no longer
+ * lets them through (e.g. once their missing text is there), in the model's order.
  */
-export function withRowOf(
+export function withRowsOf(
   filtered: readonly RowView[],
   all: readonly RowView[],
-  entryId: string | undefined,
+  kept: ReadonlySet<string>,
 ): readonly RowView[] {
-  if (entryId === undefined || filtered.some((row) => row.entryId === entryId)) {
+  const shown = new Set(filtered.map((row) => row.entryId));
+  if ([...kept].every((entryId) => shown.has(entryId))) {
     return filtered;
   }
-  const at = all.findIndex((row) => row.entryId === entryId);
-  if (at === -1) {
-    return filtered;
-  }
-  const order = new Map(all.map((row, index) => [row.entryId, index]));
-  const before = filtered.findIndex((row) => order.get(row.entryId)! > at);
-  return before === -1
-    ? [...filtered, all[at]!]
-    : [...filtered.slice(0, before), all[at]!, ...filtered.slice(before)];
+  return all.filter((row) => shown.has(row.entryId) || kept.has(row.entryId));
 }
 
 /** The text in the reference language that a cell's editor checks against; undefined in the reference itself. */

@@ -140,7 +140,7 @@ export function parseBackupSettings(raw: RawSettings): { settings: BackupSetting
 }
 
 /** Takes a raw value if it is valid; otherwise reports it and takes the fallback. */
-function picker(raw: RawSettings, errors: string[]) {
+export function picker(raw: RawSettings, errors: string[]) {
   return <T>(key: string, valid: (value: unknown) => boolean, fallback: T): T => {
     const value = raw[key];
     if (value === undefined) {
