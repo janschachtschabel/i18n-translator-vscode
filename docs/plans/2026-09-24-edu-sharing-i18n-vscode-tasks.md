@@ -1149,6 +1149,13 @@ was nicht ausdrücklich geändert wurde.
 >   - Beim Umbenennen von `A.B` in `A` prüft `keyCheck` den Konflikt mit den Kind-Keys weiterhin nicht. Das ist ein älterer Befund und betrifft den Adapter.
 >   - Ein nach dem Neustart wiederhergestellter Editor nimmt sein Ziel aus dem Zustand der Webview. Der Zustand wird geprüft und das Ziel im Index gesucht, kann also nur auf Einheiten des Arbeitsbereichs zeigen (Risiko akzeptiert).
 >   - Aktionen einer Zeile beim Fokus und eine Tastenhilfe auf „?“ gibt es nicht. Die Tastenzeile über der Tabelle und das Kontextmenü decken beides ab.
+>
+> **Umsetzungsnotizen Task 2.18 (26.09.2026):** Siehe [`../verification/phase-2.md`](../verification/phase-2.md).
+> - VS Code 1.139.1 wurde wie in Phase 1 mit eigenem Profil über das DevTools-Protokoll gesteuert. Die Skripte liegen nur lokal in `out/acceptance/phase-2/`.
+> - Auf einer Kopie der echten Dateien (eigenes Git-Repository, der Clone nur gelesen) ändert eine Zelle genau eine Zeile. Undo und die Sicherung der Sitzung stellen den Stand wieder her, danach ist `git status` leer.
+> - Bilder in Light+ und Dark+ und der Tastaturdurchlauf stammen aus dem Fixture. VS Code lief ohne deutsches Sprachpaket, also englisch.
+> - Ein Test mit 450 Keys lag mit 2 s zu nah an vitests 5 s: Er rendert jetzt eine Sprache statt vier und hat 20 s Zeit.
+> - Offen, von Hand: NVDA; die Dialoge der Key-Befehle und die Rückfrage beim Leeren; Kontextmenü und Titelleiste; Kontrastthemes in VS Code.
 
 ### Task 2.1: Textbausteine für das Schreiben
 **Dateien:** Create `src/core/text/edits.ts`, `src/core/text/style.ts`; Test: `test/unit/core/text/edits.test.ts`, `style.test.ts`
