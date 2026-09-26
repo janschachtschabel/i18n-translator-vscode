@@ -12,6 +12,7 @@ import { Table } from './components/table/table';
 import { Toolbar } from './components/toolbar';
 import { formatNumber, l10n } from './l10n';
 import { useShortcuts } from './shortcuts';
+import { compactCandidates } from './state/layout';
 import { missingNotice, type EditorStore, type View } from './state/store';
 
 export function App({ store }: { store: EditorStore }) {
@@ -54,6 +55,9 @@ function BundleView({ store, model }: { store: EditorStore; model: BundleViewMod
   const layout = store.layout.value;
   const shown = store.shownLocales.value;
   const reference = model.locales.find((locale) => locale.reference)?.code;
+  // The compact list offers a choice once it has two languages to show beside the reference (or instead of one).
+  const candidates = compactCandidates(model.locales, store.uiState.value.hiddenLocales);
+  const second = shown.find((locale) => !locale.reference);
   return (
     <div class={layout === 'table' ? 'bundle fill' : 'bundle'}>
       <SkipLinks layout={layout} />
@@ -68,8 +72,13 @@ function BundleView({ store, model }: { store: EditorStore; model: BundleViewMod
       <LanguageChips store={store} locales={model.locales} />
       <FileFindings model={model} />
       <FilterBar store={store} model={model} />
-      {layout === 'compact' && shown[1] && (
-        <CompactChoice store={store} locales={model.locales} selected={shown[1].code} />
+      {layout === 'compact' && candidates.length > 1 && second && (
+        <CompactChoice
+          store={store}
+          locales={candidates}
+          selected={second.code}
+          label={reference === undefined ? l10n.t('Language') : l10n.t('Second language')}
+        />
       )}
       {rows.length === 0 && (
         <p>

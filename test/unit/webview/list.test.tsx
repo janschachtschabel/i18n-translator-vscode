@@ -77,6 +77,23 @@ describe('list', () => {
     expect((posted.at(-1) as { state: UiState }).state.compactLocale).toBe('it');
   });
 
+  // Without a reference the compact list had one language and no choice (audit F-02, T-12).
+  it('offers the choice among the visible languages, also without a reference', () => {
+    setWidth(400);
+    const unreferenced = {
+      ...findingsModel,
+      locales: findingsModel.locales.map((shown) => ({ ...shown, reference: false })),
+    };
+    const { store } = open({}, unreferenced);
+    expect(terms('SAVE')).toEqual(['de']);
+    const choice = () => screen.getByRole('combobox', { name: 'Sprache' }) as HTMLSelectElement;
+    act(() => void fireEvent.change(choice(), { target: { value: 'fr' } }));
+    expect(terms('SAVE')).toEqual(['fr']);
+    act(() => store.toggleLocale('fr'));
+    expect(terms('SAVE')).toEqual(['de']);
+    expect([...choice().options].map((option) => option.value)).toEqual(['de', 'de-informal', 'it']);
+  });
+
   it('keeps the layout the user chose', () => {
     setWidth(400);
     open({ layout: 'table' });
