@@ -236,4 +236,32 @@ suite('Backups', () => {
     assert.ok(!result.ok && result.reason === 'error', JSON.stringify(result));
     assert.ok(new TextDecoder().decode(await vscode.workspace.fs.readFile(fr())).includes('Continuer ?'));
   });
+
+  // A backup that keeps failing read every file and warned again on every save (audit L-12).
+  test('tries a failed backup again after the interval, not on every save', async () => {
+    const blocked = join(storage, 'blocked');
+    writeFileSync(blocked, 'not a folder');
+    const failing = new BackupService(
+      vscode.Uri.file(blocked),
+      api.index,
+      log,
+      () => settings,
+      () => now,
+    );
+    let attempts = 0;
+    const create = failing.create.bind(failing);
+    failing.create = (reason) => {
+      attempts++;
+      return create(reason);
+    };
+    const failingStore = new FileStore(api.index, log, {
+      beforeWrite: (kind, files) => failing.beforeWrite(kind, files),
+    });
+    assert.deepEqual(await failingStore.write(ref, setAsk('Continuer ?')), { ok: true });
+    assert.deepEqual(await failingStore.write(ref, setAsk('Continuez ?')), { ok: true });
+    assert.equal(attempts, 1);
+    now += settings.intervalMinutes * MINUTE;
+    assert.deepEqual(await failingStore.write(ref, setAsk('Continuons ?')), { ok: true });
+    assert.equal(attempts, 2);
+  });
 });

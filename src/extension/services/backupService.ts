@@ -44,6 +44,8 @@ const ID = /^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z(?:-\d{3})?$/;
 export class BackupService {
   /** Time of the last backup in this session; undefined until the first. */
   private lastBackup: number | undefined;
+  /** When the last backup before a write failed: writes go ahead without a new try until the interval is over. */
+  private failedAt: number | undefined;
   /** The backup read last for restoring: removing old backups must not delete it (it may be the oldest). */
   private restoring: string | undefined;
 
@@ -68,11 +70,13 @@ export class BackupService {
     }
     try {
       await this.create(reason);
+      this.failedAt = undefined;
     } catch (error) {
       // A restore replaces files wholesale, so it stops; a change can go ahead, since it can be undone.
       if (kind === 'restore') {
         throw error;
       }
+      this.failedAt = this.now();
       this.log.error('Backing up the translation files failed.', error);
       void showWarning(
         vscode.l10n.t('The translation files could not be backed up: {error}', { error: messageOf(error) }),
@@ -187,13 +191,18 @@ export class BackupService {
     if (kind === 'restore') {
       return 'restore';
     }
+    // A backup that failed (full or unwritable storage) would fail again: the next try waits for the interval, at
+    // least ten minutes, instead of reading every file and warning on every save.
+    const { intervalMinutes } = this.settings();
+    if (this.failedAt !== undefined && this.now() - this.failedAt < Math.max(intervalMinutes, 10) * 60_000) {
+      return undefined;
+    }
     if (this.lastBackup === undefined) {
       return 'first-write';
     }
     if (bundles > 1) {
       return 'several-bundles';
     }
-    const { intervalMinutes } = this.settings();
     return intervalMinutes > 0 && this.now() - this.lastBackup >= intervalMinutes * 60_000
       ? 'interval'
       : undefined;
