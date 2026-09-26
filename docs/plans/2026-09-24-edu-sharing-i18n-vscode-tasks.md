@@ -1459,8 +1459,14 @@ schreibt nichts.
 **Phase 8 – Feinschliff und Release.**
 - Schritt 0: `/better-coding-workflow`.
 - 8.1 Dokumentation (README DE/EN, Nutzerhandbuch, Tastatur- und Einstellungsreferenz).
+  > **Teilweise vorgezogen (26.09.2026):** Das README beschreibt Installation, erste Schritte, Befehle, Tastatur und
+  > den geplanten b-api-Schlüssel; `docs/einstellungen.md` ist die Einstellungsreferenz. Offen: das README auf
+  > Englisch und ein Nutzerhandbuch.
 - 8.2 l10n DE komplett, auch die Meldungen der Einstellungsprüfung im Kern (als Vorlagen mit Argumenten) und die Parser-Codes von `parse-error` in Worten (verschoben aus dem Review Block C/D).
 - 8.3 a11y-Audit (`/better-coding-frontend`, Audit-Modus) und Behebungen.
 - 8.4 Performance mit dem echten Repo.
 - 8.5 Release-Workflow (Tag → VSIX → GitHub Release).
+  > **Vorgezogen (26.09.2026):** Ein Tag `v*` durchläuft die CI; danach veröffentlicht der Job `release` die geprüfte
+  > VSIX, auch als `edu-sharing-i18n.vsix` für den Link auf die neueste Version. Version je Phase (0.2.0 nach
+  > Phase 2), `CHANGELOG.md`, Ablauf in CONTRIBUTING.
 - 8.6 Rauchtests in VS Code, Antigravity und Windsurf/Cursor.

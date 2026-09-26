@@ -63,6 +63,25 @@ Meldungen zu Links macht und Namen aus dem Arbeitsbereich darin stehen.
 [Conventional Commits](https://www.conventionalcommits.org/) auf Englisch (`feat:`, `fix:`, `test:`, `docs:`,
 `build:`, `chore:`), ein logischer Schritt je Commit.
 
+## Release
+
+Die Version folgt den Phasen: `0.<Phase>.<Korrektur>`. Eine Release entsteht aus einem Tag auf `main`:
+
+1. Die Version anheben und `CHANGELOG.md` ergänzen, beides per Pull Request nach `main`.
+   `npm version <x.y.z> --no-git-tag-version` passt `package.json` und `package-lock.json` an.
+2. Ist die CI auf `main` grün, den Stand taggen und den Tag pushen:
+
+   ```bash
+   git tag -a v<x.y.z> -m "edu-sharing i18n <x.y.z>"
+   git push origin v<x.y.z>
+   ```
+
+3. Die CI prüft den Tag wie jeden Stand. Sind beide Systeme grün, veröffentlicht der Job `release` die geprüfte VSIX
+   als GitHub-Release.
+   - Sie erscheint zweimal: mit der Version im Namen und als `edu-sharing-i18n.vsix`. Unter diesem Namen führt
+     `…/releases/latest/download/edu-sharing-i18n.vsix` immer zur neuesten, wie es das README beschreibt.
+   - Passt der Tag nicht zur Version in `package.json`, bricht der Job ab, ohne etwas zu veröffentlichen.
+
 ## Bekannte Hinweise
 
 `npm audit` meldet Schwachstellen in `mocha` (über `@vscode/test-cli`: `diff`, `serialize-javascript`).

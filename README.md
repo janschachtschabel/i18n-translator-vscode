@@ -54,40 +54,61 @@ als Liste:
 
 ## Installation
 
-Voraussetzungen:
-- VS Code 1.90 oder neuer unter Windows, macOS oder Linux.
-- Die Extension steht noch nicht im Marketplace; man installiert sie als VSIX-Datei.
-- Die Oberfläche folgt der Sprache von VS Code (Deutsch oder Englisch).
+Voraussetzung ist VS Code 1.90 oder neuer unter Windows, macOS oder Linux. Die Extension steht nicht im Marketplace:
+Jede [Release auf GitHub](https://github.com/janschachtschabel/i18n-translator-vscode/releases/latest) enthält sie als
+Datei `edu-sharing-i18n.vsix`. Die Oberfläche folgt der Sprache von VS Code (Deutsch oder Englisch).
 
-**1. VSIX-Datei besorgen.** Der Dateiname enthält die Version, derzeit `0.0.1`. Es gibt zwei Wege:
-- *Aus der CI:* Auf GitHub unter „Actions“ einen erfolgreichen Lauf des Workflows „CI“ öffnen und unten das Artefakt
-  „vsix“ herunterladen. Das ZIP enthält `edu-sharing-i18n-0.0.1.vsix`.
-- *Selbst bauen:* Mit Node.js 22.12 oder neuer im Ordner dieses Repositorys ausführen:
+### Direkt von GitHub
+
+**Im Browser**, ohne weitere Werkzeuge:
+1. Die [neueste VSIX](https://github.com/janschachtschabel/i18n-translator-vscode/releases/latest/download/edu-sharing-i18n.vsix)
+   herunterladen.
+2. In VS Code die Ansicht „Erweiterungen“ öffnen (Strg+Umschalt+X).
+3. Im Menü „…“ oben in der Ansicht „Aus VSIX installieren…“ („Install from VSIX…“) wählen und die heruntergeladene
+   Datei angeben.
+
+**Mit einem Befehl**, der die neueste Version lädt und installiert:
+- Windows (PowerShell):
+
+  ```powershell
+  Invoke-WebRequest https://github.com/janschachtschabel/i18n-translator-vscode/releases/latest/download/edu-sharing-i18n.vsix -OutFile "$env:TEMP\edu-sharing-i18n.vsix" -UseBasicParsing; code --install-extension "$env:TEMP\edu-sharing-i18n.vsix"
+  ```
+
+- macOS und Linux:
 
   ```bash
+  curl -fsSL -o /tmp/edu-sharing-i18n.vsix https://github.com/janschachtschabel/i18n-translator-vscode/releases/latest/download/edu-sharing-i18n.vsix && code --install-extension /tmp/edu-sharing-i18n.vsix
+  ```
+
+Gut zu wissen:
+- **Aktualisieren:** denselben Weg noch einmal gehen; die neue Version ersetzt die alte. Was sich geändert hat, steht
+  im [CHANGELOG](CHANGELOG.md).
+- **Entfernen:** in der Ansicht „Erweiterungen“ „Deinstallieren“ wählen.
+- **Befehl `code` fehlt:** Unter macOS in VS Code „Shell Command: Install 'code' command in PATH“ ausführen. Unter
+  Windows und Linux richtet ihn die Installation von VS Code ein; sonst den Weg im Browser nehmen.
+- **VS-Code-Forks** wie Windsurf oder Cursor: im Menü „Aus VSIX installieren…“, oder im Befehl deren Aufruf statt
+  `code`. Getestet ist die Extension dort nicht.
+- **Eine bestimmte Version:** Alle Versionen stehen unter
+  [Releases](https://github.com/janschachtschabel/i18n-translator-vscode/releases), jeweils auch mit der Version im
+  Dateinamen.
+
+### Andere Wege
+
+- **Selbst bauen** (mit Node.js 22.12 oder neuer):
+
+  ```bash
+  git clone https://github.com/janschachtschabel/i18n-translator-vscode.git
+  cd i18n-translator-vscode
   npm ci
   npm run package
   ```
 
-  Danach liegt `edu-sharing-i18n-0.0.1.vsix` im selben Ordner.
-
-**2. Installieren.** In VS Code die Ansicht „Erweiterungen“ öffnen (Strg+Umschalt+X). Im Menü „…“ oben in der Ansicht
-„Aus VSIX installieren…“ („Install from VSIX…“) wählen und die Datei angeben. Oder im Terminal:
-
-```bash
-code --install-extension edu-sharing-i18n-0.0.1.vsix
-```
-
-- **Aktualisieren:** eine neuere VSIX genauso über die alte installieren.
-- **Entfernen:** in der Ansicht „Erweiterungen“ „Deinstallieren“ wählen.
-- **VS-Code-Forks:** Windsurf oder Cursor installieren VSIX-Dateien auf demselben Weg. Getestet ist die Extension dort
-  nicht.
-
-**Ohne Installation ausprobieren** (mit Node.js 22.12 oder neuer):
-1. Dieses Repository in VS Code öffnen und einmal `npm ci` ausführen.
-2. **F5** drücken. Es öffnet sich ein zweites Fenster („Extension Development Host“) mit einer frischen Kopie der
-   Beispieldaten unter `out/dev-workspace`.
-3. Änderungen dort berühren nichts Eingechecktes.
+  Danach liegt `edu-sharing-i18n-<Version>.vsix` im Ordner; installieren wie oben.
+- **Ohne Installation ausprobieren:** das Repository in VS Code öffnen, einmal `npm ci` ausführen und **F5** drücken.
+  Es öffnet sich ein zweites Fenster („Extension Development Host“) mit einer frischen Kopie der Beispieldaten unter
+  `out/dev-workspace`. Änderungen dort berühren nichts Eingechecktes.
+- **Aus der CI:** Jeder Lauf des Workflows „CI“ legt die VSIX als Artefakt „vsix“ ab. Zum Herunterladen braucht es eine
+  Anmeldung bei GitHub.
 
 ## Erste Schritte
 
@@ -247,7 +268,7 @@ Phase 3 bis 8 laut [Taskliste](docs/plans/2026-09-24-edu-sharing-i18n-vscode-tas
 - Import und Export (CSV, JSON);
 - Metadataset-`.properties` und Mail-Templates;
 - Kontext, Review-Status und eine Übersicht;
-- Release über GitHub.
+- Feinschliff: Doku auch auf Englisch, vollständige Übersetzung der Meldungen, Rauchtest in VS-Code-Forks.
 
 Weitere Unterlagen:
 - Das [Design-Dokument](docs/plans/2026-09-24-edu-sharing-i18n-vscode-design.md) beschreibt den vollen Umfang.
@@ -264,8 +285,10 @@ Problems panel and offers a translation editor with table and list. Writes chang
 backups.
 
 - **Status:** work in progress (phase 2 of 8).
-- **Install:** take the VSIX from a CI run, or build it with `npm ci` and `npm run package`. Then run "Extensions:
-  Install from VSIX…".
+- **Install:** download
+  [edu-sharing-i18n.vsix](https://github.com/janschachtschabel/i18n-translator-vscode/releases/latest/download/edu-sharing-i18n.vsix)
+  from the latest GitHub release and run "Extensions: Install from VSIX…", or use one of the commands under
+  „Installation“ above.
 - **API key:** none is needed yet. AI filling via the b-api comes with phase 3. The key will be kept in VS Code's
   secret storage or in the `B_API_KEY` environment variable.
 - **Documentation:** the settings are described in German in [docs/einstellungen.md](docs/einstellungen.md), as are
