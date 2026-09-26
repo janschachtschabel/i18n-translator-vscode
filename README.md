@@ -98,6 +98,11 @@ Alle in der Befehlspalette unter „edu-sharing i18n":
 `areas`, `variants` und `roots` aus den Einstellungen des Arbeitsbereichs gelten erst, wenn der Arbeitsbereich
 vertrauenswürdig ist.
 
+Grenzen: Die Extension erkennt höchstens 20 Wurzeln je Bereich und Arbeitsbereichsordner (mehr lassen sich in
+`eduI18n.roots` festlegen), prüft keine Wurzel mit mehr als 5.000 Dateien und liest keine Übersetzungsdatei über 5 MB.
+Reguläre Ausdrücke aus den Einstellungen dürfen höchstens 1.000 Zeichen lang sein und keine wiederholte Gruppe haben,
+die mit einem wiederholten Teil beginnt, wie `(a+)+`.
+
 ## Protokoll
 
 Ausgabe → „edu-sharing i18n" zeigt, was die Extension einliest, prüft und schreibt, mit Dauer, aber ohne Texte der

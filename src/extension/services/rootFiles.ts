@@ -7,11 +7,27 @@ import { revisionOf } from '../../core/util/hash';
 import { messageOf } from './errors';
 import { relativeUriPath } from './uriPaths';
 
+/**
+ * Bounds for what a repository holds, as it is read into the extension host: many roots, a root of many files or
+ * a file of many megabytes would stall it. edu-sharing has one root of about 90 files, the largest 80 KB.
+ */
+export interface RootLimits {
+  /** Roots an area may detect in a workspace folder; more must be set in `eduI18n.roots`. */
+  roots: number;
+  /** Files of any kind below a root. */
+  files: number;
+  /** Bytes of one translation file. */
+  fileBytes: number;
+}
+
+export const ROOT_LIMITS: RootLimits = { roots: 20, files: 5000, fileBytes: 5 * 1024 * 1024 };
+
 /** The roots of an area in a workspace folder, from its marker files: a search of the whole folder. */
 export async function detectRoots(
   folder: vscode.WorkspaceFolder,
   area: AreaDefinition,
   exclude: string | null,
+  limits = ROOT_LIMITS,
 ): Promise<string[]> {
   if (!area.detect) {
     return [];
@@ -19,7 +35,16 @@ export async function detectRoots(
   const markers = await vscode.workspace.findFiles(
     new vscode.RelativePattern(folder, area.detect.glob),
     exclude,
+    limits.roots + 1,
   );
+  // A marker file per root: beyond the limit, the search stops without them all.
+  if (markers.length > limits.roots) {
+    throw new Error(
+      vscode.l10n.t('there are more than {count} roots; set the ones to check in eduI18n.roots', {
+        count: limits.roots,
+      }),
+    );
+  }
   return rootsFromMarkers(relativePaths(folder, markers), area.detect.marker);
 }
 
@@ -29,25 +54,33 @@ export async function listRoot(
   area: AreaDefinition,
   root: string,
   exclude: string | null,
+  limits = ROOT_LIMITS,
 ): Promise<string[]> {
   const pattern = new vscode.RelativePattern(vscode.Uri.joinPath(folder.uri, root), '**/*');
-  const found = await vscode.workspace.findFiles(pattern, exclude);
+  const found = await vscode.workspace.findFiles(pattern, exclude, limits.files + 1);
+  if (found.length > limits.files) {
+    throw new Error(vscode.l10n.t('the folder holds more than {count} files', { count: limits.files }));
+  }
   return filesToRead(area, root, relativePaths(folder, found));
 }
 
-/** Unreadable files (e.g. deleted since the listing) are reported and left out. */
+/** Unreadable files (e.g. deleted since the listing) and files beyond the size limit are reported and left out. */
 export async function readFiles(
   folder: vscode.WorkspaceFolder,
   paths: readonly string[],
   report: (message: string) => void,
+  limits = ROOT_LIMITS,
 ): Promise<SourceFile[]> {
   const files = await Promise.all(
     paths.map(async (relPath) => {
+      const uri = vscode.Uri.joinPath(folder.uri, relPath);
       try {
-        return {
-          relPath,
-          bytes: await vscode.workspace.fs.readFile(vscode.Uri.joinPath(folder.uri, relPath)),
-        };
+        if ((await vscode.workspace.fs.stat(uri)).size > limits.fileBytes) {
+          const size = `${Math.round(limits.fileBytes / 1024)} KB`;
+          report(vscode.l10n.t('{file} is larger than {size} and was not read.', { file: relPath, size }));
+          return undefined;
+        }
+        return { relPath, bytes: await vscode.workspace.fs.readFile(uri) };
       } catch (error) {
         report(
           vscode.l10n.t('{file} could not be read: {error}', { file: relPath, error: messageOf(error) }),
