@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { act, cleanup, fireEvent, screen, within } from '@testing-library/preact';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { WebviewToHost } from '../../../src/shared/protocol';
 import { axeProblems, openWith as open } from './support';
 
@@ -103,6 +103,20 @@ describe('the AI suggestion in the cell editor', () => {
       locale: 'fr',
       value: 'Erreur ({{date}})',
     });
+  });
+
+  it('gives the field the focus back when the suggestion comes after VS Code had it (the consent dialog)', async () => {
+    const { send, posted } = open();
+    send({ type: 'aiState', available: true, model: 'gpt-6-luna' });
+    act(() => void fireEvent.click(cellOf('CANCEL', 2)));
+    press('i', { ctrlKey: true });
+    const hasFocus = vi.spyOn(document, 'hasFocus').mockReturnValue(false);
+    act(() => field().blur());
+    await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+    hasFocus.mockRestore();
+    send({ type: 'aiSuggestion', requestId: requests(posted)[0]!.requestId, text: 'Annuler' });
+    expect(field().value).toBe('Annuler');
+    expect(document.activeElement).toBe(field());
   });
 
   it('shows why there is no suggestion, and drops one for an editor that closed', () => {

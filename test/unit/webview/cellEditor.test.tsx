@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { act, cleanup, fireEvent, screen, within } from '@testing-library/preact';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_FILTER } from '../../../src/shared/filter';
 import type { WebviewToHost } from '../../../src/shared/protocol';
 import { findingsModel as model, openWith as open, row, text, axeProblems } from './support';
@@ -229,6 +229,23 @@ describe('cell editor in the table', () => {
       expect.objectContaining({ entryId: id('SAVE'), locale: 'fr', value: 'Sauver' }),
     ]);
     expect(field()).toBe(screen.getByRole('textbox', { name: 'CANCEL in fr' }));
+  });
+
+  // VS Code's modal dialogs (e.g. the consent before the first AI request) take the focus from the page, whose
+  // active element then is the body: the editor closed as if the user had clicked beside it.
+  it('stays open when VS Code takes the focus from the whole page, e.g. with a dialog', async () => {
+    const { posted } = open();
+    act(() => void fireEvent.click(cellOf('SAVE', 2)));
+    typeText('Sauver');
+    const hasFocus = vi.spyOn(document, 'hasFocus').mockReturnValue(false);
+    try {
+      act(() => field().blur());
+      await nextTask();
+      expect(edits(posted)).toEqual([]);
+      expect(screen.getByRole('textbox', { name: 'SAVE in fr' })).toBeTruthy();
+    } finally {
+      hasFocus.mockRestore();
+    }
   });
 
   it('saves when the button comes up after a press that became no click', async () => {

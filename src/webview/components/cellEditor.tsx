@@ -73,13 +73,14 @@ export function CellEditor({ store, editor, locale, keyText, referenceText }: Ce
     return () => observer.disconnect();
   }, []);
   useLayoutEffect(() => grow(field.current!), [text]);
-  // The choice went with the focus on one of its buttons (e.g. the text is back as it was): the field takes it,
-  // before the table or the list would give it to the cell or the card.
+  // The choice went with the focus on one of its buttons (e.g. the text is back as it was), or a suggestion came
+  // while VS Code had the focus (the consent dialog): the field takes it, before the table or the list would give it
+  // to the cell or the card.
   useLayoutEffect(() => {
     if (!editor.conflict && focusIsLost()) {
       field.current?.focus();
     }
-  }, [editor.conflict]);
+  }, [editor.conflict, editor.suggestion]);
 
   // A suggestion of the AI for the text, from the reference (or a variant's base); the field keeps the focus.
   const hasSource = Boolean(referenceText?.trim());
@@ -140,7 +141,9 @@ export function CellEditor({ store, editor, locale, keyText, referenceText }: Ce
       setTimeout(() => {
         const open = edits.open.peek();
         const same = open?.entryId === editor.entryId && open.locale === editor.locale;
-        if (container.current && same && !document.activeElement?.closest(`.${EDITOR_CLASS}`)) {
+        // Without the focus of the page, VS Code has it (a dialog, the palette): the user comes back to the editor.
+        const elsewhere = document.hasFocus() && !document.activeElement?.closest(`.${EDITOR_CLASS}`);
+        if (container.current && same && elsewhere) {
           edits.commit();
         }
       }, 0),
