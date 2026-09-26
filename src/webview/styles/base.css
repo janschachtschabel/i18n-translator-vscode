@@ -24,6 +24,17 @@ select:focus-visible {
   outline-offset: 1px;
 }
 
+/*
+ * The colors of findings. Symbols and the bars of marked texts take the theme's list colors: measured in the six
+ * built-in themes, they reach 5.1:1 and more on the areas of marked texts and on the editor's background, where the
+ * editor's warning color does not (2.8:1 on the warning area of the light themes). High contrast themes have no
+ * list colors; there the editor's colors reach 6.2:1 and more.
+ */
+:root {
+  --mark-error: var(--vscode-list-errorForeground, var(--vscode-editorError-foreground));
+  --mark-warning: var(--vscode-list-warningForeground, var(--vscode-editorWarning-foreground));
+}
+
 /* Read by screen readers, not shown. */
 .visually-hidden {
   position: absolute;

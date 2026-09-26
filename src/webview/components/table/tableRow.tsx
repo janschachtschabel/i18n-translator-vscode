@@ -4,7 +4,7 @@ import type { OpenEditor } from '../../state/edits';
 import { NO_TEXT, referenceTextOf, type ShownCell, type ShownRow } from '../../state/shownRows';
 import type { EditorStore, LocaleColumn } from '../../state/store';
 import { CellEditor } from '../cellEditor';
-import { SEVERITY_SYMBOLS, severityWord, statusWord } from '../cellStatus';
+import { cellMark, SEVERITY_SYMBOLS, severityWord, statusWord } from '../cellStatus';
 import { EmptyValue } from '../emptyValue';
 import { keyContext } from '../keyContext';
 import { LocaleLabel } from '../localeLabel';
@@ -131,6 +131,7 @@ interface CellProps {
 
 function Cell({ cell, locale, row, column, activeColumn, children }: CellProps) {
   const editing = Boolean(children);
+  const mark = cellMark(cell);
   const statuses = [
     ...(cell.notSaved !== undefined ? [{ severity: 'error' as const, word: l10n.t('not saved') }] : []),
     ...cell.issues.map((issue) => ({ severity: issue.severity, word: statusWord(issue.rule) })),
@@ -139,7 +140,7 @@ function Cell({ cell, locale, row, column, activeColumn, children }: CellProps) 
     <div
       role="gridcell"
       aria-colindex={column + 1}
-      class={editing ? 'grid-cell editing' : 'grid-cell'}
+      class={editing ? 'grid-cell editing' : mark ? `grid-cell marked-${mark}` : 'grid-cell'}
       aria-describedby={description(cell) !== undefined ? describedBy(row, column) : undefined}
       aria-keyshortcuts={activeColumn === column && !editing ? 'Enter F2' : undefined}
       {...focusable(row, column, activeColumn)}

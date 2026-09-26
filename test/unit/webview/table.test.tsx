@@ -36,6 +36,24 @@ afterEach(() => {
 });
 
 describe('table', () => {
+  it('marks a text by its most severe finding: an error red, a warning yellow, a hint not at all', () => {
+    const minute = row('MINUTE', {
+      de: text('Minute'),
+      'de-informal': text(undefined),
+      fr: text('Minute', { rule: 'same-as-reference', severity: 'info' }),
+      it: text('Minuto'),
+    });
+    open({}, { ...model, rows: [...model.rows, minute] });
+    expect(cellOf('ERROR_TITLE', 2).className).toContain('marked-error');
+    expect(cellOf('ERROR_TITLE', 3).className).toContain('marked-warning');
+    expect(cellOf('WORKSPACE.TITLE', 3).className).toContain('marked-warning');
+    const unmarked = [cellOf('SAVE', 2), cellOf('MINUTE', 2), cellOf('CANCEL', 1)];
+    expect(unmarked.map((cell) => cell.className)).toEqual(['grid-cell', 'grid-cell', 'grid-cell']);
+    // The editor takes the cell's place, with its own check of the text.
+    act(() => void fireEvent.click(cellOf('ERROR_TITLE', 2)));
+    expect(cellOf('ERROR_TITLE', 2).className).toBe('grid-cell editing');
+  });
+
   it('shows the rows as a grid: a key column and a column per visible language', () => {
     open();
     expect(grid().getAttribute('aria-rowcount')).toBe('5');

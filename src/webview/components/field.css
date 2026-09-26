@@ -53,6 +53,19 @@
   overflow-wrap: anywhere;
 }
 
+/* A text with an error or a warning, as in the table (table.css); the bar takes the place of border and padding. */
+.field-value.marked-error {
+  padding-inline-start: 2px;
+  border-inline-start: 3px solid var(--mark-error);
+  background-color: var(--vscode-inputValidation-errorBackground);
+}
+
+.field-value.marked-warning {
+  padding-inline-start: 2px;
+  border-inline-start: 3px solid var(--mark-warning);
+  background-color: var(--vscode-inputValidation-warningBackground);
+}
+
 .field-value:hover {
   background-color: var(--vscode-list-hoverBackground);
 }

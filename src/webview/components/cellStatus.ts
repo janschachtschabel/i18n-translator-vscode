@@ -1,8 +1,20 @@
 import type { Severity } from '../../core/checks/types';
 import { l10n } from '../l10n';
+import type { ShownCell } from '../state/shownRows';
 
 /** Shown in front of the word of a finding; the word carries the meaning, the symbol and its color help scanning. */
 export const SEVERITY_SYMBOLS: Readonly<Record<Severity, string>> = { error: '✖', warning: '⚠', info: 'ℹ' };
+
+/**
+ * How a text is marked: by its most severe finding, "not saved" counting as an error. Hints mark nothing: they are
+ * guesses (e.g. "as reference"), and marking them would drown the gaps and errors.
+ */
+export function cellMark(cell: Pick<ShownCell, 'issues' | 'notSaved'>): 'error' | 'warning' | undefined {
+  if (cell.notSaved !== undefined || cell.issues.some((issue) => issue.severity === 'error')) {
+    return 'error';
+  }
+  return cell.issues.some((issue) => issue.severity === 'warning') ? 'warning' : undefined;
+}
 
 /** A word for what a finding in a cell is about; its full message describes the cell. */
 export function statusWord(rule: string): string {

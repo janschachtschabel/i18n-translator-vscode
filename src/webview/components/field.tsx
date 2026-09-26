@@ -4,7 +4,7 @@ import type { EditorPlace, OpenEditor } from '../state/edits';
 import type { ShownCell, ShownRow } from '../state/shownRows';
 import type { EditorStore, LocaleColumn } from '../state/store';
 import { CellEditor } from './cellEditor';
-import { SEVERITY_SYMBOLS, severityWord } from './cellStatus';
+import { cellMark, SEVERITY_SYMBOLS, severityWord } from './cellStatus';
 import { EmptyValue } from './emptyValue';
 import './field.css';
 import { hintFor } from './findingHints';
@@ -46,6 +46,7 @@ export function Field({ store, row, locale, cell, editor, referenceText, place }
   });
   const hasNotes = cell.notSaved !== undefined || cell.issues.length > 0;
   const deletable = cell.issues.some((issue) => issue.rule === 'empty-value');
+  const mark = cellMark(cell);
   return (
     <div class="card-field">
       <dt>
@@ -70,7 +71,7 @@ export function Field({ store, row, locale, cell, editor, referenceText, place }
           <button
             ref={button}
             type="button"
-            class="field-value"
+            class={mark ? `field-value marked-${mark}` : 'field-value'}
             aria-describedby={hasNotes ? notesId : undefined}
             onClick={() => store.edit(row.entryId, locale.code, place)}
           >

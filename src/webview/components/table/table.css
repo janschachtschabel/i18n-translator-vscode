@@ -111,11 +111,34 @@
 }
 
 .status-symbol.error {
-  color: var(--vscode-editorError-foreground);
+  color: var(--mark-error);
 }
 
 .status-symbol.warning {
-  color: var(--vscode-editorWarning-foreground);
+  color: var(--mark-warning);
+}
+
+/*
+ * A text with an error or a warning stands out: an area and a bar at its start, which takes 3 px of the padding so
+ * that the texts stay in line. The symbol and the word of the finding say what it is, so that color is never the
+ * only sign; high contrast themes have no areas, the bar stays.
+ */
+.grid-cell.marked-error {
+  padding-inline-start: 5px;
+  border-inline-start: 3px solid var(--mark-error);
+  background-color: var(--vscode-inputValidation-errorBackground);
+}
+
+.grid-cell.marked-warning {
+  padding-inline-start: 5px;
+  border-inline-start: 3px solid var(--mark-warning);
+  background-color: var(--vscode-inputValidation-warningBackground);
+}
+
+/* On the areas the grey of descriptions does not reach 4.5:1 (Light+ 3.8, Dark+ 4.5); the foreground does (4.8). */
+.marked-error .cell-status,
+.marked-warning .cell-status {
+  color: var(--vscode-foreground);
 }
 
 .status-symbol.info {

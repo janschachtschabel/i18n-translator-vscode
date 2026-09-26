@@ -211,7 +211,11 @@ Gut zu wissen:
    - In schmalen Fenstern erscheint sie als Liste.
    - **Lücken finden:** Die Sprach-Chips über der Tabelle zeigen je Sprache, wie viele Texte fehlen, und blenden
      Sprachen aus oder ein, etwa um nur Referenz und Französisch nebeneinander zu sehen. Alt+M (Filter „fehlend“)
-     zeigt nur die Keys, denen in einer sichtbaren Sprache ein Text fehlt; eine fehlende Zelle zeigt „–“.
+     zeigt nur die Keys, denen in einer sichtbaren Sprache ein Text fehlt.
+   - **Befunde erkennen:** Eine Zelle mit Warnung (etwa „⚠ fehlt“ oder „⚠ leer“) ist gelb hinterlegt, eine mit Fehler
+     (etwa „✖ Platzhalter“) rot, jeweils mit einem Balken am Anfang; im hohen Kontrast bleiben Balken und Symbol.
+     Hinweise wie „ℹ wie Referenz“ zeigen nur ihr Symbol. „–“ heißt: kein eigener Text, die Sprache zeigt den Text
+     ihrer Basis (etwa eine Variante den von `de`).
    - Lange Texte wie die Nachrichten der Mail-Templates zeigt „Lange Texte umbrechen“ ganz.
    - **Mail-Templates ansehen:** „Mail-Vorschau“ in den Details zeigt die Mail in jeder Sprache neben dem Editor.
 5. **Text bearbeiten:** eine Zelle anklicken (oder mit den Pfeiltasten wählen und Enter oder F2 drücken), tippen und
