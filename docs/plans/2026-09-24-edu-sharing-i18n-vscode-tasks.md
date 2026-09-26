@@ -2,7 +2,7 @@
 
 > Gehört zu [`2026-09-24-edu-sharing-i18n-vscode-design.md`](2026-09-24-edu-sharing-i18n-vscode-design.md).
 > **Phasen 0 bis 2 sind vollständig ausgearbeitet** (Phase 2 am 24.09.2026, vor ihrem Start), ebenso die am
-> 26.09.2026 vorgezogenen Phasen 5 und 6 (Kern). Die übrigen Phasen stehen hier als Gliederung. Ihre Tasks werden vor dem Start der jeweiligen Phase im selben Detailgrad ausgearbeitet und kurz
+> 26.09.2026 vorgezogenen Phasen 5 und 6 (Kern) und die offenen Punkte aus 0.3.0. Die übrigen Phasen stehen hier als Gliederung. Ihre Tasks werden vor dem Start der jeweiligen Phase im selben Detailgrad ausgearbeitet und kurz
 > abgenommen. So stecken Entscheidungen aus der Abnahme (E1–E9) nicht in bereits geschriebenem Plan-Code fest.
 
 ## Arbeitsweise je Task (gilt für alle Tasks)
@@ -1567,6 +1567,101 @@ Isolierte VS-Code-Instanz über CDP mit einer Kopie des Datenordners der alten A
 Seitenleiste, Editor einer MDS-Einheit und der Mail-Templates mit Lücken, eine Lücke geschlossen, `git diff` der Kopie
 zeigt genau die Änderung. Bilder im Scratchpad, Zahlen in `docs/verification/`.
 **Commit:** `docs: record the verification of metadatasets and mail templates`
+
+---
+
+## Offene Punkte aus 0.3.0 (26.09.2026)
+
+**Anlass:** Der Nutzer bittet, die offenen Punkte aus der Abnahme der Phasen 5 und 6
+([`docs/verification/phasen-5-6.md`](../verification/phasen-5-6.md), Abschnitt 6) zu beheben. Die Entscheidungen stützen
+sich auf den Clone und den Datenordner (nur lesend ausgewertet, nichts daraus zitiert oder committet).
+
+**Schritt 0:** `/better-coding-workflow`, für O6 zusätzlich `/better-coding-frontend`. Nach O6 prüft ein Reviewer mit
+frischem Kontext den ganzen Block mit `/better-coding-review`.
+
+**Entscheidungen:**
+- **P1 Keys der Basisdatei ohne Übersetzbares.** Ein Key, den nur die Basisdatei hat, fehlt den anderen Sprachen nur,
+  wenn sein Text etwas zu übersetzen hat: Buchstaben außerhalb von URLs, Platzhaltern und Tags. Die 9 Lizenz-URLs von
+  `mds` im Clone (9 von 10 im Datenordner) sind dann keine Lücken mehr, `passwordRequest` bleibt eine. Eine Sprache,
+  die einen solchen Key hat, bekommt dafür auch keinen `orphan-key`.
+- **P2 Override-Einheiten sind dünn besetzt.** edu-sharing liest `{gruppe}_override_{locale}` vor `{gruppe}_{locale}`
+  und `{gruppe}_override` vor `{gruppe}` (`MetadataReader.getTranslation`); Angular lädt die Kategorie `override`
+  zuletzt. Eine Override-Datei enthält also nur, was sie ändert. Neues Bereichsattribut `overrideBundlePattern`
+  (regulärer Ausdruck für den ganzen Einheitennamen, geprüft wie `bundlePattern`); MDS-Preset `.+_override`,
+  Angular-Preset `override`. Solche Einheiten bekommen keine Befunde zu fehlenden Keys oder Dateien
+  (`missing-key`, `orphan-key`, `misplaced-key`, `missing-file`); die übrigen Regeln gelten. Mail-Overrides
+  (`templates[_{locale}]_override.xml`) ersetzen ganze Templates und gibt es weder im Clone noch im Datenordner: Sie
+  bleiben außerhalb des Mail-Bereichs (keine Änderung).
+- **P3 Verlorene Zeichen.** Neue Regel `lost-character` (Warnung): ein `?` zwischen zwei Buchstaben außerhalb von Tags
+  und URLs oder ein U+FFFD im Text. Das bleibt, wenn eine Datei beim Speichern ein Zeichen nicht aufnehmen konnte
+  (im Clone und im Datenordner je 62 Stellen in `fr_FR`, etwa `l?apprentissage` und `n?ud` für `nœud`, kein
+  Fehlalarm). Die Dateien selbst ändert die Extension nicht; der Filter „Fehler“ und die Befundliste führen zu den
+  Stellen.
+- **P4 Zeilenenden nur mit CR.** `detectStyle` erkennt `\r` als Zeilenende; JSON- und Mail-Schreiber finden
+  Zeilenanfänge über einen gemeinsamen Helfer, der `\r` kennt. Neue Zeilen in solchen Dateien enden dann mit `\r`.
+- **P5 `validKey`.** Die Meldung `invalid-template-key` spricht von Mail-Templates. Solange nur der Mail-Adapter den
+  Hook hat, genügt ein Hinweis am Hook; ein zweites Format bräuchte eine eigene Meldung (keine neue Mechanik, YAGNI).
+- **P6 Mail-Vorschau (Kern von Task 6.4).** Ein Knopf „Vorschau“ an jedem Sprachfeld einer Mail-Zeile (Details und
+  Liste) öffnet neben dem Editor einen Tab „Vorschau“: die Mail des Templates so zusammengesetzt wie
+  `MailTemplate.getContent` (`<style>` des Templates `stylesheet` aus der Basisdatei, `header`, der Text in
+  `<div class='content'>`, `footer` in `<div class='footer'>`, jedes Teil mit Rückfall auf die Basisdatei und auf das
+  Template ohne Kontext), dazu der Betreff. Links die Referenz, rechts die gewählte Sprache. Der Tab hat keine Skripte
+  (`enableScripts: false`) und eine eigene CSP ohne Netzwerk; jede Mail steht in einem `iframe sandbox="" srcdoc`. Er
+  folgt Dateiänderungen und dem nächsten Klick auf „Vorschau“. Die CSP des Editors bleibt unverändert. Später:
+  hervorgehobener HTML-Code, Umschalten auf das Theme, Vorschau beim Tippen.
+
+### Task O1: Zeilenenden nur mit CR
+**Dateien:** Modify `src/core/text/style.ts`, `src/core/text/lineIndex.ts` (`lineStartAt`), `src/core/formats/json/jsonWrite.ts`,
+`src/core/formats/mail/mailWrite.ts`; Test: `style.test.ts`, `json.write.test.ts`, `properties.write.test.ts`, `mail.write.test.ts`
+**Testfälle:** `detectStyle('a\rb\r')` → `eol: '\r'`, `finalNewline: true`; `insert`/`delete` in einer JSON-, `.properties`- und
+Mail-Datei nur mit CR ergeben dasselbe wie in der LF-Datei, nur mit `\r`.
+**Commit:** `fix(core): keep carriage-return line endings when writing`
+
+### Task O2: Hinweis am Hook `validKey`
+**Dateien:** Modify `src/core/formats/adapter.ts`
+**Commit:** `docs(core): say which message a rejected key gets`
+
+### Task O3: Keys der Basisdatei ohne Übersetzbares
+**Dateien:** Create `src/core/checks/translatable.ts`; Modify `src/core/checks/rules/missingKeys.ts`; Test: `missingKeys.test.ts`,
+`translatable.test.ts`
+**Testfälle:** Basis-Key mit `http://example.org/licenses/by/4.0/` fehlt in `de_DE`, `fr_FR` → kein `missing-key`; `fr_FR`
+hat ihn → kein `orphan-key`; Basis-Key mit `Password reset` → `missing-key` wie bisher; `{count}`, `1.0` und `<br>`
+haben nichts zu übersetzen, `PDF` und `Ja` schon.
+**Commit:** `fix(core): leave out base-file keys without text to translate when counting gaps`
+
+### Task O4: Override-Einheiten dünn besetzt
+**Dateien:** Modify `src/core/area/areaDefinition.ts`, `parseArea.ts`, `presets.ts`, `src/core/checks/rules/support.ts`,
+`missingKeys.ts`, `missingFile.ts`, `package.json` (Schema), `package.nls*.json`; Test: `parseArea.test.ts`, `presets.test.ts`,
+`missingKeys.test.ts`, `missingFile.test.ts`, `manifest.test.ts`
+**Testfälle:** `mds_override_de_DE` mit einem Key, `mds_override` ohne ihn → kein `missing-key`, kein `missing-file` für
+`fr_FR`; `mds` wie bisher; Placeholder-Befunde in der Override-Einheit bleiben; `overrideBundlePattern: '(a+)+'` →
+Fehler; ungültiger Ausdruck → Fehler.
+**Commit:** `feat(core): treat override bundles as sparse`
+
+### Task O5: Regel `lost-character`
+**Dateien:** Create `src/core/checks/rules/lostCharacter.ts`; Modify `rules/index.ts`, `types.ts`, `messages.ts`,
+`src/webview/components/findingHints.ts`, `cellStatus.ts`, `package.json` (Schwere), l10n, Doku; Test: `lostCharacter.test.ts`,
+`messages.test.ts`, `findingHints.test.ts`
+**Testfälle:** `l?apprentissage` und `Gr\uFFFDße` → Befund am Wert; `Quoi ?`, `Warum?` und `?` → keiner;
+`<a href="/s?q=x">Suche</a>` und `siehe https://x.org/a?b=c` → keiner (Tag, URL); in jeder Sprache, auch der Referenz.
+**Commit:** `feat(core): report characters lost when a file was saved in a narrower encoding`
+
+### Task O6: Mail-Vorschau
+**Dateien:** Create `src/core/formats/mail/mailCompose.ts`, `src/extension/panels/mailPreview.ts`,
+`src/extension/panels/mailPreviewHtml.ts`; Modify `src/shared/protocol.ts` (`preview`), `src/shared/viewModel.ts` (`mailPreview`),
+`src/webview/components/field.tsx`, `editorPanel.ts`, `extension.ts`, l10n, Doku; Test: `mailCompose.test.ts`,
+`mailPreviewHtml.test.ts`, `protocol.test.ts`, `field.test.tsx`, `formats.test.ts` (Integration)
+**Testfälle:** Zusammensetzung in der Reihenfolge von `getContent`; fehlender Text in `fr_FR` → Text der Basisdatei;
+`name@ctx` nimmt `header@ctx`, sonst `header`; ohne `stylesheet` kein `<style>`; `srcdoc` escapt `& " < >`; jedes `iframe`
+hat `sandbox=""` und einen Titel; CSP ohne `script-src` und ohne Netzwerk; `preview` mit ungültiger Sprache wird
+verworfen; Knopf nur in Mail-Einheiten; Integration: Vorschau öffnet neben dem Editor und zeigt Betreff und Text.
+**Abnahme:** CDP mit der Kopie des Datenordners: Vorschau von `invited` in `de_DE` und `fr_FR`, Stylesheet greift, keine
+Netzwerkanfrage.
+**Commit:** `feat: preview mail templates beside the editor`
+
+### Task O7: Doku, Review, Abnahme
+README, `docs/einstellungen.md`, CHANGELOG (0.3.0), Design (6.4), Abnahmeprotokoll (Abschnitt „Offene Punkte“);
+Review-Befunde in eigenen Commits; `npm run test:integration`; Push auf `feat/extension-v1`, CI einmal prüfen.
 
 ---
 
