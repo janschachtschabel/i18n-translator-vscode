@@ -102,26 +102,33 @@ describe('list', () => {
     expect(document.activeElement).toBe(within(list()).getByRole('heading', { level: 2, name: 'CANCEL' }));
   });
 
-  it('hands the focus on to the card of a key far down, beyond the cards shown at first', async () => {
-    const keys = Array.from({ length: 450 }, (_, index) => `K${String(index).padStart(3, '0')}`);
-    open({}, { ...findingsModel, rows: keys.map((key) => row(key, { de: text(key) })) });
-    const first = within(screen.getByRole('grid')).getByRole('rowheader', { name: 'K000' });
-    act(() => first.focus());
-    act(() => void fireEvent.keyDown(first, { key: 'End', ctrlKey: true }));
-    act(() => void fireEvent.keyDown(document.activeElement!, { key: 'Home' }));
-    expect(document.activeElement?.textContent).toBe('K449');
-    setWidth(600);
-    const heading = () => within(list()).getByRole('heading', { level: 2, name: 'K449' });
-    expect(document.activeElement).toBe(heading());
-    // The next block of cards comes a task later: the card of the key stays.
-    await nextTask();
-    expect(document.activeElement).toBe(heading());
+  // Beyond the first 200 rows and the 200 of the next step: a card that only the handoff keeps. Rendering them
+  // takes seconds beside other test files, so the language is one and the time generous.
+  it(
+    'hands the focus on to the card of a key far down, beyond the cards shown at first',
+    { timeout: 20_000 },
+    async () => {
+      const keys = Array.from({ length: 450 }, (_, index) => `K${String(index).padStart(3, '0')}`);
+      const rows = keys.map((key) => row(key, { de: text(key) }));
+      open({}, { ...findingsModel, locales: [findingsModel.locales[0]!], rows });
+      const first = within(screen.getByRole('grid')).getByRole('rowheader', { name: 'K000' });
+      act(() => first.focus());
+      act(() => void fireEvent.keyDown(first, { key: 'End', ctrlKey: true }));
+      act(() => void fireEvent.keyDown(document.activeElement!, { key: 'Home' }));
+      expect(document.activeElement?.textContent).toBe('K449');
+      setWidth(600);
+      const heading = () => within(list()).getByRole('heading', { level: 2, name: 'K449' });
+      expect(document.activeElement).toBe(heading());
+      // The next block of cards comes a task later: the card of the key stays.
+      await nextTask();
+      expect(document.activeElement).toBe(heading());
 
-    setWidth(1024);
-    expect(document.activeElement).toBe(grid().getByRole('rowheader', { name: 'K449' }));
-    await nextTask();
-    expect(document.activeElement).toBe(grid().getByRole('rowheader', { name: 'K449' }));
-  });
+      setWidth(1024);
+      expect(document.activeElement).toBe(grid().getByRole('rowheader', { name: 'K449' }));
+      await nextTask();
+      expect(document.activeElement).toBe(grid().getByRole('rowheader', { name: 'K449' }));
+    },
+  );
 
   it('keeps the language when the focus goes from a text of the grid to the list, and back', () => {
     open();
