@@ -79,15 +79,30 @@ export class FileStore {
   private readonly history: UndoHistory;
   private readonly beforeWrite: BeforeWrite;
   private readonly files: FileAccess;
+  private readonly trusted: () => boolean;
 
   constructor(
     private readonly index: WorkspaceIndex,
     private readonly log: vscode.LogOutputChannel,
-    options: { beforeWrite?: BeforeWrite; files?: FileAccess; limits?: UndoLimits } = {},
+    options: {
+      beforeWrite?: BeforeWrite;
+      files?: FileAccess;
+      limits?: UndoLimits;
+      trusted?: () => boolean;
+    } = {},
   ) {
     this.history = new UndoHistory(options.limits);
     this.beforeWrite = options.beforeWrite ?? (async () => undefined);
     this.files = options.files ?? vscode.workspace.fs;
+    this.trusted = options.trusted ?? (() => vscode.workspace.isTrusted);
+  }
+
+  /**
+   * Whether files may be written: not in Restricted Mode (an untrusted workspace). Commands ask before their first
+   * question, so that nobody answers questions for a change that cannot happen.
+   */
+  canWrite(): boolean {
+    return this.trusted();
   }
 
   /** Plans the edit on the current files and writes the result. Never throws; failures are results. */
@@ -134,7 +149,7 @@ export class FileStore {
   }
 
   private async writeNow(ref: RootRef, plan: Planner): Promise<WriteResult> {
-    if (!vscode.workspace.isTrusted) {
+    if (!this.canWrite()) {
       return { ok: false, reason: 'untrusted' };
     }
     const started = Date.now();
@@ -212,6 +227,11 @@ export class FileStore {
     if (!entry) {
       return undefined;
     }
+    if (!this.canWrite()) {
+      // The undo stays for when the workspace is trusted.
+      this.history.push(entry);
+      return { ok: false, reason: 'untrusted' };
+    }
     let result: UndoResult;
     try {
       result = await this.undoEntry(entry);
@@ -254,7 +274,7 @@ export class FileStore {
   }
 
   private async restoreNow(files: readonly RestoredFile[]): Promise<WriteResult> {
-    if (!vscode.workspace.isTrusted) {
+    if (!this.canWrite()) {
       return { ok: false, reason: 'untrusted' };
     }
     const started = Date.now();

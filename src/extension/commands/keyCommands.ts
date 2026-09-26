@@ -21,24 +21,36 @@ import { renameKey } from './renameKey';
 export function registerKeyCommands(sources: TargetSources): vscode.Disposable[] {
   return [
     vscode.commands.registerCommand('eduI18n.addKey', async (arg?: unknown) => {
+      if (refusedUntrusted(sources)) {
+        return;
+      }
       const found = await bundleTarget(arg, sources);
       if (found) {
         await addKey(sources, found.target, found.entryId);
       }
     }),
     vscode.commands.registerCommand('eduI18n.renameKey', async (arg?: unknown) => {
+      if (refusedUntrusted(sources)) {
+        return;
+      }
       const found = await bundleTarget(arg, sources);
       if (found?.entryId !== undefined) {
         await renameKey(sources, found.target, found.entryId);
       }
     }),
     vscode.commands.registerCommand('eduI18n.deleteKey', async (arg?: unknown) => {
+      if (refusedUntrusted(sources)) {
+        return;
+      }
       const found = await bundleTarget(arg, sources);
       if (found?.entryId !== undefined) {
         await deleteKey(sources, found.target, found.entryId);
       }
     }),
     vscode.commands.registerCommand('eduI18n.addLanguage', async (arg?: unknown) => {
+      if (refusedUntrusted(sources)) {
+        return;
+      }
       const root = await rootTarget(arg, sources);
       if (root) {
         await addLanguage(sources, root);
@@ -63,9 +75,7 @@ export async function runEditorCommand(
   panel: PanelState,
   entryId: string | undefined,
 ): Promise<void> {
-  // Before any question: in Restricted Mode nothing can be written.
-  if (!vscode.workspace.isTrusted) {
-    void showWriteFailure({ ok: false, reason: 'untrusted' });
+  if (refusedUntrusted(context)) {
     return;
   }
   const target = findBundle(await context.index.latest(), panel);
@@ -83,4 +93,13 @@ export async function runEditorCommand(
     case 'addLanguage':
       return addLanguage(context, target.root);
   }
+}
+
+/** Before any question: in Restricted Mode nothing can be written, so the user learns that first. */
+function refusedUntrusted(context: KeyCommandContext): boolean {
+  if (context.fileStore.canWrite()) {
+    return false;
+  }
+  void showWriteFailure({ ok: false, reason: 'untrusted' });
+  return true;
 }

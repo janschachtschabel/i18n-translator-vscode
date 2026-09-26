@@ -7,6 +7,7 @@ import { bundleTarget, rootTarget, type KeyCommandContext } from '../../src/exte
 import { deleteKey } from '../../src/extension/commands/deleteKey';
 import { runEditorCommand } from '../../src/extension/commands/keyCommands';
 import type { Prompts } from '../../src/extension/commands/prompts';
+import { FileStore } from '../../src/extension/services/fileStore';
 import { renameKey } from '../../src/extension/commands/renameKey';
 import type { ExtensionApi } from '../../src/extension/extension';
 import { sameBytes } from '../../src/extension/services/files';
@@ -144,6 +145,23 @@ suite('key and language commands', () => {
     // A key the bundle does not have counts as none: the argument comes from the webview.
     const unknown = await bundleTarget({ ...menu, entryId: id('SAVE') }, sources);
     assert.deepStrictEqual([unknown?.target.bundle.name, unknown?.entryId], ['admin', undefined]);
+  });
+
+  test('asks nothing in Restricted Mode, before any question', async () => {
+    const before = await snapshot();
+    const log = vscode.window.createOutputChannel('edu-sharing i18n (untrusted)', { log: true });
+    const untrusted = new FileStore(api.index, log, { trusted: () => false });
+    const panel = { folder: root.folder.uri.toString(), bundleId: bundle('common').bundle.id };
+    try {
+      for (const command of ['addKey', 'renameKey', 'deleteKey', 'addLanguage'] as const) {
+        const prompts = answering('NEW_KEY', 'es', true);
+        await runEditorCommand({ ...context(prompts), fileStore: untrusted }, command, panel, id('MINUTE'));
+        assert.deepEqual(prompts.asked, [], command);
+      }
+      await unchanged(before);
+    } finally {
+      log.dispose();
+    }
   });
 
   test('runs what an editor asks for on its bundle, and nothing for a key the bundle does not have', async () => {

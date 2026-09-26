@@ -240,6 +240,26 @@ suite('FileStore', () => {
     }
   });
 
+  // VS Code's test runner always trusts the workspace; the store is told it is not (audit T-03, S-07).
+  test('writes, restores and undoes nothing in Restricted Mode, and keeps the undo', async () => {
+    let trusted = true;
+    const store = new FileStore(api.index, log, { trusted: () => trusted });
+    const fr = uriOf('common', 'fr');
+    assert.deepEqual(await store.write(ref, setAsk('Continuer ?')), { ok: true });
+    const written = await read(fr);
+    trusted = false;
+    assert.equal(store.canWrite(), false);
+    assert.deepEqual(await store.write(ref, setAsk('Autre ?')), { ok: false, reason: 'untrusted' });
+    assert.deepEqual(await store.restore([{ uri: fr, bytes: encoder.encode('{}\n') }]), {
+      ok: false,
+      reason: 'untrusted',
+    });
+    assert.deepEqual(await store.undo(), { ok: false, reason: 'untrusted' });
+    assert.equal(await read(fr), written);
+    trusted = true;
+    assert.equal((await store.undo())?.ok, true);
+  });
+
   // The first backup of a session takes a few hundred milliseconds: time enough to type into the file (audit L-02).
   for (const kind of ['write', 'restore'] as const) {
     test(`checks for unsaved changes after the backup of a ${kind}, so that an editor's changes are kept`, async () => {

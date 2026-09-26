@@ -29,7 +29,7 @@ export async function applyEdit(
   target: PanelState,
   services: { index: WorkspaceIndex; fileStore: FileStore; prompts: Prompts },
 ): Promise<EditAnswer> {
-  if (!vscode.workspace.isTrusted) {
+  if (!services.fileStore.canWrite()) {
     return failed({ ok: false, reason: 'untrusted' });
   }
   // A write answers before its files are indexed again, and the editor may send the next text against it at

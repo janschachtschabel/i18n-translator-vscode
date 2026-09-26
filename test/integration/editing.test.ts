@@ -3,6 +3,7 @@ import * as vscode from 'vscode';
 import { keyFromSegments } from '../../src/core/model/keys';
 import type { ExtensionApi } from '../../src/extension/extension';
 import { applyEdit } from '../../src/extension/panels/editHandler';
+import { FileStore } from '../../src/extension/services/fileStore';
 import { sameBytes } from '../../src/extension/services/files';
 import { activateExtension, answering, nextPost } from './helpers';
 
@@ -63,14 +64,20 @@ suite('editing', () => {
   });
 
   /** Asks the edit handler of the common editor as the editor would, answering its questions with `prompts`. */
-  async function send(value: string, before: string | null, locale: string, prompts = answering()) {
+  async function send(
+    value: string,
+    before: string | null,
+    locale: string,
+    prompts = answering(),
+    fileStore: FileStore = api.fileStore,
+  ) {
     const root = (await api.index.refresh()).roots[0]!;
     const common = root.analysis.bundles.find((bundle) => bundle.name === 'common')!;
     const target = { folder: root.folder.uri.toString(), bundleId: common.id };
     const request = { type: 'edit' as const, requestId: 'r', entryId: ERROR_TITLE, locale, value, before };
     const file = vscode.Uri.joinPath(root.folder.uri, common.file(locale)!.relPath);
     const bytes = await vscode.workspace.fs.readFile(file);
-    const answer = await applyEdit(request, target, { index: api.index, fileStore: api.fileStore, prompts });
+    const answer = await applyEdit(request, target, { index: api.index, fileStore, prompts });
     return { answer, prompts, file, bytes };
   }
 
@@ -98,6 +105,25 @@ suite('editing', () => {
           assert.equal((await api.fileStore.undo())?.ok, true);
         }
       }
+    }
+  });
+
+  test('asks nothing and writes nothing in Restricted Mode', async () => {
+    const log = vscode.window.createOutputChannel('edu-sharing i18n (untrusted)', { log: true });
+    const untrusted = new FileStore(api.index, log, { trusted: () => false });
+    try {
+      const { answer, prompts, file, bytes } = await send(
+        '',
+        'Erreur ({{data}})',
+        'fr',
+        answering(true),
+        untrusted,
+      );
+      assert.equal(answer.ok, false);
+      assert.deepEqual(prompts.asked, []);
+      assert.ok(sameBytes(await vscode.workspace.fs.readFile(file), bytes));
+    } finally {
+      log.dispose();
     }
   });
 
