@@ -12,7 +12,7 @@ import { renameKey } from '../../src/extension/commands/renameKey';
 import type { ExtensionApi } from '../../src/extension/extension';
 import { sameBytes } from '../../src/extension/services/files';
 import type { IndexedRoot } from '../../src/extension/services/workspaceIndex';
-import { activateExtension, answering } from './helpers';
+import { activateExtension, answering, keepTranslationFiles } from './helpers';
 
 const id = (dotted: string) => keyFromSegments(dotted.split('.')).id;
 const decoder = new TextDecoder();
@@ -20,14 +20,19 @@ const decoder = new TextDecoder();
 suite('key and language commands', () => {
   let api: ExtensionApi;
   let root: IndexedRoot;
+  let restoreFiles: () => Promise<void>;
 
   suiteSetup(async () => {
     api = await activateExtension();
+    restoreFiles = await keepTranslationFiles();
   });
   setup(async () => {
     root = (await api.index.refresh()).roots[0]!;
   });
-  teardown(() => vscode.commands.executeCommand('workbench.action.closeAllEditors'));
+  teardown(async () => {
+    await vscode.commands.executeCommand('workbench.action.closeAllEditors');
+    await restoreFiles();
+  });
 
   const context = (prompts: Prompts): KeyCommandContext => ({
     index: api.index,

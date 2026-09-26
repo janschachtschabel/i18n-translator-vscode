@@ -5,18 +5,24 @@ import type { ExtensionApi } from '../../src/extension/extension';
 import { applyEdit } from '../../src/extension/panels/editHandler';
 import { FileStore } from '../../src/extension/services/fileStore';
 import { sameBytes } from '../../src/extension/services/files';
-import { activateExtension, answering, nextPost } from './helpers';
+import { activateExtension, answering, keepTranslationFiles, nextPost } from './helpers';
 
 const ERROR_TITLE = keyFromSegments(['ERROR_TITLE']).id;
 const decoder = new TextDecoder();
 
 suite('editing', () => {
   let api: ExtensionApi;
+  let restoreFiles: () => Promise<void>;
 
   suiteSetup(async () => {
     api = await activateExtension();
+    restoreFiles = await keepTranslationFiles();
   });
-  teardown(() => vscode.commands.executeCommand('workbench.action.closeAllEditors'));
+  teardown(async () => {
+    await vscode.commands.executeCommand('workbench.action.closeAllEditors');
+    await restoreFiles();
+    await api.index.refresh();
+  });
 
   async function openCommon() {
     const root = (await api.index.refresh()).roots[0]!;

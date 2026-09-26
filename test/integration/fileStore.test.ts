@@ -7,7 +7,7 @@ import type { ExtensionApi } from '../../src/extension/extension';
 import { FileStore, type Planner } from '../../src/extension/services/fileStore';
 import { rootRef, type RootRef } from '../../src/extension/services/workspaceIndex';
 import { sameBytes } from '../../src/extension/services/files';
-import { activateExtension, workspaceUri } from './helpers';
+import { activateExtension, keepTranslationFiles, workspaceUri } from './helpers';
 
 const I18N = 'Frontend/src/assets/i18n';
 const decoder = new TextDecoder();
@@ -44,32 +44,21 @@ suite('FileStore', () => {
   const log = vscode.window.createOutputChannel('edu-sharing i18n (file store tests)', { log: true });
   let api: ExtensionApi;
   let ref: RootRef;
-  /** Every translation file as the suite found it; each test puts them back. */
-  let original: [vscode.Uri, Uint8Array][];
-  const translationFiles = () => vscode.workspace.findFiles(`${I18N}/**/*.json`);
+  /** Puts every translation file back as the suite found it, after each test. */
+  let restoreFiles: () => Promise<void>;
 
   suiteSetup(async () => {
     api = await activateExtension();
     const snapshot = api.index.current() ?? (await api.index.refresh());
     ref = rootRef(snapshot.roots[0]!);
-    original = await Promise.all(
-      (await translationFiles()).map(async (uri) => [uri, await vscode.workspace.fs.readFile(uri)] as const),
-    ).then((files) => files.map(([uri, bytes]) => [uri, bytes]));
+    restoreFiles = await keepTranslationFiles();
   });
 
   suiteTeardown(() => log.dispose());
 
   teardown(async () => {
     await vscode.commands.executeCommand('workbench.action.revertAndCloseActiveEditor');
-    const known = new Set(original.map(([uri]) => uri.toString()));
-    for (const uri of await translationFiles()) {
-      if (!known.has(uri.toString())) {
-        await vscode.workspace.fs.delete(uri);
-      }
-    }
-    for (const [uri, bytes] of original) {
-      await vscode.workspace.fs.writeFile(uri, bytes);
-    }
+    await restoreFiles();
     await api.index.refresh();
   });
 
