@@ -132,6 +132,7 @@ export class EditorPanels implements vscode.Disposable {
 /** The editor of one bundle: its webview panel and the conversation with the webview. */
 export class EditorPanel implements vscode.Disposable {
   private readonly posted = new vscode.EventEmitter<HostToWebview>();
+  private disposed = false;
   /** Fires for every message to the webview; the integration tests follow the conversation with it. */
   readonly onDidPost = this.posted.event;
   private readonly subscriptions: vscode.Disposable[];
@@ -219,6 +220,7 @@ export class EditorPanel implements vscode.Disposable {
   }
 
   dispose(): void {
+    this.disposed = true;
     vscode.Disposable.from(...this.subscriptions).dispose();
   }
 
@@ -291,7 +293,11 @@ export class EditorPanel implements vscode.Disposable {
     return `eduI18n.view:${JSON.stringify([this.target.folder, this.target.bundleId])}`;
   }
 
+  /** Sends a message to the webview; an editor that closed meanwhile (e.g. during a save) gets nothing. */
   private async post(message: HostToWebview): Promise<void> {
+    if (this.disposed) {
+      return;
+    }
     this.posted.fire(message);
     await this.panel.webview.postMessage(message);
   }

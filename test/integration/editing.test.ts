@@ -210,4 +210,18 @@ suite('editing', () => {
     assert.deepStrictEqual([requestId, ok], ['r3', false]);
     assert.ok(message);
   });
+
+  // A save can end after its editor closed; its answer goes nowhere, and nothing fails (audit API-02).
+  test('answers nothing into an editor that is closed, and does not fail', async () => {
+    const { editor } = await openCommon();
+    editor.panel.dispose();
+    await editor.receive({
+      type: 'edit',
+      requestId: 'r4',
+      entryId: 'ERROR_TITLE',
+      locale: 'fr',
+      value: 'x',
+      before: null,
+    });
+  });
 });
