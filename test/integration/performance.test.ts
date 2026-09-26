@@ -102,5 +102,9 @@ suite('performance with real files', function () {
         2,
       ),
     );
+    // The goals of design §8, after the numbers are printed: a regression by several times fails the run.
+    assert.ok(full < 1500, `full index ${full} ms`);
+    assert.ok(open < 1000, `editor open ${open} ms`);
+    assert.ok(second.answered < 150, `save ${second.answered} ms`);
   });
 });

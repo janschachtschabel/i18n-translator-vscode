@@ -620,6 +620,7 @@
     "test:unit": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:integration": "node esbuild.mjs && node esbuild.mjs --tests && vscode-test",
+    "test:perf": "node esbuild.mjs && node esbuild.mjs --tests && node scripts/test-perf.mjs",
     "check:repo": "tsx scripts/check-repo.ts",
     "notices": "tsx scripts/third-party-notices.ts"
   },
