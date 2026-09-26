@@ -1,5 +1,6 @@
 import { keyFromId } from '../core/model/keys';
 import { DEFAULT_FILTER, FILTER_SCOPES, MAX_QUERY_LENGTH, STATUS_FILTERS, type RowFilter } from './filter';
+import type { BundlePatch } from './patch';
 import type { BundleViewModel } from './viewModel';
 
 export const LAYOUT_CHOICES = ['auto', 'table', 'list'] as const;
@@ -51,6 +52,8 @@ export type HostToWebview =
   /** `l10n`: the texts of the editor in the user's language, keyed by their English text. */
   | { type: 'init'; l10n: Readonly<Record<string, string>>; uiState: UiState; panelState: PanelState }
   | { type: 'bundle'; model: BundleViewModel }
+  /** What changed since the last model or patch, e.g. a file changed on disk; only once the webview has a model. */
+  | { type: 'patch'; patch: BundlePatch }
   /** The bundle is not in the index (any more), e.g. after a restart or a branch switch. */
   | { type: 'missing'; name: string }
   /** `message`: why the write failed, in the user's language. */

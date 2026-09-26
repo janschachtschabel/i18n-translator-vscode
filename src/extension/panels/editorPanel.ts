@@ -14,7 +14,8 @@ import {
   type PanelState,
   type UiState,
 } from '../../shared/protocol';
-import { buildBundleViewModel } from '../../shared/viewModel';
+import { diffModels } from '../../shared/patch';
+import { buildBundleViewModel, type BundleViewModel } from '../../shared/viewModel';
 import { localize } from '../localize';
 import type { FileStore } from '../services/fileStore';
 import type { IndexedRoot, IndexSnapshot, WorkspaceIndex } from '../services/workspaceIndex';
@@ -132,6 +133,8 @@ export class EditorPanel implements vscode.Disposable {
   private readonly subscriptions: vscode.Disposable[];
   /** Whether the webview has asked for its content; messages sent before would get lost. */
   private started = false;
+  /** The model the webview has, with the patches sent since; undefined while it has none. */
+  private sent: BundleViewModel | undefined;
 
   constructor(
     readonly panel: vscode.WebviewPanel,
@@ -200,6 +203,7 @@ export class EditorPanel implements vscode.Disposable {
   /** Answers `ready`, which the webview sends whenever it (re)loads. */
   private async start(): Promise<void> {
     this.started = true;
+    this.sent = undefined;
     await this.post({
       type: 'init',
       l10n: vscode.l10n.bundle ?? {},
@@ -213,21 +217,29 @@ export class EditorPanel implements vscode.Disposable {
     }
   }
 
+  /**
+   * The bundle as an index run found it: the whole model the first time, then what changed (a run of the root
+   * may have changed another bundle, then this one gets nothing), or that it is gone.
+   */
   private show(snapshot: IndexSnapshot): Promise<void> {
     const found = findBundle(snapshot, this.target);
-    return this.post(
-      found
-        ? {
-            type: 'bundle',
-            model: buildBundleViewModel(found.bundle, {
-              issues: found.root.analysis.issues,
-              variants: Object.keys(found.root.settings.variants),
-              baseFileLanguage: found.root.settings.baseFileLanguage,
-              localize,
-            }),
-          }
-        : { type: 'missing', name: parseBundleId(this.target.bundleId).name },
-    );
+    if (!found) {
+      this.sent = undefined;
+      return this.post({ type: 'missing', name: parseBundleId(this.target.bundleId).name });
+    }
+    const model = buildBundleViewModel(found.bundle, {
+      issues: found.root.analysis.issues,
+      variants: Object.keys(found.root.settings.variants),
+      baseFileLanguage: found.root.settings.baseFileLanguage,
+      localize,
+    });
+    const before = this.sent;
+    this.sent = model;
+    if (!before) {
+      return this.post({ type: 'bundle', model });
+    }
+    const patch = diffModels(before, model);
+    return patch ? this.post({ type: 'patch', patch }) : Promise.resolve();
   }
 
   /** The view state the bundle had when its editor was last used; a state of an older version is ignored. */

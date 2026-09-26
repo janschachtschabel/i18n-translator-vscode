@@ -1,5 +1,6 @@
 import { computed, signal } from '@preact/signals';
 import { filterRows, type FilterResult, type RowFilter } from '../../shared/filter';
+import { applyPatch } from '../../shared/patch';
 import {
   DEFAULT_UI_STATE,
   type EditorCommand,
@@ -122,6 +123,15 @@ export class EditorStore {
         this.edits.reset();
         this.view.value = { kind: 'missing', name: message.name };
         break;
+      case 'patch': {
+        const view = this.view.value;
+        if (view.kind === 'bundle') {
+          const model = applyPatch(view.model, message.patch);
+          this.edits.update(model);
+          this.view.value = { kind: 'bundle', model };
+        }
+        break;
+      }
       case 'writeResult':
         this.edits.answer(message);
         break;

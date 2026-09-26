@@ -203,6 +203,21 @@ describe('editing', () => {
     expect(store.editNext(1)).toBe(false);
   });
 
+  it('takes a patch like a model: its rows have the written texts, and the other rows stay as they are', () => {
+    const { store, cell, type } = open();
+    type('SAVE', 'fr', 'Sauver');
+    store.receive({ type: 'writeResult', requestId: 'edit-1', ok: true });
+    const before = store.rows.value;
+    const save = model.rows[0]!;
+    store.receive({
+      type: 'patch',
+      patch: { rows: [{ ...save, cells: { ...save.cells, fr: text('Sauver') } }] },
+    });
+    expect(cell('SAVE', 'fr')).toEqual(text('Sauver'));
+    expect(store.edits.pending.value).toEqual([]);
+    expect(store.rows.value[1]).toBe(before[1]);
+  });
+
   it('starts afresh when the webview loads again', () => {
     const { store, cell, type } = open();
     type('SAVE', 'fr', 'Sauver');
