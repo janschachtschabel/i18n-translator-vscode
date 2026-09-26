@@ -252,455 +252,547 @@
         }
       ]
     },
-    "configuration": {
-      "title": "%config.title%",
-      "properties": {
-        "eduI18n.referenceLanguage": {
-          "type": "string",
-          "default": "de",
-          "scope": "resource",
-          "markdownDescription": "%config.referenceLanguage%"
-        },
-        "eduI18n.baseFileLanguage": {
-          "type": "string",
-          "default": "en",
-          "scope": "resource",
-          "markdownDescription": "%config.baseFileLanguage%"
-        },
-        "eduI18n.areas": {
-          "type": "array",
-          "default": [],
-          "scope": "resource",
-          "markdownDescription": "%config.areas%",
-          "items": {
-            "type": "object",
-            "required": [
-              "id",
-              "format",
-              "files",
-              "localePattern"
-            ],
-            "additionalProperties": false,
-            "properties": {
-              "id": {
-                "type": "string",
-                "description": "%config.areas.id%"
-              },
-              "label": {
-                "type": "string",
-                "description": "%config.areas.label%"
-              },
-              "format": {
-                "type": "string",
-                "enum": [
-                  "json-nested",
-                  "properties",
-                  "mail-xml"
-                ],
-                "description": "%config.areas.format%"
-              },
-              "roots": {
-                "type": "array",
-                "items": {
-                  "type": "string"
+    "configuration": [
+      {
+        "title": "%config.title%",
+        "properties": {
+          "eduI18n.referenceLanguage": {
+            "type": "string",
+            "default": "de",
+            "scope": "resource",
+            "markdownDescription": "%config.referenceLanguage%"
+          },
+          "eduI18n.baseFileLanguage": {
+            "type": "string",
+            "default": "en",
+            "scope": "resource",
+            "markdownDescription": "%config.baseFileLanguage%"
+          },
+          "eduI18n.areas": {
+            "type": "array",
+            "default": [],
+            "scope": "resource",
+            "markdownDescription": "%config.areas%",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "format",
+                "files",
+                "localePattern"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "description": "%config.areas.id%"
                 },
-                "description": "%config.areas.roots%"
-              },
-              "files": {
-                "type": "string",
-                "description": "%config.areas.files%"
-              },
-              "localePattern": {
-                "type": "string",
-                "description": "%config.areas.localePattern%"
-              },
-              "bundlePattern": {
-                "type": "string",
-                "description": "%config.areas.bundlePattern%"
-              },
-              "bundleName": {
-                "type": "string",
-                "description": "%config.areas.bundleName%"
-              },
-              "referenceLanguage": {
-                "type": "string",
-                "description": "%config.areas.referenceLanguage%"
-              },
-              "bundleOrder": {
-                "type": "array",
-                "items": {
-                  "type": "string"
+                "label": {
+                  "type": "string",
+                  "description": "%config.areas.label%"
                 },
-                "description": "%config.areas.bundleOrder%"
-              },
-              "mergeSemantics": {
-                "type": "string",
-                "enum": [
-                  "shallow-toplevel",
-                  "none"
-                ],
-                "description": "%config.areas.mergeSemantics%"
-              },
-              "detect": {
-                "type": "object",
-                "required": [
-                  "glob",
-                  "marker"
-                ],
-                "properties": {
-                  "glob": {
-                    "type": "string",
-                    "description": "%config.areas.detect.glob%"
+                "format": {
+                  "type": "string",
+                  "enum": [
+                    "json-nested",
+                    "properties",
+                    "mail-xml"
+                  ],
+                  "description": "%config.areas.format%"
+                },
+                "roots": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
                   },
-                  "marker": {
-                    "type": "string",
-                    "description": "%config.areas.detect.marker%"
-                  }
+                  "description": "%config.areas.roots%"
                 },
-                "description": "%config.areas.detect%"
-              },
-              "ignoredKeys": {
-                "type": "array",
-                "items": {
-                  "type": "string"
+                "files": {
+                  "type": "string",
+                  "description": "%config.areas.files%"
                 },
-                "description": "%config.areas.ignoredKeys%"
-              },
-              "placeholderSyntax": {
-                "type": "string",
-                "enum": [
-                  "double-brace",
-                  "single-brace"
-                ],
-                "description": "%config.areas.placeholderSyntax%"
-              },
-              "overrideBundlePattern": {
-                "type": "string",
-                "description": "%config.areas.overrideBundlePattern%"
+                "localePattern": {
+                  "type": "string",
+                  "description": "%config.areas.localePattern%"
+                },
+                "bundlePattern": {
+                  "type": "string",
+                  "description": "%config.areas.bundlePattern%"
+                },
+                "bundleName": {
+                  "type": "string",
+                  "description": "%config.areas.bundleName%"
+                },
+                "referenceLanguage": {
+                  "type": "string",
+                  "description": "%config.areas.referenceLanguage%"
+                },
+                "bundleOrder": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "%config.areas.bundleOrder%"
+                },
+                "mergeSemantics": {
+                  "type": "string",
+                  "enum": [
+                    "shallow-toplevel",
+                    "none"
+                  ],
+                  "description": "%config.areas.mergeSemantics%"
+                },
+                "detect": {
+                  "type": "object",
+                  "required": [
+                    "glob",
+                    "marker"
+                  ],
+                  "properties": {
+                    "glob": {
+                      "type": "string",
+                      "description": "%config.areas.detect.glob%"
+                    },
+                    "marker": {
+                      "type": "string",
+                      "description": "%config.areas.detect.marker%"
+                    }
+                  },
+                  "description": "%config.areas.detect%"
+                },
+                "ignoredKeys": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "%config.areas.ignoredKeys%"
+                },
+                "placeholderSyntax": {
+                  "type": "string",
+                  "enum": [
+                    "double-brace",
+                    "single-brace"
+                  ],
+                  "description": "%config.areas.placeholderSyntax%"
+                },
+                "overrideBundlePattern": {
+                  "type": "string",
+                  "description": "%config.areas.overrideBundlePattern%"
+                }
               }
             }
-          }
-        },
-        "eduI18n.roots": {
-          "type": "object",
-          "default": {},
-          "scope": "resource",
-          "additionalProperties": {
+          },
+          "eduI18n.roots": {
+            "type": "object",
+            "default": {},
+            "scope": "resource",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "markdownDescription": "%config.roots%"
+          },
+          "eduI18n.exclude": {
             "type": "array",
             "items": {
               "type": "string"
-            }
-          },
-          "markdownDescription": "%config.roots%"
-        },
-        "eduI18n.exclude": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "default": [
-            "**/node_modules/**",
-            "**/.git/**",
-            "**/dist/**",
-            "**/out/**",
-            "**/target/**",
-            "**/build/**"
-          ],
-          "scope": "resource",
-          "markdownDescription": "%config.exclude%"
-        },
-        "eduI18n.variants": {
-          "type": "object",
-          "default": {
-            "de-informal": {
-              "base": "de",
-              "requiredWhen": "\\b(?:Sie|Ihnen|Ihr|Ihre|Ihrem|Ihren|Ihrer|Ihres)\\b",
-              "forbidden": "\\b(?:Sie|Ihnen|Ihr|Ihre|Ihrem|Ihren|Ihrer|Ihres)\\b"
             },
-            "de-no-binnen-i": {
-              "base": "de",
-              "requiredWhen": "\\{\\{GENDER_SEPARATOR\\}\\}|[*:_]innen\\b|[a-zäöüß]Innen\\b",
-              "forbidden": "\\{\\{GENDER_SEPARATOR\\}\\}"
-            }
-          },
-          "scope": "resource",
-          "markdownDescription": "%config.variants%",
-          "additionalProperties": {
-            "type": "object",
-            "required": [
-              "base",
-              "requiredWhen"
+            "default": [
+              "**/node_modules/**",
+              "**/.git/**",
+              "**/dist/**",
+              "**/out/**",
+              "**/target/**",
+              "**/build/**"
             ],
-            "properties": {
-              "base": {
-                "type": "string",
-                "description": "%config.variants.base%"
+            "scope": "resource",
+            "markdownDescription": "%config.exclude%"
+          },
+          "eduI18n.variants": {
+            "type": "object",
+            "default": {
+              "de-informal": {
+                "base": "de",
+                "requiredWhen": "\\b(?:Sie|Ihnen|Ihr|Ihre|Ihrem|Ihren|Ihrer|Ihres)\\b",
+                "forbidden": "\\b(?:Sie|Ihnen|Ihr|Ihre|Ihrem|Ihren|Ihrer|Ihres)\\b"
               },
-              "requiredWhen": {
-                "type": "string",
-                "description": "%config.variants.requiredWhen%"
-              },
-              "forbidden": {
-                "type": "string",
-                "description": "%config.variants.forbidden%"
+              "de-no-binnen-i": {
+                "base": "de",
+                "requiredWhen": "\\{\\{GENDER_SEPARATOR\\}\\}|[*:_]innen\\b|[a-zäöüß]Innen\\b",
+                "forbidden": "\\{\\{GENDER_SEPARATOR\\}\\}"
+              }
+            },
+            "scope": "resource",
+            "markdownDescription": "%config.variants%",
+            "additionalProperties": {
+              "type": "object",
+              "required": [
+                "base",
+                "requiredWhen"
+              ],
+              "properties": {
+                "base": {
+                  "type": "string",
+                  "description": "%config.variants.base%"
+                },
+                "requiredWhen": {
+                  "type": "string",
+                  "description": "%config.variants.requiredWhen%"
+                },
+                "forbidden": {
+                  "type": "string",
+                  "description": "%config.variants.forbidden%"
+                }
               }
             }
-          }
-        },
-        "eduI18n.checks.severity": {
-          "type": "object",
-          "default": {},
-          "scope": "resource",
-          "additionalProperties": false,
-          "markdownDescription": "%config.checks.severity%",
-          "properties": {
-            "parse-error": {
-              "type": "string",
-              "enum": [
-                "error",
-                "warning",
-                "info",
-                "off"
-              ],
-              "description": "%config.rule.parse-error%"
-            },
-            "non-string-value": {
-              "type": "string",
-              "enum": [
-                "error",
-                "warning",
-                "info",
-                "off"
-              ],
-              "description": "%config.rule.non-string-value%"
-            },
-            "duplicate-key": {
-              "type": "string",
-              "enum": [
-                "error",
-                "warning",
-                "info",
-                "off"
-              ],
-              "description": "%config.rule.duplicate-key%"
-            },
-            "not-utf8": {
-              "type": "string",
-              "enum": [
-                "error",
-                "warning",
-                "info",
-                "off"
-              ],
-              "description": "%config.rule.not-utf8%"
-            },
-            "bom-first-key": {
-              "type": "string",
-              "enum": [
-                "error",
-                "warning",
-                "info",
-                "off"
-              ],
-              "description": "%config.rule.bom-first-key%"
-            },
-            "missing-file": {
-              "type": "string",
-              "enum": [
-                "error",
-                "warning",
-                "info",
-                "off"
-              ],
-              "description": "%config.rule.missing-file%"
-            },
-            "missing-key": {
-              "type": "string",
-              "enum": [
-                "error",
-                "warning",
-                "info",
-                "off"
-              ],
-              "description": "%config.rule.missing-key%"
-            },
-            "empty-value": {
-              "type": "string",
-              "enum": [
-                "error",
-                "warning",
-                "info",
-                "off"
-              ],
-              "description": "%config.rule.empty-value%"
-            },
-            "orphan-key": {
-              "type": "string",
-              "enum": [
-                "error",
-                "warning",
-                "info",
-                "off"
-              ],
-              "description": "%config.rule.orphan-key%"
-            },
-            "misplaced-key": {
-              "type": "string",
-              "enum": [
-                "error",
-                "warning",
-                "info",
-                "off"
-              ],
-              "description": "%config.rule.misplaced-key%"
-            },
-            "placeholder-malformed": {
-              "type": "string",
-              "enum": [
-                "error",
-                "warning",
-                "info",
-                "off"
-              ],
-              "description": "%config.rule.placeholder-malformed%"
-            },
-            "placeholder-mismatch": {
-              "type": "string",
-              "enum": [
-                "error",
-                "warning",
-                "info",
-                "off"
-              ],
-              "description": "%config.rule.placeholder-mismatch%"
-            },
-            "html-mismatch": {
-              "type": "string",
-              "enum": [
-                "error",
-                "warning",
-                "info",
-                "off"
-              ],
-              "description": "%config.rule.html-mismatch%"
-            },
-            "variant-needed": {
-              "type": "string",
-              "enum": [
-                "error",
-                "warning",
-                "info",
-                "off"
-              ],
-              "description": "%config.rule.variant-needed%"
-            },
-            "variant-inconsistent": {
-              "type": "string",
-              "enum": [
-                "error",
-                "warning",
-                "info",
-                "off"
-              ],
-              "description": "%config.rule.variant-inconsistent%"
-            },
-            "variant-orphan": {
-              "type": "string",
-              "enum": [
-                "error",
-                "warning",
-                "info",
-                "off"
-              ],
-              "description": "%config.rule.variant-orphan%"
-            },
-            "key-overridden": {
-              "type": "string",
-              "enum": [
-                "error",
-                "warning",
-                "info",
-                "off"
-              ],
-              "description": "%config.rule.key-overridden%"
-            },
-            "subtree-lost": {
-              "type": "string",
-              "enum": [
-                "error",
-                "warning",
-                "info",
-                "off"
-              ],
-              "description": "%config.rule.subtree-lost%"
-            },
-            "same-as-reference": {
-              "type": "string",
-              "enum": [
-                "error",
-                "warning",
-                "info",
-                "off"
-              ],
-              "description": "%config.rule.same-as-reference%"
-            },
-            "lost-character": {
-              "type": "string",
-              "enum": [
-                "error",
-                "warning",
-                "info",
-                "off"
-              ],
-              "description": "%config.rule.lost-character%"
-            }
-          }
-        },
-        "eduI18n.checks.ignoreSameAsReference": {
-          "type": "array",
-          "items": {
-            "type": "string"
           },
-          "default": [
-            "OK",
-            "E-Mail",
-            "CC-0",
-            "ID"
-          ],
-          "scope": "resource",
-          "markdownDescription": "%config.checks.ignoreSameAsReference%"
-        },
-        "eduI18n.diagnostics.missing": {
-          "type": "string",
-          "enum": [
-            "aggregate",
-            "individual",
-            "off"
-          ],
-          "default": "aggregate",
-          "scope": "resource",
-          "markdownDescription": "%config.diagnostics.missing%",
-          "enumDescriptions": [
-            "%config.diagnostics.missing.aggregate%",
-            "%config.diagnostics.missing.individual%",
-            "%config.diagnostics.missing.off%"
-          ]
-        },
-        "eduI18n.backup.intervalMinutes": {
-          "type": "number",
-          "default": 10,
-          "minimum": 0,
-          "markdownDescription": "%config.backup.intervalMinutes%"
-        },
-        "eduI18n.backup.keep": {
-          "type": "integer",
-          "default": 10,
-          "minimum": 1,
-          "maximum": 100,
-          "markdownDescription": "%config.backup.keep%"
+          "eduI18n.checks.severity": {
+            "type": "object",
+            "default": {},
+            "scope": "resource",
+            "additionalProperties": false,
+            "markdownDescription": "%config.checks.severity%",
+            "properties": {
+              "parse-error": {
+                "type": "string",
+                "enum": [
+                  "error",
+                  "warning",
+                  "info",
+                  "off"
+                ],
+                "description": "%config.rule.parse-error%"
+              },
+              "non-string-value": {
+                "type": "string",
+                "enum": [
+                  "error",
+                  "warning",
+                  "info",
+                  "off"
+                ],
+                "description": "%config.rule.non-string-value%"
+              },
+              "duplicate-key": {
+                "type": "string",
+                "enum": [
+                  "error",
+                  "warning",
+                  "info",
+                  "off"
+                ],
+                "description": "%config.rule.duplicate-key%"
+              },
+              "not-utf8": {
+                "type": "string",
+                "enum": [
+                  "error",
+                  "warning",
+                  "info",
+                  "off"
+                ],
+                "description": "%config.rule.not-utf8%"
+              },
+              "bom-first-key": {
+                "type": "string",
+                "enum": [
+                  "error",
+                  "warning",
+                  "info",
+                  "off"
+                ],
+                "description": "%config.rule.bom-first-key%"
+              },
+              "missing-file": {
+                "type": "string",
+                "enum": [
+                  "error",
+                  "warning",
+                  "info",
+                  "off"
+                ],
+                "description": "%config.rule.missing-file%"
+              },
+              "missing-key": {
+                "type": "string",
+                "enum": [
+                  "error",
+                  "warning",
+                  "info",
+                  "off"
+                ],
+                "description": "%config.rule.missing-key%"
+              },
+              "empty-value": {
+                "type": "string",
+                "enum": [
+                  "error",
+                  "warning",
+                  "info",
+                  "off"
+                ],
+                "description": "%config.rule.empty-value%"
+              },
+              "orphan-key": {
+                "type": "string",
+                "enum": [
+                  "error",
+                  "warning",
+                  "info",
+                  "off"
+                ],
+                "description": "%config.rule.orphan-key%"
+              },
+              "misplaced-key": {
+                "type": "string",
+                "enum": [
+                  "error",
+                  "warning",
+                  "info",
+                  "off"
+                ],
+                "description": "%config.rule.misplaced-key%"
+              },
+              "placeholder-malformed": {
+                "type": "string",
+                "enum": [
+                  "error",
+                  "warning",
+                  "info",
+                  "off"
+                ],
+                "description": "%config.rule.placeholder-malformed%"
+              },
+              "placeholder-mismatch": {
+                "type": "string",
+                "enum": [
+                  "error",
+                  "warning",
+                  "info",
+                  "off"
+                ],
+                "description": "%config.rule.placeholder-mismatch%"
+              },
+              "html-mismatch": {
+                "type": "string",
+                "enum": [
+                  "error",
+                  "warning",
+                  "info",
+                  "off"
+                ],
+                "description": "%config.rule.html-mismatch%"
+              },
+              "variant-needed": {
+                "type": "string",
+                "enum": [
+                  "error",
+                  "warning",
+                  "info",
+                  "off"
+                ],
+                "description": "%config.rule.variant-needed%"
+              },
+              "variant-inconsistent": {
+                "type": "string",
+                "enum": [
+                  "error",
+                  "warning",
+                  "info",
+                  "off"
+                ],
+                "description": "%config.rule.variant-inconsistent%"
+              },
+              "variant-orphan": {
+                "type": "string",
+                "enum": [
+                  "error",
+                  "warning",
+                  "info",
+                  "off"
+                ],
+                "description": "%config.rule.variant-orphan%"
+              },
+              "key-overridden": {
+                "type": "string",
+                "enum": [
+                  "error",
+                  "warning",
+                  "info",
+                  "off"
+                ],
+                "description": "%config.rule.key-overridden%"
+              },
+              "subtree-lost": {
+                "type": "string",
+                "enum": [
+                  "error",
+                  "warning",
+                  "info",
+                  "off"
+                ],
+                "description": "%config.rule.subtree-lost%"
+              },
+              "same-as-reference": {
+                "type": "string",
+                "enum": [
+                  "error",
+                  "warning",
+                  "info",
+                  "off"
+                ],
+                "description": "%config.rule.same-as-reference%"
+              },
+              "lost-character": {
+                "type": "string",
+                "enum": [
+                  "error",
+                  "warning",
+                  "info",
+                  "off"
+                ],
+                "description": "%config.rule.lost-character%"
+              }
+            }
+          },
+          "eduI18n.checks.ignoreSameAsReference": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "default": [
+              "OK",
+              "E-Mail",
+              "CC-0",
+              "ID"
+            ],
+            "scope": "resource",
+            "markdownDescription": "%config.checks.ignoreSameAsReference%"
+          },
+          "eduI18n.diagnostics.missing": {
+            "type": "string",
+            "enum": [
+              "aggregate",
+              "individual",
+              "off"
+            ],
+            "default": "aggregate",
+            "scope": "resource",
+            "markdownDescription": "%config.diagnostics.missing%",
+            "enumDescriptions": [
+              "%config.diagnostics.missing.aggregate%",
+              "%config.diagnostics.missing.individual%",
+              "%config.diagnostics.missing.off%"
+            ]
+          },
+          "eduI18n.backup.intervalMinutes": {
+            "type": "number",
+            "default": 10,
+            "minimum": 0,
+            "markdownDescription": "%config.backup.intervalMinutes%"
+          },
+          "eduI18n.backup.keep": {
+            "type": "integer",
+            "default": 10,
+            "minimum": 1,
+            "maximum": 100,
+            "markdownDescription": "%config.backup.keep%"
+          }
+        }
+      },
+      {
+        "title": "%config.ai.title%",
+        "properties": {
+          "eduI18n.ai.enabled": {
+            "type": "boolean",
+            "default": true,
+            "markdownDescription": "%config.ai.enabled%"
+          },
+          "eduI18n.ai.baseUrl": {
+            "type": "string",
+            "default": "https://b-api.staging.openeduhub.net",
+            "scope": "machine",
+            "markdownDescription": "%config.ai.baseUrl%"
+          },
+          "eduI18n.ai.provider": {
+            "type": "string",
+            "default": "openai",
+            "enum": [
+              "openai",
+              "academiccloud"
+            ],
+            "markdownDescription": "%config.ai.provider%"
+          },
+          "eduI18n.ai.model": {
+            "type": "string",
+            "default": "gpt-6-luna",
+            "markdownDescription": "%config.ai.model%"
+          },
+          "eduI18n.ai.reasoningEffort": {
+            "type": "string",
+            "default": "low",
+            "enum": [
+              "none",
+              "low",
+              "medium",
+              "high",
+              "xhigh"
+            ],
+            "markdownDescription": "%config.ai.reasoningEffort%"
+          },
+          "eduI18n.ai.reviewReasoningEffort": {
+            "type": "string",
+            "default": "medium",
+            "enum": [
+              "none",
+              "low",
+              "medium",
+              "high",
+              "xhigh"
+            ],
+            "markdownDescription": "%config.ai.reviewReasoningEffort%"
+          },
+          "eduI18n.ai.batchSize": {
+            "type": "integer",
+            "default": 25,
+            "minimum": 1,
+            "maximum": 100,
+            "markdownDescription": "%config.ai.batchSize%"
+          },
+          "eduI18n.ai.maxConcurrency": {
+            "type": "integer",
+            "default": 2,
+            "minimum": 1,
+            "maximum": 6,
+            "markdownDescription": "%config.ai.maxConcurrency%"
+          },
+          "eduI18n.ai.timeoutSeconds": {
+            "type": "integer",
+            "default": 120,
+            "minimum": 10,
+            "maximum": 600,
+            "markdownDescription": "%config.ai.timeoutSeconds%"
+          },
+          "eduI18n.ai.languageDescriptions": {
+            "type": "object",
+            "default": {
+              "de": "German (formal, use 'Sie')",
+              "de-informal": "German informal variant: use 'du' instead of 'Sie', otherwise the same content as 'de'",
+              "de-no-binnen-i": "German without gender-neutral language (no Binnen-I, no gender star *), otherwise the same content as 'de'",
+              "de_DE": "German (Germany, formal, use 'Sie')",
+              "de_DE-informal": "German (Germany, informal, use 'du')"
+            },
+            "additionalProperties": {
+              "type": "string",
+              "maxLength": 500
+            },
+            "markdownDescription": "%config.ai.languageDescriptions%"
+          }
         }
       }
-    }
+    ]
   },
   "scripts": {
     "build": "node esbuild.mjs",
