@@ -4,6 +4,15 @@ Die nennenswerten Änderungen der Extension je Version. Die Version folgt den Ph
 [Taskliste](docs/plans/2026-09-24-edu-sharing-i18n-vscode-tasks.md): `0.<Phase>.<Korrektur>`. Die Installation
 beschreibt das [README](README.md#installation).
 
+## 0.2.2 – 26.09.2026
+
+- **Fenster ohne Ordner:**
+  - Die Seitenleiste bittet darum, einen Ordner zu öffnen: einen edu-sharing-Checkout oder dessen Übersetzungsordner.
+    Bisher meldete sie „keine Übersetzungsdateien gefunden“.
+  - „Übersetzungsordner festlegen…“ sagt dort, was zu tun ist, und bietet „Ordner öffnen…“ an. Bisher geschah nichts.
+- **Übersetzungsordner direkt öffnen:** Ein Ordner wie `Frontend/src/assets/i18n` oder eine Kopie davon funktioniert
+  als Arbeitsbereichsordner. Das ging schon vorher; jetzt prüft es ein Integrationstest.
+
 ## 0.2.1 – 26.09.2026
 
 Die Extension selbst ist unverändert; neu ist, wie sie auf den Rechner kommt.
