@@ -71,6 +71,11 @@ export class FileStore {
   // simplify: one queue for all files instead of one per file; writes are rare and quick, and a change over
   // several files then needs no lock ordering.
   private queue: Promise<unknown> = Promise.resolve();
+  /**
+   * The index run after the last change. A write answers without waiting for it (the files are written, only
+   * their findings follow); the next task waits for it instead.
+   */
+  private indexing: Promise<void> = Promise.resolve();
   private readonly history: UndoHistory;
   private readonly beforeWrite: BeforeWrite;
   private readonly files: FileAccess;
@@ -105,9 +110,15 @@ export class FileStore {
    * task must not call write, restore, undo or exclusive: they would wait for it forever.
    */
   exclusive<T>(task: () => Promise<T>): Promise<T> {
-    const run = this.queue.then(task);
+    // After the index run of the last change: each task plans on the files as written.
+    const run = this.queue.then(() => this.indexing).then(task);
     this.queue = run.catch(() => undefined);
     return run;
+  }
+
+  /** Resolves once the changes so far are indexed: their findings are known, and open editors have them. */
+  indexed(): Promise<void> {
+    return this.queue.then(() => this.indexing);
   }
 
   /** One write or undo at a time, in call order; unexpected errors become results. */
@@ -126,6 +137,7 @@ export class FileStore {
     if (!vscode.workspace.isTrusted) {
       return { ok: false, reason: 'untrusted' };
     }
+    const started = Date.now();
     let backedUp = false;
     for (let attempt = 1; ; attempt++) {
       const indexed = await this.find(ref);
@@ -182,6 +194,7 @@ export class FileStore {
         return this.commit(
           'write',
           targets.map((target, i) => ({ uri: target.uri, bytes: target.bytes, before: onDisk[i] })),
+          started,
         );
       }
       const uris = changed.map((target) => target.uri);
@@ -235,7 +248,7 @@ export class FileStore {
       return failure;
     }
     this.log.info(`Undid the write of ${entry.files.map((file) => relative(file.uri)).join(', ')}`);
-    await this.reindex(entry.files.map((file) => file.uri));
+    this.indexing = this.reindex(entry.files.map((file) => file.uri));
     return { ok: true, files: entry.files.map((file) => file.uri) };
   }
 
@@ -243,6 +256,7 @@ export class FileStore {
     if (!vscode.workspace.isTrusted) {
       return { ok: false, reason: 'untrusted' };
     }
+    const started = Date.now();
     // Like a write, a restore stays in the translation folders, whatever the backup it came from says.
     const snapshot = this.index.current() ?? (await this.index.refresh());
     const outside = files.find((file) => !snapshot.roots.some((indexed) => inRoot(file.uri, indexed)));
@@ -273,13 +287,14 @@ export class FileStore {
     const differing = files
       .map((file, i) => ({ ...file, before: onDisk[i] }))
       .filter((file) => file.before === undefined || !sameBytes(file.before, file.bytes));
-    return differing.length === 0 ? { ok: true } : this.commit('restore', differing);
+    return differing.length === 0 ? { ok: true } : this.commit('restore', differing, started);
   }
 
-  /** Writes all files or none and keeps the write for undo. */
+  /** Writes all files or none and keeps the write for undo; `started`: when the task began, for the log. */
   private async commit(
     kind: 'write' | 'restore',
     files: { uri: vscode.Uri; bytes: Uint8Array; before: Uint8Array | undefined }[],
+    started: number,
   ): Promise<WriteResult> {
     const failure = await this.putAll(
       files,
@@ -296,9 +311,9 @@ export class FileStore {
       })),
     });
     this.log.info(
-      `${kind === 'write' ? 'Wrote' : 'Restored'} ${files.map((file) => relative(file.uri)).join(', ')}`,
+      `${kind === 'write' ? 'Wrote' : 'Restored'} ${files.map((file) => relative(file.uri)).join(', ')} in ${Date.now() - started} ms.`,
     );
-    await this.reindex(files.map((file) => file.uri));
+    this.indexing = this.reindex(files.map((file) => file.uri));
     return { ok: true };
   }
 

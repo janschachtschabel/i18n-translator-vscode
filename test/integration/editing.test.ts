@@ -54,6 +54,7 @@ suite('editing', () => {
       newLines.filter((line, index) => line !== oldLines[index]),
       ['  "ERROR_TITLE": "Erreur ({{date}})",'],
     );
+    await api.fileStore.indexed();
     assert.ok(!mismatch());
 
     await editor.receive({ type: 'undo' });

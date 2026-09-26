@@ -227,6 +227,7 @@ export class EditorPanel implements vscode.Disposable {
       this.sent = undefined;
       return this.post({ type: 'missing', name: parseBundleId(this.target.bundleId).name });
     }
+    const started = Date.now();
     const model = buildBundleViewModel(found.bundle, {
       issues: found.root.analysis.issues,
       variants: Object.keys(found.root.settings.variants),
@@ -235,11 +236,21 @@ export class EditorPanel implements vscode.Disposable {
     });
     const before = this.sent;
     this.sent = model;
+    const patch = before && diffModels(before, model);
+    const name = found.bundle.name;
     if (!before) {
+      this.services.log.debug(
+        `Built the model of ${name} (${model.rows.length} keys) in ${Date.now() - started} ms.`,
+      );
       return this.post({ type: 'bundle', model });
     }
-    const patch = diffModels(before, model);
-    return patch ? this.post({ type: 'patch', patch }) : Promise.resolve();
+    if (!patch) {
+      return Promise.resolve();
+    }
+    this.services.log.debug(
+      `Built a patch of ${name} (${patch.rows.length} rows) in ${Date.now() - started} ms.`,
+    );
+    return this.post({ type: 'patch', patch });
   }
 
   /** The view state the bundle had when its editor was last used; a state of an older version is ignored. */
