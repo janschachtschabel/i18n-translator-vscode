@@ -1,5 +1,4 @@
 import * as vscode from 'vscode';
-import { compileVariants } from '../core/checks/variants';
 import {
   BACKUP_SETTING_KEYS,
   parseBackupSettings,
@@ -8,7 +7,6 @@ import {
   type BackupSettings,
   type Settings,
 } from '../core/config/settings';
-import type { AnalysisOptions } from '../core/pipeline/analyze';
 
 /**
  * Reads and validates the `eduI18n.*` settings that apply to `scope` (a workspace folder). In Restricted
@@ -31,19 +29,4 @@ export function excludeGlob(patterns: readonly string[]): string | null {
     return patterns[0] ?? null;
   }
   return `{${patterns.join(',')}}`;
-}
-
-/** What the checks need from the settings of a folder; `errors`: the variants that could not be used. */
-export function analysisOptions(settings: Settings): { options: AnalysisOptions; errors: string[] } {
-  const { variants, errors } = compileVariants(settings.variants);
-  return {
-    options: {
-      referenceLanguage: settings.referenceLanguage,
-      baseFileLanguage: settings.baseFileLanguage,
-      variants,
-      severityOverrides: settings.severityOverrides,
-      ignoreSameAsReference: settings.ignoreSameAsReference,
-    },
-    errors,
-  };
 }

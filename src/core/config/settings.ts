@@ -3,7 +3,13 @@ import { parseAreaDefinition } from '../area/parseArea';
 import { PRESETS } from '../area/presets';
 import { normalizeRoot } from '../area/rootPath';
 import { RULE_IDS, type RuleId, type SeverityOverrides } from '../checks/types';
-import { DEFAULT_VARIANTS, type VariantConfig, type VariantSettings } from '../checks/variants';
+import {
+  compileVariants,
+  DEFAULT_VARIANTS,
+  type VariantConfig,
+  type VariantSettings,
+} from '../checks/variants';
+import type { AnalysisOptions } from '../pipeline/analyze';
 
 export type MissingDiagnostics = 'aggregate' | 'individual' | 'off';
 
@@ -68,6 +74,21 @@ export const DEFAULT_SETTINGS: Settings = {
   ignoreSameAsReference: ['OK', 'E-Mail', 'CC-0', 'ID'],
   missingDiagnostics: 'aggregate',
 };
+
+/** What the checks need from the settings of a folder; `errors`: the variants that could not be used. */
+export function analysisOptions(settings: Settings): { options: AnalysisOptions; errors: string[] } {
+  const { variants, errors } = compileVariants(settings.variants);
+  return {
+    options: {
+      referenceLanguage: settings.referenceLanguage,
+      baseFileLanguage: settings.baseFileLanguage,
+      variants,
+      severityOverrides: settings.severityOverrides,
+      ignoreSameAsReference: settings.ignoreSameAsReference,
+    },
+    errors,
+  };
+}
 
 const SEVERITY_VALUES = ['error', 'warning', 'info', 'off'] as const;
 const MISSING_DIAGNOSTICS: readonly MissingDiagnostics[] = ['aggregate', 'individual', 'off'];

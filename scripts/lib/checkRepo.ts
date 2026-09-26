@@ -1,9 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { PRESETS } from '../../src/core/area/presets';
 import { formatMessage, ISSUE_MESSAGES } from '../../src/core/checks/messages';
+import { analysisOptions, DEFAULT_SETTINGS } from '../../src/core/config/settings';
 import type { Issue, RuleId, Severity } from '../../src/core/checks/types';
-import { compileVariants, DEFAULT_VARIANTS } from '../../src/core/checks/variants';
 import { rootsFromMarkers } from '../../src/core/discovery/discover';
 import { analyzeRoot, filesToRead, type RootAnalysis } from '../../src/core/pipeline/analyze';
 import { createLineIndex, type LineIndex } from '../../src/core/text/lineIndex';
@@ -35,25 +34,19 @@ export interface Report {
 
 const SEVERITIES: Severity[] = ['error', 'warning', 'info'];
 
-/** Runs the check catalog of every preset over a repository checkout (edu-sharing defaults). */
+/** Runs the check catalog of every preset over a repository checkout, with the extension's default settings. */
 export function checkRepository(repositoryPath: string): Report {
   const paths = listFiles(repositoryPath);
-  const variants = compileVariants(DEFAULT_VARIANTS).variants;
+  const { options } = analysisOptions(DEFAULT_SETTINGS);
   const roots: RootReport[] = [];
-  for (const area of PRESETS) {
+  for (const area of DEFAULT_SETTINGS.areas) {
     const areaRoots = area.detect ? rootsFromMarkers(paths, area.detect.marker) : area.roots;
     for (const root of areaRoots) {
       const files = filesToRead(area, root, paths).map((relPath) => ({
         relPath,
         bytes: readFileSync(join(repositoryPath, relPath)),
       }));
-      const analysis = analyzeRoot(area, root, files, {
-        referenceLanguage: 'de',
-        baseFileLanguage: 'en',
-        variants,
-        severityOverrides: {},
-        ignoreSameAsReference: ['OK', 'E-Mail', 'CC-0', 'ID'],
-      });
+      const analysis = analyzeRoot(area, root, files, options);
       roots.push(toRootReport(analysis));
     }
   }
