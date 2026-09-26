@@ -22,11 +22,15 @@ interface SettingSchema {
   maximum?: number;
 }
 
-const manifest = JSON.parse(readFileSync(join(__dirname, '..', '..', 'package.json'), 'utf8')) as {
+const read = (file: string) => readFileSync(join(__dirname, '..', '..', file), 'utf8');
+const manifest = JSON.parse(read('package.json')) as {
   files: string[];
   activationEvents: string[];
   keywords: string[];
-  contributes: { configuration: { properties: Record<string, SettingSchema> } };
+  contributes: {
+    configuration: { properties: Record<string, SettingSchema> };
+    viewsWelcome: { view: string; contents: string; when: string }[];
+  };
 };
 const properties = manifest.contributes.configuration.properties;
 const setting = (key: string): SettingSchema => properties[`eduI18n.${key}`]!;
@@ -72,6 +76,28 @@ describe('package.json configuration', () => {
     const area = setting('areas').items?.properties ?? {};
     expect(area['format']?.enum).toEqual([...FORMAT_IDS]);
     expect(area['mergeSemantics']?.enum).toEqual([...MERGE_SEMANTICS]);
+  });
+});
+
+// A window without a folder said that its workspace held no translations, and its button did nothing there.
+describe('package.json welcome views', () => {
+  const welcome = manifest.contributes.viewsWelcome.filter((entry) => entry.view === 'eduI18n.areas');
+  const empty = 'workbenchState == empty';
+
+  it('asks a window without a folder to open one, with a link to the folder dialog', () => {
+    expect(welcome.filter((entry) => entry.when === empty).map((entry) => entry.contents)).toEqual([
+      '%view.areas.noFolder%',
+    ]);
+    for (const file of ['package.nls.json', 'package.nls.de.json']) {
+      const texts = JSON.parse(read(file)) as Record<string, string>;
+      expect(texts['view.areas.noFolder'], file).toMatch(/\]\(command:vscode\.openFolder\)$/);
+    }
+  });
+
+  it('speaks of the translations only in a window with a folder', () => {
+    const others = welcome.filter((entry) => entry.when !== empty);
+    expect(others.length).toBeGreaterThan(0);
+    expect(others.filter((entry) => !entry.when.includes('workbenchState != empty'))).toEqual([]);
   });
 });
 

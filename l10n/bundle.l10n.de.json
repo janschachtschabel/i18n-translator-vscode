@@ -137,6 +137,8 @@
   "not saved": "nicht gespeichert",
   "Not saved: {message}": "Nicht gespeichert: {message}",
   "Only in This Bundle": "Nur in dieser Einheit",
+  "Open a folder with edu-sharing translations first: an edu-sharing checkout, or its translation folder or a copy of it.": "Öffnen Sie zuerst einen Ordner mit Übersetzungen von edu-sharing: einen edu-sharing-Checkout oder dessen Übersetzungsordner bzw. eine Kopie davon.",
+  "Open Folder…": "Ordner öffnen…",
   "Open translation editor": "Übersetzungseditor öffnen",
   "Other findings": "Weitere Befunde",
   "overridden": "überschrieben",

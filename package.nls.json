@@ -3,6 +3,7 @@
   "description": "Check and edit the translation files of edu-sharing (Angular JSON) in a table or list, with undo and backups.",
   "view.container": "edu-sharing i18n",
   "view.areas": "Areas",
+  "view.areas.noFolder": "Open a folder with edu-sharing translations: an edu-sharing checkout, or its translation folder (Frontend/src/assets/i18n) or a copy of it.\n[Open Folder](command:vscode.openFolder)",
   "view.areas.searching": "Looking for edu-sharing translation files…",
   "view.areas.welcome": "No edu-sharing translation files were found in this workspace.\n[Configure folders](command:eduI18n.configureRoots)",
   "cmd.check": "Check translations",

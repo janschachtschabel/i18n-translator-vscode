@@ -74,13 +74,18 @@
     "viewsWelcome": [
       {
         "view": "eduI18n.areas",
+        "contents": "%view.areas.noFolder%",
+        "when": "workbenchState == empty"
+      },
+      {
+        "view": "eduI18n.areas",
         "contents": "%view.areas.searching%",
-        "when": "!eduI18n.indexed"
+        "when": "workbenchState != empty && !eduI18n.indexed"
       },
       {
         "view": "eduI18n.areas",
         "contents": "%view.areas.welcome%",
-        "when": "eduI18n.indexed"
+        "when": "workbenchState != empty && eduI18n.indexed"
       }
     ],
     "commands": [

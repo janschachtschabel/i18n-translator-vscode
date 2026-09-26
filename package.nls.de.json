@@ -3,6 +3,7 @@
   "description": "Übersetzungsdateien von edu-sharing (Angular-JSON) prüfen und in Tabelle oder Liste bearbeiten, mit Undo und Sicherungen.",
   "view.container": "edu-sharing i18n",
   "view.areas": "Bereiche",
+  "view.areas.noFolder": "Öffnen Sie einen Ordner mit Übersetzungen von edu-sharing: einen edu-sharing-Checkout oder dessen Übersetzungsordner (Frontend/src/assets/i18n) bzw. eine Kopie davon.\n[Ordner öffnen](command:vscode.openFolder)",
   "view.areas.searching": "Übersetzungsdateien von edu-sharing werden gesucht…",
   "view.areas.welcome": "In diesem Arbeitsbereich wurden keine Übersetzungsdateien von edu-sharing gefunden.\n[Ordner festlegen](command:eduI18n.configureRoots)",
   "cmd.check": "Übersetzungen prüfen",
