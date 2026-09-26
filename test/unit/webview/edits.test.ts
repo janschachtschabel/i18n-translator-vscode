@@ -263,6 +263,42 @@ describe('editing', () => {
     expect(store.edits.open.value).toMatchObject({ conflict: { text: 'Sauvegarder' } });
   });
 
+  // An editor that offers a choice again does not know the text its draft was typed against (audit L-01).
+  it('keeps a choice offered again when the text changes and changes back, until the user makes it', () => {
+    const { store, edits, lastRequest } = open();
+    store.edit(id('SAVE'), 'fr');
+    store.edits.draft.value = 'Sauver';
+    store.receive(saveInFrench('Sauvegarder'));
+    store.edits.commit();
+    store.edit(id('SAVE'), 'fr');
+    store.receive(saveInFrench('Tout sauver'));
+    store.receive(saveInFrench('Sauvegarder'));
+    expect(store.edits.open.value?.conflict).toMatchObject({ text: 'Sauvegarder' });
+    store.edits.commit();
+    expect(edits()).toEqual([]);
+
+    // The same for a refusal of the host that goes into the open editor.
+    store.edit(id('SAVE'), 'fr');
+    store.edits.keepMine();
+    store.edits.commit();
+    store.edit(id('SAVE'), 'fr');
+    store.receive({
+      type: 'writeResult',
+      requestId: lastRequest(),
+      ok: false,
+      message: 'Geändert.',
+      conflict: true,
+    });
+    store.receive(saveInFrench('Tout sauver'));
+    store.receive(saveInFrench('Sauvegarder'));
+    expect(store.edits.open.value?.conflict).toMatchObject({ text: 'Sauvegarder' });
+    // The user's choice settles it: back to the text chosen, there is no conflict.
+    store.edits.keepMine();
+    store.receive(saveInFrench('Tout sauver'));
+    store.receive(saveInFrench('Sauvegarder'));
+    expect(store.edits.open.value?.conflict).toBeUndefined();
+  });
+
   it('closes an editor without a typed text quietly, also in a conflict', () => {
     const { store, edits, cell } = open();
     store.edit(id('SAVE'), 'fr');

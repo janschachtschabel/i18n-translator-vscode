@@ -25,8 +25,12 @@ export interface OpenEditor extends CellRef {
   place: EditorPlace;
   /** Whether the text had several lines when editing began: then Enter starts a line and Ctrl+Enter saves. */
   multiline: boolean;
-  /** The cell's text changed outside the editor while it was open: to this text (undefined: deleted). */
-  conflict?: { text: string | undefined } | undefined;
+  /**
+   * The cell's text changed outside the editor while it was open: to this text (undefined: deleted). With
+   * `baseUnknown`, the draft was typed against a text the editor does not know (it opened with the choice, or the
+   * host refused the draft): then only the user's choice ends the conflict, not a text that changes back.
+   */
+  conflict?: { text: string | undefined; baseUnknown?: true } | undefined;
 }
 
 /** A text sent to the host. */
@@ -87,7 +91,7 @@ export class Edits {
         error: rejection && !rejection.conflict ? rejection.message : undefined,
         place,
         multiline: draft.includes('\n'),
-        conflict: rejection?.conflict ? { text: shown } : undefined,
+        conflict: rejection?.conflict ? { text: shown, baseUnknown: true } : undefined,
       };
       this.draft.value = draft;
     });
@@ -217,7 +221,7 @@ export class Edits {
       if (open && sameCell(open, edit)) {
         const now = this.textOf(edit);
         this.open.value = conflict
-          ? { ...open, before: now, error: undefined, conflict: { text: now } }
+          ? { ...open, before: now, error: undefined, conflict: { text: now, baseUnknown: true } }
           : { ...open, before: now, error: message };
       } else {
         this.reject(edit, newest.value, message, conflict === true);
@@ -289,13 +293,13 @@ export class Edits {
     if (open.conflict && open.conflict.text === current) {
       return;
     }
-    if (current === open.before) {
+    if (current === open.before && !open.conflict?.baseUnknown) {
       if (open.conflict) {
         this.open.value = { ...open, conflict: undefined };
       }
       return;
     }
-    this.open.value = { ...open, conflict: { text: current } };
+    this.open.value = { ...open, conflict: { ...open.conflict, text: current } };
     this.announce(conflictNotice(open));
   }
 
