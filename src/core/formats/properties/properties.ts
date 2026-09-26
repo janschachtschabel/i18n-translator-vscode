@@ -11,6 +11,7 @@ import { applyPropertiesOps } from './propertiesWrite';
  */
 export const propertiesAdapter: FormatAdapter = {
   id: 'properties',
+  flatKeys: true,
   decode: decodeText,
   parse: (doc) => parseProperties(doc.text),
   applyOps: (doc, ops) => ({ ...doc, text: applyPropertiesOps(doc.text, ops) }),

@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { editProblem } from '../../core/edit/editMessages';
 import { checkNewKey } from '../../core/edit/keyCheck';
 import { planEdit } from '../../core/edit/planEdit';
+import { ADAPTERS } from '../../core/formats/registry';
 import { parseKeyInput } from '../../core/model/keyInput';
 import { displayKey } from '../../core/model/keys';
 import { localize } from '../localize';
@@ -25,21 +26,24 @@ export async function addKey(
     void showError(localize(editProblem('no-reference', { bundle: bundle.name }).message));
     return;
   }
-  const check = (text: string) =>
-    checkNewKey(parseKeyInput(text.trim()), bundle, root.analysis.bundles, root.analysis.area);
+  const flat = ADAPTERS[root.analysis.area.format].flatKeys;
+  const parse = (text: string) => parseKeyInput(text.trim(), flat);
+  const check = (text: string) => checkNewKey(parse(text), bundle, root.analysis.bundles, root.analysis.area);
   const title = vscode.l10n.t('Add Key to {bundle}', { bundle: bundle.name });
   const typed = await context.prompts.input({
     title,
-    prompt: vscode.l10n.t(
-      'The new key, with a dot between its parts, e.g. SECTION.TITLE. A dot inside a part is written \\.',
-    ),
-    placeHolder: 'SECTION.TITLE',
-    check: (text) => keyCheckMessage(parseKeyInput(text.trim()), check(text)),
+    prompt: flat
+      ? vscode.l10n.t('The new key as it stands in the file, e.g. section_title.')
+      : vscode.l10n.t(
+          'The new key, with a dot between its parts, e.g. SECTION.TITLE. A dot inside a part is written \\.',
+        ),
+    placeHolder: flat ? 'section_title' : 'SECTION.TITLE',
+    check: (text) => keyCheckMessage(parse(text), check(text)),
   });
   if (typed === undefined) {
     return;
   }
-  const key = parseKeyInput(typed.trim());
+  const key = parse(typed);
   const { problem, warnings } = check(typed);
   if (problem) {
     void showError(localize(problem.message));

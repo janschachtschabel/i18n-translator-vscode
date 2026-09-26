@@ -1478,7 +1478,7 @@ ISO-8859-1-Datei.
 
 ### Task 5.3: Flache Keys
 **Dateien:** Modify `src/core/formats/adapter.ts` (`flatKeys`), `src/core/model/keyInput.ts`,
-`src/core/model/bundle.ts` (`format`), `src/extension/commands/addKey.ts`, `renameKey.ts`; Test: `keyInput.test.ts`
+`src/extension/commands/addKey.ts`, `renameKey.ts`, l10n; Test: `keyInput.test.ts`
 **Testfälle:** flach: `a.b` bleibt ein Segment, `\` bleibt, wie es ist; verschachtelt unverändert.
 **Commit:** `feat: take the keys of flat formats as typed`
 
@@ -1526,7 +1526,7 @@ Tag, falsches End-Tag, loses `&`) und Wurzel ≠ `templates` → `parse-error`.
 
 ### Task 6.3: Bereich Mail-Templates
 **Dateien:** Modify `src/core/area/presets.ts`, `areaDefinition.ts` (`mail-xml`), `src/core/formats/adapter.ts`
-(`validKey`), `src/core/edit/keyCheck.ts`, `editMessages.ts`, `package.json`, l10n; Test: `presets.test.ts`,
+(`validKey`), `src/core/model/bundle.ts` (`format`), `src/core/edit/keyCheck.ts`, `editMessages.ts`, `package.json`, l10n; Test: `presets.test.ts`,
 `analyze.test.ts`, `planEdit.test.ts`, `keyCheck.test.ts`
 **Testfälle:** `templates.xml` → `default`, `templates_de_DE.xml` → `de_DE`, `templates_de_DE_override.xml` gehört
 nicht dazu; fehlendes Template in `fr_FR` → `missing-key` für seine Felder; fehlendes Feld füllen legt es im

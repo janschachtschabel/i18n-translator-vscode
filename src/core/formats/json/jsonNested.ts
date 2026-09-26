@@ -11,6 +11,7 @@ import { applyJsonOps, emptyJsonObject } from './jsonWrite';
 /** Nested JSON objects with string leaves, as used by ngx-translate (edu-sharing Angular i18n). */
 export const jsonNestedAdapter: FormatAdapter = {
   id: 'json-nested',
+  flatKeys: false,
   decode: decodeText,
   parse(doc): ParsedFile {
     const problems: FileProblem[] = doc.encoding === 'utf-8' ? [] : [{ code: 'not-utf8', range: [0, 0] }];
