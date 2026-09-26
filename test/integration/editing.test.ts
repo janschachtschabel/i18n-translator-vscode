@@ -74,6 +74,33 @@ suite('editing', () => {
     return { answer, prompts, file, bytes };
   }
 
+  test('takes an edit sent against the text just written, before its file is indexed again', async () => {
+    const root = (await api.index.refresh()).roots[0]!;
+    const common = root.analysis.bundles.find((bundle) => bundle.name === 'common')!;
+    const target = { folder: root.folder.uri.toString(), bundleId: common.id };
+    const services = { index: api.index, fileStore: api.fileStore, prompts: answering() };
+    const request = (value: string, before: string) => ({
+      type: 'edit' as const,
+      requestId: 'r',
+      entryId: ERROR_TITLE,
+      locale: 'fr',
+      value,
+      before,
+    });
+    const first = await applyEdit(request('Erreur ({{date}})', 'Erreur ({{data}})'), target, services);
+    // A write answers before its files are indexed again; the editor sends the next text against it at once.
+    const second = await applyEdit(request('Erreur du {{date}}', 'Erreur ({{date}})'), target, services);
+    try {
+      assert.deepStrictEqual([first.ok, second.ok], [true, true], second.message);
+    } finally {
+      for (const answer of [second, first]) {
+        if (answer.ok) {
+          assert.equal((await api.fileStore.undo())?.ok, true);
+        }
+      }
+    }
+  });
+
   test('asks before clearing a text, which deletes it in that language only (B2)', async () => {
     const declined = await send('', 'Erreur ({{data}})', 'fr', answering(false));
     assert.deepStrictEqual(declined.answer, { ok: false });

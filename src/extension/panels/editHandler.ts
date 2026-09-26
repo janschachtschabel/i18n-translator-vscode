@@ -32,6 +32,9 @@ export async function applyEdit(
   if (!vscode.workspace.isTrusted) {
     return failed({ ok: false, reason: 'untrusted' });
   }
+  // A write answers before its files are indexed again, and the editor may send the next text against it at
+  // once: plan on the index that has it, or that text would count as changed.
+  await services.fileStore.indexed();
   // The bundle may go between the edit and a new plan (e.g. a branch switch): a problem, not a crash.
   const found = findBundle(await services.index.latest(), target);
   if (!found) {
