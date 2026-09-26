@@ -214,8 +214,9 @@ Gut zu wissen:
      zeigt nur die Keys, denen in einer sichtbaren Sprache ein Text fehlt; eine fehlende Zelle zeigt „–“.
    - Lange Texte wie die Nachrichten der Mail-Templates zeigt „Lange Texte umbrechen“ ganz.
    - **Mail-Templates ansehen:** „Mail-Vorschau“ in den Details zeigt die Mail in jeder Sprache neben dem Editor.
-5. **Text bearbeiten:** eine Zelle wählen, Enter oder F2 drücken, tippen und mit Enter speichern. Bei mehrzeiligen
-   Texten speichert Strg+Enter; Esc bricht ab.
+5. **Text bearbeiten:** eine Zelle anklicken (oder mit den Pfeiltasten wählen und Enter oder F2 drücken), tippen und
+   mit Enter speichern. Bei mehrzeiligen Texten speichert Strg+Enter; Esc bricht ab. Ein Klick in eine andere Zelle
+   speichert ebenfalls und öffnet deren Text.
    - Der Editor prüft schon beim Tippen, etwa Platzhalter und HTML-Tags.
    - Er schreibt nur die geänderte Zeile.
    - Ein geleerter Text wird nach Rückfrage in dieser Sprache gelöscht; dann erscheint der Text der Referenz.

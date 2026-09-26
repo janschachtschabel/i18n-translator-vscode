@@ -46,7 +46,7 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe('cell editor in the table', () => {
-  it('opens with Enter, F2 or a double click, named by key and language, with the focus in it', () => {
+  it('opens with Enter, F2 or a click, named by key and language, with the focus in it', () => {
     open();
     act(() => cellOf('SAVE', 2).focus());
     press('Enter');
@@ -58,8 +58,40 @@ describe('cell editor in the table', () => {
     press('F2');
     expect(document.activeElement).toBe(field());
     press('Escape');
-    act(() => void fireEvent.dblClick(cellOf('CANCEL', 0)));
+    act(() => void fireEvent.click(cellOf('CANCEL', 0)));
     expect(field().value).toBe('Abbrechen');
+    expect(document.activeElement).toBe(field());
+    expect(description(grid())).toBe(
+      'Ein Klick, Enter oder F2 bearbeitet einen Text; in der Key-Spalte benennt F2 den Key um, Entf (auf dem Mac Cmd+Rücktaste) löscht ihn.',
+    );
+  });
+
+  it('leaves a click with Shift, Ctrl, Alt or Cmd, or one that ends a text selection, to select', () => {
+    open();
+    for (const modifier of ['shiftKey', 'ctrlKey', 'altKey', 'metaKey']) {
+      act(() => void fireEvent.click(cellOf('CANCEL', 0), { [modifier]: true }));
+    }
+    const range = document.createRange();
+    range.selectNodeContents(cellOf('CANCEL', 2));
+    document.getSelection()!.addRange(range);
+    act(() => void fireEvent.click(cellOf('CANCEL', 2)));
+    document.getSelection()!.removeAllRanges();
+    expect(screen.queryByRole('textbox')).toBeNull();
+  });
+
+  it('keeps a click in the open editor there, and saves it when another cell is clicked', () => {
+    const { posted } = open();
+    act(() => void fireEvent.click(cellOf('CANCEL', 2)));
+    const opened = field();
+    typeText('Annuler!');
+    act(() => void fireEvent.click(opened));
+    expect(field()).toBe(opened);
+    expect(field().value).toBe('Annuler!');
+    act(() => void fireEvent.click(cellOf('SAVE', 2)));
+    expect(field()).toBe(screen.getByRole('textbox', { name: 'SAVE in fr' }));
+    expect(edits(posted)).toEqual([
+      expect.objectContaining({ entryId: id('CANCEL'), locale: 'fr', value: 'Annuler!' }),
+    ]);
   });
 
   it('opens the cell the key was pressed in, even before the grid has caught up with the focus', () => {
@@ -334,7 +366,8 @@ describe('cell editor in the table', () => {
     press('Enter');
     act(() => within(grid()).getByRole('columnheader', { name: 'fr' }).focus());
     press('F2');
-    act(() => void fireEvent.dblClick(within(grid()).getByRole('columnheader', { name: 'fr' })));
+    act(() => void fireEvent.click(within(grid()).getByRole('columnheader', { name: 'fr' })));
+    act(() => void fireEvent.click(within(rowOf('SAVE')).getByRole('rowheader')));
     expect(screen.queryByRole('textbox')).toBeNull();
   });
 

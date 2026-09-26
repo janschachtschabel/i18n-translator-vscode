@@ -9,6 +9,9 @@ Phasen 5 und 6 vorgezogen sind, zählt sie weiter, ohne die Phase zu nennen. Die
 
 - **Eingabefelder für Keys und Sprachen** („Key hinzufügen…“, „Key umbenennen…“, „Sprache hinzufügen…“) schließen
   jetzt auch mit einem Klick daneben und haben ein X in der Titelzeile; bisher schloss sie nur Esc.
+- **Ein Klick auf eine Zelle öffnet ihren Text zum Bearbeiten**, wie in der alten App; bisher wählte er die Zelle nur,
+  und erst ein Doppelklick, Enter oder F2 öffnete sie. Ein Klick mit Umschalt, Strg oder Alt, oder einer, der eine
+  Textauswahl beendet, wählt weiterhin nur.
 
 ## 0.3.0 – 26.09.2026
 
