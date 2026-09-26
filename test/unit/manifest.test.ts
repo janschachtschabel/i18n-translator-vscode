@@ -23,6 +23,7 @@ interface SettingSchema {
 }
 
 const manifest = JSON.parse(readFileSync(join(__dirname, '..', '..', 'package.json'), 'utf8')) as {
+  files: string[];
   activationEvents: string[];
   keywords: string[];
   contributes: { configuration: { properties: Record<string, SettingSchema> } };
@@ -86,5 +87,21 @@ describe('package.json activation', () => {
 
   it('names no format that has no preset yet', () => {
     expect(manifest.keywords).not.toContain('properties');
+  });
+});
+
+// An allow-list, so that a copy of the (GPL) edu-sharing files in any folder of the repository is never packed;
+// the notices of the bundled packages must be packed (audit D-01, D-03).
+describe('package.json files', () => {
+  it('packs the build, the texts, the icon, the license and the notices, and nothing else', () => {
+    expect(manifest.files).toEqual([
+      'dist/**/*.js',
+      'dist/**/*.css',
+      'l10n/**',
+      'media/**',
+      'package.nls*.json',
+      'LICENSE',
+      'ThirdPartyNotices.txt',
+    ]);
   });
 });

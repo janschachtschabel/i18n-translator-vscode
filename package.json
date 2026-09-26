@@ -27,6 +27,15 @@
     "ngx-translate"
   ],
   "main": "./dist/extension.js",
+  "files": [
+    "dist/**/*.js",
+    "dist/**/*.css",
+    "l10n/**",
+    "media/**",
+    "package.nls*.json",
+    "LICENSE",
+    "ThirdPartyNotices.txt"
+  ],
   "l10n": "./l10n",
   "activationEvents": [
     "workspaceContains:**/common/de.json",
