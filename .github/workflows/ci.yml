@@ -17,7 +17,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        # Images by version, so that a new default image changes nothing without a commit.
+        os: [ubuntu-24.04, windows-2025]
     runs-on: ${{ matrix.os }}
     steps:
       # Actions by commit, so that a moved tag cannot change what builds the VSIX; Dependabot updates them.
@@ -37,6 +38,17 @@ jobs:
       - run: npm run typecheck
       - run: npm run test:coverage
       - run: npm run build
+      # The VS Code builds of the integration tests, kept for a month: stable changes, 1.90.0 does not. Only the
+      # downloads: the tests' user data must start empty.
+      - name: Month
+        id: month
+        shell: bash
+        run: echo "month=$(date +%Y-%m)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .vscode-test/vscode-*
+          key: vscode-test-${{ runner.os }}-${{ steps.month.outputs.month }}
+          restore-keys: vscode-test-${{ runner.os }}-
       # Integration tests need a display on Linux; there they run against VS Code 1.90.0 and stable.
       - name: Integration tests
         if: runner.os == 'Linux'
