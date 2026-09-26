@@ -3,16 +3,13 @@ import { chatCompletion } from '../../core/ai/bapiClient';
 import { describeLanguage } from '../../core/ai/languages';
 import { completionBody, tokenBudget } from '../../core/ai/modelProfiles';
 import { parseTranslations, TRANSLATIONS_FORMAT, translationMessages } from '../../core/ai/prompts';
-import type { Bundle } from '../../core/model/bundle';
+import { contextTexts, sourceLocale } from '../../core/ai/sources';
 import { displayKey } from '../../core/model/keys';
 import type { PanelState } from '../../shared/protocol';
 import { aiFailureMessage, unavailableMessage } from '../services/aiFeedback';
 import type { AiService } from '../services/aiService';
 import type { IndexSnapshot } from '../services/workspaceIndex';
 import { findBundle } from './findBundle';
-
-/** Other languages that go along as context, at most. */
-const MAX_CONTEXT = 3;
 
 export type SuggestResult = { text: string } | { message: string };
 
@@ -39,9 +36,8 @@ export async function suggestCellText(
   }
   const { bundle, root } = found;
   const shown = displayKey(key);
-  const base = root.settings.variants[locale]?.base;
-  const source = base !== undefined && bundle.locales.includes(base) ? base : bundle.reference;
-  if (source === undefined || source === locale) {
+  const source = sourceLocale(bundle, locale, root.settings.variants);
+  if (source === undefined) {
     return {
       message: vscode.l10n.t('{locale} is the reference language: there is no text to translate from.', {
         locale,
@@ -67,7 +63,7 @@ export async function suggestCellText(
   const messages = translationMessages({
     source: describe(source),
     target: describe(locale),
-    variant: source === base,
+    variant: source === root.settings.variants[locale]?.base,
     syntax: root.analysis.area.placeholderSyntax ?? 'double-brace',
     html: bundle.format === 'mail-xml',
     items: [{ key: shown, source: sourceText, context }],
@@ -99,23 +95,4 @@ export async function suggestCellText(
     );
     return { message: aiFailureMessage(error, status) };
   }
-}
-
-/** Texts of the key in other languages, the English ones first, which help most with the meaning. */
-function contextTexts(bundle: Bundle, entryId: string, skip: readonly string[]): Record<string, string> {
-  const others = bundle.locales
-    .filter((code) => !skip.includes(code))
-    .sort((a, b) => Number(!isEnglish(a)) - Number(!isEnglish(b)));
-  const context: Record<string, string> = {};
-  for (const code of others) {
-    const text = bundle.value(entryId, code);
-    if (text?.trim() && Object.keys(context).length < MAX_CONTEXT) {
-      context[code] = text;
-    }
-  }
-  return context;
-}
-
-function isEnglish(code: string): boolean {
-  return code === 'en' || code.startsWith('en_') || code.startsWith('en-') || code === 'default';
 }
