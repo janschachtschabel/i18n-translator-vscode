@@ -1,7 +1,7 @@
 import * as assert from 'node:assert';
 import * as vscode from 'vscode';
 import { keyFromSegments } from '../../src/core/model/keys';
-import { rootRef, type IndexSnapshot } from '../../src/extension/services/workspaceIndex';
+import { rootRef, WorkspaceIndex, type IndexSnapshot } from '../../src/extension/services/workspaceIndex';
 import { activateExtension, waitFor, workspaceUri } from './helpers';
 
 function severities(snapshot: IndexSnapshot): number[] {
@@ -26,6 +26,20 @@ suite('workspace index', () => {
     );
     assert.deepStrictEqual(severities(snapshot), [3, 15, 3]);
     assert.deepStrictEqual(snapshot.errors, []);
+  });
+
+  // Waiting for a second full run cost the first edit after activation a whole run (audit P-02).
+  test('gives the result of the first run to callers of latest() during it, without a second run', async () => {
+    const log = vscode.window.createOutputChannel('edu-sharing i18n (index tests)', { log: true });
+    const index = new WorkspaceIndex(log);
+    try {
+      const first = index.refresh();
+      const latest = index.latest();
+      assert.strictEqual(await latest, await first);
+    } finally {
+      index.dispose();
+      log.dispose();
+    }
   });
 
   test('re-indexes when a translation file is added and removed', async () => {

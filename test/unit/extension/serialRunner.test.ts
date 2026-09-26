@@ -55,6 +55,21 @@ describe('SerialRunner', () => {
     await expect(second).resolves.toBe(2);
   });
 
+  it('gives the run in progress, if any, without starting one', async () => {
+    const { runner, runs } = controlledRunner();
+    expect(runner.active()).toBeUndefined();
+    const first = runner.run();
+    runner.run();
+    expect(runner.active()).toBe(first);
+    runs[0]!.resolve(1);
+    await first;
+    await settle();
+    expect(runs).toHaveLength(2);
+    runs[1]!.resolve(2);
+    await settle();
+    expect(runner.active()).toBeUndefined();
+  });
+
   it('starts a new run for a call after the previous run has finished', async () => {
     const { runner, runs } = controlledRunner();
     const first = runner.run();

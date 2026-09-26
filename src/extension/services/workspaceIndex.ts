@@ -96,9 +96,12 @@ export class WorkspaceIndex implements vscode.Disposable {
     return this.runner.run();
   }
 
-  /** The result of the last run, or of a first one if none has ended yet (e.g. right after activation). */
+  /**
+   * The result of the last run, or of a first one if none has ended yet (e.g. right after activation): the run in
+   * progress, if there is one, rather than another run after it.
+   */
   latest(): Promise<IndexSnapshot> {
-    return this.snapshot ? Promise.resolve(this.snapshot) : this.refresh();
+    return this.snapshot ? Promise.resolve(this.snapshot) : (this.runner.active() ?? this.refresh());
   }
 
   /**

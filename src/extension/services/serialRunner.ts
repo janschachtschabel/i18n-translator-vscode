@@ -24,6 +24,11 @@ export class SerialRunner<T> {
     return this.queued;
   }
 
+  /** The run in progress, if any; unlike {@link run}, it starts none. */
+  active(): Promise<T> | undefined {
+    return this.current;
+  }
+
   private start(): Promise<T> {
     const run = this.task();
     this.current = run;
