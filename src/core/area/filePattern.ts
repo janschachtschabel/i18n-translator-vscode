@@ -1,4 +1,5 @@
 import { BASE_FILE_LOCALE } from '../model/locale';
+import { riskyPattern } from '../config/riskyPattern';
 import type { LocaleCode } from '../model/types';
 import { isPlainRelativePath } from './rootPath';
 
@@ -187,7 +188,8 @@ function toRegexSource(spec: FilePatternSpec): {
 
 /**
  * The expression is embedded into the whole-path pattern: anchors would never match there and numbered
- * backreferences would point at the wrong group, so both are rejected along with invalid syntax.
+ * backreferences would point at the wrong group, so both are rejected along with invalid syntax and expressions
+ * that could take exponential time.
  */
 function assertEmbeddableRegex(source: string, name: string): void {
   try {
@@ -214,5 +216,9 @@ function assertEmbeddableRegex(source: string, name: string): void {
         `${name} must not contain an anchor (^ or $); it is embedded into the path pattern.`,
       );
     }
+  }
+  const risk = riskyPattern(source);
+  if (risk) {
+    throw new SyntaxError(`${name} is refused: ${risk} ("${source}").`);
   }
 }

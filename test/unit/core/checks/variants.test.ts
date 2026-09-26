@@ -32,6 +32,12 @@ describe('compileVariants', () => {
     expect(result.errors[0]).toMatch(/de-x/);
   });
 
+  it('refuses expressions that could take exponential time, like invalid ones (audit S-06)', () => {
+    const result = compileVariants({ 'de-x': { base: 'de', requiredWhen: '(\\w+)*$', forbidden: 'Sie' } });
+    expect(result.errors).toEqual([expect.stringMatching(/^Variant de-x: .*repeated/)]);
+    expect(result.variants.get('de-x')?.required).toBeUndefined();
+  });
+
   it('keeps a variant with an invalid expression, so it still counts as sparse', () => {
     const variant = compileVariants({
       'de-x': { base: 'de', requiredWhen: '(', forbidden: 'Sie' },

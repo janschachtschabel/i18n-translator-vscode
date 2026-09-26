@@ -97,6 +97,16 @@ describe('compileFilePattern', () => {
       });
     });
 
+    it('rejects expressions that could take exponential time (audit S-06)', () => {
+      const spec = { files: '{bundle}/{locale}.json' };
+      expect(() => compileFilePattern({ ...spec, localePattern: '([a-z]+)+' })).toThrow(
+        /localePattern.*repeated/,
+      );
+      expect(() =>
+        compileFilePattern({ ...spec, localePattern: '[a-z]{2}', bundlePattern: '(.*)*' }),
+      ).toThrow(/bundlePattern.*repeated/);
+    });
+
     it('rejects unbalanced optional parts', () => {
       expect(() =>
         compileFilePattern({ files: '{bundle}[_{locale}.json', localePattern: '[a-z]{2}' }),

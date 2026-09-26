@@ -228,7 +228,9 @@ Beispiel für einen eigenen Bereich (Einstellung `eduI18n.areas`):
 
 `roots` sind Ordner im Workspace-Ordner, `files` ist ein Pfad unterhalb der Wurzel: Muster mit `..`, absoluten
 Teilen, `\` oder leeren und `.`-Segmenten weist die Erweiterung ab, und neue Dateien entstehen nur unter solchen
-einfachen Pfaden (Audit S-09).
+einfachen Pfaden (Audit S-09). Reguläre Ausdrücke aus Einstellungen (`localePattern`, `bundlePattern`, Varianten)
+dürfen höchstens 1000 Zeichen lang sein; eine unbegrenzt wiederholte Gruppe, die selbst mit einem wiederholten Teil
+beginnt (`(a+)+`), weist die Erweiterung ab, weil sie exponentiell lange laufen kann (Audit S-06).
 
 Zusätzliche Preset-Attribute für Angular: `bundleOrder` (Standard: `TRANSLATION_LIST` aus `translation-loader.ts`)
 und `mergeSemantics: "shallow-toplevel"` (aktiviert die Regeln `key-overridden` und `subtree-lost`). MDS kennt außerdem

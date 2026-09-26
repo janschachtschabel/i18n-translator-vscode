@@ -1,3 +1,4 @@
+import { riskyPattern } from '../config/riskyPattern';
 import type { LocaleCode } from '../model/types';
 
 /** A sparse locale that only contains texts that differ from its base (e.g. `de-informal` → `de`). */
@@ -35,8 +36,9 @@ export const DEFAULT_VARIANTS: VariantSettings = {
 };
 
 /**
- * Compiles variant settings. An invalid expression is reported and only its check is skipped: the locale
- * stays a sparse variant, or every key it leaves to its base would count as missing.
+ * Compiles variant settings. An invalid expression, or one that could take exponential time, is reported and only
+ * its check is skipped: the locale stays a sparse variant, or every key it leaves to its base would count as
+ * missing.
  */
 export function compileVariants(settings: VariantSettings): {
   variants: Map<LocaleCode, CompiledVariant>;
@@ -48,12 +50,19 @@ export function compileVariants(settings: VariantSettings): {
     if (!source) {
       return undefined;
     }
+    let regex: RegExp;
     try {
-      return new RegExp(source);
+      regex = new RegExp(source);
     } catch (error) {
       errors.push(`Variant ${locale}: ${(error as Error).message}`);
       return undefined;
     }
+    const risk = riskyPattern(source);
+    if (risk) {
+      errors.push(`Variant ${locale}: "${source}" is refused: ${risk}.`);
+      return undefined;
+    }
+    return regex;
   };
   for (const [locale, config] of Object.entries(settings)) {
     const required = compile(locale, config.requiredWhen);
