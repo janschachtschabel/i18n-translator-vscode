@@ -351,6 +351,8 @@ suite('FileStore', () => {
         readFile: (uri) => vscode.workspace.fs.readFile(uri),
         writeFile: async (uri, bytes) => {
           if (uri.toString() === fr.toString()) {
+            // As a write that runs out of space: the file is cut off, and so is every try to restore it.
+            await vscode.workspace.fs.writeFile(uri, new Uint8Array());
             throw new Error('disk full');
           }
           await vscode.workspace.fs.writeFile(uri, bytes);
@@ -364,6 +366,27 @@ suite('FileStore', () => {
       result.notRestored?.map((uri) => uri.toString()),
       [fr.toString()],
     );
+  });
+
+  // A read-only or locked file refuses the write before it changes: it is not damaged (audit L-10).
+  test('does not report a file as damaged that a failed write left as it was', async () => {
+    const fr = uriOf('common', 'fr');
+    const before = await vscode.workspace.fs.readFile(fr);
+    const store = new FileStore(api.index, log, {
+      files: {
+        readFile: (uri) => vscode.workspace.fs.readFile(uri),
+        writeFile: async (uri, bytes) => {
+          if (uri.toString() === fr.toString()) {
+            throw new Error('access denied');
+          }
+          await vscode.workspace.fs.writeFile(uri, bytes);
+        },
+        delete: (uri) => vscode.workspace.fs.delete(uri),
+      },
+    });
+    const result = await store.write(ref, setAsk('Continuer ?'));
+    assert.deepEqual(result, { ok: false, reason: 'error', message: 'access denied' });
+    assert.deepEqual(await vscode.workspace.fs.readFile(fr), before);
   });
 
   test('writes every file of a change or none', async () => {

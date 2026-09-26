@@ -50,8 +50,9 @@ export async function putAllOrNone(
         try {
           await put(access, done);
         } catch (restoreError) {
-          // Removing a new file that was never created is no failure.
-          if (!(done.bytes === undefined && isFileNotFound(restoreError))) {
+          // A file that has its old bytes anyway is no failure: a new file that was never created, or one that
+          // refused the write before it changed (read-only, locked by another program).
+          if (!(await hasBytes(access, done))) {
             log.error(`Could not restore ${relative(done.uri)}.`, restoreError);
             notRestored.push(done.uri);
           }
@@ -61,6 +62,16 @@ export async function putAllOrNone(
     }
   }
   return undefined;
+}
+
+/** Whether the file has the bytes of `put` (none: it does not exist); a file that cannot be read has not. */
+async function hasBytes(access: FileAccess, { uri, bytes }: Put): Promise<boolean> {
+  try {
+    const onDisk = await readIfExists(uri, access);
+    return onDisk === undefined || bytes === undefined ? onDisk === bytes : sameBytes(onDisk, bytes);
+  } catch {
+    return false;
+  }
 }
 
 export function isFileNotFound(error: unknown): boolean {
