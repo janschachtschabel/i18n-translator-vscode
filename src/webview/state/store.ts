@@ -54,17 +54,26 @@ export class EditorStore {
   // render again only when their props change.
   private readonly hiddenLocales = computed(() => this.uiState.value.hiddenLocales);
   private readonly compactLocale = computed(() => this.uiState.value.compactLocale);
-  /** The languages the rows show: the visible ones, in the compact list the reference and one more. */
+  private columns: LocaleView[] = [];
+  /**
+   * The languages the rows show: the visible ones, in the compact list the reference and one more. The same array
+   * as long as the columns are the same, also with new counts of findings: the rows, which show no counts, then
+   * render again only where a text changed (the chips take the counts from the model).
+   */
   readonly shownLocales = computed((): LocaleView[] => {
     const view = this.view.value;
-    if (view.kind !== 'bundle') {
-      return [];
-    }
     const hiddenLocales = this.hiddenLocales.value;
     const compactLocale = this.compactLocale.value;
-    return this.layout.value === 'compact'
-      ? compactLocales(view.model.locales, hiddenLocales, compactLocale)
-      : view.model.locales.filter((locale) => !hiddenLocales.includes(locale.code));
+    const shown =
+      view.kind !== 'bundle'
+        ? []
+        : this.layout.value === 'compact'
+          ? compactLocales(view.model.locales, hiddenLocales, compactLocale)
+          : view.model.locales.filter((locale) => !hiddenLocales.includes(locale.code));
+    if (!sameColumns(shown, this.columns)) {
+      this.columns = shown;
+    }
+    return this.columns;
   });
   /** The rows the filter lets through, looking at the languages that are shown; undefined without a bundle. */
   readonly filtered = computed((): FilterResult | undefined => {
@@ -250,6 +259,23 @@ export class EditorStore {
     const row = this.rows.value.find((candidate) => candidate.entryId === open.entryId);
     return view.kind === 'bundle' && row ? nextCell([row], view.model.locales, open, direction) : undefined;
   }
+}
+
+/** Whether two lists of languages make the same columns: what rows and headers show of a language. */
+function sameColumns(a: readonly LocaleView[], b: readonly LocaleView[]): boolean {
+  return (
+    a.length === b.length &&
+    a.every((locale, index) => {
+      const other = b[index]!;
+      return (
+        locale.code === other.code &&
+        locale.lang === other.lang &&
+        locale.reference === other.reference &&
+        locale.variant === other.variant &&
+        locale.hasFile === other.hasFile
+      );
+    })
+  );
 }
 
 export function missingNotice(name: string): string {
