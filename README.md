@@ -38,6 +38,9 @@ Tabelle mit einer Spalte je Sprache oder, in schmalen Fenstern, als Liste:
 - die Details eines Keys mit Erklärungen und Hinweisen zu jedem Befund;
 - Keys hinzufügen, umbenennen und löschen; Sprachen hinzufügen.
 
+**KI (b-api).** Ein Vorschlag für den Text einer Zelle, übersetzt aus der Referenz, geprüft wie ein getippter Text und
+erst auf Ihren Wunsch gespeichert (siehe [KI-Füllen und b-api-Schlüssel](#ki-füllen-und-b-api-schlüssel)).
+
 **Daten sicher halten.**
 - **Nur das Nötige schreiben:** Eine Zelle ändert genau eine Zeile. Einrückung, Zeilenenden und Reihenfolge der
   Datei bleiben, ebenso das Encoding einer `.properties`-Datei (UTF-8 oder ISO-8859-1) und in Mail-Templates CDATA,
@@ -246,6 +249,9 @@ In der Befehlspalette unter „edu-sharing i18n“:
 | Key hinzufügen… | einen Key in allen Sprachen einer Einheit anlegen, mit Rückfragen |
 | Sprache hinzufügen… | eine Sprachdatei je Einheit anlegen (leer, der Rückfall greift) |
 | Mail-Vorschau | die Mail eines Templates in jeder Sprache neben dem Editor zeigen, wie edu-sharing sie verschickt |
+| API-Schlüssel setzen… · API-Schlüssel entfernen | den b-api-Schlüssel im Schlüsselspeicher von VS Code ablegen oder löschen |
+| KI-Verbindung testen | prüfen, ob die b-api mit Schlüssel und Modell antwortet |
+| KI-Modell wählen… | ein Chat-Modell der b-api für Vorschläge wählen |
 | Letzte Änderung an Übersetzungsdateien rückgängig machen | das letzte Schreiben dieser Sitzung zurücknehmen |
 | Übersetzungsdateien jetzt sichern | eine Sicherung von Hand |
 | Übersetzungsdateien aus einer Sicherung wiederherstellen… | eine Sicherung wählen und zurückholen; der aktuelle Stand wird vorher gesichert |
@@ -261,7 +267,8 @@ Entf.
 | Enter oder F2 | Text bearbeiten |
 | Enter · Strg+Enter | speichern (Strg+Enter bei mehrzeiligen Texten; dort beginnt Enter eine neue Zeile) |
 | Tab · Umschalt+Tab | speichern und die nächste bzw. vorige Zelle bearbeiten |
-| Esc | Bearbeitung abbrechen |
+| Esc | Bearbeitung abbrechen; mit einem KI-Vorschlag erst den vorigen Text zurückholen |
+| Strg+I | KI-Vorschlag für den Text (öffnet das Textfeld der gewählten Zelle) |
 | F2 · Entf (Mac: Cmd+Rücktaste) in der Key-Spalte | Key umbenennen · löschen |
 | Alt+↓ · Alt+↑ | zum nächsten bzw. vorigen Befund |
 | Strg+F · Alt+M | zur Suche · nur Keys mit fehlenden Texten |
@@ -286,6 +293,7 @@ Arbeitsbereiche („Benutzer“) oder nur für diesen („Arbeitsbereich“).
 | `eduI18n.diagnostics.missing` | `aggregate` | fehlende Keys in „Probleme“: je Datei, je Key oder gar nicht |
 | `eduI18n.backup.intervalMinutes` | `10` | Abstand der Sicherungen während der Arbeit (`0`: nur die festen Anlässe) |
 | `eduI18n.backup.keep` | `10` | Anzahl der aufbewahrten Sicherungen |
+| `eduI18n.ai.*` | b-api Staging, `gpt-6-luna` | KI-Anbindung, siehe [KI-Füllen und b-api-Schlüssel](#ki-füllen-und-b-api-schlüssel) |
 
 - `areas`, `variants` und `roots` aus den Einstellungen des Arbeitsbereichs gelten erst, wenn der Arbeitsbereich
   vertrauenswürdig ist.
@@ -295,40 +303,53 @@ Arbeitsbereiche („Benutzer“) oder nur für diesen („Arbeitsbereich“).
 
 ## KI-Füllen und b-api-Schlüssel
 
-**Heute ist kein Schlüssel nötig.** Die Extension prüft und bearbeitet nur lokale Dateien und baut keine
-Netzwerkverbindung auf. Einen gesetzten `B_API_KEY` liest diese Version nicht.
+Die Extension schlägt auf Wunsch Übersetzungen per KI vor. Die Anfragen gehen an die b-api von OpenEduHub
+(Voreinstellung `https://b-api.staging.openeduhub.net`, Modell `gpt-6-luna`); der Schlüssel weist sie dort aus
+(Header `X-API-KEY`). Es ist derselbe Schlüssel, den die bisherige Standalone-App als `B_API_KEY` nutzt. Wer keinen
+hat, bekommt ihn bei den Betreibern der b-api.
 
-**Wofür er gebraucht wird:** Ab Phase 3 schlägt die Extension Übersetzungen per KI vor und füllt fehlende auf Wunsch,
-immer mit Prüfliste.
-- Die Anfragen gehen an die b-api von OpenEduHub (Voreinstellung `https://b-api.staging.openeduhub.net`, Modell
-  `gpt-6-luna`).
-- Der Schlüssel weist sie dort aus (Header `X-API-KEY`).
-- Es ist derselbe Schlüssel, den die bisherige Standalone-App als `B_API_KEY` nutzt. Wer keinen hat, bekommt ihn bei
-  den Betreibern der b-api.
-
-**Wo und wie man ihn hinterlegt.** So ist es geplant (siehe
-[Design, Abschnitt 6.8](docs/plans/2026-09-24-edu-sharing-i18n-vscode-design.md#68-ki-anbindung-b-api--gpt-6-luna)):
-1. **Empfohlen:** der Befehl „edu-sharing i18n: API-Schlüssel setzen“.
-   - Er legt den Schlüssel im Schlüsselspeicher von VS Code ab (SecretStorage), den das Betriebssystem verschlüsselt.
+**Einrichten:**
+1. **Schlüssel setzen:** „edu-sharing i18n: API-Schlüssel setzen…“ in der Befehlspalette oder im Menü „…“ der
+   Seitenleiste „Bereiche“.
+   - Das Eingabefeld zeigt den Schlüssel nicht an und bleibt offen, während Sie ihn etwa aus einem Passwortmanager
+     kopieren.
+   - VS Code bewahrt ihn im Schlüsselspeicher auf (SecretStorage), den das Betriebssystem verschlüsselt.
    - „API-Schlüssel entfernen“ löscht ihn wieder.
-2. **Rückfall:** die Umgebungsvariable `B_API_KEY`. Sie muss gesetzt sein, bevor VS Code startet.
-   - Windows, dauerhaft für den eigenen Benutzer: in PowerShell `setx B_API_KEY "<Schlüssel>"` ausführen, danach
-     alle VS-Code-Fenster schließen und VS Code neu starten.
-   - macOS und Linux: `export B_API_KEY="<Schlüssel>"` in `~/.zshrc` bzw. `~/.bashrc` eintragen und VS Code neu
-     starten.
-   - `setx` und die Shell-Datei speichern den Schlüssel im Klartext; der Befehl aus Punkt 1 ist sicherer.
-3. **Nie** in `settings.json`, im Repository oder in anderen Dateien des Arbeitsbereichs. Die Extension liest ihn dort
-   nicht und schreibt ihn nie in Protokoll, Editor oder Meldungen.
+   - **Rückfall:** Ohne gespeicherten Schlüssel gilt die Umgebungsvariable `B_API_KEY`, wenn sie beim Start von VS Code
+     gesetzt ist. Windows, dauerhaft für den eigenen Benutzer: in PowerShell `setx B_API_KEY "<Schlüssel>"`, danach alle
+     VS-Code-Fenster schließen und VS Code neu starten. macOS und Linux: `export B_API_KEY="<Schlüssel>"` in
+     `~/.zshrc` bzw. `~/.bashrc`. `setx` und die Shell-Datei speichern den Schlüssel im Klartext; der Befehl ist
+     sicherer.
+   - **Nie** in `settings.json`, im Repository oder in anderen Dateien des Arbeitsbereichs. Die Extension liest ihn dort
+     nicht und schreibt ihn nie in Protokoll, Editor oder Meldungen.
+2. **Verbindung testen:** „KI-Verbindung testen“ fragt die Modelle der b-api ab und schickt dem eingestellten Modell
+   einen festen Testtext (nichts aus dem Arbeitsbereich). Die Meldung nennt die Antwortzeit, oder die Ursache eines
+   Fehlers mit dem Schritt, der ihn behebt.
+3. **Modell wählen** (optional): „KI-Modell wählen…“ bietet die Chat-Modelle des Anbieters an und speichert die Wahl in
+   den Benutzereinstellungen.
 
-**Geplante Einstellungen:**
-- `eduI18n.ai.enabled`: KI an oder aus.
-- `eduI18n.ai.baseUrl`: Adresse der b-api, etwa die Produktion statt Staging.
-- `eduI18n.ai.provider`, `eduI18n.ai.model`: Anbieter und Modell.
-- `eduI18n.ai.reasoningEffort`: Denkaufwand des Modells.
-- `eduI18n.ai.batchSize`, `eduI18n.ai.maxConcurrency`, `eduI18n.ai.timeoutSeconds`: Größe und Zahl der Anfragen.
+**Vorschlag für eine Zelle:**
+- Eine Zelle anklicken und „KI-Vorschlag“ unter dem Textfeld wählen, oder Strg+I drücken (auch auf einer gewählten
+  Zelle der Tabelle, dann öffnet sich ihr Textfeld).
+- Übersetzt wird der Text der Referenz, bei einer Variante (`de-informal`, `de-no-binnen-i`) der Text ihrer Basis;
+  bis zu drei Texte in anderen Sprachen helfen mit dem Sinn.
+- Der Vorschlag steht im Textfeld, markiert mit „KI-Vorschlag – bitte prüfen“; die Prüfung beim Tippen zeigt
+  abweichende Platzhalter und HTML-Tags wie bei einem getippten Text.
+- Enter, Tab oder ein Klick daneben speichern ihn wie einen getippten Text; Esc holt den vorigen Text zurück, ein
+  zweites Esc schließt das Textfeld. Strg+Z nimmt einen gespeicherten Vorschlag zurück.
+- Ohne Schlüssel steht dort „KI-Vorschlag: API-Schlüssel setzen…“.
 
-Zur b-api gehen nur UI-Texte, Keys und Hinweise, keine personenbezogenen Daten. Im eingeschränkten Modus bleibt die KI
-aus.
+**Was die b-api bekommt:** den zu übersetzenden Text, seinen Key und seine Texte in anderen Sprachen, keine
+personenbezogenen Daten. Bevor zum ersten Mal Texte an eine Adresse gehen, fragt die Extension einmal nach (je
+Adresse; ein Wechsel etwa zur Produktion fragt erneut). Im eingeschränkten Modus und mit `eduI18n.ai.enabled: false`
+ist die KI aus.
+
+**Einstellungen** (Kategorie „KI (b-api)“, Einzelheiten in [docs/einstellungen.md](docs/einstellungen.md#ki-b-api)):
+`eduI18n.ai.enabled`, `ai.baseUrl` (nur in den Benutzereinstellungen), `ai.provider`, `ai.model`,
+`ai.reasoningEffort`, `ai.reviewReasoningEffort`, `ai.batchSize`, `ai.maxConcurrency`, `ai.timeoutSeconds`,
+`ai.languageDescriptions`.
+
+Das Füllen vieler Texte einer Sprache mit einer Prüfliste und die KI-Prüfung aller Texte einer Sprache folgen.
 
 ## Protokoll
 
@@ -337,7 +358,9 @@ Dateien. Mehr Einzelheiten: „Developer: Set Log Level…“ für diesen Kanal.
 
 ## Datenschutz
 
-- Keine Telemetrie und keine Netzwerkzugriffe.
+- Keine Telemetrie.
+- Netzwerkzugriffe nur für die KI, nur nach einer Aktion (Vorschlag, Verbindungstest, Modellwahl) und nur zur
+  eingestellten b-api-Adresse; bevor Texte dorthin gehen, fragt die Extension einmal nach.
 - Sicherungen liegen im Speicher der Extension für diesen Arbeitsbereich, nie im Repository.
 - Die Ansicht je Einheit und die nicht gespeicherten Texte liegen im Arbeitsbereichsspeicher von VS Code.
 
@@ -359,11 +382,15 @@ Dateien. Mehr Einzelheiten: „Developer: Set Log Level…“ für diesen Kanal.
 
 **Eine Einstellung wirkt nicht:** Warum, steht oben in der Seitenleiste „Bereiche“ und im Protokoll.
 
+**Die KI antwortet nicht:** „KI-Verbindung testen“ nennt die Ursache und den nächsten Schritt: einen abgelehnten
+Schlüssel („API-Schlüssel setzen…“), ein Modell, das die b-api nicht anbietet („KI-Modell wählen…“), eine nicht
+erreichbare Adresse (Netzwerk, Proxy, `eduI18n.ai.baseUrl`). Im eingeschränkten Modus ist die KI aus.
+
 ## Geplant
 
 Laut [Taskliste](docs/plans/2026-09-24-edu-sharing-i18n-vscode-tasks.md):
-- Füllen aus einem Übersetzungsspeicher oder per KI (b-api, siehe [oben](#ki-füllen-und-b-api-schlüssel)), immer mit
-  Prüfliste;
+- Füllen vieler Texte einer Sprache per KI mit Prüfliste und eine KI-Prüfung aller Texte einer Sprache (in Arbeit);
+  ein Übersetzungsspeicher;
 - Import und Export (CSV, JSON, `.properties`, Mail-XML);
 - Mail-Templates: hervorgehobener HTML-Code, die Vorschau schon beim Tippen und im Farbschema von VS Code;
 - Kontext, Review-Status und eine Übersicht;
@@ -392,8 +419,9 @@ language. Writes change only the edited line and keep each file's encoding and l
   Or download
   [edu-sharing-i18n.vsix](https://github.com/janschachtschabel/i18n-translator-vscode/releases/latest/download/edu-sharing-i18n.vsix)
   and run "Extensions: Install from VSIX…".
-- **API key:** none is needed yet. AI filling via the b-api comes with phase 3. The key will be kept in VS Code's
-  secret storage or in the `B_API_KEY` environment variable.
+- **AI (b-api):** "Set API key…" keeps the key of the b-api in VS Code's secret storage (fallback: the `B_API_KEY`
+  environment variable); "Test AI connection" checks it. In the editor, "AI Suggestion" (Ctrl+I) puts a translation
+  of the reference text into a cell's field, to check and save like a typed text.
 - **Documentation:** the settings are described in German in [docs/einstellungen.md](docs/einstellungen.md), as are
   the design documents.
 

@@ -1883,6 +1883,27 @@ Editor eine KI-Gruppe in der Werkzeugleiste mit dem Status („KI: bereit · gpt
 | K13 | Einwilligung je Origin | ein Wechsel zu Produktion fragt erneut |
 | K14 | Variantensprachen im Vorschlag und im Füllen (Quelle: Basistext, `forbidden` blockiert) | dünne Varianten haben keine „fehlenden“ Texte |
 
+### Umsetzung Blöcke A und B (27.09.2026)
+
+- **3.0** teilt nur, was sich ohne Umbau lösen ließ: die Prüfhelfer des Protokolls (`messageChecks.ts`) und
+  `EditorPanels` (`editorPanels.ts`). `store.ts` bleibt ungeteilt: Der KI-Zustand liegt in `state/suggestions.ts`, der
+  Store bekommt nur ein Feld. `edits.ts` bleibt ebenso: Die Konflikte hängen an denselben Zuständen (offener Editor,
+  Entwurf, gesendete und abgelehnte Texte); der Vorschlag braucht dort nur `suggest` und `takeBackSuggestion`.
+- **3.5** ohne Datenschutzhinweis: Der Verbindungstest schickt einen festen Text. Der Hinweis kam mit dem ersten
+  Senden von Texten (3.8, `AiConsent`).
+- **3.7** (Prüfung der Vorschläge) ist nach Block C verschoben: Den Einzelvorschlag prüft die Prüfung beim Tippen im
+  Textfeld; eine eigene Prüfung braucht erst das Füllen, bei dem niemand jeden Text im Editor sieht.
+- **K8 geändert:** Ein Vorschlag wird gespeichert wie ein getippter Text (Enter, Tab, Verlassen des Feldes). Esc holt
+  zuerst den vorigen Text zurück, ein zweites Esc schließt; Strg+Z nimmt einen gespeicherten Vorschlag zurück. Grund:
+  Im Editor speichert das Verlassen des Feldes getippten Text; ein Vorschlag, der sich anders verhielte, hinterließe
+  Markierungen „nicht gespeichert“.
+- **Gefunden in der Abnahme:** Ein modaler Dialog von VS Code (die Einwilligung) nimmt der ganzen Seite den Fokus; das
+  Textfeld schloss sich, und der Vorschlag fand keinen Editor mehr. Seitdem speichert das Verlassen nur, solange die
+  Seite den Fokus hat. Jede Änderung einer `eduI18n.*`-Einstellung las den Arbeitsbereich neu ein, auch der KI; seitdem
+  nur die Einstellungen, die der Index liest.
+- **Live gegen die b-api Staging:** „KI-Verbindung testen“ meldete `gpt-6-luna` nach 2,0 s; ein fehlender
+  französischer Metadataset-Text bekam in 0,3 s „Format d'apprentissage“.
+
 **Risiken:** Proxy (`fetch` und `http.proxy` in älteren VS-Code-Versionen, zu prüfen); langsames Stapelschreiben
 (messen in 3.10); Modell-IDs ändern sich (Verbindungstest, Modellwahl); Reasoning-Tokens zählen zum Budget; große
 Aufträge (`valuespaces_i18n` 1.232 Lücken: Rückfrage, Abbrechen behält Erhaltenes); Prompt-Injection über Texte im

@@ -46,6 +46,16 @@ Drei Regeln gelten für alle Einstellungen:
 | `eduI18n.diagnostics.missing` | `aggregate` | fehlende Keys in „Probleme“: je Datei, je Key oder gar nicht |
 | `eduI18n.backup.intervalMinutes` | `10` | Abstand der Sicherungen während der Arbeit |
 | `eduI18n.backup.keep` | `10` | Anzahl der aufbewahrten Sicherungen |
+| `eduI18n.ai.enabled` | `true` | KI-Funktionen an oder aus |
+| `eduI18n.ai.baseUrl` | `https://b-api.staging.openeduhub.net` | Adresse der b-api (nur Benutzereinstellungen) |
+| `eduI18n.ai.provider` | `openai` | Anbieter hinter der b-api |
+| `eduI18n.ai.model` | `gpt-6-luna` | Modell |
+| `eduI18n.ai.reasoningEffort` | `low` | Denkaufwand beim Übersetzen |
+| `eduI18n.ai.reviewReasoningEffort` | `medium` | Denkaufwand bei der KI-Prüfung |
+| `eduI18n.ai.batchSize` | `25` | Texte je Anfrage beim Füllen und Prüfen |
+| `eduI18n.ai.maxConcurrency` | `2` | gleichzeitige Anfragen |
+| `eduI18n.ai.timeoutSeconds` | `120` | Sekunden je Anfrage |
+| `eduI18n.ai.languageDescriptions` | Beschreibungen der alten App für die deutschen Formen | was eine Sprache ist, für die Anweisungen an das Modell |
 
 ## Sprachen
 
@@ -340,6 +350,71 @@ Standard: `10`, erlaubt sind 1 bis 100. So viele Sicherungen bewahrt die Extensi
 - Zurückholen: „Übersetzungsdateien aus einer Sicherung wiederherstellen…“.
 - Beide Sicherungseinstellungen gelten für das ganze Fenster, nicht je Ordner.
 
+## KI (b-api)
+
+Die Einstellungen der KI stehen in einer eigenen Kategorie „KI (b-api)“ und gelten für das ganze Fenster. Wie man den
+Schlüssel setzt und die Verbindung testet, steht im [README](../README.md#ki-füllen-und-b-api-schlüssel).
+
+### `eduI18n.ai.enabled`
+
+Standard: `true`. `false` schaltet Vorschläge, Füllen und KI-Prüfung ab; die Extension baut dann keine Verbindung auf.
+Im eingeschränkten Modus ist die KI immer aus.
+
+### `eduI18n.ai.baseUrl`
+
+Standard: `https://b-api.staging.openeduhub.net`. Die Adresse der b-api, ohne Pfad der Schnittstelle; die Extension
+hängt `/api/v1/llm/{provider}/…` an.
+
+```json
+"eduI18n.ai.baseUrl": "https://b-api.prod.openeduhub.net"
+```
+
+- Nur `https:`, und `http:` nur auf diesem Rechner (`127.0.0.1`, `localhost`), etwa für einen lokalen Proxy; ohne
+  Benutzerangabe, Query oder Fragment.
+- Nur in den Benutzereinstellungen (Geltungsbereich `machine`): Ein Arbeitsbereich, etwa ein geklontes Repository mit
+  `.vscode/settings.json`, kann den Schlüssel so nicht an eine andere Adresse schicken.
+- Umleitungen folgt die Extension nicht, weil der Schlüssel sonst mitginge.
+
+### `eduI18n.ai.provider` und `eduI18n.ai.model`
+
+Standard: `openai` und `gpt-6-luna`. Welche Modelle es gibt, zeigt „KI-Modell wählen…“, das die Wahl hier speichert.
+
+```json
+"eduI18n.ai.provider": "academiccloud",
+"eduI18n.ai.model": "qwen3.6-35b-a3b"
+```
+
+- Modelle wie `gpt-5*`, `gpt-6*` und `o3` bekommen `max_completion_tokens` und `reasoning_effort`, alle anderen
+  `max_tokens` und `temperature: 0`; Qwen3-Modelle zusätzlich `enable_thinking: false`.
+- Jede Anfrage verlangt die Antwort als JSON nach einem festen Schema.
+
+### `eduI18n.ai.reasoningEffort` und `eduI18n.ai.reviewReasoningEffort`
+
+Standard: `low` beim Übersetzen, `medium` bei der KI-Prüfung. Erlaubt sind `none`, `low`, `medium`, `high` und `xhigh`
+(`minimal` lehnt die b-api ab). Mehr Aufwand ist langsamer und braucht mehr Tokens; Modelle ohne Denkschritt
+übergehen die Einstellung.
+
+### `eduI18n.ai.batchSize`, `eduI18n.ai.maxConcurrency`, `eduI18n.ai.timeoutSeconds`
+
+Standard: `25` Texte je Anfrage (1–100), `2` gleichzeitige Anfragen (1–6) und `120` Sekunden je Anfrage (10–600).
+Die ersten beiden gelten für das Füllen und die KI-Prüfung. Antwortet die b-api mit HTTP 429, 502, 503 oder 504,
+wiederholt die Extension die Anfrage nach 2,5, 5 und 10 Sekunden.
+
+### `eduI18n.ai.languageDescriptions`
+
+Standard: die Beschreibungen der alten App für `de` („Sie“), `de-informal` („du“), `de-no-binnen-i` (ohne Binnen-I
+und Genderstern), `de_DE` und `de_DE-informal`. Was eine Sprache ist, für die Anweisungen an das Modell; Sprachen ohne
+Beschreibung bekommen ihren englischen Namen (`fr_FR`: „French (France)“).
+
+```json
+"eduI18n.ai.languageDescriptions": {
+  "fr_FR": "French (France), formal 'vous'",
+  "de-informal": "German informal variant: use 'du' instead of 'Sie', otherwise the same content as 'de'"
+}
+```
+
+Ein eigener Wert ersetzt die ganze Liste: Wer die deutschen Beschreibungen behalten will, übernimmt sie.
+
 ## Grenzen
 
 Damit ein Repository VS Code nicht lahmlegen kann, gilt:
@@ -351,8 +426,6 @@ Damit ein Repository VS Code nicht lahmlegen kann, gilt:
 
 ## Geplante Einstellungen
 
-Mit den nächsten Phasen kommen Einstellungen hinzu:
-- für die KI (`eduI18n.ai.*`, siehe [README](../README.md#ki-füllen-und-b-api-schlüssel));
-- für Import und Export, Metadaten und Kontext.
+Mit den nächsten Phasen kommen Einstellungen für Import und Export, Metadaten und Kontext hinzu.
 
 Die geplante Liste steht im [Design, Abschnitt 9](plans/2026-09-24-edu-sharing-i18n-vscode-design.md#9-einstellungen-contributesconfiguration).

@@ -7,6 +7,15 @@ Phasen 5 und 6 vorgezogen sind, zählt sie weiter, ohne die Phase zu nennen. Die
 
 ## Unveröffentlicht
 
+- **KI über die b-api, erster Teil:**
+  - „API-Schlüssel setzen…“ legt den Schlüssel im Schlüsselspeicher von VS Code ab; ohne ihn gilt `B_API_KEY`.
+  - „KI-Verbindung testen“ und „KI-Modell wählen…“; die Einstellungen stehen in der Kategorie „KI (b-api)“, die Adresse
+    nur in den Benutzereinstellungen.
+  - **KI-Vorschlag für eine Zelle** (Knopf unter dem Textfeld, Strg+I): übersetzt aus der Referenz oder, bei einer
+    Variante, aus ihrer Basis, markiert „bitte prüfen“ und geprüft wie ein getippter Text; Esc holt den vorigen Text
+    zurück. Vor dem ersten Senden an eine Adresse fragt die Extension einmal nach.
+- Ein Dialog von VS Code (etwa diese Rückfrage) schließt das offene Textfeld nicht mehr.
+- Eine Änderung der KI- oder Sicherungseinstellungen liest den Arbeitsbereich nicht mehr neu ein.
 - **Eingabefelder für Keys und Sprachen** („Key hinzufügen…“, „Key umbenennen…“, „Sprache hinzufügen…“) schließen
   jetzt auch mit einem Klick daneben und haben ein X in der Titelzeile; bisher schloss sie nur Esc.
 - **Ein Klick auf eine Zelle öffnet ihren Text zum Bearbeiten**, wie in der alten App; bisher wählte er die Zelle nur,
