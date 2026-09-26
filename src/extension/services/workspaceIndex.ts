@@ -1,12 +1,11 @@
 import * as vscode from 'vscode';
-import type { AreaDefinition } from '../../core/area/areaDefinition';
-import { compileVariants } from '../../core/checks/variants';
 import type { Settings } from '../../core/config/settings';
 import type { AreaId } from '../../core/model/types';
-import { analyzeRoot, type AnalysisOptions, type RootAnalysis } from '../../core/pipeline/analyze';
-import { excludeGlob, readBackupSettings, readSettings } from '../config';
+import { analyzeRoot, type RootAnalysis } from '../../core/pipeline/analyze';
+import { analysisOptions, excludeGlob, readBackupSettings, readSettings } from '../config';
 import { messageOf } from './errors';
-import { detectRoots, listRoot, readFiles, revisionsOf, sameRevisions } from './rootFiles';
+import { IndexWatchers, type WatchedPattern } from './indexWatchers';
+import { detectRoots, fixedRoots, listRoot, readFiles, revisionsOf, sameRevisions } from './rootFiles';
 import { SerialRunner } from './serialRunner';
 
 export interface IndexedRoot {
@@ -54,7 +53,7 @@ interface Timings {
  */
 export class WorkspaceIndex implements vscode.Disposable {
   private readonly changed = new vscode.EventEmitter<IndexSnapshot>();
-  /** Fires after every run that changed something. */
+  /** Fires after every full run, and after a run of a root whose files changed. */
   readonly onDidChange = this.changed.event;
 
   /** Calls during a full run share one run that starts after it. */
@@ -68,8 +67,8 @@ export class WorkspaceIndex implements vscode.Disposable {
   /** What the last full run could not use (settings, detection); the unreadable files are per root. */
   private generalErrors: string[] = [];
   private readonly rootErrors = new Map<string, string[]>();
-  private readonly subscriptions: vscode.Disposable[] = [this.changed];
-  private readonly watchers = new Map<string, vscode.Disposable>();
+  private readonly watchers = new IndexWatchers();
+  private readonly subscriptions: vscode.Disposable[] = [this.changed, this.watchers];
   private readonly timers = new Map<string, ReturnType<typeof setTimeout>>();
   private snapshot: IndexSnapshot | undefined;
   private disposed = false;
@@ -97,9 +96,15 @@ export class WorkspaceIndex implements vscode.Disposable {
     return this.runner.run();
   }
 
+  /** The result of the last run, or of a first one if none has ended yet (e.g. right after activation). */
+  latest(): Promise<IndexSnapshot> {
+    return this.snapshot ? Promise.resolve(this.snapshot) : this.refresh();
+  }
+
   /**
    * Indexes one root again, e.g. after its files were written: without the search for roots, and without a new
-   * analysis if its files are as they were. A root the last run did not have gets a full run.
+   * analysis if its files are as they were. Before the first run it makes a full one; a root the last run did not
+   * have is left as it is (e.g. the watcher of a root that a branch switch took away).
    */
   refreshRoot(ref: RootRef): Promise<IndexSnapshot> {
     const key = keyOf(ref);
@@ -116,10 +121,6 @@ export class WorkspaceIndex implements vscode.Disposable {
     for (const timer of this.timers.values()) {
       clearTimeout(timer);
     }
-    for (const watcher of this.watchers.values()) {
-      watcher.dispose();
-    }
-    this.watchers.clear();
     vscode.Disposable.from(...this.subscriptions).dispose();
   }
 
@@ -158,7 +159,7 @@ export class WorkspaceIndex implements vscode.Disposable {
     const generalErrors: string[] = [...readBackupSettings().errors];
     const rootErrors = new Map<string, string[]>();
     const revisions = new Map<string, ReadonlyMap<string, string>>();
-    const watched = new Map<string, { pattern: vscode.RelativePattern; onChange: () => void }>();
+    const watched = new Map<string, WatchedPattern>();
 
     for (const folder of vscode.workspace.workspaceFolders ?? []) {
       const { settings, errors: settingErrors } = readSettings(folder.uri);
@@ -173,6 +174,7 @@ export class WorkspaceIndex implements vscode.Disposable {
           watched.set(`${folder.uri}|detect|${area.id}`, {
             pattern: new vscode.RelativePattern(folder, area.detect.glob),
             onChange: () => this.schedule(),
+            contents: false,
           });
         }
         let areaRoots: readonly string[];
@@ -202,6 +204,7 @@ export class WorkspaceIndex implements vscode.Disposable {
           watched.set(`${key}|root`, {
             pattern: new vscode.RelativePattern(base, '**/*'),
             onChange: () => this.schedule(ref),
+            contents: true,
           });
           const errors: string[] = [];
           rootErrors.set(key, errors);
@@ -236,7 +239,7 @@ export class WorkspaceIndex implements vscode.Disposable {
     this.generalErrors = generalErrors;
     this.replace(this.rootErrors, rootErrors);
     this.replace(this.revisions, revisions);
-    this.watch(watched);
+    this.watchers.update(watched);
     const snapshot = this.publish(roots, started);
     const phases = Object.entries(timings)
       .map(([phase, ms]) => `${phase} ${ms} ms`)
@@ -257,9 +260,12 @@ export class WorkspaceIndex implements vscode.Disposable {
 
   private async indexRoot(ref: RootRef): Promise<IndexSnapshot> {
     const key = keyOf(ref);
-    const position = this.snapshot?.roots.findIndex((indexed) => keyOf(rootRef(indexed)) === key) ?? -1;
-    if (!this.snapshot || position === -1) {
+    if (!this.snapshot) {
       return this.index();
+    }
+    const position = this.snapshot.roots.findIndex((indexed) => keyOf(rootRef(indexed)) === key);
+    if (position === -1) {
+      return this.snapshot;
     }
     const started = Date.now();
     const { folder, settings, analysis: before } = this.snapshot.roots[position]!;
@@ -300,46 +306,6 @@ export class WorkspaceIndex implements vscode.Disposable {
     target.clear();
     source.forEach((value, key) => target.set(key, value));
   }
-
-  /** Keeps exactly one watcher per pattern of the last full run: area roots and the markers of detected areas. */
-  private watch(
-    patterns: ReadonlyMap<string, { pattern: vscode.RelativePattern; onChange: () => void }>,
-  ): void {
-    for (const [key, watcher] of this.watchers) {
-      if (!patterns.has(key)) {
-        watcher.dispose();
-        this.watchers.delete(key);
-      }
-    }
-    for (const [key, { pattern, onChange }] of patterns) {
-      if (!this.watchers.has(key)) {
-        const watcher = vscode.workspace.createFileSystemWatcher(pattern);
-        this.watchers.set(
-          key,
-          vscode.Disposable.from(
-            watcher,
-            watcher.onDidCreate(onChange),
-            watcher.onDidChange(onChange),
-            watcher.onDidDelete(onChange),
-          ),
-        );
-      }
-    }
-  }
-}
-
-function analysisOptions(settings: Settings): { options: AnalysisOptions; errors: string[] } {
-  const { variants, errors } = compileVariants(settings.variants);
-  return {
-    options: {
-      referenceLanguage: settings.referenceLanguage,
-      baseFileLanguage: settings.baseFileLanguage,
-      variants,
-      severityOverrides: settings.severityOverrides,
-      ignoreSameAsReference: settings.ignoreSameAsReference,
-    },
-    errors,
-  };
 }
 
 /** A message about a folder, named when the workspace has several. */
@@ -349,13 +315,4 @@ function inFolder(folder: vscode.WorkspaceFolder, message: string): string {
 
 function keyOf(ref: RootRef): string {
   return JSON.stringify([ref.folder.toString(), ref.areaId, ref.root]);
-}
-
-/** Roots from `eduI18n.roots` or the area definition; undefined means the roots are detected. */
-function fixedRoots(area: AreaDefinition, settings: Settings): readonly string[] | undefined {
-  // Own keys only: an area id like "constructor" must not find Object.prototype.constructor.
-  if (Object.hasOwn(settings.roots, area.id)) {
-    return settings.roots[area.id];
-  }
-  return area.roots.length > 0 ? area.roots : undefined;
 }

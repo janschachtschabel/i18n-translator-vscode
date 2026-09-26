@@ -56,8 +56,11 @@ export type HostToWebview =
   | { type: 'patch'; patch: BundlePatch }
   /** The bundle is not in the index (any more), e.g. after a restart or a branch switch. */
   | { type: 'missing'; name: string }
-  /** `message`: why the write failed, in the user's language. */
-  | { type: 'writeResult'; requestId: string; ok: boolean; message?: string };
+  /**
+   * `message`: why the write failed, in the user's language; `conflict`: because the text changed in the
+   * meantime (B5), so that the editor offers the user's text against the new one.
+   */
+  | { type: 'writeResult'; requestId: string; ok: boolean; message?: string; conflict?: true };
 
 /** Longest text an edit may carry; translations are far shorter, this only bounds a runaway message. */
 export const MAX_TEXT_LENGTH = 100_000;

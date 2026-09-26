@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { localize } from '../localize';
+import { messageOf } from './errors';
 import type { WriteResult } from './fileStore';
 import { relative } from './files';
 
@@ -29,8 +30,19 @@ export function describeWriteFailure(result: WriteFailure): string {
   }
 }
 
-/** Tells the user why nothing was written, with the step that helps (show the file, manage trust). */
+/**
+ * Tells the user why nothing was written, with the step that helps (show the file, manage trust). Never
+ * rejects: a step that fails (e.g. the file is gone) is shown too, so that callers may leave it unawaited.
+ */
 export async function showWriteFailure(result: WriteFailure): Promise<void> {
+  try {
+    await showWithStep(result);
+  } catch (error) {
+    void vscode.window.showErrorMessage(messageOf(error));
+  }
+}
+
+async function showWithStep(result: WriteFailure): Promise<void> {
   const message = describeWriteFailure(result);
   switch (result.reason) {
     case 'problem':

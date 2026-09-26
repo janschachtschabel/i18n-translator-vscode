@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import type { EditorCommand, PanelState } from '../../shared/protocol';
-import { findBundle } from '../panels/bundleTarget';
+import { findBundle } from '../panels/findBundle';
+import { showWriteFailure } from '../services/writeFeedback';
 import { addKey } from './addKey';
 import { addLanguage } from './addLanguage';
 import {
@@ -44,8 +45,7 @@ export function registerKeyCommands(sources: TargetSources): vscode.Disposable[]
       }
     }),
     vscode.commands.registerCommand('eduI18n.openEditor', async () => {
-      const snapshot = sources.index.current() ?? (await sources.index.refresh());
-      const picked = await pickBundle(snapshot, sources.prompts);
+      const picked = await pickBundle(await sources.index.latest(), sources.prompts);
       if (picked) {
         sources.editors.open(picked.root, picked.bundle);
       }
@@ -63,8 +63,12 @@ export async function runEditorCommand(
   panel: PanelState,
   entryId: string | undefined,
 ): Promise<void> {
-  const snapshot = context.index.current() ?? (await context.index.refresh());
-  const target = findBundle(snapshot, panel);
+  // Before any question: in Restricted Mode nothing can be written.
+  if (!vscode.workspace.isTrusted) {
+    void showWriteFailure({ ok: false, reason: 'untrusted' });
+    return;
+  }
+  const target = findBundle(await context.index.latest(), panel);
   if (!target) {
     return;
   }

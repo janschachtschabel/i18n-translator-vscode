@@ -81,7 +81,7 @@ export class BackupService {
 
   /** Backs up every indexed translation file. Undefined when there is nothing to back up or no storage. */
   async create(reason: BackupReason): Promise<BackupInfo | undefined> {
-    const sources = translationFiles(this.index.current() ?? (await this.index.refresh()));
+    const sources = translationFiles(await this.index.latest());
     if (!this.storage || sources.length === 0) {
       return undefined;
     }

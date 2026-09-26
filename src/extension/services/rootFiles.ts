@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import type { AreaDefinition } from '../../core/area/areaDefinition';
+import type { Settings } from '../../core/config/settings';
 import { rootsFromMarkers } from '../../core/discovery/discover';
 import { filesToRead, type SourceFile } from '../../core/pipeline/analyze';
 import { revisionOf } from '../../core/util/hash';
@@ -73,4 +74,13 @@ export function sameRevisions(
 /** Workspace-relative paths of search results; results outside the folder cannot occur and are dropped. */
 function relativePaths(folder: vscode.WorkspaceFolder, uris: readonly vscode.Uri[]): string[] {
   return uris.map((uri) => relativeUriPath(folder.uri.path, uri.path)).filter((path) => path !== undefined);
+}
+
+/** Roots from `eduI18n.roots` or the area definition; undefined means the roots are detected. */
+export function fixedRoots(area: AreaDefinition, settings: Settings): readonly string[] | undefined {
+  // Own keys only: an area id like "constructor" must not find Object.prototype.constructor.
+  if (Object.hasOwn(settings.roots, area.id)) {
+    return settings.roots[area.id];
+  }
+  return area.roots.length > 0 ? area.roots : undefined;
 }

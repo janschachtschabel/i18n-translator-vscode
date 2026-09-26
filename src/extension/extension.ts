@@ -42,6 +42,7 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
     index,
     fileStore,
     log,
+    prompts: vscodePrompts,
     undo: () => undoLastChange(fileStore),
     command: (command, target, entryId) => runEditorCommand(keyContext, command, target, entryId),
   });

@@ -11,30 +11,10 @@ import { renameKey } from '../../src/extension/commands/renameKey';
 import type { ExtensionApi } from '../../src/extension/extension';
 import { sameBytes } from '../../src/extension/services/files';
 import type { IndexedRoot } from '../../src/extension/services/workspaceIndex';
-import { activateExtension } from './helpers';
+import { activateExtension, answering } from './helpers';
 
 const id = (dotted: string) => keyFromSegments(dotted.split('.')).id;
 const decoder = new TextDecoder();
-
-/** Answers the questions of a command in their order: text, true/false, the index of an action, or the label of an item. */
-function answering(...answers: (string | boolean | number)[]): Prompts & { asked: string[] } {
-  const asked: string[] = [];
-  const next = () => answers.shift();
-  return {
-    asked,
-    input: async ({ title }) => (asked.push(title), next() as string | undefined),
-    confirm: async (message) => (asked.push(message), (next() as boolean | undefined) ?? false),
-    choose: async (message, actions) => {
-      asked.push(message);
-      const index = next() as number | undefined;
-      return index === undefined ? undefined : actions[index];
-    },
-    pick: async (items) => {
-      const label = next() as string | undefined;
-      return items.find((item) => item.label === label)?.value;
-    },
-  };
-}
 
 suite('key and language commands', () => {
   let api: ExtensionApi;
@@ -158,6 +138,9 @@ suite('key and language commands', () => {
     const menu = { webview: 'eduI18n.editor', webviewSection: 'key', entryId: id('ASK') };
     const found = await bundleTarget(menu, sources);
     assert.deepStrictEqual([found?.target.bundle.name, found?.entryId], ['admin', id('ASK')]);
+    // What a webview puts on its elements is never a node, even when it looks like one.
+    const forged = { ...menu, kind: 'bundle', root, bundle: bundle('common').bundle };
+    assert.strictEqual((await bundleTarget(forged, sources))?.target.bundle.name, 'admin');
     // A key the bundle does not have counts as none: the argument comes from the webview.
     const unknown = await bundleTarget({ ...menu, entryId: id('SAVE') }, sources);
     assert.deepStrictEqual([unknown?.target.bundle.name, unknown?.entryId], ['admin', undefined]);

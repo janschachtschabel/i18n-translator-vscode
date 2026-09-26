@@ -1,14 +1,12 @@
 import * as vscode from 'vscode';
-import { editProblem } from '../../core/edit/editMessages';
-import { planEdit, type PlanResult } from '../../core/edit/planEdit';
-import { parseBundleId } from '../../core/model/bundle';
+import { planEdit, type BundleEdit, type PlanResult } from '../../core/edit/planEdit';
 import { displayKey, keyFromId } from '../../core/model/keys';
 import type { PanelState, WebviewToHost } from '../../shared/protocol';
-import type { FileStore } from '../services/fileStore';
-import { rootRef } from '../services/workspaceIndex';
-import type { WorkspaceIndex } from '../services/workspaceIndex';
+import type { Prompts } from '../commands/prompts';
+import type { FileStore, WriteResult } from '../services/fileStore';
+import { rootRef, type WorkspaceIndex } from '../services/workspaceIndex';
 import { describeWriteFailure, showWriteFailure } from '../services/writeFeedback';
-import { findBundle } from './bundleTarget';
+import { findBundle, inBundle, missingBundle } from './findBundle';
 
 export type EditRequest = Extract<WebviewToHost, { type: 'edit' }>;
 
@@ -16,53 +14,71 @@ export type EditRequest = Extract<WebviewToHost, { type: 'edit' }>;
 export interface EditAnswer {
   ok: boolean;
   message?: string;
+  /** The text changed in the meantime (B5): the editor offers the user's text against the new one. */
+  conflict?: true;
 }
 
 /**
  * Writes the text of a cell (B1): planned with the text the cell showed (B5) and written by the file store,
- * which plans again on fresh texts if the file changed. Failures that need a step of the user (save a file,
- * trust the workspace) also get a notification that offers it.
+ * which plans again on fresh texts if the file changed. It plans on the index first, so that a cell that is out
+ * of date gets its reason and no question, and a text is only cleared (B2) after the user confirms. Failures
+ * that need a step of the user (save a file, trust the workspace) also get a notification that offers it.
  */
 export async function applyEdit(
   request: EditRequest,
   target: PanelState,
-  services: { index: WorkspaceIndex; fileStore: FileStore },
+  services: { index: WorkspaceIndex; fileStore: FileStore; prompts: Prompts },
 ): Promise<EditAnswer> {
+  if (!vscode.workspace.isTrusted) {
+    return failed({ ok: false, reason: 'untrusted' });
+  }
   // The bundle may go between the edit and a new plan (e.g. a branch switch): a problem, not a crash.
-  const problem = editProblem('missing-bundle', { bundle: parseBundleId(target.bundleId).name });
-  const gone: PlanResult = { ok: false, problem };
-  const found = findBundle(services.index.current() ?? (await services.index.refresh()), target);
+  const found = findBundle(await services.index.latest(), target);
   if (!found) {
-    return { ok: false, message: describeWriteFailure({ ok: false, reason: 'problem', problem }) };
+    return failed({ ok: false, reason: 'problem', problem: missingBundle(target.bundleId) });
   }
-  if (request.value === '' && request.before !== null && request.locale !== found.bundle.reference) {
-    // Clearing deletes the text, so that the fallback applies (B2): not what "empty" suggests, so ask first.
-    if (!(await confirmClear(request, found.bundle.reference))) {
-      return { ok: false };
-    }
+  const edit: BundleEdit = {
+    kind: 'setText',
+    entryId: request.entryId,
+    locale: request.locale,
+    value: request.value,
+    before: request.before,
+  };
+  const planned = planEdit(found.bundle, edit);
+  if (!planned.ok) {
+    return failed({ ok: false, reason: 'problem', problem: planned.problem });
   }
-  const result = await services.fileStore.write(rootRef(found.root), (analysis) => {
-    const bundle = analysis.bundles.find((candidate) => candidate.id === target.bundleId);
-    return bundle
-      ? planEdit(bundle, {
-          kind: 'setText',
-          entryId: request.entryId,
-          locale: request.locale,
-          value: request.value,
-          before: request.before,
-        })
-      : gone;
-  });
-  if (result.ok) {
-    return { ok: true };
+  // Clearing deletes the text, so that the fallback applies (B2): not what "empty" suggests, so ask first.
+  if (deletes(planned) && !(await confirmClear(services.prompts, request, found.bundle.reference))) {
+    return { ok: false };
   }
+  const result = await services.fileStore.write(
+    rootRef(found.root),
+    inBundle(target.bundleId, (bundle) => planEdit(bundle, edit)),
+  );
+  return result.ok ? { ok: true } : failed(result);
+}
+
+/** The answer to a failed edit; a failure that needs a step of the user is also shown with that step. */
+function failed(result: Exclude<WriteResult, { ok: true }>): EditAnswer {
   if (result.reason !== 'problem') {
     void showWriteFailure(result);
   }
-  return { ok: false, message: describeWriteFailure(result) };
+  const conflict = result.reason === 'problem' && result.problem.code === 'changed';
+  return { ok: false, message: describeWriteFailure(result), ...(conflict ? { conflict } : {}) };
 }
 
-async function confirmClear(request: EditRequest, reference: string | undefined): Promise<boolean> {
+function deletes(planned: Extract<PlanResult, { ok: true }>): boolean {
+  return planned.changes.some(
+    (change) => change.kind === 'edit' && change.ops.some((op) => op.kind === 'delete'),
+  );
+}
+
+function confirmClear(
+  prompts: Prompts,
+  request: EditRequest,
+  reference: string | undefined,
+): Promise<boolean> {
   const args = { key: displayKey(keyFromId(request.entryId)), locale: request.locale };
   const question =
     reference === undefined
@@ -71,6 +87,5 @@ async function confirmClear(request: EditRequest, reference: string | undefined)
           ...args,
           reference,
         });
-  const remove = vscode.l10n.t('Delete Text');
-  return (await vscode.window.showWarningMessage(question, { modal: true }, remove)) === remove;
+  return prompts.confirm(question, vscode.l10n.t('Delete Text'));
 }

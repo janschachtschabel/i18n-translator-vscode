@@ -5,8 +5,9 @@ import { planEdit } from '../../core/edit/planEdit';
 import { parseKeyInput } from '../../core/model/keyInput';
 import { displayKey } from '../../core/model/keys';
 import { localize } from '../localize';
-import { inBundle, writeChange, type BundleTarget, type KeyCommandContext } from './commandTarget';
-import { keyCheckMessage } from './keyScope';
+import { inBundle } from '../panels/findBundle';
+import { writeChange, type BundleTarget, type KeyCommandContext } from './commandTarget';
+import { keyCheckMessage } from './keyQuestions';
 
 /**
  * Adds a key with its text in the reference language, after the key it starts from (e.g. the active one of an
@@ -34,7 +35,7 @@ export async function addKey(
       'The new key, with a dot between its parts, e.g. SECTION.TITLE. A dot inside a part is written \\.',
     ),
     placeHolder: 'SECTION.TITLE',
-    check: (text) => keyCheckMessage(check(text)),
+    check: (text) => keyCheckMessage(parseKeyInput(text.trim()), check(text)),
   });
   if (typed === undefined) {
     return;

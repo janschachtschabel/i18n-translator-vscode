@@ -5,7 +5,7 @@ import { keyInput, parseKeyInput } from '../../core/model/keyInput';
 import { displayKey, keyFromId } from '../../core/model/keys';
 import { localize } from '../localize';
 import { writeChange, type BundleTarget, type KeyCommandContext } from './commandTarget';
-import { keyCheckMessage, keyScope } from './keyScope';
+import { keyCheckMessage, keyScope } from './keyQuestions';
 
 /**
  * Renames a key in all its languages: in this bundle, or in every bundle of the root that has it, as the user
@@ -24,7 +24,10 @@ export async function renameKey(
     title: vscode.l10n.t('Rename {key}', { key: displayKey(key) }),
     prompt: vscode.l10n.t('The new name, with a dot between its parts. A dot inside a part is written \\.'),
     value: keyInput(key),
-    check: (text) => (parseKeyInput(text.trim()).id === key.id ? undefined : keyCheckMessage(check(text))),
+    check: (text) => {
+      const to = parseKeyInput(text.trim());
+      return to.id === key.id ? undefined : keyCheckMessage(to, check(text));
+    },
   });
   if (typed === undefined) {
     return;

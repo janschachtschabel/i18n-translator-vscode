@@ -16,11 +16,13 @@ import {
 } from '../../shared/protocol';
 import { diffModels } from '../../shared/patch';
 import { buildBundleViewModel, type BundleViewModel } from '../../shared/viewModel';
+import type { Prompts } from '../commands/prompts';
 import { localize } from '../localize';
+import { messageOf } from '../services/errors';
 import type { FileStore } from '../services/fileStore';
 import type { IndexedRoot, IndexSnapshot, WorkspaceIndex } from '../services/workspaceIndex';
-import { findBundle } from './bundleTarget';
-import { applyEdit } from './editHandler';
+import { findBundle } from './findBundle';
+import { applyEdit, type EditAnswer, type EditRequest } from './editHandler';
 import { routeMessage } from './messageRouter';
 import { pageLanguage, webviewHtml } from './webviewHtml';
 
@@ -34,6 +36,8 @@ export interface EditorServices {
   index: WorkspaceIndex;
   /** Writes the edits (B1). */
   fileStore: FileStore;
+  /** Asks before a text is cleared (B2). */
+  prompts: Prompts;
   log: vscode.LogOutputChannel;
   /** Undoes the last change to the translation files and tells the user how it went. */
   undo: () => Promise<void>;
@@ -135,6 +139,8 @@ export class EditorPanel implements vscode.Disposable {
   private started = false;
   /** The model the webview has, with the patches sent since; undefined while it has none. */
   private sent: BundleViewModel | undefined;
+  /** The root the model was built from: a run of another root leaves it, and the bundle, as they are. */
+  private sentRoot: IndexedRoot | undefined;
 
   constructor(
     readonly panel: vscode.WebviewPanel,
@@ -166,8 +172,11 @@ export class EditorPanel implements vscode.Disposable {
       {
         ready: () => this.start(),
         edit: async (request) => {
-          const answer = await applyEdit(request, this.target, this.services);
-          await this.post({ type: 'writeResult', requestId: request.requestId, ...answer });
+          await this.post({
+            type: 'writeResult',
+            requestId: request.requestId,
+            ...(await this.save(request)),
+          });
         },
         uiState: async ({ state }) => {
           await this.services.workspaceState.update(this.stateKey(), copyUiState(state));
@@ -189,6 +198,19 @@ export class EditorPanel implements vscode.Disposable {
     }
   }
 
+  /** Writes an edit; whatever happens, its cell gets an answer, so that it never waits for one. */
+  private async save(request: EditRequest): Promise<EditAnswer> {
+    try {
+      return await applyEdit(request, this.target, this.services);
+    } catch (error) {
+      this.services.log.error('Saving a text from the editor failed.', error);
+      return {
+        ok: false,
+        message: vscode.l10n.t('The change could not be saved: {error}', { error: messageOf(error) }),
+      };
+    }
+  }
+
   /** Shows the bundle as an index run found it, or that it is gone. */
   async update(snapshot: IndexSnapshot): Promise<void> {
     if (this.started) {
@@ -204,6 +226,7 @@ export class EditorPanel implements vscode.Disposable {
   private async start(): Promise<void> {
     this.started = true;
     this.sent = undefined;
+    this.sentRoot = undefined;
     await this.post({
       type: 'init',
       l10n: vscode.l10n.bundle ?? {},
@@ -225,8 +248,13 @@ export class EditorPanel implements vscode.Disposable {
     const found = findBundle(snapshot, this.target);
     if (!found) {
       this.sent = undefined;
+      this.sentRoot = undefined;
       return this.post({ type: 'missing', name: parseBundleId(this.target.bundleId).name });
     }
+    if (this.sent && found.root === this.sentRoot) {
+      return Promise.resolve();
+    }
+    this.sentRoot = found.root;
     const started = Date.now();
     const model = buildBundleViewModel(found.bundle, {
       issues: found.root.analysis.issues,

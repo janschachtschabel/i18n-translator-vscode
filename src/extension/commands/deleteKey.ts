@@ -1,7 +1,7 @@
 import { planInBundles } from '../../core/edit/planEdit';
 import { keyFromId } from '../../core/model/keys';
 import { writeChange, type BundleTarget, type KeyCommandContext } from './commandTarget';
-import { keyScope } from './keyScope';
+import { keyScope } from './keyQuestions';
 
 /**
  * Deletes a key in all its languages: in this bundle, or in every bundle of the root that has it, as the user

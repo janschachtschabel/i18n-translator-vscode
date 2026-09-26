@@ -106,32 +106,43 @@ suite('workspace index', () => {
     }
   });
 
-  test('indexes the root of a write once: the watcher then finds its files as indexed', async () => {
-    const { index, fileStore } = await activateExtension();
-    const root = (await index.refresh()).roots[0]!;
-    const common = root.analysis.bundles.find((bundle) => bundle.name === 'common')!;
-    let runs = 0;
-    const listener = index.onDidChange(() => runs++);
-    try {
-      const result = await fileStore.write(rootRef(root), () => ({
-        ok: true,
-        changes: [
-          {
-            kind: 'edit',
-            relPath: common.file('fr')!.relPath,
-            ops: [{ kind: 'set', key: keyFromSegments(['OK']), value: 'D’accord' }],
-          },
-        ],
-      }));
-      assert.ok(result.ok);
-      // Well past the watcher's delay of 300 ms after the change.
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      assert.strictEqual(runs, 1);
-    } finally {
-      listener.dispose();
-      assert.equal((await fileStore.undo())?.ok, true);
-    }
-  });
+  for (const locale of ['fr', 'de']) {
+    // de.json of common is also the marker of the area's roots: its texts must not set off a search for roots.
+    test(`indexes the root of a write to ${locale}.json once: the watcher then finds its files as indexed`, async () => {
+      const { index, fileStore } = await activateExtension();
+      const root = (await index.refresh()).roots[0]!;
+      const common = root.analysis.bundles.find((bundle) => bundle.name === 'common')!;
+      const file = vscode.Uri.joinPath(root.folder.uri, common.file(locale)!.relPath);
+      const watcher = vscode.workspace.createFileSystemWatcher(
+        new vscode.RelativePattern(vscode.Uri.joinPath(file, '..'), `${locale}.json`),
+      );
+      const seen = waitFor(watcher.onDidChange, () => true).catch(() => undefined);
+      let runs = 0;
+      const listener = index.onDidChange(() => runs++);
+      try {
+        const result = await fileStore.write(rootRef(root), () => ({
+          ok: true,
+          changes: [
+            {
+              kind: 'edit',
+              relPath: common.file(locale)!.relPath,
+              ops: [{ kind: 'set', key: keyFromSegments(['OK']), value: 'D’accord' }],
+            },
+          ],
+        }));
+        assert.ok(result.ok);
+        await fileStore.indexed();
+        // Once the watcher has seen the write, past its delay of 300 ms.
+        await seen;
+        await new Promise((resolve) => setTimeout(resolve, 800));
+        assert.strictEqual(runs, 1);
+      } finally {
+        listener.dispose();
+        watcher.dispose();
+        assert.equal((await fileStore.undo())?.ok, true);
+      }
+    });
+  }
 
   test('re-indexes when a setting changes', async () => {
     const { index } = await activateExtension();

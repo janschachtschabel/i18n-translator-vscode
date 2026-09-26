@@ -258,7 +258,7 @@ export class FileStore {
     }
     const started = Date.now();
     // Like a write, a restore stays in the translation folders, whatever the backup it came from says.
-    const snapshot = this.index.current() ?? (await this.index.refresh());
+    const snapshot = await this.index.latest();
     const outside = files.find((file) => !snapshot.roots.some((indexed) => inRoot(file.uri, indexed)));
     if (outside) {
       const message = vscode.l10n.t('{file} lies outside the translation folders.', {

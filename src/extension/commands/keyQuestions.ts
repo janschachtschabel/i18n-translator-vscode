@@ -45,10 +45,16 @@ export async function keyScope(
   return answer === only ? [bundle.id] : [bundle.id, ...others.map((other) => other.id)];
 }
 
-/** What the check of a key says while it is typed: a problem refuses it, a warning only informs. */
-export function keyCheckMessage({ problem, warnings }: KeyCheck): InputCheck | undefined {
+/**
+ * What the check of a typed key says: a problem refuses it, a warning only informs, e.g. of a part that starts or
+ * ends with a space, which is likely a typo (`SECTION. TITLE`).
+ */
+export function keyCheckMessage(key: EntryKey, { problem, warnings }: KeyCheck): InputCheck | undefined {
   if (problem) {
     return { message: localize(problem.message) };
+  }
+  if (key.segments.some((segment) => segment !== segment.trim())) {
+    return { message: vscode.l10n.t('A part of the key starts or ends with a space.'), warning: true };
   }
   const [warning] = warnings;
   return warning && { message: localize(warning.message), warning: true };

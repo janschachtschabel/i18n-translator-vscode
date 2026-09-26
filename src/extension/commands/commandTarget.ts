@@ -1,13 +1,14 @@
 import * as vscode from 'vscode';
-import { editProblem } from '../../core/edit/editMessages';
-import type { PlanResult } from '../../core/edit/planEdit';
-import { parseBundleId, type Bundle } from '../../core/model/bundle';
-import type { RootAnalysis } from '../../core/pipeline/analyze';
-import { findBundle } from '../panels/bundleTarget';
+import type { Bundle } from '../../core/model/bundle';
 import type { EditorPanels } from '../panels/editorPanel';
+import { findBundle } from '../panels/findBundle';
 import type { FileStore, Planner } from '../services/fileStore';
-import { rootRef } from '../services/workspaceIndex';
-import type { IndexedRoot, IndexSnapshot, WorkspaceIndex } from '../services/workspaceIndex';
+import {
+  rootRef,
+  type IndexedRoot,
+  type IndexSnapshot,
+  type WorkspaceIndex,
+} from '../services/workspaceIndex';
 import { showWriteFailure } from '../services/writeFeedback';
 import type { Prompts } from './prompts';
 
@@ -38,7 +39,7 @@ export async function bundleTarget(
   arg: unknown,
   sources: TargetSources,
 ): Promise<{ target: BundleTarget; entryId?: string } | undefined> {
-  const snapshot = sources.index.current() ?? (await sources.index.refresh());
+  const snapshot = await sources.index.latest();
   const node = nodeTarget(arg, snapshot);
   if (node) {
     return node.bundle ? { target: { root: node.root, bundle: node.bundle } } : undefined;
@@ -56,6 +57,9 @@ export async function bundleTarget(
 
 /** A bundle the user picks from all roots. */
 export function pickBundle(snapshot: IndexSnapshot, prompts: Prompts): Promise<BundleTarget | undefined> {
+  if (snapshot.roots.length === 0) {
+    return nothingFound();
+  }
   return prompts.pick(
     snapshot.roots.flatMap((root) =>
       root.analysis.bundles.map((bundle) => ({
@@ -70,7 +74,7 @@ export function pickBundle(snapshot: IndexSnapshot, prompts: Prompts): Promise<B
 
 /** The root a command acts on: that of the node it was chosen on, of the editor in front, or one the user picks. */
 export async function rootTarget(arg: unknown, sources: TargetSources): Promise<IndexedRoot | undefined> {
-  const snapshot = sources.index.current() ?? (await sources.index.refresh());
+  const snapshot = await sources.index.latest();
   const node = nodeTarget(arg, snapshot);
   if (node) {
     return node.root;
@@ -81,26 +85,16 @@ export async function rootTarget(arg: unknown, sources: TargetSources): Promise<
     return found.root;
   }
   const [only, ...others] = snapshot.roots;
-  if (only && others.length === 0) {
+  if (!only) {
+    return nothingFound();
+  }
+  if (others.length === 0) {
     return only;
   }
   return sources.prompts.pick(
     snapshot.roots.map((root) => ({ label: rootLabel(root), value: root })),
     vscode.l10n.t('Choose a translation folder'),
   );
-}
-
-/** Plans with the bundle as the fresh analysis has it; one that went meanwhile (e.g. a branch switch) is a problem. */
-export function inBundle(
-  bundleId: string,
-  plan: (bundle: Bundle, analysis: RootAnalysis) => PlanResult,
-): Planner {
-  return (analysis) => {
-    const bundle = analysis.bundles.find((candidate) => candidate.id === bundleId);
-    return bundle
-      ? plan(bundle, analysis)
-      : { ok: false, problem: editProblem('missing-bundle', { bundle: parseBundleId(bundleId).name }) };
-  };
 }
 
 /** Writes a change planned on the fresh state of the root; if nothing was written, tells the user why. */
@@ -121,12 +115,32 @@ export function rootLabel(root: IndexedRoot): string {
   return `${root.analysis.area.label} · ${root.analysis.root || '.'}`;
 }
 
-/** The root and bundle of a node of the areas view, looked up in the index: the node may be from an older run. */
+/** Without roots there is nothing to choose: the user learns why, with the way to set the folders. */
+async function nothingFound(): Promise<undefined> {
+  const configure = vscode.l10n.t('Configure Folders');
+  const answer = await vscode.window.showInformationMessage(
+    vscode.l10n.t('No edu-sharing translation files were found in this workspace.'),
+    configure,
+  );
+  if (answer === configure) {
+    await vscode.commands.executeCommand('eduI18n.configureRoots');
+  }
+  return undefined;
+}
+
+/**
+ * The root and bundle of a node of the areas view, looked up in the index: the node may be from an older run.
+ * The context menu of an editor passes what its webview put on the element (`webview` names it): that is never
+ * a node, whatever it looks like, so that a webview cannot point a command at another bundle.
+ */
 function nodeTarget(
   arg: unknown,
   snapshot: IndexSnapshot,
 ): { root: IndexedRoot; bundle?: Bundle } | undefined {
-  if (!isRecord(arg) || (arg['kind'] !== 'root' && arg['kind'] !== 'bundle') || !isRecord(arg['root'])) {
+  if (!isRecord(arg) || 'webview' in arg) {
+    return undefined;
+  }
+  if ((arg['kind'] !== 'root' && arg['kind'] !== 'bundle') || !isRecord(arg['root'])) {
     return undefined;
   }
   const analysis = arg['root']['analysis'];
