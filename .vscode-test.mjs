@@ -44,6 +44,8 @@ function formatsWorkspace() {
 const base = {
   files: 'out/test/integration/**/*.test.js',
   mocha: { ui: 'tdd', timeout: 20000 },
+  // A b-api key of the machine never reaches the tests: they see this one, and no test sends a request out.
+  env: { B_API_KEY: 'environment-test-key' },
 };
 
 // "min" guards the declared engine (^1.90.0); "stable" catches regressions in current VS Code.

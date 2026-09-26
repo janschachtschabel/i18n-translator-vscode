@@ -25,6 +25,7 @@ class FakeBox implements InputBoxLike {
   validationMessage: string | vscode.InputBoxValidationMessage | undefined;
   buttons: readonly vscode.QuickInputButton[] = [];
   ignoreFocusOut = false;
+  password = false;
   shown = false;
   disposed = false;
   readonly changed = emitter<string>();
@@ -90,6 +91,16 @@ describe('askInput', () => {
       value: 'OLD.KEY',
       ignoreFocusOut: false,
     });
+  });
+
+  it('masks a secret, and keeps its box open while the user fetches it from elsewhere (a password manager)', () => {
+    const box = new FakeBox();
+    void askInput(
+      box,
+      { title: 'Set API Key', prompt: 'The key', password: true, ignoreFocusOut: true, check },
+      parts,
+    );
+    expect(box).toMatchObject({ password: true, ignoreFocusOut: true, buttons: [closeButton] });
   });
 
   it('gives no text when the box closes without Enter: Escape, a click elsewhere', async () => {

@@ -162,6 +162,16 @@
         "command": "eduI18n.previewMail",
         "title": "%cmd.previewMail%",
         "category": "edu-sharing i18n"
+      },
+      {
+        "command": "eduI18n.setApiKey",
+        "title": "%cmd.setApiKey%",
+        "category": "edu-sharing i18n"
+      },
+      {
+        "command": "eduI18n.clearApiKey",
+        "title": "%cmd.clearApiKey%",
+        "category": "edu-sharing i18n"
       }
     ],
     "menus": {
@@ -188,6 +198,11 @@
           "command": "eduI18n.check",
           "when": "view == eduI18n.areas",
           "group": "navigation"
+        },
+        {
+          "command": "eduI18n.setApiKey",
+          "when": "view == eduI18n.areas",
+          "group": "2_ai@1"
         }
       ],
       "view/item/context": [

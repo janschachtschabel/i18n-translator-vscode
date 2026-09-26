@@ -17,6 +17,7 @@ export default defineConfig({
         'src/extension/panels/mailPreviewHtml.ts',
         'src/extension/panels/messageRouter.ts',
         'src/extension/panels/webviewHtml.ts',
+        'src/extension/services/apiKeyStore.ts',
         'src/extension/services/serialRunner.ts',
         'src/extension/services/undoHistory.ts',
         'src/extension/services/uriPaths.ts',

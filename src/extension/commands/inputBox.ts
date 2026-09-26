@@ -12,6 +12,10 @@ export interface InputOptions {
   value?: string;
   placeHolder?: string;
   check: (text: string) => InputCheck | undefined;
+  /** Masks the text, e.g. a key. */
+  password?: boolean;
+  /** Keeps the box open when the focus goes elsewhere, e.g. to a password manager to copy a key from. */
+  ignoreFocusOut?: boolean;
 }
 
 /** The parts of VS Code's input box that askInput uses; the unit tests give a fake one. */
@@ -24,6 +28,7 @@ export type InputBoxLike = Pick<
   | 'validationMessage'
   | 'buttons'
   | 'ignoreFocusOut'
+  | 'password'
   | 'onDidChangeValue'
   | 'onDidAccept'
   | 'onDidHide'
@@ -61,7 +66,8 @@ export function askInput(
     box.placeholder = options.placeHolder;
     box.value = options.value ?? '';
     box.buttons = [parts.closeButton];
-    box.ignoreFocusOut = false;
+    box.password = options.password ?? false;
+    box.ignoreFocusOut = options.ignoreFocusOut ?? false;
     validate(box.value);
     box.onDidChangeValue(validate);
     box.onDidTriggerButton((button) => {

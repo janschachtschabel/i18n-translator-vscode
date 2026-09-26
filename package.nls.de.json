@@ -16,6 +16,8 @@
   "cmd.openEditor": "Übersetzungseditor öffnen…",
   "cmd.addKey": "Key hinzufügen…",
   "cmd.previewMail": "Mail-Vorschau",
+  "cmd.setApiKey": "API-Schlüssel setzen…",
+  "cmd.clearApiKey": "API-Schlüssel entfernen",
   "cmd.renameKey": "Key umbenennen…",
   "cmd.deleteKey": "Key löschen…",
   "cmd.addLanguage": "Sprache hinzufügen…",

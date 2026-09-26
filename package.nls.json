@@ -16,6 +16,8 @@
   "cmd.openEditor": "Open translation editor…",
   "cmd.addKey": "Add key…",
   "cmd.previewMail": "Preview mail",
+  "cmd.setApiKey": "Set API key…",
+  "cmd.clearApiKey": "Remove API key",
   "cmd.renameKey": "Rename key…",
   "cmd.deleteKey": "Delete key…",
   "cmd.addLanguage": "Add language…",
