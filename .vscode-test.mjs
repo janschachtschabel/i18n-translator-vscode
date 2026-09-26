@@ -18,7 +18,20 @@ const base = {
 };
 
 // "min" guards the declared engine (^1.90.0); "stable" catches regressions in current VS Code.
+// "perf" measures with a copy of real translation files in out/perf-workspace (Task 2.17), only on request:
+// EDU_I18N_PERF=1 npx vscode-test --label perf
 export default defineConfig([
   { label: 'stable', version: 'stable', workspaceFolder: freshWorkspace('stable'), ...base },
   { label: 'min', version: '1.90.0', workspaceFolder: freshWorkspace('min'), ...base },
+  ...(process.env.EDU_I18N_PERF
+    ? [
+        {
+          label: 'perf',
+          version: 'stable',
+          workspaceFolder: 'out/perf-workspace',
+          ...base,
+          mocha: { ...base.mocha, grep: 'performance with real files' },
+        },
+      ]
+    : []),
 ]);

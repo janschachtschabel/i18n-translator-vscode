@@ -1057,6 +1057,40 @@ was nicht ausdrücklich geändert wurde.
 >   - Im Konflikt führt Tab zu den beiden Schaltflächen, statt zu speichern.
 >   - Enter speichert gegen den alten Stand. Der Host lehnt das ab (B5), und der Entwurf bleibt als „nicht gespeichert“ erhalten, statt ungefragt zu überschreiben.
 > - **Für das Review von Block C:** `workspaceIndex.ts` hat 361 Zeilen (über der Marke von 300), bleibt aber bei einer Aufgabe; `fileStore.ts` hatte schon vorher 360.
+>
+> **Umsetzungsnotizen Task 2.16 (26.09.2026):** Siehe [`../verification/phase-2-a11y.md`](../verification/phase-2-a11y.md).
+> - Tastatur-Durchlauf als Test (`keyboardWalk.test.tsx`), axe in jeder Komponententest-Datei, Kontraste von sechs Themes berechnet, Kontrastthemes in Chromium geprüft.
+> - Behoben:
+>   - Die Einheit wird nach dem Laden angesagt.
+>   - Der Fokus von Feldern liegt außen (in dunklen Themes sonst unter 3:1).
+>   - Mehrere Statusmarken brechen unter den Text um, statt ihn zu verdrängen.
+>   - Der Kopfbereich ist kompakter (bei 720 px Höhe 237 statt 188 px für die Tabelle).
+> - Offen für die Abnahme: NVDA und die Sichtprüfung in VS Code (Checkliste im Protokoll).
+>
+> **Umsetzungsnotizen Task 2.17 (26.09.2026):**
+> - **Gemessen mit echten Dateien:** eine Kopie der Übersetzungsdateien des Clones in `out/perf-workspace` (87 Dateien, `common` mit 1.440 Keys × 6 Sprachen); der Clone wurde nur gelesen. Die Messung läuft nur auf Anfrage: `EDU_I18N_PERF=1 npx vscode-test --label perf`, sonst wird sie übersprungen.
+>
+>   | Messung (VS Code 1.139, Host) | Wert | Ziel (Design §8) |
+>   |---|--:|---|
+>   | voller Index, warm | 212–222 ms | < 1,5 s |
+>   | Wurzel neu, Dateien unverändert | 97–107 ms | – |
+>   | Modell von `common` bauen / Patch berechnen | 6–8 ms / 4–6 ms | – |
+>   | Editor öffnen, bis das Modell gesendet ist | 208–266 ms | < 1 s |
+>   | Zelle speichern, bis die Antwort kommt | 28–42 ms | < 150 ms |
+>   | … bis die Befunde da sind (Patch) | 196–198 ms | – |
+>   | erstes Speichern einer Sitzung (mit Sicherung aller 87 Dateien) | 362–492 ms | – |
+>
+> - **In Chromium (echtes Webview-Bundle, 2.002 Keys × 6 Sprachen):**
+>   - Der erste Aufbau dauert 30–50 ms, weil zuerst 200 Zeilen und dann 200 je Task kommen.
+>   - Sind alle Zeilen da, braucht eine Pfeiltaste 3,6–7,1 ms und ein Tastendruck im Editor 2,7–5,7 ms.
+> - **Behoben:**
+>   - Ein Patch renderte alle gerenderten Zeilen neu statt einer: Jedes neue Modell brachte eine neue Liste der Sprachen, auch wenn sich nur Zählerstände änderten. Die Liste bleibt jetzt dieselbe, solange die Spalten gleich sind.
+>   - Ein Schreibvorgang antwortete erst nach der Neuindizierung (185 ms). Jetzt antwortet er nach dem Schreiben; die Befunde folgen, und der nächste Auftrag des FileStores wartet auf den frischen Index (`indexed()` für Tests).
+> - **Tests gegen Rückschritte** (`performance.test.tsx`): Der Test zählt, was gerendert wird, statt Zeiten zu messen, die in der CI schwanken. Beim ersten Aufbau sind es 200 Zeilen, eine Pfeiltaste rendert zwei Zeilen, ein Patch eine, und Tippen rendert keine.
+> - **Log:** Jeder Schreibvorgang nennt seine Dauer, jeder Lauf des Index die seine. Auf Debug-Stufe nennt das Panel die Dauer von Modell und Patch.
+> - **Bewusst offen:**
+>   - Die erste Sicherung einer Sitzung kostet 330–450 ms beim ersten Speichern. Sie früher anzustoßen (etwa beim Öffnen des Editors) würde Sitzungen ohne Änderung sichern und ältere Sicherungen verdrängen.
+>   - Die Befunde brauchen nach dem Speichern rund 200 ms, fast alles davon für Auflisten, Lesen und Prüfen der Wurzel. Nur geänderte Dateien neu zu lesen wäre der nächste Schritt.
 
 ### Task 2.1: Textbausteine für das Schreiben
 **Dateien:** Create `src/core/text/edits.ts`, `src/core/text/style.ts`; Test: `test/unit/core/text/edits.test.ts`, `style.test.ts`
