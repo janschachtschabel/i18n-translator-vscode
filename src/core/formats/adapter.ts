@@ -74,7 +74,11 @@ export interface FormatAdapter {
   readonly id: FormatId;
   /** A key is one segment, dots included (.properties); otherwise it is a path of segments. */
   readonly flatKeys: boolean;
-  /** Whether a new key fits the format, where not every path does (mail templates: `[template, field]`). */
+  /**
+   * Whether a new key fits the format, where not every path does (mail templates: `[template, field]`). A key it
+   * rejects is reported as `invalid-template-key`, whose message speaks of mail templates: a second format with
+   * this hook needs a message of its own.
+   */
   validKey?(key: EntryKey): boolean;
   /** Whether the format cannot hold a text (mail templates: characters XML forbids, such as most controls). */
   invalidText?(value: string): boolean;
