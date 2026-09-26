@@ -194,6 +194,21 @@ describe('list', () => {
     expect(document.activeElement).toBe(grid().getByRole('rowheader', { name: 'CANCEL' }));
   });
 
+  // After Enter or Esc the text takes the focus back; after a click beside the editor it stays where the click put
+  // it (audit F-01).
+  it('leaves the focus on the page after a click beside the editor of a card', async () => {
+    setWidth(600);
+    open();
+    act(() => void fireEvent.click(within(cardOf('SAVE')).getByRole('button', { name: /^fr: / })));
+    const field = screen.getByRole('textbox');
+    expect(document.activeElement).toBe(field);
+    act(() => field.blur());
+    await Promise.resolve();
+    await nextTask();
+    expect(screen.queryByRole('textbox')).toBeNull();
+    expect(document.activeElement).toBe(document.body);
+  });
+
   it('names the key of each card for the context menu, which offers the key commands', () => {
     setWidth(600);
     open();

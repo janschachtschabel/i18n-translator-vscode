@@ -8,7 +8,7 @@ import { SEVERITY_SYMBOLS, severityWord } from './cellStatus';
 import { EmptyValue } from './emptyValue';
 import './field.css';
 import { hintFor } from './findingHints';
-import { focusIsLost } from './focus';
+import { focusIsLost, onFocusLeaving } from './focus';
 import { LocaleLabel } from './localeLabel';
 
 interface FieldProps {
@@ -30,11 +30,15 @@ interface FieldProps {
  */
 export function Field({ store, row, locale, cell, editor, referenceText, place }: FieldProps) {
   const button = useRef<HTMLButtonElement>(null);
+  const definition = useRef<HTMLElement>(null);
   const wasEditing = useRef(false);
+  /** The user took the focus out of the field, e.g. with a click beside its editor, which then saves. */
+  const left = useRef(false);
   const notesId = `${useId()}-notes`;
   useLayoutEffect(() => {
-    // After Enter or Esc the text takes the focus back; after Tab, the next editor has it.
-    if (wasEditing.current && !editor && focusIsLost() && !store.edits.open.peek()) {
+    // After Enter or Esc the text takes the focus back; after Tab, the next editor has it; after a click beside
+    // the editor, the focus stays where the click put it.
+    if (wasEditing.current && !editor && !left.current && focusIsLost() && !store.edits.open.peek()) {
       button.current?.focus();
     }
     wasEditing.current = editor !== undefined;
@@ -47,7 +51,12 @@ export function Field({ store, row, locale, cell, editor, referenceText, place }
         <LocaleLabel locale={locale} />
       </dt>
       {/* The language of every element in it, for the list, which brings the focus back to the same field. */}
-      <dd data-locale={locale.code}>
+      <dd
+        ref={definition}
+        data-locale={locale.code}
+        onFocusIn={() => (left.current = false)}
+        onFocusOut={(event) => onFocusLeaving(event, definition.current, () => (left.current = true))}
+      >
         {editor ? (
           <CellEditor
             store={store}
