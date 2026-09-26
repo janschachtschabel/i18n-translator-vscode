@@ -5,7 +5,12 @@ import { planAddLanguage, planEdit, type BundleEdit } from '../../src/core/edit/
 import { keyFromSegments } from '../../src/core/model/keys';
 import type { ExtensionApi } from '../../src/extension/extension';
 import { FileStore, type Planner } from '../../src/extension/services/fileStore';
-import { rootRef, type RootRef } from '../../src/extension/services/workspaceIndex';
+import {
+  rootRef,
+  type IndexSnapshot,
+  type RootRef,
+  type WorkspaceIndex,
+} from '../../src/extension/services/workspaceIndex';
 import { sameBytes } from '../../src/extension/services/files';
 import { activateExtension, keepTranslationFiles, workspaceUri } from './helpers';
 
@@ -62,6 +67,22 @@ suite('FileStore', () => {
     await api.index.refresh();
   });
 
+  /**
+   * The index, except that the first look at it gets `stale`: a write that comes before the watcher's run after a
+   * change on disk, whatever the watcher does meanwhile.
+   */
+  const staleOnce = (stale: IndexSnapshot): WorkspaceIndex => {
+    let first = true;
+    const index: Pick<WorkspaceIndex, 'current' | 'latest' | 'refresh' | 'refreshRoot' | 'whileWriting'> = {
+      current: () => (first ? ((first = false), stale) : api.index.current()),
+      latest: () => api.index.latest(),
+      refresh: () => api.index.refresh(),
+      refreshRoot: (root) => api.index.refreshRoot(root),
+      whileWriting: (task) => api.index.whileWriting(task),
+    };
+    return index as WorkspaceIndex;
+  };
+
   test('changes exactly one line for one text', async () => {
     const fr = uriOf('common', 'fr');
     const before = (await read(fr)).split('\n');
@@ -109,12 +130,14 @@ suite('FileStore', () => {
   // A git pull may delete a key everywhere while the index still has it: a text for it would bring the key back
   // as an orphan. The plan rests on every file of the bundle, not only on those it writes (audit L-11).
   test('plans again when another file of the bundle changed on disk since indexing', async () => {
+    // The first plan rests on the index from before the pull, even if the watcher's run came first.
+    const store = new FileStore(staleOnce(api.index.current()!), log);
     await changeOnDisk(uriOf('common', 'de'), '  "CANCEL": "Abbrechen",\n', '');
     await changeOnDisk(uriOf('common', 'en'), '  "CANCEL": "Cancel",\n', '');
     await changeOnDisk(uriOf('common', 'it'), '  "CANCEL": "Annulla",\n', '');
     const fr = uriOf('common', 'fr');
     const before = await read(fr);
-    const result = await api.fileStore.write(
+    const result = await store.write(
       ref,
       edit('common', { kind: 'setText', entryId: id('CANCEL'), locale: 'fr', value: 'Annuler' }),
     );
