@@ -75,6 +75,8 @@ export interface FormatAdapter {
   readonly flatKeys: boolean;
   /** Whether a new key fits the format, where not every path does (mail templates: `[template, field]`). */
   validKey?(key: EntryKey): boolean;
+  /** Whether the format cannot hold a text (mail templates: characters XML forbids, such as most controls). */
+  invalidText?(value: string): boolean;
   decode(bytes: Uint8Array): DecodedText;
   parse(doc: DecodedText): ParsedFile;
   /** Applies the operations in order; encoding and byte order mark stay. Throws {@link EditError}. */

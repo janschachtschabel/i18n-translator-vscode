@@ -15,6 +15,7 @@ export type EditProblemCode =
   | 'empty-key'
   | 'invalid-template-key'
   | 'hidden-key'
+  | 'invalid-text'
   | 'invalid-locale'
   | 'locale-exists'
   | 'changed'
@@ -47,6 +48,8 @@ export const EDIT_MESSAGES: Readonly<Record<EditProblemCode | EditWarningCode, s
   'invalid-key': 'Every part of a key needs a name, e.g. SECTION.TITLE.',
   'empty-key': 'A key needs a name.',
   'hidden-key': '{key} stays hidden in {bundle}: it is no translation. Choose another name.',
+  'invalid-text':
+    'The text of {key} in {locale} contains a character the file cannot hold, such as a control character; remove it.',
   'invalid-template-key':
     '{key} is no text of a mail template: name the template, then subject or message, e.g. invited.subject.',
   'invalid-locale': '{locale} is not a valid language code for {area}.',

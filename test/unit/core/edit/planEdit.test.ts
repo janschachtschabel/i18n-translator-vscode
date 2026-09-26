@@ -509,6 +509,22 @@ describe('planEdit with mail templates', () => {
     ).toEqual(['templates_fr_FR.xml: insert b.message after a = M']);
   });
 
+  it('refuses a text with a character XML cannot hold, before anything is written', () => {
+    const value = `a${String.fromCharCode(11)}b`;
+    expect(
+      summary(planEdit(mail, { kind: 'setText', entryId: field('a', 'subject'), locale: 'fr_FR', value })),
+    ).toBe('invalid-text');
+    expect(
+      summary(
+        planEdit(mail, {
+          kind: 'addKey',
+          key: keyFromSegments(['neu', 'subject']),
+          values: { de_DE: value },
+        }),
+      ),
+    ).toBe('invalid-text');
+  });
+
   it('refuses a new key that names no field of a template', () => {
     expect(
       summary(

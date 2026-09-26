@@ -4,6 +4,7 @@ import { DEFAULT_STYLE } from '../../text/style';
 import type { FormatAdapter } from '../adapter';
 import { MAIL_FIELDS, parseMail } from './mailRead';
 import { applyMailOps } from './mailWrite';
+import { firstInvalidCharacter } from './xmlTokens';
 
 /**
  * edu-sharing mail templates (`templates[_{locale}].xml`): the subject and the message of each template are the
@@ -17,7 +18,9 @@ export const mailAdapter: FormatAdapter = {
   validKey: (key) =>
     key.segments.length === 2 &&
     /^[^@\s]+(?:@[^@\s]+)?$/.test(key.segments[0]!) &&
+    firstInvalidCharacter(key.segments[0]!) === -1 &&
     (MAIL_FIELDS as readonly string[]).includes(key.segments[1]!),
+  invalidText: (value) => firstInvalidCharacter(value) !== -1,
   decode: decodeText,
   parse(doc) {
     const parsed = parseMail(doc.text);

@@ -43,6 +43,46 @@ describe('mailAdapter.applyOps: set', () => {
     expect(valueOf(written, 't', 'message')).toBe('<p>x ]]> y</p>');
   });
 
+  it('keeps the layout of a CDATA section when the text has to be split, and reads the text back', () => {
+    const text = one(
+      '<template name="t">\n\t\t<message><![CDATA[\n\t\t\tM\n\t\t]]></message>\n\t</template>',
+    );
+    const written = apply(text, { kind: 'set', key: key('t', 'message'), value: 'a ]]> b' });
+    expect(written).toBe(text.replace('\t\t\tM\n', '\t\t\ta ]]]]><![CDATA[> b\n'));
+    expect(valueOf(written, 't', 'message')).toBe('a ]]> b');
+  });
+
+  it('writes line breaks at the ends of a text as layout, which they are when read', () => {
+    const text = one('<template name="t"><subject>S</subject><message>M</message></template>');
+    const written = apply(
+      text,
+      { kind: 'set', key: key('t', 'subject'), value: '\nHallo' },
+      { kind: 'set', key: key('t', 'message'), value: '<p>x</p>\n  ' },
+    );
+    expect(valueOf(written, 't', 'subject')).toBe('Hallo');
+    expect(valueOf(written, 't', 'message')).toBe('<p>x</p>');
+    expect(written).toContain('<subject>Hallo</subject><message><![CDATA[<p>x</p>]]></message>');
+  });
+
+  it('writes a carriage return in a text as the line break of the file', () => {
+    const crlf = '<templates>\r\n\t<template name="t"><message>M</message></template>\r\n</templates>\r\n';
+    const written = apply(crlf, {
+      kind: 'set',
+      key: key('t', 'message'),
+      value: 'Zeile 1\r\nZeile 2\rZeile 3',
+    });
+    expect(written).toContain('<![CDATA[Zeile 1\r\nZeile 2\r\nZeile 3]]>');
+    expect(valueOf(written, 't', 'message')).toBe('Zeile 1\nZeile 2\nZeile 3');
+  });
+
+  it('refuses to write a character XML cannot hold, as the last line of defense behind planning', () => {
+    const text = one('<template name="t"><subject>S</subject></template>');
+    const value = `a${String.fromCharCode(11)}b`;
+    expect(() => apply(text, { kind: 'set', key: key('t', 'subject'), value })).toThrow(RangeError);
+    expect(mailAdapter.invalidText?.(value)).toBe(true);
+    expect(mailAdapter.invalidText?.('a\tb\nc')).toBe(false);
+  });
+
   it('fills an empty element', () => {
     expect(
       apply(one('<template name="t"><subject/></template>'), {
@@ -124,6 +164,37 @@ describe('mailAdapter.applyOps: delete and rename', () => {
     expect(apply(text, { kind: 'delete', key: key('t', 'subject') })).toBe('<templates>\n</templates>\n');
     expect(apply(text, { kind: 'rename', from: key('t', 'subject'), to: key('t', 'message') })).toBe(
       one('<template name="t"><message>A</message></template>'),
+    );
+  });
+
+  it('keeps a template that hides an earlier one of the same name, so that the earlier one does not come back', () => {
+    const text =
+      '<templates>\n\t<template name="t"><subject>OLD</subject></template>\n' +
+      '\t<template name="t"><subject>NEW</subject></template>\n</templates>\n';
+    const deleted = apply(text, { kind: 'delete', key: key('t', 'subject') });
+    expect(deleted).toBe(text.replace('<subject>NEW</subject>', ''));
+    expect(valueOf(deleted, 't', 'subject')).toBeUndefined();
+    const moved = apply(text, { kind: 'rename', from: key('t', 'subject'), to: key('u', 'subject') });
+    expect(valueOf(moved, 't', 'subject')).toBeUndefined();
+    expect(valueOf(moved, 'u', 'subject')).toBe('NEW');
+  });
+
+  it('puts a new field after a comment that ends the line of its sibling', () => {
+    const text = one('<template name="t">\n\t\t<subject>S</subject> <!-- note -->\n\t</template>');
+    expect(
+      apply(text, { kind: 'insert', key: key('t', 'message'), value: 'M', after: key('t', 'subject') }),
+    ).toBe(text.replace('<!-- note -->\n', '<!-- note -->\n\t\t<message><![CDATA[M]]></message>\n'));
+  });
+
+  it('indents a new template like the template it follows', () => {
+    const text =
+      '<templates>\n\t<template name="a">\n\t\t<subject>A</subject>\n\t</template>\n' +
+      '  <template name="b">\n    <subject>B</subject>\n  </template>\n</templates>\n';
+    expect(apply(text, { kind: 'insert', key: key('c', 'subject'), value: 'C', after: key('b') })).toBe(
+      text.replace(
+        '  </template>\n</templates>',
+        '  </template>\n  <template name="c">\n    <subject>C</subject>\n  </template>\n</templates>',
+      ),
     );
   });
 

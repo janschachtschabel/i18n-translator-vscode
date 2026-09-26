@@ -67,6 +67,9 @@ function planSetText(
   const current = bundle.value(entryId, locale);
   // A text of only white space shows as nothing: it clears the text like an empty one.
   const cleared = value.trim() === '';
+  if (!cleared && ADAPTERS[bundle.format].invalidText?.(value)) {
+    return fail(editProblem('invalid-text', { key: displayKey(key), locale }));
+  }
   // Nothing to do, whatever the user saw before: the text already reads as wanted, or there is nothing to
   // clear (intentionally empty reference texts stay).
   const unchanged = cleared
@@ -120,6 +123,12 @@ function planAddKey(
   const withoutFile = Object.keys(values).find((locale) => values[locale]?.trim() && !bundle.file(locale));
   if (withoutFile !== undefined) {
     return fail(editProblem('missing-file', { bundle: bundle.name, locale: withoutFile }));
+  }
+  const invalid = Object.keys(values).find((locale) =>
+    ADAPTERS[bundle.format].invalidText?.(values[locale]!),
+  );
+  if (invalid !== undefined) {
+    return fail(editProblem('invalid-text', { key: displayKey(key), locale: invalid }));
   }
   // Without `after` (or with a key that is gone) the new key goes last.
   const from = bundle.keys.findIndex((candidate) => candidate.id === afterId);

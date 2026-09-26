@@ -39,7 +39,7 @@ function applyOp(text: string, op: FileOp, writer: Writer): string {
 
 function setField(text: string, key: EntryKey, value: string, writer: Writer): string {
   const { id, field } = partsOf(key);
-  const info = firstField(effectiveTemplate(read(text), id), field);
+  const info = firstField(effectiveTemplate(read(text).templates, id), field);
   if (!info) {
     throw new EditError('missing-key', `${displayKey(key)} does not exist in this file.`, key);
   }
@@ -65,7 +65,7 @@ function insertField(
   writer: Writer,
 ): string {
   const { id, field } = partsOf(key);
-  const templates = read(text);
+  const { root, templates } = read(text);
   const template = effectiveTemplate(templates, id);
   const element = () => fieldElement(field, value, writer);
   if (template) {
@@ -80,25 +80,36 @@ function insertField(
           : undefined;
     return insertChild(text, template.element, element, sibling, writer);
   }
-  const root = rootOf(text);
   const anchor =
     place === 'first' ? 'first' : place && effectiveTemplate(templates, place.segments[0]!)?.element;
   const { name, context } = splitId(id);
   const start = `<template name="${escapeAttribute(name, writer)}"${
     context === undefined ? '' : ` context="${escapeAttribute(context, writer)}"`
   }>`;
+  // The fields are indented like those of the neighboring template, else one level deeper than the template.
+  const neighbor = anchor === 'first' ? templates[0]?.element : (anchor ?? templates.at(-1)?.element);
   const newTemplate = (indent: string) => {
-    const inner = indent + writer.style.indent;
+    const inner = childIndent(text, neighbor) ?? indent + writer.style.indent;
     const eol = writer.style.eol;
     return `${start}${eol}${inner}${element()}${eol}${indent}</template>`;
   };
   return insertChild(text, root, newTemplate, anchor, writer);
 }
 
-/** Removes every repetition of the field; a template left without elements goes as a whole. */
+/** The indentation of the first element in `parent`, if it stands on a line of its own. */
+function childIndent(text: string, parent: XmlElement | undefined): string | undefined {
+  const child = parent?.children.find((node): node is XmlElement => node.kind === 'element');
+  return child && indentBefore(text, child.range[0]);
+}
+
+/**
+ * Removes every repetition of the field; a template left without elements goes as a whole, unless it hides an
+ * earlier template with its id: edu-sharing would then use the earlier one, whose texts the editor never showed.
+ */
 function deleteField(text: string, key: EntryKey): string {
   const { id, field } = partsOf(key);
-  const template = effectiveTemplate(read(text), id);
+  const { templates } = read(text);
+  const template = effectiveTemplate(templates, id);
   const doomed = template?.fields.filter((info) => info.field === field) ?? [];
   if (!template || doomed.length === 0) {
     throw new EditError('missing-key', `${displayKey(key)} does not exist in this file.`, key);
@@ -106,7 +117,8 @@ function deleteField(text: string, key: EntryKey): string {
   const rest = template.element.children.filter(
     (child) => child.kind === 'element' && !doomed.some((info) => info.element === child),
   );
-  if (rest.length === 0) {
+  const hides = templates.filter((other) => other.id === id).length > 1;
+  if (rest.length === 0 && !hides) {
     return applyEdits(text, [removal(text, template.element)]);
   }
   return applyEdits(
@@ -122,7 +134,7 @@ function deleteField(text: string, key: EntryKey): string {
 function renameField(text: string, from: EntryKey, to: EntryKey, writer: Writer): string {
   const source = partsOf(from);
   const target = partsOf(to);
-  const templates = read(text);
+  const { templates } = read(text);
   const template = effectiveTemplate(templates, source.id);
   const info = firstField(template, source.field);
   if (!template || !info) {
@@ -179,9 +191,14 @@ function insertChild(
   const anchor = (place === 'first' ? undefined : place) ?? elements[elements.length - 1];
   if (anchor) {
     const indent = indentBefore(text, anchor.range[0]);
-    return indent === undefined
-      ? insertAt(text, anchor.range[1], render(''))
-      : insertAt(text, anchor.range[1], eol + indent + render(indent));
+    if (indent === undefined) {
+      return insertAt(text, anchor.range[1], render(''));
+    }
+    // A comment that ends the line of the anchor belongs to it: the new line goes after it.
+    const lineEnd = anchor.range[1] + text.slice(anchor.range[1]).search(/\r?\n|$/);
+    const rest = text.slice(anchor.range[1], lineEnd);
+    const at = /^(?:[ \t]|<!--(?:(?!-->)[^])*-->)*$/.test(rest) ? lineEnd : anchor.range[1];
+    return insertAt(text, at, eol + indent + render(indent));
   }
   const outer = indentOfLine(text, parent.range[0]);
   const inner = outer + writer.style.indent;
@@ -217,20 +234,12 @@ function fieldElement(field: MailField, value: string, writer: Writer): string {
   return `<${field}>${fieldBody(field, value, writer)}</${field}>`;
 }
 
-function read(text: string): MailTemplateInfo[] {
+function read(text: string): { root: XmlElement; templates: MailTemplateInfo[] } {
   const result = readMail(text);
   if (!result.ok) {
     throw new EditError('unparsable', 'The file is not a valid list of mail templates.');
   }
-  return result.templates;
-}
-
-function rootOf(text: string): XmlElement {
-  const result = readMail(text);
-  if (!result.ok) {
-    throw new EditError('unparsable', 'The file is not a valid list of mail templates.');
-  }
-  return result.root;
+  return result;
 }
 
 /** The template edu-sharing uses: the last of those with the id. */

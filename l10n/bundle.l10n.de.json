@@ -205,6 +205,7 @@
   "The reference text of {key} cannot be empty; delete the key instead.": "Der Referenztext von {key} darf nicht leer sein; löschen Sie stattdessen den Key.",
   "The regular expression is invalid:": "Der reguläre Ausdruck ist ungültig:",
   "The roots of {area} could not be determined: {error}": "Die Wurzeln von {area} konnten nicht ermittelt werden: {error}",
+  "The text of {key} in {locale} contains a character the file cannot hold, such as a control character; remove it.": "Der Text von {key} in {locale} enthält ein Zeichen, das die Datei nicht aufnehmen kann, etwa ein Steuerzeichen; entfernen Sie es.",
   "The text of {key} in the reference language {locale}. The other languages show it until they are translated.": "Der Text von {key} in der Referenzsprache {locale}. Die anderen Sprachen zeigen ihn, bis sie übersetzt sind.",
   "The translation files could not be backed up: {error}": "Die Übersetzungsdateien konnten nicht gesichert werden: {error}",
   "The translation files could not be restored: {error}": "Die Übersetzungsdateien konnten nicht wiederhergestellt werden: {error}",
