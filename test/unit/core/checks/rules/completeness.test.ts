@@ -192,6 +192,7 @@ describe('file problems', () => {
       ['non-string-value', 'warning'],
       ['duplicate-key', 'warning'],
       ['not-utf8', 'error'],
+      ['bom-first-key', 'warning'],
     ]);
   });
 });

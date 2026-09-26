@@ -18,7 +18,8 @@ export interface ParsedEntry {
   fields: Record<FieldId, ParsedField>;
 }
 
-export type FileProblemCode = 'parse-error' | 'non-string-value' | 'duplicate-key' | 'not-utf8';
+export type FileProblemCode =
+  'parse-error' | 'non-string-value' | 'duplicate-key' | 'not-utf8' | 'bom-first-key';
 
 export interface FileProblem {
   code: FileProblemCode;

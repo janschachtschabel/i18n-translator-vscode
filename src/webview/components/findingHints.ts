@@ -40,6 +40,8 @@ export function hintFor(rule: string, syntax: PlaceholderSyntax = 'double-brace'
       return l10n.t('Translate the text, unless it is meant to stay the same, e.g. a name.');
     case 'duplicate-key':
       return l10n.t('Remove the other definitions from the file and keep the one the editor shows.');
+    case 'bom-first-key':
+      return l10n.t('Save the file without a byte order mark, or begin it with a line that is not needed.');
     case 'non-string-value':
       return l10n.t('Replace the value in the file with a text.');
     default:

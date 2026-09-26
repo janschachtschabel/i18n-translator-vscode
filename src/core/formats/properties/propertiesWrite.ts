@@ -6,23 +6,24 @@ import { endsInOddBackslashes, readDefinitions, type Definition } from './proper
 
 /**
  * Applies the operations one after another and re-reads the text in between. Only the lines of the affected keys
- * change: a new line takes the separator of its neighbor and the line break of the file.
+ * change: a new line takes the separator of its neighbor and the line break of the file. In a file with a byte
+ * order mark (`bom`), Java reads the first line as part of an unreadable key, so no new key goes there.
  */
-export function applyPropertiesOps(text: string, ops: readonly FileOp[]): string {
+export function applyPropertiesOps(text: string, ops: readonly FileOp[], bom = false): string {
   const style = detectStyle(text);
   let current = text;
   for (const op of ops) {
-    current = applyOp(current, op, style);
+    current = applyOp(current, op, style, bom);
   }
   return current;
 }
 
-function applyOp(text: string, op: FileOp, style: TextStyle): string {
+function applyOp(text: string, op: FileOp, style: TextStyle, bom: boolean): string {
   switch (op.kind) {
     case 'set':
       return setValue(text, op.key, op.value);
     case 'insert':
-      return insertLine(text, op.key, op.value, op.first ? 'first' : op.after, style);
+      return insertLine(text, op.key, op.value, op.first ? 'first' : op.after, style, bom);
     case 'delete':
       return removeEvery(text, op.key, true);
     case 'rename':
@@ -53,6 +54,7 @@ function insertLine(
   value: string,
   place: EntryKey | 'first' | undefined,
   style: TextStyle,
+  bom: boolean,
 ): string {
   const definitions = read(text);
   if (lastDefinition(definitions, key)) {
@@ -72,7 +74,7 @@ function insertLine(
     const content = text === '' || /[\r\n]$/.test(text) ? line + eol : eol + line;
     return applyEdits(text, [{ offset: text.length, length: 0, content }]);
   }
-  if (place === 'first') {
+  if (place === 'first' && !(bom && anchor.lineStart === 0)) {
     return applyEdits(text, [{ offset: anchor.lineStart, length: 0, content: line + eol }]);
   }
   // A backslash that ends the file continues nothing yet; a blank line keeps it from continuing into the new line.

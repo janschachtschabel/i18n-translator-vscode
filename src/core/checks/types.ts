@@ -11,6 +11,7 @@ export const RULE_IDS = [
   'non-string-value',
   'duplicate-key',
   'not-utf8',
+  'bom-first-key',
   'missing-file',
   'missing-key',
   'empty-value',

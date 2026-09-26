@@ -480,6 +480,16 @@
               ],
               "description": "%config.rule.not-utf8%"
             },
+            "bom-first-key": {
+              "type": "string",
+              "enum": [
+                "error",
+                "warning",
+                "info",
+                "off"
+              ],
+              "description": "%config.rule.bom-first-key%"
+            },
             "missing-file": {
               "type": "string",
               "enum": [

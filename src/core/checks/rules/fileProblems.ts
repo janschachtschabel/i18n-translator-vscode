@@ -8,6 +8,7 @@ const DEFAULT_SEVERITY: Record<FileProblemCode, Severity> = {
   'non-string-value': 'warning',
   'duplicate-key': 'warning',
   'not-utf8': 'error',
+  'bom-first-key': 'warning',
 };
 
 /** One rule per problem the format adapter reports while parsing, so each can get its own severity. */

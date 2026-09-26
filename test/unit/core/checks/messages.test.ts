@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ANGULAR_PRESET } from '../../../../src/core/area/presets';
+import { ANGULAR_PRESET, MDS_PRESET } from '../../../../src/core/area/presets';
 import { displayArgs, formatMessage, ISSUE_MESSAGES } from '../../../../src/core/checks/messages';
 import { RULE_IDS } from '../../../../src/core/checks/types';
 import { compileVariants, DEFAULT_VARIANTS } from '../../../../src/core/checks/variants';
@@ -65,13 +65,19 @@ describe('issue arguments', () => {
     // ISO-8859-1 bytes: "ö" and "ß" as single bytes are not valid UTF-8.
     { relPath: 'i18n/latin/de.json', bytes: Uint8Array.from('{"X":"Größe"}', (char) => char.charCodeAt(0)) },
   ];
-  const { issues } = analyzeRoot(ANGULAR_PRESET, 'i18n', files, {
+  const options = {
     referenceLanguage: 'de',
     baseFileLanguage: 'en',
     variants: compileVariants(DEFAULT_VARIANTS).variants,
     severityOverrides: {},
     ignoreSameAsReference: [],
-  });
+  };
+  const withMark = new Uint8Array([0xef, 0xbb, 0xbf, ...new TextEncoder().encode('a: A')]);
+  const issues = [
+    ...analyzeRoot(ANGULAR_PRESET, 'i18n', files, options).issues,
+    ...analyzeRoot(MDS_PRESET, 'mds', [{ relPath: 'mds/mds_de_DE.properties', bytes: withMark }], options)
+      .issues,
+  ];
 
   it('come from inputs that trigger every rule', () => {
     expect([...new Set(issues.map((issue) => issue.rule))].sort()).toEqual([...RULE_IDS].sort());

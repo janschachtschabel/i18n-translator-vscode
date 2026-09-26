@@ -199,6 +199,23 @@ describe('propertiesAdapter: encoding', () => {
     expect(Buffer.from(propertiesAdapter.encode(written)).toString('utf8')).toBe('a=ä€\n');
   });
 
+  it('reports the first key of a file with a byte order mark, which Java never finds', () => {
+    const bom = (text: string) => ({ text, encoding: 'utf-8' as const, bom: true });
+    expect(propertiesAdapter.parse(bom('a=1\nb=2\n')).problems).toEqual([
+      { code: 'bom-first-key', range: [0, 1], key: key('a') },
+    ]);
+    // A comment in the first line takes the mark; the keys after it are found.
+    expect(propertiesAdapter.parse(bom('# c\na=1\n')).problems).toEqual([]);
+  });
+
+  it('never puts a new key into the first line of a file with a byte order mark', () => {
+    const bom = { text: 'a=1\n', encoding: 'utf-8' as const, bom: true };
+    const written = propertiesAdapter.applyOps(bom, [
+      { kind: 'insert', key: key('n'), value: '9', first: true },
+    ]);
+    expect(written.text).toBe('a=1\nn=9\n');
+  });
+
   it('reads ISO-8859-1 without a finding: Java falls back to it on purpose', () => {
     expect(propertiesAdapter.parse(doc('a=\u00e4\n', 'latin-1')).problems).toEqual([]);
   });

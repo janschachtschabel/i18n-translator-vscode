@@ -34,6 +34,8 @@ export function statusWord(rule: string): string {
       return l10n.t('as reference');
     case 'duplicate-key':
       return l10n.t('duplicate');
+    case 'bom-first-key':
+      return l10n.t('never read');
     case 'non-string-value':
       return l10n.t('not a text');
     default:

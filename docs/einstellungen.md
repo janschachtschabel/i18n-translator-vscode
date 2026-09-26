@@ -272,9 +272,10 @@ Standard: `{}`. Der Schweregrad je Prüfregel ist `error` (Fehler), `warning` (W
 | Regel | Standard | Meldet |
 |---|---|---|
 | `parse-error` | Fehler | Eine Datei ist nicht lesbar. |
-| `not-utf8` | Fehler | Eine Datei ist kein gültiges UTF-8. |
+| `not-utf8` | Fehler | Eine JSON- oder Mail-Datei ist kein gültiges UTF-8 (`.properties` dürfen ISO-8859-1 sein, Mail-Templates, wenn sie es deklarieren). |
+| `bom-first-key` | Warnung | Eine `.properties`-Datei beginnt mit einer Byte-Order-Mark; Java liest sie als Teil des ersten Keys, der dann nie gefunden wird. |
 | `non-string-value` | Warnung | Ein Wert ist kein Text, z. B. eine Zahl oder eine Liste. |
-| `duplicate-key` | Warnung | Ein Key kommt in derselben Datei doppelt vor; der letzte gilt. |
+| `duplicate-key` | Warnung | Ein Key kommt in derselben Datei doppelt vor; nur eine Definition gilt: in JSON und `.properties` die letzte, in einem Mail-Template das erste Feld und das letzte Template. |
 | `missing-file` | Warnung | Einer Einheit fehlt die Datei einer Sprache. |
 | `missing-key` | Warnung | Ein Key der Referenz fehlt in einer Sprache; der Rückfalltext erscheint. |
 | `empty-value` | Warnung | Ein Text ist leer, obwohl die Referenz einen hat; er verdeckt den Rückfall. |
