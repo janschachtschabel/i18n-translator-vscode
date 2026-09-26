@@ -2,6 +2,7 @@ import { parseTree, type Node, type ParseError } from 'jsonc-parser';
 import { displayKey, keyFromSegments, type EntryKey } from '../../model/keys';
 import { applyEdits } from '../../text/edits';
 import { detectStyle, type TextStyle } from '../../text/style';
+import { escapeUnits } from '../../text/unicodeEscape';
 import { EditError, type FileOp } from '../adapter';
 
 /** A property of a JSON object with its key and value nodes. */
@@ -29,31 +30,9 @@ export function emptyJsonObject(style: TextStyle): string {
   return `{}${style.finalNewline ? style.eol : ''}`;
 }
 
-/**
- * For a file read as ISO-8859-1: writes the characters it cannot hold as `\uXXXX`. The read text has none of
- * them, so they can only come from string literals written here, where the escape is exact.
- */
-export function escapeBeyondLatin1(text: string): string {
-  return escapeUnits(text, (unit) => unit > 0xff);
-}
-
 /** A JSON string literal. Line and paragraph separators are escaped, because editors offer to remove them. */
 function jsonString(value: string): string {
   return escapeUnits(JSON.stringify(value), (unit) => unit === 0x2028 || unit === 0x2029);
-}
-
-/** Writes every UTF-16 code unit for which `escape` holds as `\uXXXX`. */
-function escapeUnits(text: string, escape: (unit: number) => boolean): string {
-  let result = '';
-  let start = 0;
-  for (let index = 0; index < text.length; index++) {
-    const unit = text.charCodeAt(index);
-    if (escape(unit)) {
-      result += `${text.slice(start, index)}\\u${unit.toString(16).padStart(4, '0')}`;
-      start = index + 1;
-    }
-  }
-  return result + text.slice(start);
 }
 
 function applyOp(text: string, op: FileOp, style: TextStyle): string {
