@@ -665,7 +665,7 @@
     "@testing-library/preact": "^3.2.4",
     "@types/mocha": "^10.0.10",
     "@types/node": "^22.20.4",
-    "@types/vscode": "1.90.0",
+    "@types/vscode": "1.138.0",
     "@vitest/coverage-v8": "^5.0.1",
     "@vscode/test-cli": "^0.0.15",
     "@vscode/test-electron": "^3.1.0",
