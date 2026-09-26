@@ -112,6 +112,22 @@ describe('propertiesAdapter.applyOps: insert', () => {
     );
   });
 
+  it('keeps carriage returns as the line endings of a file that has only them (classic Mac OS)', () => {
+    const cr = (text: string) => text.replace(/\n/g, '\r');
+    const text = '# c\na=1\nb=x\\\n  y\n';
+    const ops: FileOp[] = [
+      { kind: 'insert', key: key('n'), value: '9', after: key('a') },
+      { kind: 'insert', key: key('n'), value: '9', after: key('b') },
+      { kind: 'insert', key: key('n'), value: '9', first: true },
+      { kind: 'delete', key: key('b') },
+      { kind: 'rename', from: key('a'), to: key('z') },
+    ];
+    for (const op of ops) {
+      expect(apply(cr(text), op)).toBe(cr(apply(text, op)));
+    }
+    expect(apply('a=1\r', { kind: 'insert', key: key('n'), value: '9' })).toBe('a=1\rn=9\r');
+  });
+
   it('goes after the logical line of a continued anchor', () => {
     expect(apply('a=x\\\n  y\nb=2\n', { kind: 'insert', key: key('n'), value: '9', after: key('a') })).toBe(
       'a=x\\\n  y\nn=9\nb=2\n',

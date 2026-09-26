@@ -186,6 +186,26 @@ describe('mailAdapter.applyOps: delete and rename', () => {
     ).toBe(text.replace('<!-- note -->\n', '<!-- note -->\n\t\t<message><![CDATA[M]]></message>\n'));
   });
 
+  it('keeps carriage returns as the line endings of a file that has only them (classic Mac OS)', () => {
+    const cr = (text: string) => text.replace(/\n/g, '\r');
+    const text =
+      '<templates>\n\t<template name="a">\n\t\t<subject>A</subject>\n\t</template>\n' +
+      '\t<template name="b">\n\t\t<subject>B</subject>\n\t\t<message><![CDATA[\n\t\t\tM\n\t\t]]></message>\n' +
+      '\t</template>\n</templates>\n';
+    const ops: FileOp[] = [
+      { kind: 'insert', key: key('a', 'message'), value: 'x\ny', after: key('a', 'subject') },
+      { kind: 'insert', key: key('c', 'subject'), value: 'C', after: key('b', 'message') },
+      { kind: 'insert', key: key('c', 'subject'), value: 'C', first: true },
+      { kind: 'set', key: key('b', 'message'), value: 'n\new' },
+      { kind: 'delete', key: key('a', 'subject') },
+      { kind: 'delete', key: key('b', 'message') },
+      { kind: 'rename', from: key('a', 'subject'), to: key('c', 'subject') },
+    ];
+    for (const op of ops) {
+      expect(apply(cr(text), op)).toBe(cr(apply(text, op)));
+    }
+  });
+
   it('indents a new template like the template it follows', () => {
     const text =
       '<templates>\n\t<template name="a">\n\t\t<subject>A</subject>\n\t</template>\n' +

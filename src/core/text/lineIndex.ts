@@ -9,6 +9,11 @@ export interface LineIndex {
   positionAt(offset: number): Position;
 }
 
+/** Where the line of `offset` starts: after the last \n or lone \r before it (a \r\n ends one line). */
+export function lineStartAt(text: string, offset: number): number {
+  return Math.max(text.lastIndexOf('\n', offset - 1), text.lastIndexOf('\r', offset - 1)) + 1;
+}
+
 /** Maps text offsets to line/character positions; \n, \r\n and a lone \r end a line, as in VS Code. */
 export function createLineIndex(text: string): LineIndex {
   const lineStarts = [0];

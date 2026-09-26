@@ -1,6 +1,7 @@
 import { displayKey, type EntryKey } from '../../model/keys';
 import type { DecodedText } from '../../text/decode';
 import { applyEdits, type TextEdit } from '../../text/edits';
+import { lineStartAt } from '../../text/lineIndex';
 import { detectStyle } from '../../text/style';
 import { EditError, type FileOp, type TextRange } from '../adapter';
 import { MAIL_FIELDS, readMail, type MailField, type MailFieldInfo, type MailTemplateInfo } from './mailRead';
@@ -195,7 +196,7 @@ function insertChild(
       return insertAt(text, anchor.range[1], render(''));
     }
     // A comment that ends the line of the anchor belongs to it: the new line goes after it.
-    const lineEnd = anchor.range[1] + text.slice(anchor.range[1]).search(/\r?\n|$/);
+    const lineEnd = anchor.range[1] + text.slice(anchor.range[1]).search(/\r\n|\r|\n|$/);
     const rest = text.slice(anchor.range[1], lineEnd);
     const at = /^(?:[ \t]|<!--(?:(?!-->)[^])*-->)*$/.test(rest) ? lineEnd : anchor.range[1];
     return insertAt(text, at, eol + indent + render(indent));
@@ -214,20 +215,21 @@ function insertChild(
   const endTagIndent = indentBefore(text, endTag);
   return endTagIndent === undefined
     ? insertAt(text, endTag, `${eol}${inner}${render(inner)}${eol}${outer}`)
-    : insertAt(text, lineStart(text, endTag), `${inner}${render(inner)}${eol}`);
+    : insertAt(text, lineStartAt(text, endTag), `${inner}${render(inner)}${eol}`);
 }
 
 /** The element, or its whole line with the line break when nothing else stands on it. */
 function removal(text: string, element: XmlElement): TextEdit {
   const [start, end] = element.range;
-  const from = lineStart(text, start);
-  const lineEnd = text.slice(end).search(/\r?\n|$/);
+  const from = lineStartAt(text, start);
+  const lineEnd = text.slice(end).search(/\r\n|\r|\n|$/);
   const ownLine = !/\S/.test(text.slice(from, start)) && !/\S/.test(text.slice(end, end + lineEnd));
   if (!ownLine) {
     return { offset: start, length: end - start, content: '' };
   }
-  const breakLength = text.startsWith('\r\n', end + lineEnd) ? 2 : text[end + lineEnd] === '\n' ? 1 : 0;
-  return { offset: from, length: end + lineEnd + breakLength - from, content: '' };
+  const at = end + lineEnd;
+  const breakLength = text.startsWith('\r\n', at) ? 2 : text[at] === '\n' || text[at] === '\r' ? 1 : 0;
+  return { offset: from, length: at + breakLength - from, content: '' };
 }
 
 function fieldElement(field: MailField, value: string, writer: Writer): string {
@@ -268,16 +270,12 @@ function splitId(id: string): { name: string; context?: string } {
 
 /** The white space from the start of the line to `offset`, or undefined if something else stands there. */
 function indentBefore(text: string, offset: number): string | undefined {
-  const before = text.slice(lineStart(text, offset), offset);
+  const before = text.slice(lineStartAt(text, offset), offset);
   return /^[ \t]*$/.test(before) ? before : undefined;
 }
 
 function indentOfLine(text: string, offset: number): string {
-  return /^[ \t]*/.exec(text.slice(lineStart(text, offset)))![0];
-}
-
-function lineStart(text: string, offset: number): number {
-  return text.lastIndexOf('\n', offset - 1) + 1;
+  return /^[ \t]*/.exec(text.slice(lineStartAt(text, offset)))![0];
 }
 
 function insertAt(text: string, offset: number, content: string): string {
