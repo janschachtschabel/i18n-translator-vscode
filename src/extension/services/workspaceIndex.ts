@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import type { Settings } from '../../core/config/settings';
 import type { AreaId } from '../../core/model/types';
 import { analyzeRoot, type RootAnalysis } from '../../core/pipeline/analyze';
-import { analysisOptions } from '../../core/config/settings';
+import { analysisOptions, SETTING_KEYS } from '../../core/config/settings';
 import { excludeGlob, readBackupSettings, readSettings } from '../config';
 import { messageOf } from './errors';
 import { IndexWatchers, type WatchedPattern } from './indexWatchers';
@@ -77,7 +77,8 @@ export class WorkspaceIndex implements vscode.Disposable {
   constructor(private readonly log: vscode.LogOutputChannel) {
     this.subscriptions.push(
       vscode.workspace.onDidChangeConfiguration((event) => {
-        if (event.affectsConfiguration('eduI18n')) {
+        // Not the backup and AI settings, which no run reads: a change of the model would read the workspace anew.
+        if (SETTING_KEYS.some((key) => event.affectsConfiguration(`eduI18n.${key}`))) {
           this.schedule();
         }
       }),
