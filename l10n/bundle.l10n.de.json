@@ -9,6 +9,8 @@
   "{file} has a syntax error; fix it before changing texts in this bundle.": "{file} hat einen Syntaxfehler; beheben Sie ihn, bevor Sie Texte in dieser Einheit ändern.",
   "{file} has a value at {key} that is not a text; correct the file first.": "{file} hat bei {key} einen Wert, der kein Text ist; korrigieren Sie zuerst die Datei.",
   "{file} is larger than {size} and was not read.": "{file} ist größer als {size} und wurde nicht gelesen.",
+  "{file} is reached through the symbolic link {link} and was not read.": "{file} liegt hinter der symbolischen Verknüpfung {link} und wurde nicht gelesen.",
+  "{file} is reached through the symbolic link {link}; nothing was written.": "{file} liegt hinter der symbolischen Verknüpfung {link}; es wurde nichts geschrieben.",
   "{file} lies outside the translation folder {root}.": "{file} liegt außerhalb des Übersetzungsordners {root}.",
   "{file} lies outside the translation folders.": "{file} liegt außerhalb der Übersetzungsordner.",
   "{files} changed after the last change, so it can no longer be undone.": "{files} wurde nach der letzten Änderung geändert, deshalb lässt sie sich nicht mehr rückgängig machen.",

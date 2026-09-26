@@ -7,6 +7,7 @@ import { ADAPTERS } from '../../core/formats/registry';
 import type { RootAnalysis } from '../../core/pipeline/analyze';
 import { revisionOf } from '../../core/util/hash';
 import { messageOf } from './errors';
+import { firstLinked } from './links';
 import {
   holds,
   isDirty,
@@ -349,8 +350,19 @@ export class FileStore {
     return { ok: true };
   }
 
-  /** Writes all files or none; the failure, if any, as a result. */
+  /** Writes all files or none, and none through a symbolic link; the failure, if any, as a result. */
   private async putAll(files: Put[], restore: Put[]): Promise<WriteError | undefined> {
+    const linked = await firstLinked(files.map((file) => file.uri));
+    if (linked) {
+      const message = vscode.l10n.t(
+        '{file} is reached through the symbolic link {link}; nothing was written.',
+        {
+          file: relative(linked.uri),
+          link: linked.link,
+        },
+      );
+      return { ok: false, reason: 'error', message };
+    }
     const failure = await this.index.whileWriting(() => putAllOrNone(this.files, files, restore, this.log));
     if (!failure) {
       return undefined;

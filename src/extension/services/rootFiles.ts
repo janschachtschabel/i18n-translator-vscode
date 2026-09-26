@@ -5,6 +5,7 @@ import { rootsFromMarkers } from '../../core/discovery/discover';
 import { filesToRead, type SourceFile } from '../../core/pipeline/analyze';
 import { revisionOf } from '../../core/util/hash';
 import { messageOf } from './errors';
+import { linkOnPath } from './links';
 import { relativeUriPath } from './uriPaths';
 
 /**
@@ -64,17 +65,31 @@ export async function listRoot(
   return filesToRead(area, root, relativePaths(folder, found));
 }
 
-/** Unreadable files (e.g. deleted since the listing) and files beyond the size limit are reported and left out. */
+/**
+ * Unreadable files (e.g. deleted since the listing), files reached through a symbolic link and files beyond the
+ * size limit are reported and left out.
+ */
 export async function readFiles(
   folder: vscode.WorkspaceFolder,
   paths: readonly string[],
   report: (message: string) => void,
   limits = ROOT_LIMITS,
 ): Promise<SourceFile[]> {
+  const checked = new Set<string>();
   const files = await Promise.all(
     paths.map(async (relPath) => {
       const uri = vscode.Uri.joinPath(folder.uri, relPath);
       try {
+        const link = await linkOnPath(folder.uri, relPath, checked);
+        if (link !== undefined) {
+          report(
+            vscode.l10n.t('{file} is reached through the symbolic link {link} and was not read.', {
+              file: relPath,
+              link,
+            }),
+          );
+          return undefined;
+        }
         if ((await vscode.workspace.fs.stat(uri)).size > limits.fileBytes) {
           const size = `${Math.round(limits.fileBytes / 1024)} KB`;
           report(vscode.l10n.t('{file} is larger than {size} and was not read.', { file: relPath, size }));
