@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { act, cleanup, fireEvent, screen, within } from '@testing-library/preact';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { UiState } from '../../../src/shared/protocol';
 import { DEFAULT_FILTER } from '../../../src/shared/filter';
 import { findingsModel, openWith as open, axeProblems, row, text } from './support';
@@ -29,7 +29,10 @@ beforeEach(() => {
   document.title = 'common';
   setWidth(1024);
 });
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+});
 
 describe('list', () => {
   it('shows a card per key below 900 px, with a labelled field per visible language', () => {
@@ -224,6 +227,33 @@ describe('list', () => {
     await nextTask();
     expect(screen.queryByRole('textbox')).toBeNull();
     expect(document.activeElement).toBe(document.body);
+  });
+
+  // Like the table, the list keeps its top card in place when the cards change their height (audit T-12).
+  it('keeps the top card in place when a language is hidden', () => {
+    setWidth(600);
+    // happy-dom has no layout: a card is 10 px high per field, the cards follow each other, the view is 200 px.
+    const height = (card: HTMLElement) => 10 * card.querySelectorAll('dt').length;
+    const cards = () => [...document.querySelectorAll<HTMLElement>('[data-entry]')];
+    vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockImplementation(function (this: HTMLElement) {
+      return this.dataset['entry'] ? height(this) : 0;
+    });
+    vi.spyOn(HTMLElement.prototype, 'offsetTop', 'get').mockImplementation(function (this: HTMLElement) {
+      return cards()
+        .slice(0, cards().indexOf(this))
+        .reduce((sum, card) => sum + height(card), 0);
+    });
+    vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(200);
+    const rows = Array.from({ length: 10 }, (_, index) =>
+      row(`KEY_${index}`, { de: text('a'), 'de-informal': text(undefined), fr: text('b'), it: text('c') }),
+    );
+    const { store } = open({}, { ...findingsModel, rows });
+    const page = document.scrollingElement as HTMLElement;
+    // Cards of 40 px: KEY_3 is cut off at the top of the view (130), KEY_4 starts 30 px below it.
+    page.scrollTop = 130;
+    act(() => store.toggleLocale('de-informal'));
+    // Cards of 30 px: KEY_4 starts at 120 and again 30 px below the top of the view.
+    expect(page.scrollTop).toBe(90);
   });
 
   it('names the key of each card for the context menu, which offers the key commands', () => {
