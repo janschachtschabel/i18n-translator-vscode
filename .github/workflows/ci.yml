@@ -1,0 +1,108 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    # A version tag builds and tests like any commit, then the job release publishes its VSIX.
+    tags: ['v*']
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        # Images by version, so that a new default image changes nothing without a commit.
+        os: [ubuntu-24.04, windows-2025]
+    runs-on: ${{ matrix.os }}
+    steps:
+      # Actions by commit, so that a moved tag cannot change what builds the VSIX; Dependabot updates them.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          # npm ci runs install scripts; they need no token.
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      # The packages the VSIX bundles; advisories of the dev tools are listed in CONTRIBUTING.
+      - run: npm audit --omit=dev --audit-level=moderate
+      - run: npm run lint
+      - run: npm run format:check
+      - run: npm run typecheck
+      - run: npm run test:coverage
+      - run: npm run build
+      # The VS Code builds of the integration tests, kept for a month: stable changes, 1.90.0 does not. Only the
+      # downloads: the tests' user data must start empty. Each month starts afresh, without the cache of the month
+      # before, which would carry every old stable build along.
+      - name: Month
+        id: month
+        shell: bash
+        run: echo "month=$(date +%Y-%m)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .vscode-test/vscode-*
+          key: vscode-test-${{ runner.os }}-${{ steps.month.outputs.month }}
+      # Integration tests need a display on Linux; there they run against VS Code 1.90.0 and stable, and in a
+      # workspace of several folders.
+      - name: Integration tests
+        if: runner.os == 'Linux'
+        run: xvfb-run -a npm run test:integration
+      # On Windows, where paths ignore letter case (e.g. in the guard for unsaved editors), against stable.
+      - name: Integration tests (Windows)
+        if: runner.os == 'Windows'
+        run: npm run test:integration -- --label stable
+      - name: Package VSIX
+        if: runner.os == 'Linux'
+        run: npm run package
+      # The VSIX holds the production build (minified), which the tests above did not run: activation and the
+      # editor, with its webview, once more on exactly that build.
+      - name: Smoke test of the packaged build
+        if: runner.os == 'Linux'
+        run: xvfb-run -a npx vscode-test --label stable --grep "activation|editor panel"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        if: runner.os == 'Linux'
+        with:
+          name: vsix
+          path: '*.vsix'
+          if-no-files-found: error
+
+  # For a version tag, a GitHub release with the VSIX that the build above packaged and smoke-tested, once both
+  # systems passed. It goes out twice: with its version in the name, and as edu-sharing-i18n.vsix, so that
+  # .../releases/latest/download/edu-sharing-i18n.vsix always names the newest (README, installation).
+  release:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          name: vsix
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          REPO: ${{ github.repository }}
+        run: |
+          version="$(jq -r .version package.json)"
+          if [ "$TAG" != "v$version" ]; then
+            echo "::error::The tag $TAG does not match the version $version in package.json."
+            exit 1
+          fi
+          cp "edu-sharing-i18n-$version.vsix" edu-sharing-i18n.vsix
+          gh release create "$TAG" "edu-sharing-i18n-$version.vsix" edu-sharing-i18n.vsix \
+            --repo "$REPO" --verify-tag --title "edu-sharing i18n $version" \
+            --notes "Installation: https://github.com/$REPO#installation · Änderungen: https://github.com/$REPO/blob/$TAG/CHANGELOG.md"

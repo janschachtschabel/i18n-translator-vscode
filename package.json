@@ -1,0 +1,688 @@
+{
+  "name": "edu-sharing-i18n",
+  "displayName": "%displayName%",
+  "description": "%description%",
+  "version": "0.2.0",
+  "publisher": "janschachtschabel",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/janschachtschabel/i18n-translator-vscode"
+  },
+  "bugs": {
+    "url": "https://github.com/janschachtschabel/i18n-translator-vscode/issues"
+  },
+  "engines": {
+    "vscode": "^1.90.0",
+    "node": ">=22.12"
+  },
+  "categories": [
+    "Linters",
+    "Other"
+  ],
+  "keywords": [
+    "i18n",
+    "translation",
+    "edu-sharing",
+    "ngx-translate"
+  ],
+  "main": "./dist/extension.js",
+  "files": [
+    "dist/**/*.js",
+    "dist/**/*.css",
+    "l10n/**",
+    "media/**",
+    "package.nls*.json",
+    "LICENSE",
+    "ThirdPartyNotices.txt",
+    "CHANGELOG.md"
+  ],
+  "l10n": "./l10n",
+  "activationEvents": [
+    "workspaceContains:**/common/de.json",
+    "onWebviewPanel:eduI18n.editor"
+  ],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": "limited",
+      "description": "%untrusted.description%",
+      "restrictedConfigurations": [
+        "eduI18n.areas",
+        "eduI18n.variants",
+        "eduI18n.roots"
+      ]
+    }
+  },
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "eduI18n",
+          "title": "%view.container%",
+          "icon": "media/activity.svg"
+        }
+      ]
+    },
+    "views": {
+      "eduI18n": [
+        {
+          "id": "eduI18n.areas",
+          "name": "%view.areas%"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "eduI18n.areas",
+        "contents": "%view.areas.searching%",
+        "when": "!eduI18n.indexed"
+      },
+      {
+        "view": "eduI18n.areas",
+        "contents": "%view.areas.welcome%",
+        "when": "eduI18n.indexed"
+      }
+    ],
+    "commands": [
+      {
+        "command": "eduI18n.check",
+        "title": "%cmd.check%",
+        "category": "edu-sharing i18n",
+        "icon": "$(checklist)"
+      },
+      {
+        "command": "eduI18n.configureRoots",
+        "title": "%cmd.configureRoots%",
+        "category": "edu-sharing i18n"
+      },
+      {
+        "command": "eduI18n.openBundle",
+        "title": "%cmd.openBundle%",
+        "category": "edu-sharing i18n"
+      },
+      {
+        "command": "eduI18n.revealInExplorer",
+        "title": "%cmd.revealInExplorer%",
+        "category": "edu-sharing i18n"
+      },
+      {
+        "command": "eduI18n.backupNow",
+        "title": "%cmd.backupNow%",
+        "category": "edu-sharing i18n"
+      },
+      {
+        "command": "eduI18n.restoreBackup",
+        "title": "%cmd.restoreBackup%",
+        "category": "edu-sharing i18n",
+        "enablement": "isWorkspaceTrusted"
+      },
+      {
+        "command": "eduI18n.undoLastChange",
+        "title": "%cmd.undoLastChange%",
+        "category": "edu-sharing i18n"
+      },
+      {
+        "command": "eduI18n.openEditor",
+        "title": "%cmd.openEditor%",
+        "category": "edu-sharing i18n"
+      },
+      {
+        "command": "eduI18n.addKey",
+        "title": "%cmd.addKey%",
+        "category": "edu-sharing i18n",
+        "enablement": "isWorkspaceTrusted"
+      },
+      {
+        "command": "eduI18n.renameKey",
+        "title": "%cmd.renameKey%",
+        "category": "edu-sharing i18n",
+        "enablement": "isWorkspaceTrusted"
+      },
+      {
+        "command": "eduI18n.deleteKey",
+        "title": "%cmd.deleteKey%",
+        "category": "edu-sharing i18n",
+        "enablement": "isWorkspaceTrusted"
+      },
+      {
+        "command": "eduI18n.addLanguage",
+        "title": "%cmd.addLanguage%",
+        "category": "edu-sharing i18n",
+        "enablement": "isWorkspaceTrusted"
+      }
+    ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "eduI18n.revealInExplorer",
+          "when": "false"
+        },
+        {
+          "command": "eduI18n.openBundle",
+          "when": "false"
+        },
+        {
+          "command": "eduI18n.renameKey",
+          "when": "false"
+        },
+        {
+          "command": "eduI18n.deleteKey",
+          "when": "false"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "eduI18n.check",
+          "when": "view == eduI18n.areas",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "eduI18n.openBundle",
+          "when": "view == eduI18n.areas && viewItem == eduI18n.bundle",
+          "group": "0_open"
+        },
+        {
+          "command": "eduI18n.revealInExplorer",
+          "when": "view == eduI18n.areas && viewItem == eduI18n.bundle",
+          "group": "2_files"
+        },
+        {
+          "command": "eduI18n.addKey",
+          "when": "view == eduI18n.areas && viewItem == eduI18n.bundle",
+          "group": "3_edit@1"
+        },
+        {
+          "command": "eduI18n.addLanguage",
+          "when": "view == eduI18n.areas && viewItem =~ /^eduI18n\\.(root|bundle)$/",
+          "group": "3_edit@2"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "eduI18n.addKey",
+          "when": "activeWebviewPanelId == 'eduI18n.editor'",
+          "group": "1_edit@1"
+        },
+        {
+          "command": "eduI18n.addLanguage",
+          "when": "activeWebviewPanelId == 'eduI18n.editor'",
+          "group": "1_edit@2"
+        }
+      ],
+      "webview/context": [
+        {
+          "command": "eduI18n.addKey",
+          "when": "webviewId == 'eduI18n.editor' && webviewSection == 'key'",
+          "group": "1_key@1"
+        },
+        {
+          "command": "eduI18n.renameKey",
+          "when": "webviewId == 'eduI18n.editor' && webviewSection == 'key'",
+          "group": "1_key@2"
+        },
+        {
+          "command": "eduI18n.deleteKey",
+          "when": "webviewId == 'eduI18n.editor' && webviewSection == 'key'",
+          "group": "1_key@3"
+        },
+        {
+          "command": "eduI18n.addLanguage",
+          "when": "webviewId == 'eduI18n.editor'",
+          "group": "2_language@1"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "%config.title%",
+      "properties": {
+        "eduI18n.referenceLanguage": {
+          "type": "string",
+          "default": "de",
+          "scope": "resource",
+          "markdownDescription": "%config.referenceLanguage%"
+        },
+        "eduI18n.baseFileLanguage": {
+          "type": "string",
+          "default": "en",
+          "scope": "resource",
+          "markdownDescription": "%config.baseFileLanguage%"
+        },
+        "eduI18n.areas": {
+          "type": "array",
+          "default": [],
+          "scope": "resource",
+          "markdownDescription": "%config.areas%",
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "format",
+              "files",
+              "localePattern"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "%config.areas.id%"
+              },
+              "label": {
+                "type": "string",
+                "description": "%config.areas.label%"
+              },
+              "format": {
+                "type": "string",
+                "enum": [
+                  "json-nested"
+                ],
+                "description": "%config.areas.format%"
+              },
+              "roots": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "%config.areas.roots%"
+              },
+              "files": {
+                "type": "string",
+                "description": "%config.areas.files%"
+              },
+              "localePattern": {
+                "type": "string",
+                "description": "%config.areas.localePattern%"
+              },
+              "bundlePattern": {
+                "type": "string",
+                "description": "%config.areas.bundlePattern%"
+              },
+              "bundleName": {
+                "type": "string",
+                "description": "%config.areas.bundleName%"
+              },
+              "referenceLanguage": {
+                "type": "string",
+                "description": "%config.areas.referenceLanguage%"
+              },
+              "bundleOrder": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "%config.areas.bundleOrder%"
+              },
+              "mergeSemantics": {
+                "type": "string",
+                "enum": [
+                  "shallow-toplevel",
+                  "none"
+                ],
+                "description": "%config.areas.mergeSemantics%"
+              },
+              "detect": {
+                "type": "object",
+                "required": [
+                  "glob",
+                  "marker"
+                ],
+                "properties": {
+                  "glob": {
+                    "type": "string",
+                    "description": "%config.areas.detect.glob%"
+                  },
+                  "marker": {
+                    "type": "string",
+                    "description": "%config.areas.detect.marker%"
+                  }
+                },
+                "description": "%config.areas.detect%"
+              }
+            }
+          }
+        },
+        "eduI18n.roots": {
+          "type": "object",
+          "default": {},
+          "scope": "resource",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "markdownDescription": "%config.roots%"
+        },
+        "eduI18n.exclude": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "**/node_modules/**",
+            "**/.git/**",
+            "**/dist/**",
+            "**/out/**",
+            "**/target/**",
+            "**/build/**"
+          ],
+          "scope": "resource",
+          "markdownDescription": "%config.exclude%"
+        },
+        "eduI18n.variants": {
+          "type": "object",
+          "default": {
+            "de-informal": {
+              "base": "de",
+              "requiredWhen": "\\b(?:Sie|Ihnen|Ihr|Ihre|Ihrem|Ihren|Ihrer|Ihres)\\b",
+              "forbidden": "\\b(?:Sie|Ihnen|Ihr|Ihre|Ihrem|Ihren|Ihrer|Ihres)\\b"
+            },
+            "de-no-binnen-i": {
+              "base": "de",
+              "requiredWhen": "\\{\\{GENDER_SEPARATOR\\}\\}|[*:_]innen\\b|[a-zäöüß]Innen\\b",
+              "forbidden": "\\{\\{GENDER_SEPARATOR\\}\\}"
+            }
+          },
+          "scope": "resource",
+          "markdownDescription": "%config.variants%",
+          "additionalProperties": {
+            "type": "object",
+            "required": [
+              "base",
+              "requiredWhen"
+            ],
+            "properties": {
+              "base": {
+                "type": "string",
+                "description": "%config.variants.base%"
+              },
+              "requiredWhen": {
+                "type": "string",
+                "description": "%config.variants.requiredWhen%"
+              },
+              "forbidden": {
+                "type": "string",
+                "description": "%config.variants.forbidden%"
+              }
+            }
+          }
+        },
+        "eduI18n.checks.severity": {
+          "type": "object",
+          "default": {},
+          "scope": "resource",
+          "additionalProperties": false,
+          "markdownDescription": "%config.checks.severity%",
+          "properties": {
+            "parse-error": {
+              "type": "string",
+              "enum": [
+                "error",
+                "warning",
+                "info",
+                "off"
+              ],
+              "description": "%config.rule.parse-error%"
+            },
+            "non-string-value": {
+              "type": "string",
+              "enum": [
+                "error",
+                "warning",
+                "info",
+                "off"
+              ],
+              "description": "%config.rule.non-string-value%"
+            },
+            "duplicate-key": {
+              "type": "string",
+              "enum": [
+                "error",
+                "warning",
+                "info",
+                "off"
+              ],
+              "description": "%config.rule.duplicate-key%"
+            },
+            "not-utf8": {
+              "type": "string",
+              "enum": [
+                "error",
+                "warning",
+                "info",
+                "off"
+              ],
+              "description": "%config.rule.not-utf8%"
+            },
+            "missing-file": {
+              "type": "string",
+              "enum": [
+                "error",
+                "warning",
+                "info",
+                "off"
+              ],
+              "description": "%config.rule.missing-file%"
+            },
+            "missing-key": {
+              "type": "string",
+              "enum": [
+                "error",
+                "warning",
+                "info",
+                "off"
+              ],
+              "description": "%config.rule.missing-key%"
+            },
+            "empty-value": {
+              "type": "string",
+              "enum": [
+                "error",
+                "warning",
+                "info",
+                "off"
+              ],
+              "description": "%config.rule.empty-value%"
+            },
+            "orphan-key": {
+              "type": "string",
+              "enum": [
+                "error",
+                "warning",
+                "info",
+                "off"
+              ],
+              "description": "%config.rule.orphan-key%"
+            },
+            "misplaced-key": {
+              "type": "string",
+              "enum": [
+                "error",
+                "warning",
+                "info",
+                "off"
+              ],
+              "description": "%config.rule.misplaced-key%"
+            },
+            "placeholder-malformed": {
+              "type": "string",
+              "enum": [
+                "error",
+                "warning",
+                "info",
+                "off"
+              ],
+              "description": "%config.rule.placeholder-malformed%"
+            },
+            "placeholder-mismatch": {
+              "type": "string",
+              "enum": [
+                "error",
+                "warning",
+                "info",
+                "off"
+              ],
+              "description": "%config.rule.placeholder-mismatch%"
+            },
+            "html-mismatch": {
+              "type": "string",
+              "enum": [
+                "error",
+                "warning",
+                "info",
+                "off"
+              ],
+              "description": "%config.rule.html-mismatch%"
+            },
+            "variant-needed": {
+              "type": "string",
+              "enum": [
+                "error",
+                "warning",
+                "info",
+                "off"
+              ],
+              "description": "%config.rule.variant-needed%"
+            },
+            "variant-inconsistent": {
+              "type": "string",
+              "enum": [
+                "error",
+                "warning",
+                "info",
+                "off"
+              ],
+              "description": "%config.rule.variant-inconsistent%"
+            },
+            "variant-orphan": {
+              "type": "string",
+              "enum": [
+                "error",
+                "warning",
+                "info",
+                "off"
+              ],
+              "description": "%config.rule.variant-orphan%"
+            },
+            "key-overridden": {
+              "type": "string",
+              "enum": [
+                "error",
+                "warning",
+                "info",
+                "off"
+              ],
+              "description": "%config.rule.key-overridden%"
+            },
+            "subtree-lost": {
+              "type": "string",
+              "enum": [
+                "error",
+                "warning",
+                "info",
+                "off"
+              ],
+              "description": "%config.rule.subtree-lost%"
+            },
+            "same-as-reference": {
+              "type": "string",
+              "enum": [
+                "error",
+                "warning",
+                "info",
+                "off"
+              ],
+              "description": "%config.rule.same-as-reference%"
+            }
+          }
+        },
+        "eduI18n.checks.ignoreSameAsReference": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "OK",
+            "E-Mail",
+            "CC-0",
+            "ID"
+          ],
+          "scope": "resource",
+          "markdownDescription": "%config.checks.ignoreSameAsReference%"
+        },
+        "eduI18n.diagnostics.missing": {
+          "type": "string",
+          "enum": [
+            "aggregate",
+            "individual",
+            "off"
+          ],
+          "default": "aggregate",
+          "scope": "resource",
+          "markdownDescription": "%config.diagnostics.missing%",
+          "enumDescriptions": [
+            "%config.diagnostics.missing.aggregate%",
+            "%config.diagnostics.missing.individual%",
+            "%config.diagnostics.missing.off%"
+          ]
+        },
+        "eduI18n.backup.intervalMinutes": {
+          "type": "number",
+          "default": 10,
+          "minimum": 0,
+          "markdownDescription": "%config.backup.intervalMinutes%"
+        },
+        "eduI18n.backup.keep": {
+          "type": "integer",
+          "default": 10,
+          "minimum": 1,
+          "maximum": 100,
+          "markdownDescription": "%config.backup.keep%"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "node esbuild.mjs",
+    "watch": "node esbuild.mjs --watch",
+    "dev": "node esbuild.mjs && node scripts/dev-workspace.mjs",
+    "vscode:prepublish": "node esbuild.mjs --production",
+    "package": "vsce package --no-dependencies",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.webview.json --noEmit",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test:unit": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:integration": "node esbuild.mjs && node esbuild.mjs --tests && vscode-test",
+    "test:perf": "node esbuild.mjs && node esbuild.mjs --tests && node scripts/test-perf.mjs",
+    "check:repo": "tsx scripts/check-repo.ts",
+    "notices": "tsx scripts/third-party-notices.ts"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@testing-library/preact": "^3.2.4",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^22.20.4",
+    "@types/vscode": "1.90.0",
+    "@vitest/coverage-v8": "^5.0.1",
+    "@vscode/test-cli": "^0.0.15",
+    "@vscode/test-electron": "^3.1.0",
+    "@vscode/vsce": "^4.0.0",
+    "axe-core": "^4.13.0",
+    "esbuild": "^0.28.2",
+    "eslint": "^10.11.0",
+    "happy-dom": "^20.14.5",
+    "prettier": "^3.9.9",
+    "tsx": "^4.23.15",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.70.1",
+    "vitest": "^5.0.1"
+  },
+  "dependencies": {
+    "@preact/signals": "^2.11.2",
+    "jsonc-parser": "^3.3.1",
+    "preact": "^10.29.8"
+  }
+}

@@ -1,0 +1,42 @@
+/* The field fills its cell or card and grows with its text; the notes below it wrap. */
+.cell-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-inline-size: 0;
+  white-space: normal;
+}
+
+.cell-input {
+  box-sizing: border-box;
+  inline-size: 100%;
+  /* A target of 24 px at least (WCAG 2.5.8), also for one line of a small font. */
+  min-block-size: 24px;
+  padding: 2px 4px;
+  overflow: hidden;
+  resize: none;
+  /* As the search field: input.border is unset in many themes (e.g. Light+). */
+  border: 1px solid var(--vscode-input-border, var(--vscode-dropdown-border));
+  border-radius: 2px;
+  color: var(--vscode-input-foreground);
+  background-color: var(--vscode-input-background);
+  font: inherit;
+  overflow-wrap: anywhere;
+}
+
+.editor-note {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.editor-hint {
+  color: var(--vscode-descriptionForeground);
+}
+
+/* The text changed outside the editor: the choice below its message. */
+.editor-choice {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  margin-block-start: 4px;
+}

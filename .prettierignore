@@ -1,0 +1,8 @@
+dist/
+out/
+coverage/
+.vscode-test/
+test/fixtures/
+docs/
+*.md
+package-lock.json

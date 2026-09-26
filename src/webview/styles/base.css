@@ -1,0 +1,173 @@
+/* Colors and fonts come from the VS Code theme (--vscode-*), so every theme applies, high contrast included. */
+body {
+  margin: 0;
+  padding: 0 20px;
+  color: var(--vscode-foreground);
+  background-color: var(--vscode-editor-background);
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size);
+  font-weight: var(--vscode-font-weight);
+}
+
+:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: -1px;
+}
+
+/*
+ * Around text fields and selects, not inside them: in dark themes the focus color reaches 3:1 against the
+ * editor's background but not against the field's (Dark Modern 3.64 and 2.87, WCAG 1.4.11).
+ */
+input:not([type='checkbox'], [type='radio']):focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline-offset: 1px;
+}
+
+/* Read by screen readers, not shown. */
+.visually-hidden {
+  position: absolute;
+  /* At the top: below a full-height editor, it would make the page 1 px taller than the window. */
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Checkboxes, radio buttons and scrollbars in the scheme of the theme (VS Code sets the body class). */
+body.vscode-light,
+body.vscode-high-contrast-light {
+  color-scheme: light;
+}
+
+body.vscode-dark,
+body.vscode-high-contrast:not(.vscode-high-contrast-light) {
+  color-scheme: dark;
+}
+
+button {
+  min-block-size: 26px;
+  padding: 4px 12px;
+  border: 1px solid var(--vscode-button-border, transparent);
+  border-radius: 2px;
+  color: var(--vscode-button-secondaryForeground);
+  background-color: var(--vscode-button-secondaryBackground);
+  font: inherit;
+  cursor: pointer;
+}
+
+button:hover {
+  background-color: var(--vscode-button-secondaryHoverBackground);
+}
+
+/* Around buttons, as in VS Code: inside, the focus color does not reach 3:1 against the button's (WCAG 1.4.11). */
+button:focus-visible {
+  outline-offset: 2px;
+}
+
+/* Controls that belong together, their name in front: "View (•) Automatic ( ) Table ( ) List". */
+.group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+/* Floated, the legend is laid out like the controls instead of on the border. */
+.group > legend {
+  float: inline-start;
+  padding: 0;
+  font-weight: 600;
+}
+
+.option {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-block-size: 24px;
+  cursor: pointer;
+}
+
+/* A ring inside a 13 px checkbox or radio button would hardly show: the label around it carries the focus. */
+.option:has(:focus-visible) {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: 2px;
+}
+
+.option :focus-visible {
+  outline: none;
+}
+
+/* The name of the bundle and its counts, compact: in a low editor, the table keeps the height. */
+.bundle > h1 {
+  margin: 12px 0 2px;
+  font-size: 1.5em;
+}
+
+.bundle > h1 + p {
+  margin: 0;
+}
+
+/* With the table, the editor fills the panel and the table scrolls in the space that is left. */
+.bundle.fill {
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  block-size: 100vh;
+}
+
+/* A control with its label in front. */
+.field {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+select {
+  min-block-size: 26px;
+  padding: 2px 6px;
+  border: 1px solid var(--vscode-dropdown-border);
+  border-radius: 2px;
+  color: var(--vscode-dropdown-foreground);
+  background-color: var(--vscode-dropdown-background);
+  font: inherit;
+}
+
+/* The first stops on the page, shown only while they have the focus. */
+.skip-links a {
+  position: absolute;
+  inset-block-start: 4px;
+  inset-inline-start: 20px;
+  z-index: 10;
+  padding: 4px 8px;
+  color: var(--vscode-textLink-foreground);
+  background-color: var(--vscode-editor-background);
+  transform: translateY(-200%);
+}
+
+.skip-links a:focus {
+  transform: none;
+}
+
+.file-findings {
+  margin: 8px 0 0;
+  padding-inline-start: 0;
+  list-style: none;
+}
+
+/* "–" for no text, "" for an empty one. */
+.empty-mark {
+  color: var(--vscode-descriptionForeground);
+}
+
+/* "Reference" or "variant" after a language code. */
+.locale-mark {
+  color: var(--vscode-descriptionForeground);
+}

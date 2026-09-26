@@ -1,0 +1,135 @@
+/*
+ * The table takes the rest of the editor's height and scrolls on its own, so that the header row and the key
+ * column can stay in view. The browser's scroll anchoring stays on: it keeps the view still while rows out of
+ * view get their real height (content-visibility); useScrollAnchor handles hiding languages and wrapping.
+ */
+.table-scroller {
+  position: relative;
+  flex: 1 1 auto;
+  min-block-size: 12em;
+  overflow: auto;
+  /* A focused cell is never hidden behind the header row or the key column (WCAG 2.4.11). */
+  scroll-padding-block-start: 2.5em;
+  scroll-padding-inline-start: var(--key-width);
+  border-block-start: 1px solid var(--vscode-panel-border);
+  --key-width: 16em;
+  --column-width: 16em;
+}
+
+/*
+ * As wide as the columns need at their least, or as the view: not as wide as the longest text, which would give
+ * every column that width and keep long texts from being cut off or wrapped.
+ */
+.grid {
+  inline-size: max(100%, calc(var(--key-width) + var(--columns) * var(--column-width)));
+}
+
+.grid-row {
+  display: grid;
+  grid-template-columns: var(--key-width) repeat(var(--columns), minmax(var(--column-width), 1fr));
+  border-block-end: 1px solid var(--vscode-panel-border);
+}
+
+/* repeat(0, …) is not valid CSS. */
+.grid.no-languages .grid-row {
+  grid-template-columns: var(--key-width);
+}
+
+/* Rows out of view are laid out only when they come into view. */
+.grid-body .grid-row {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 2em;
+}
+
+.grid-head {
+  position: sticky;
+  inset-block-start: 0;
+  z-index: 2;
+  font-weight: 600;
+  background-color: var(--vscode-editor-background);
+}
+
+.grid-key,
+.grid-cell {
+  min-inline-size: 0;
+  padding: 4px 8px;
+}
+
+.grid-key {
+  position: sticky;
+  inset-inline-start: 0;
+  z-index: 1;
+  overflow-wrap: anywhere;
+  font-family: var(--vscode-editor-font-family);
+  font-size: var(--vscode-editor-font-size);
+  background-color: var(--vscode-editor-background);
+}
+
+/* "Key" is a label, not a key: in the UI font, so that the header row keeps the height scroll-padding expects. */
+.grid-head .grid-key {
+  font-family: inherit;
+  font-size: inherit;
+}
+
+.cell-status {
+  color: var(--vscode-descriptionForeground);
+}
+
+.grid-head .locale-mark {
+  font-weight: normal;
+}
+
+/*
+ * One line per text unless long texts wrap; the whole text is still read out and shown in the details. The
+ * text gives way, the status does not: it is the only visible sign of a finding.
+ */
+.table-scroller:not(.wrap) .grid-body .grid-cell {
+  display: flex;
+  align-items: baseline;
+  gap: 0.35em;
+  white-space: nowrap;
+}
+
+.table-scroller:not(.wrap) .grid-body .cell-text {
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.table-scroller:not(.wrap) .grid-body .cell-status {
+  flex: none;
+}
+
+/* Several statuses would leave the text no room: they go below it instead. */
+.table-scroller:not(.wrap) .grid-body .grid-cell:has(.cell-status ~ .cell-status) {
+  flex-wrap: wrap;
+}
+
+.table-scroller.wrap .cell-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.status-symbol.error {
+  color: var(--vscode-editorError-foreground);
+}
+
+.status-symbol.warning {
+  color: var(--vscode-editorWarning-foreground);
+}
+
+.status-symbol.info {
+  color: var(--vscode-editorInfo-foreground);
+}
+
+/* While its text is edited, a cell shows the whole field and the notes below it. */
+.table-scroller .grid-body .grid-cell.editing {
+  display: block;
+  white-space: normal;
+}
+
+/* Which keys edit, rename and delete: the grid's description. */
+.grid-help {
+  margin: 4px 0;
+  color: var(--vscode-descriptionForeground);
+}

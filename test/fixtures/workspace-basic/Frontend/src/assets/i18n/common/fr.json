@@ -1,0 +1,18 @@
+{
+  "ERROR_TITLE": "Erreur ({{data}})",
+  "PERSON": "Auteur",
+  "ASK": "Voulez-vous continuer ?",
+  "SAVE": "",
+  "MINUTE": "Minute",
+  "OK": "OK",
+  "BOLD_HINT": "Soyez prudent",
+  "MIME": {
+    "application/vnd.ms-excel": "Feuille Excel"
+  },
+  "CCMAIL": {
+    "mail.smtp.server": "Serveur SMTP"
+  },
+  "WORKSPACE": {
+    "TITLE": "Espace de travail"
+  }
+}

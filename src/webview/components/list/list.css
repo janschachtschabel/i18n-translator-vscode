@@ -1,0 +1,25 @@
+.cards {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 8px 0 24px;
+  padding: 0;
+  list-style: none;
+}
+
+/* Cards out of view are laid out only when they come into view. */
+.card {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 8em;
+  padding: 8px 12px 12px;
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 4px;
+}
+
+.card-key {
+  margin: 0 0 8px;
+  overflow-wrap: anywhere;
+  font-family: var(--vscode-editor-font-family);
+  font-size: var(--vscode-editor-font-size);
+  font-weight: 600;
+}

@@ -1,0 +1,22 @@
+{
+  "ERROR_TITLE": "Fehler ({{date}})",
+  "PERSON": "Autor{{GENDER_SEPARATOR}}in",
+  "ASK": "Möchten Sie fortfahren?",
+  "SAVE": "Speichern",
+  "CANCEL": "Abbrechen",
+  "MINUTE": "Minute",
+  "OK": "OK",
+  "BOLD_HINT": "Bitte <b>vorsichtig</b> sein",
+  "MIME": {
+    "application/vnd.ms-excel": "Excel-Tabelle"
+  },
+  "CCMAIL": {
+    "mail.smtp.server": "SMTP-Server"
+  },
+  "WORKSPACE": {
+    "TITLE": "Arbeitsbereich",
+    "FILE": {
+      "TITLE": "Datei"
+    }
+  }
+}
