@@ -5,7 +5,8 @@ import { keyFromSegments } from '../../src/core/model/keys';
 import { addKey } from '../../src/extension/commands/addKey';
 import { addLanguage } from '../../src/extension/commands/addLanguage';
 import type { KeyCommandContext } from '../../src/extension/commands/commandTarget';
-import type { Prompts } from '../../src/extension/commands/prompts';
+import { previewMail } from '../../src/extension/commands/previewMail';
+import type { PickItem, Prompts } from '../../src/extension/commands/prompts';
 import type { ExtensionApi } from '../../src/extension/extension';
 import { rootRef, type IndexedRoot } from '../../src/extension/services/workspaceIndex';
 import { activateExtension, answering, keepTranslationFiles, nextPost, waitFor } from './helpers';
@@ -195,6 +196,26 @@ suite('a data folder with all three areas', () => {
     const written = await setText(mail, 'templates', ['invited', 'message'], 'fr_FR', '<p>Bonjour</p>');
     assert.equal(written.ok, true);
     assert.doesNotMatch(await rendered, /fr_FR lacks texts/);
+  });
+
+  test('offers only mail templates from the palette, also with another editor in front', async () => {
+    const mds = await rootOf('edu-sharing.mds');
+    const editor = api.editors.open(mds, bundleOf(mds, 'mds'));
+    await nextPost(editor, 'bundle');
+    const offered: string[][] = [];
+    const answers = ['templates', 'added_inbox'];
+    const prompts: Prompts = {
+      ...answering(),
+      pick: async <T>(items: readonly PickItem<T>[]) => {
+        offered.push(items.map((item) => item.label));
+        const answer = answers.shift();
+        return items.find((item) => item.label === answer)?.value;
+      },
+    };
+    const rendered = waitFor(api.mailPreview.onDidRender, () => true);
+    await previewMail(undefined, { ...context(prompts), editors: api.editors }, api.mailPreview);
+    assert.deepEqual(offered, [['templates'], ['invited', 'added_inbox']]);
+    assert.match(await rendered, /<h1>Mail template added_inbox<\/h1>/);
   });
 
   // The message comes from a webview, which is not trusted: a key that is no mail template of its editor shows nothing.

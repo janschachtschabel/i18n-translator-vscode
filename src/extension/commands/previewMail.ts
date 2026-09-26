@@ -5,25 +5,24 @@ import type { MailPreview } from '../panels/mailPreview';
 import { bundleTarget, type TargetSources } from './commandTarget';
 import type { Prompts } from './prompts';
 
+const holdsMails = (bundle: Bundle) => bundle.format === 'mail-xml';
+
 /**
  * Shows the preview of a mail template: of the key whose context menu it was chosen in, else of a template the user
- * picks in the bundle of the editor in front, or in a bundle the user picks. It only reads, so it also runs in
+ * picks in the mail templates of the editor in front, or in those the user picks. It only reads, so it also runs in
  * Restricted Mode.
  */
 export async function previewMail(arg: unknown, sources: TargetSources, preview: MailPreview): Promise<void> {
-  const chosen = await bundleTarget(arg, sources);
+  const snapshot = await sources.index.latest();
+  if (!snapshot.roots.some((root) => root.analysis.bundles.some(holdsMails))) {
+    await showInfo(vscode.l10n.t('No mail templates were found in this workspace.'));
+    return;
+  }
+  const chosen = await bundleTarget(arg, sources, holdsMails);
   if (!chosen) {
     return;
   }
   const { root, bundle } = chosen.target;
-  if (bundle.format !== 'mail-xml') {
-    await showInfo(
-      vscode.l10n.t('{bundle} holds no mail templates, so there is no mail to preview.', {
-        bundle: bundle.name,
-      }),
-    );
-    return;
-  }
   const entryId = chosen.entryId ?? (await pickTemplate(bundle, sources.prompts));
   if (entryId !== undefined) {
     preview.show({ folder: root.folder.uri.toString(), bundleId: bundle.id }, entryId);
