@@ -81,6 +81,9 @@ Die Version folgt den Phasen: `0.<Phase>.<Korrektur>`. Eine Release entsteht aus
    - Sie erscheint zweimal: mit der Version im Namen und als `edu-sharing-i18n.vsix`. Unter diesem Namen führt
      `…/releases/latest/download/edu-sharing-i18n.vsix` immer zur neuesten, wie es das README beschreibt.
    - Passt der Tag nicht zur Version in `package.json`, bricht der Job ab, ohne etwas zu veröffentlichen.
+   - Die Installationsskripte `scripts/install.ps1` und `scripts/install.sh` gehen mit in die Release. Die CI prüft
+     `install.sh` bei jedem Lauf unter Linux mit der frisch gebauten VSIX. `install.ps1` hat keinen CI-Test; es nach
+     Änderungen unter Windows mit `EDU_I18N_EDITORS` auf einen Editor mit eigenem Profil ausprobieren.
 
 ## Bekannte Hinweise
 
