@@ -6,6 +6,7 @@ import type { RestoredFile } from './fileStore';
 import { readIfExists } from './files';
 import { isPlainRelativePath } from './uriPaths';
 import type { IndexSnapshot, WorkspaceIndex } from './workspaceIndex';
+import { showWarning } from '../notify';
 
 export type BackupReason = 'first-write' | 'several-bundles' | 'interval' | 'manual' | 'restore';
 
@@ -73,7 +74,7 @@ export class BackupService {
         throw error;
       }
       this.log.error('Backing up the translation files failed.', error);
-      void vscode.window.showWarningMessage(
+      void showWarning(
         vscode.l10n.t('The translation files could not be backed up: {error}', { error: messageOf(error) }),
       );
     }

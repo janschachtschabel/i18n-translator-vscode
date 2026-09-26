@@ -8,6 +8,7 @@ import { localize } from '../localize';
 import { inBundle } from '../panels/findBundle';
 import { writeChange, type BundleTarget, type KeyCommandContext } from './commandTarget';
 import { keyCheckMessage } from './keyQuestions';
+import { showError } from '../notify';
 
 /**
  * Adds a key with its text in the reference language, after the key it starts from (e.g. the active one of an
@@ -21,9 +22,7 @@ export async function addKey(
 ): Promise<void> {
   const reference = bundle.reference;
   if (reference === undefined) {
-    void vscode.window.showErrorMessage(
-      localize(editProblem('no-reference', { bundle: bundle.name }).message),
-    );
+    void showError(localize(editProblem('no-reference', { bundle: bundle.name }).message));
     return;
   }
   const check = (text: string) =>
@@ -43,7 +42,7 @@ export async function addKey(
   const key = parseKeyInput(typed.trim());
   const { problem, warnings } = check(typed);
   if (problem) {
-    void vscode.window.showErrorMessage(localize(problem.message));
+    void showError(localize(problem.message));
     return;
   }
   for (const warning of warnings) {

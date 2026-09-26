@@ -3,6 +3,7 @@ import type { BackupReason, BackupService } from '../services/backupService';
 import { messageOf } from '../services/errors';
 import type { FileStore } from '../services/fileStore';
 import { showWriteFailure } from '../services/writeFeedback';
+import { askModal, showError, showInfo } from '../notify';
 
 const REASONS: Readonly<Record<BackupReason, () => string>> = {
   'first-write': () => vscode.l10n.t('Before the first change of a session'),
@@ -20,14 +21,14 @@ export async function backUpNow(
 ): Promise<void> {
   try {
     const backup = await store.exclusive(() => backups.create('manual'));
-    void vscode.window.showInformationMessage(
+    void showInfo(
       backup
         ? vscode.l10n.t('Backup created. Files: {count}', { count: backup.files })
         : vscode.l10n.t('There are no translation files to back up.'),
     );
   } catch (error) {
     log.error('Backing up the translation files failed.', error);
-    void vscode.window.showErrorMessage(
+    void showError(
       vscode.l10n.t('The translation files could not be backed up: {error}', { error: messageOf(error) }),
     );
   }
@@ -43,7 +44,7 @@ export async function restoreBackup(
     await restore(backups, store);
   } catch (error) {
     log.error('Restoring the translation files failed.', error);
-    void vscode.window.showErrorMessage(
+    void showError(
       vscode.l10n.t('The translation files could not be restored: {error}', { error: messageOf(error) }),
     );
   }
@@ -52,7 +53,7 @@ export async function restoreBackup(
 async function restore(backups: BackupService, store: FileStore): Promise<void> {
   const list = await backups.list();
   if (list.length === 0) {
-    void vscode.window.showInformationMessage(vscode.l10n.t('There are no backups yet.'));
+    void showInfo(vscode.l10n.t('There are no backups yet.'));
     return;
   }
   const picked = await vscode.window.showQuickPick(
@@ -69,15 +70,15 @@ async function restore(backups: BackupService, store: FileStore): Promise<void> 
   }
   const { files, skipped } = await backups.read(picked.backup.id);
   if (files.length === 0) {
-    void vscode.window.showInformationMessage(vscode.l10n.t('The backup has no files in the open folders.'));
+    void showInfo(vscode.l10n.t('The backup has no files in the open folders.'));
     return;
   }
   const confirm = vscode.l10n.t('Restore');
-  const answer = await vscode.window.showWarningMessage(
+  const answer = await askModal(
     vscode.l10n.t('Restore the translation files from {time}? The current state is backed up first.', {
       time: picked.label,
     }),
-    { modal: true },
+    undefined,
     confirm,
   );
   if (answer !== confirm) {
@@ -88,7 +89,7 @@ async function restore(backups: BackupService, store: FileStore): Promise<void> 
     await showWriteFailure(result);
     return;
   }
-  void vscode.window.showInformationMessage(
+  void showInfo(
     skipped > 0
       ? vscode.l10n.t('The translation files from {time} were restored. Skipped files: {count}', {
           time: picked.label,

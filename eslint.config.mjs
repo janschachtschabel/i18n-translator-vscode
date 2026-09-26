@@ -92,4 +92,21 @@ export default defineConfig(
       ],
     },
   },
+  {
+    // Notification texts carry names from the workspace, and VS Code turns `[label](command:…)` in them into links
+    // that run commands: they go through notify.ts, which keeps links from forming (audit S-01).
+    files: ['src/extension/**/*.ts'],
+    ignores: ['src/extension/notify.ts'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector:
+            "MemberExpression[object.property.name='window'][property.name=/^show(Information|Warning|Error)Message$/]",
+          message:
+            'Show notifications through src/extension/notify.ts: names from the workspace must not become links.',
+        },
+      ],
+    },
+  },
 );

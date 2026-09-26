@@ -3,6 +3,7 @@ import { localize } from '../localize';
 import { messageOf } from './errors';
 import type { WriteResult } from './fileStore';
 import { relative } from './files';
+import { showError, showWarning } from '../notify';
 
 export type WriteFailure = Exclude<WriteResult, { ok: true }>;
 
@@ -38,7 +39,7 @@ export async function showWriteFailure(result: WriteFailure): Promise<void> {
   try {
     await showWithStep(result);
   } catch (error) {
-    void vscode.window.showErrorMessage(messageOf(error));
+    void showError(messageOf(error));
   }
 }
 
@@ -46,32 +47,32 @@ async function showWithStep(result: WriteFailure): Promise<void> {
   const message = describeWriteFailure(result);
   switch (result.reason) {
     case 'problem':
-      void vscode.window.showErrorMessage(message);
+      void showError(message);
       return;
     case 'dirty': {
       const show = vscode.l10n.t('Show File');
-      if ((await vscode.window.showWarningMessage(message, show)) === show) {
+      if ((await showWarning(message, show)) === show) {
         await vscode.window.showTextDocument(result.files[0]!);
       }
       return;
     }
     case 'changed':
-      void vscode.window.showWarningMessage(message);
+      void showWarning(message);
       return;
     case 'untrusted': {
       const manage = vscode.l10n.t('Manage Workspace Trust');
-      if ((await vscode.window.showWarningMessage(message, manage)) === manage) {
+      if ((await showWarning(message, manage)) === manage) {
         await vscode.commands.executeCommand('workbench.trust.manage');
       }
       return;
     }
     case 'error': {
       if (!result.notRestored?.length) {
-        void vscode.window.showErrorMessage(message);
+        void showError(message);
         return;
       }
       const restore = vscode.l10n.t('Restore from Backup…');
-      if ((await vscode.window.showErrorMessage(message, restore)) === restore) {
+      if ((await showError(message, restore)) === restore) {
         await vscode.commands.executeCommand('eduI18n.restoreBackup');
       }
     }

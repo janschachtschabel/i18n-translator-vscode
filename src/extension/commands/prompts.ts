@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { askModal } from '../notify';
 
 /** What a check of typed text says: an error keeps it from being accepted, a warning does not. */
 export interface InputCheck {
@@ -56,10 +57,8 @@ export const vscodePrompts: Prompts = {
         },
       }),
     ),
-  confirm: async (message, action, detail) =>
-    (await vscode.window.showWarningMessage(message, { modal: true, detail }, action)) === action,
-  choose: async (message, actions, detail) =>
-    vscode.window.showWarningMessage(message, { modal: true, detail }, ...actions),
+  confirm: async (message, action, detail) => (await askModal(message, detail, action)) === action,
+  choose: async (message, actions, detail) => askModal(message, detail, ...actions),
   pick: async (items, placeHolder) =>
     (await vscode.window.showQuickPick(items, { placeHolder, matchOnDescription: true }))?.value,
 };

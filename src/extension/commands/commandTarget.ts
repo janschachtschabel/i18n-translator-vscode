@@ -11,6 +11,7 @@ import {
 } from '../services/workspaceIndex';
 import { showWriteFailure } from '../services/writeFeedback';
 import type { Prompts } from './prompts';
+import { showInfo } from '../notify';
 
 /** What the key and language commands work with. */
 export interface KeyCommandContext {
@@ -118,7 +119,7 @@ export function rootLabel(root: IndexedRoot): string {
 /** Without roots there is nothing to choose: the user learns why, with the way to set the folders. */
 async function nothingFound(): Promise<undefined> {
   const configure = vscode.l10n.t('Configure Folders');
-  const answer = await vscode.window.showInformationMessage(
+  const answer = await showInfo(
     vscode.l10n.t('No edu-sharing translation files were found in this workspace.'),
     configure,
   );

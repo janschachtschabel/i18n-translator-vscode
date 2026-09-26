@@ -6,6 +6,7 @@ import { displayKey, keyFromId } from '../../core/model/keys';
 import { localize } from '../localize';
 import { writeChange, type BundleTarget, type KeyCommandContext } from './commandTarget';
 import { keyCheckMessage, keyScope } from './keyQuestions';
+import { showError } from '../notify';
 
 /**
  * Renames a key in all its languages: in this bundle, or in every bundle of the root that has it, as the user
@@ -38,7 +39,7 @@ export async function renameKey(
   }
   const { problem } = check(typed);
   if (problem) {
-    void vscode.window.showErrorMessage(localize(problem.message));
+    void showError(localize(problem.message));
     return;
   }
   const bundles = await keyScope(context, 'rename', target, key);

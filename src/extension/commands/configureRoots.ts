@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import type { AreaDefinition } from '../../core/area/areaDefinition';
 import { readSettings } from '../config';
 import { relativeUriPath } from '../services/uriPaths';
+import { showError, showWarning } from '../notify';
 
 type Roots = Readonly<Record<string, readonly string[]>>;
 
@@ -13,7 +14,7 @@ export async function configureRoots(): Promise<void> {
   if (!vscode.workspace.isTrusted) {
     // eduI18n.roots is a restricted setting: workspace values are ignored until the workspace is trusted.
     const manage = vscode.l10n.t('Manage Workspace Trust');
-    const choice = await vscode.window.showWarningMessage(
+    const choice = await showWarning(
       vscode.l10n.t('Translation folders can only be configured in a trusted workspace.'),
       manage,
     );
@@ -64,7 +65,7 @@ export async function configureRoots(): Promise<void> {
   const ignoreCase = process.platform === 'win32' || process.platform === 'darwin';
   const roots = uris.map((uri) => relativeUriPath(folder.uri.path, uri.path, ignoreCase));
   if (roots.some((root) => root === undefined)) {
-    await vscode.window.showErrorMessage(vscode.l10n.t('Choose folders inside {0}.', folder.name));
+    await showError(vscode.l10n.t('Choose folders inside {0}.', folder.name));
     return;
   }
   await config.update('roots', { ...current, [area.id]: roots }, vscode.ConfigurationTarget.WorkspaceFolder);
