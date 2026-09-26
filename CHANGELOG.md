@@ -10,12 +10,13 @@ Phasen 5 und 6 vorgezogen sind, zählt sie weiter, ohne die Phase zu nennen. Die
 - **Eingabefelder für Keys und Sprachen** („Key hinzufügen…“, „Key umbenennen…“, „Sprache hinzufügen…“) schließen
   jetzt auch mit einem Klick daneben und haben ein X in der Titelzeile; bisher schloss sie nur Esc.
 - **Ein Klick auf eine Zelle öffnet ihren Text zum Bearbeiten**, wie in der alten App; bisher wählte er die Zelle nur,
-  und erst ein Doppelklick, Enter oder F2 öffnete sie. Ein Klick mit Umschalt, Strg oder Alt, oder einer, der eine
-  Textauswahl beendet, wählt weiterhin nur.
+  und erst ein Doppelklick, Enter oder F2 öffnete sie. Ein Klick mit Umschalt, Strg, Alt oder Cmd, oder einer, der
+  eine Textauswahl beendet, wählt weiterhin nur.
 - **Befunde farbig:** Zellen mit Warnung (etwa „fehlt“, „leer“) sind gelb hinterlegt, Zellen mit Fehler (etwa
   Platzhalter) rot, jeweils mit einem Balken am Anfang; ebenso die Texte in der Liste und in den Details. Symbol und
   Wort bleiben, im hohen Kontrast bleiben Balken und Symbol. Die Symbole nutzen die Listenfarben des Themes, die auch
-  auf den Flächen mindestens 5:1 erreichen.
+  auf den Flächen mindestens 4,8:1 erreichen (gemessen in den zehn mitgelieferten Themes von VS Code 1.139). Eine
+  markierte Zelle mit dem Tastaturfokus zeigt den Hintergrund des Editors, damit der Fokusrahmen sichtbar bleibt.
 
 ## 0.3.0 – 26.09.2026
 

@@ -135,10 +135,19 @@
   background-color: var(--vscode-inputValidation-warningBackground);
 }
 
-/* On the areas the grey of descriptions does not reach 4.5:1 (Light+ 3.8, Dark+ 4.5); the foreground does (4.8). */
+/* On the areas the grey of descriptions does not reach 4.5:1 (Light+ 3.8, Dark 2026 4.2); the foreground does (4.8). */
 .marked-error .cell-status,
 .marked-warning .cell-status {
   color: var(--vscode-foreground);
+}
+
+/*
+ * The focus ring lies inside the cell, and on the areas it would reach less than 3:1 (2.5 on the warning area of Dark
+ * 2026, 2.6 on the error area of Light+; WCAG 1.4.11): the cell with the focus shows the editor's background, where it
+ * reaches 3.3:1 and more in the ten built-in themes; the bar, the symbol and the word stay.
+ */
+.grid-cell:is(.marked-error, .marked-warning):focus-visible {
+  background-color: transparent;
 }
 
 .status-symbol.info {

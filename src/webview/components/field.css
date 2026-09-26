@@ -53,7 +53,10 @@
   overflow-wrap: anywhere;
 }
 
-/* A text with an error or a warning, as in the table (table.css); the bar takes the place of border and padding. */
+/*
+ * A text with an error or a warning, as in the table (table.css); the bar takes the place of border and padding. Under
+ * the pointer the hover color takes the area's place, so that the field shows it can be clicked; the bar stays.
+ */
 .field-value.marked-error {
   padding-inline-start: 2px;
   border-inline-start: 3px solid var(--mark-error);
@@ -64,6 +67,11 @@
   padding-inline-start: 2px;
   border-inline-start: 3px solid var(--mark-warning);
   background-color: var(--vscode-inputValidation-warningBackground);
+}
+
+/* "–" or "" of a missing or empty text: the grey of descriptions does not reach 4.5:1 on the areas (Light+ 3.8). */
+.field-value:is(.marked-error, .marked-warning) .empty-mark {
+  color: var(--vscode-foreground);
 }
 
 .field-value:hover {

@@ -87,6 +87,8 @@ describe('cell editor in the table', () => {
     act(() => void fireEvent.click(opened));
     expect(field()).toBe(opened);
     expect(field().value).toBe('Annuler!');
+    // A click to place the caret saves nothing in the middle of typing.
+    expect(edits(posted)).toEqual([]);
     act(() => void fireEvent.click(cellOf('SAVE', 2)));
     expect(field()).toBe(screen.getByRole('textbox', { name: 'SAVE in fr' }));
     expect(edits(posted)).toEqual([

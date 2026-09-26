@@ -24,7 +24,8 @@ class FakeBox implements InputBoxLike {
   placeholder: string | undefined;
   validationMessage: string | vscode.InputBoxValidationMessage | undefined;
   buttons: readonly vscode.QuickInputButton[] = [];
-  ignoreFocusOut = false;
+  // As VS Code's: the extension host creates every input box ignoring focus loss (1.139).
+  ignoreFocusOut = true;
   password = false;
   shown = false;
   disposed = false;
