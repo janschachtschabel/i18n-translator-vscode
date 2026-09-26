@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
-import { composeMail } from '../../core/formats/mail/mailCompose';
+import type { FileProblem } from '../../core/formats/adapter';
+import { composeMails } from '../../core/formats/mail/mailCompose';
 import { parseBundleId, type Bundle } from '../../core/model/bundle';
 import { keyFromId } from '../../core/model/keys';
 import { BASE_FILE_LOCALE, languageTag, parseLocale } from '../../core/model/locale';
@@ -115,30 +116,72 @@ function previewTitle(templateId: string): string {
   return vscode.l10n.t('Mail Preview: {template}', { template: templateId });
 }
 
-/** The template in every language of the bundle, the reference first, each part falling back as edu-sharing does. */
+/**
+ * The template in every language of the bundle, the reference first, each part falling back as edu-sharing does, or
+ * why edu-sharing sends no mail in a language. Each text carries the language of the file it comes from.
+ */
 function columns(bundle: Bundle, templateId: string, baseFileLanguage: string): MailPreviewColumn[] {
   const label = (locale: string) => {
     const info = parseLocale(locale, { baseFileLanguage });
     return info.isBaseFile ? `${locale} (${info.language})` : locale;
   };
-  return bundle.locales.map((locale) => {
-    const mail = composeMail(bundle, templateId, locale);
-    const language = label(locale);
-    const falls = [mail.subject, mail.message].some((text) => text !== undefined && text.locale !== locale);
+  const tag = (locale: string) => languageTag(parseLocale(locale, { baseFileLanguage })) ?? '';
+  return composeMails(bundle, templateId).map((entry) => {
+    const language = label(entry.locale);
+    const heading =
+      entry.locale === bundle.reference ? vscode.l10n.t('{language} (reference)', { language }) : language;
+    if ('unreadable' in entry) {
+      return { heading, mail: { problem: unreadableMessage(entry.unreadable, label) } };
+    }
+    const { mail } = entry;
+    const falls = [mail.subject, mail.message, mail.header, mail.footer].some(
+      (text) => text !== undefined && text.locale !== entry.locale,
+    );
     return {
-      heading: locale === bundle.reference ? vscode.l10n.t('{language} (reference)', { language }) : language,
-      lang: languageTag(parseLocale(locale, { baseFileLanguage })) ?? '',
-      subject: mail.subject?.text,
+      heading,
+      ...(mail.subject ? { subject: { text: mail.subject.text, lang: tag(mail.subject.locale) } } : {}),
       ...(falls
         ? {
             note: vscode.l10n.t(
-              '{language} lacks texts of this template: the mail shows those of {base}, as edu-sharing does.',
+              '{language} lacks texts of this mail: it shows those of {base} instead, as edu-sharing does.',
               { language, base: label(BASE_FILE_LOCALE) },
             ),
           }
         : {}),
-      html: mail.html,
-      frameTitle: vscode.l10n.t('Mail {template} in {language}', { template: templateId, language }),
+      mail: {
+        html: mail.html,
+        lang: tag(mail.message?.locale ?? entry.locale),
+        frameTitle: vscode.l10n.t('Mail {template} in {language}', { template: templateId, language }),
+      },
     };
   });
+}
+
+/** Why a language has no mail: a file edu-sharing cannot read, or one whose encoding the extension cannot read. */
+function unreadableMessage(
+  { locale, problem }: { locale: string; problem: FileProblem },
+  label: (locale: string) => string,
+): string {
+  const file = label(locale);
+  if (problem.detail === 'UnsupportedEncoding') {
+    return vscode.l10n.t(
+      'The extension cannot read the encoding of the file of {file}, so it shows no mail.',
+      {
+        file,
+      },
+    );
+  }
+  return locale === BASE_FILE_LOCALE
+    ? vscode.l10n.t(
+        'edu-sharing cannot read the file of {file} (see Problems), so it sends no mail in any language.',
+        {
+          file,
+        },
+      )
+    : vscode.l10n.t(
+        'edu-sharing cannot read the file of {file} (see Problems), so it sends no mail in this language.',
+        {
+          file,
+        },
+      );
 }

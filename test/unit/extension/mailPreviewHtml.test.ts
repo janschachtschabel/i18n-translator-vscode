@@ -10,18 +10,30 @@ const page: MailPreviewPage = {
   columns: [
     {
       heading: 'de_DE (Referenz)',
-      lang: 'de-DE',
-      subject: 'Einladung zu "A & B"',
-      html: "<style>.content{color:red}</style><div class='content'>Hallo</div>",
-      frameTitle: 'Mail invited in de_DE',
+      subject: { text: 'Einladung zu "A & B"', lang: 'de-DE' },
+      mail: {
+        html: "<style>.content{color:red}</style><div class='content'>Hallo</div>",
+        lang: 'de-DE',
+        frameTitle: 'Mail invited in de_DE',
+      },
     },
     {
       heading: 'fr_FR',
-      lang: 'fr-FR',
-      subject: undefined,
-      note: 'Nicht in fr_FR: Die Mail zeigt den Text von default (en).',
-      html: '<p>A & "B"</p></iframe><script>alert(1)</script>',
-      frameTitle: 'Mail invited in fr_FR',
+      // Texts of the base file are English, whatever the column.
+      subject: { text: 'Invitation', lang: 'en' },
+      note: 'fr_FR fehlen Texte dieses Templates: Die Mail zeigt die von default (en), wie edu-sharing.',
+      mail: {
+        html: '<p>A & "B"</p></iframe><script>alert(1)</script>',
+        lang: 'en',
+        frameTitle: 'Mail invited in fr_FR',
+      },
+    },
+    {
+      heading: 'it_IT',
+      mail: {
+        problem:
+          'edu-sharing kann die Datei von it_IT nicht lesen und verschickt in dieser Sprache keine Mail.',
+      },
     },
   ],
 };
@@ -61,7 +73,7 @@ describe('mailPreviewHtml', () => {
     expect(doc.querySelector('h1')?.textContent).toBe('Mail-Template invited');
     expect(
       [...doc.querySelectorAll('section')].map((section) => section.querySelector('h2')?.textContent),
-    ).toEqual(['de_DE (Referenz)', 'fr_FR']);
+    ).toEqual(['de_DE (Referenz)', 'fr_FR', 'it_IT']);
     expect(
       [...doc.querySelectorAll('iframe')].map((frame) => [frame.getAttribute('sandbox'), frame.title]),
     ).toEqual([
@@ -70,10 +82,10 @@ describe('mailPreviewHtml', () => {
     ]);
   });
 
-  it('gives each frame the mail as a document of its own, in the language of the mail and light', () => {
+  it('gives each frame the mail as a document of its own, in the language of its text and light', () => {
     const frames = parse(mailPreviewHtml(page)).querySelectorAll('iframe');
     expect(frames[1]!.getAttribute('srcdoc')).toBe(
-      '<!DOCTYPE html><html lang="fr-FR"><head><meta charset="UTF-8">' +
+      '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">' +
         '<meta name="color-scheme" content="light"></head>' +
         '<body><p>A & "B"</p></iframe><script>alert(1)</script></body></html>',
     );
@@ -86,14 +98,22 @@ describe('mailPreviewHtml', () => {
     expect(doc.querySelectorAll('style')).toHaveLength(1);
   });
 
-  it('shows the subject in the language of the mail, and the note, as text', () => {
+  it('shows the subject in the language of its text, and the note, as text', () => {
     const [reference, translation] = [...parse(mailPreviewHtml(page)).querySelectorAll('section')];
     expect(reference!.querySelector('.subject')?.textContent).toBe('Betreff: Einladung zu "A & B"');
     expect(reference!.querySelector('.subject [lang]')?.getAttribute('lang')).toBe('de-DE');
     expect(reference!.querySelector('.note')).toBeNull();
-    expect(translation!.querySelector('.subject')).toBeNull();
+    expect(translation!.querySelector('.subject [lang]')?.getAttribute('lang')).toBe('en');
     expect(translation!.querySelector('.note')?.textContent).toBe(
-      'Nicht in fr_FR: Die Mail zeigt den Text von default (en).',
+      'fr_FR fehlen Texte dieses Templates: Die Mail zeigt die von default (en), wie edu-sharing.',
+    );
+  });
+
+  it('says instead of a frame why a language has no mail', () => {
+    const unreadable = [...parse(mailPreviewHtml(page)).querySelectorAll('section')][2]!;
+    expect(unreadable.querySelector('iframe')).toBeNull();
+    expect(unreadable.querySelector('.problem')?.textContent).toBe(
+      'edu-sharing kann die Datei von it_IT nicht lesen und verschickt in dieser Sprache keine Mail.',
     );
   });
 

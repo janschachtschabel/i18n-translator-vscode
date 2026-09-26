@@ -166,7 +166,7 @@ suite('a data folder with all three areas', () => {
       ['de_DE (reference)', 'default (en)', 'fr_FR'],
     );
     assert.equal(html.match(/<iframe sandbox="" /g)?.length, 3);
-    assert.match(html, /fr_FR lacks texts of this template: the mail shows those of default \(en\)/);
+    assert.match(html, /fr_FR lacks texts of this mail: it shows those of default \(en\) instead/);
     // VS Code shows the tab a little after the panel exists.
     const previewTab = () =>
       vscode.window.tabGroups.all
@@ -195,6 +195,65 @@ suite('a data folder with all three areas', () => {
     const written = await setText(mail, 'templates', ['invited', 'message'], 'fr_FR', '<p>Bonjour</p>');
     assert.equal(written.ok, true);
     assert.doesNotMatch(await rendered, /fr_FR lacks texts/);
+  });
+
+  // The message comes from a webview, which is not trusted: a key that is no mail template of its editor shows nothing.
+  test('previews no key that is no mail template of the editor it comes from', async () => {
+    const mds = await rootOf('edu-sharing.mds');
+    const mail = await rootOf('edu-sharing.mail');
+    const mdsEditor = api.editors.open(mds, bundleOf(mds, 'mds'));
+    await nextPost(mdsEditor, 'bundle');
+    const rendered = waitFor(api.mailPreview.onDidRender, () => true);
+    await mdsEditor.receive({ type: 'preview', entryId: keyFromSegments(['group_title']).id });
+    await mdsEditor.receive({ type: 'preview', entryId: keyFromSegments(['invited', 'message']).id });
+    const mailEditor = api.editors.open(mail, bundleOf(mail, 'templates'));
+    await nextPost(mailEditor, 'bundle');
+    await mailEditor.receive({ type: 'preview', entryId: keyFromSegments(['added_inbox', 'subject']).id });
+    // The first page is that of the last request, the only valid one.
+    assert.match(await rendered, /<h1>Mail template added_inbox<\/h1>/);
+  });
+
+  test('says so when edu-sharing cannot read the file of a language, which sends no mail then', async () => {
+    const mail = await rootOf('edu-sharing.mail');
+    const editor = api.editors.open(mail, bundleOf(mail, 'templates'));
+    await nextPost(editor, 'bundle');
+    let rendered = waitFor(api.mailPreview.onDidRender, () => true);
+    await editor.receive({ type: 'preview', entryId: keyFromSegments(['invited', 'message']).id });
+    await rendered;
+    rendered = waitFor(api.mailPreview.onDidRender, (html) => html.includes('cannot read the file of fr_FR'));
+    await vscode.workspace.fs.writeFile(
+      fileOf(mail, 'templates_fr_FR.xml'),
+      new TextEncoder().encode('<templates>'),
+    );
+    const unreadable = await rendered;
+    assert.equal(unreadable.match(/<iframe /g)?.length, 2);
+    assert.match(
+      unreadable,
+      /edu-sharing cannot read the file of fr_FR \(see Problems\), so it sends no mail/,
+    );
+  });
+
+  test('says so when the template it shows is gone', async () => {
+    const mail = await rootOf('edu-sharing.mail');
+    const editor = api.editors.open(mail, bundleOf(mail, 'templates'));
+    await nextPost(editor, 'bundle');
+    let rendered = waitFor(api.mailPreview.onDidRender, () => true);
+    await editor.receive({ type: 'preview', entryId: keyFromSegments(['added_inbox', 'message']).id });
+    await rendered;
+    rendered = waitFor(api.mailPreview.onDidRender, (html) => html.includes('is no longer in templates'));
+    for (const field of ['subject', 'message']) {
+      const deleted = await api.fileStore.write(rootRef(await rootOf('edu-sharing.mail')), (analysis) =>
+        planEdit(
+          analysis.bundles.find((candidate) => candidate.name === 'templates')!,
+          {
+            kind: 'deleteKey',
+            entryId: keyFromSegments(['added_inbox', field]).id,
+          },
+        ),
+      );
+      assert.equal(deleted.ok, true);
+    }
+    assert.match(await rendered, /The mail template added_inbox is no longer in templates\./);
   });
 
   test('opens a metadataset with the placeholders it uses', async () => {

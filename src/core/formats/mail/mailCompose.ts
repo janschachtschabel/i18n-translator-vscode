@@ -2,7 +2,8 @@ import type { Bundle } from '../../model/bundle';
 import { keyFromSegments } from '../../model/keys';
 import { BASE_FILE_LOCALE } from '../../model/locale';
 import type { LocaleCode } from '../../model/types';
-import { readMail, splitTemplateId, type MailField } from './mailRead';
+import type { FileProblem } from '../adapter';
+import { MAIL_FIELDS, readMail, splitTemplateId, type MailField } from './mailRead';
 import type { XmlElement } from './xmlTokens';
 
 /** A text of a template and the file it comes from: the language's own, or the base file. */
@@ -15,8 +16,32 @@ export interface ComposedMail {
   subject: MailText | undefined;
   /** The template's own message; `html` holds it with the parts around it. */
   message: MailText | undefined;
+  header: MailText | undefined;
+  footer: MailText | undefined;
   /** The HTML body edu-sharing sends. */
   html: string;
+}
+
+/** The mail of a template in one language, or the file that keeps edu-sharing from sending it. */
+export type LanguageMail =
+  | { locale: LocaleCode; mail: ComposedMail }
+  | { locale: LocaleCode; unreadable: { locale: LocaleCode; problem: FileProblem } };
+
+/**
+ * The mail of a template in every language of the bundle, in its order (the reference first). For every mail,
+ * edu-sharing parses the language's file and the base file and lets an error through (`MailTemplate.getTemplates`):
+ * where one of them does not parse, or its bytes are no UTF-8 without a declaration saying otherwise, no mail goes
+ * out in that language; where the base file does not, none goes out at all.
+ */
+export function composeMails(bundle: Bundle, templateId: string): LanguageMail[] {
+  const brokenBase = unreadable(bundle, BASE_FILE_LOCALE);
+  const style = styleSheetOf(bundle, templateId);
+  return bundle.locales.map((locale) => {
+    const broken = brokenBase ?? unreadable(bundle, locale);
+    return broken
+      ? { locale, unreadable: broken }
+      : { locale, mail: composeMail(bundle, templateId, locale, style) };
+  });
 }
 
 /**
@@ -24,26 +49,46 @@ export interface ComposedMail {
  * sheet of the template `stylesheet` in the base file, the `header`, the message in `<div class='content'>` and the
  * `footer` in `<div class='footer'>`. What no file has is left out, where edu-sharing would write "null".
  *
- * simplify: edu-sharing does not fall back to the template without context within one file when the template of
- * the context is there but lacks the field; entries cannot tell such an empty template from a missing one.
+ * simplify: a template of the context with neither subject nor message (only a style) counts as missing: entries
+ * hold only these fields.
  */
-export function composeMail(bundle: Bundle, templateId: string, locale: LocaleCode): ComposedMail {
+export function composeMail(
+  bundle: Bundle,
+  templateId: string,
+  locale: LocaleCode,
+  style: string = styleSheetOf(bundle, templateId),
+): ComposedMail {
   const { name, context } = splitTemplateId(templateId);
   const find = (template: string, field: MailField) => lookUp(bundle, locale, template, context, field);
   const message = find(name, 'message');
-  const header = find('header', 'message')?.text ?? '';
-  const footer = find('footer', 'message')?.text ?? '';
-  const style = styleSheet(bundle.file(BASE_FILE_LOCALE)?.doc.text, context) ?? '';
+  const header = find('header', 'message');
+  const footer = find('footer', 'message');
   return {
     subject: find(name, 'subject'),
     message,
+    header,
+    footer,
     html:
-      `<style>${style}</style>${header}` +
-      `<div class='content'>${message?.text ?? ''}</div><div class='footer'>${footer}</div>`,
+      `<style>${style}</style>${header?.text ?? ''}` +
+      `<div class='content'>${message?.text ?? ''}</div><div class='footer'>${footer?.text ?? ''}</div>`,
   };
 }
 
-/** Where edu-sharing looks: in the language's file, then in the base file; in each, the template of the context first. */
+/** A problem that keeps Java from reading the file of a language, if it has one. */
+function unreadable(
+  bundle: Bundle,
+  locale: LocaleCode,
+): { locale: LocaleCode; problem: FileProblem } | undefined {
+  const problem = bundle
+    .file(locale)
+    ?.parsed.problems.find((candidate) => candidate.code === 'parse-error' || candidate.code === 'not-utf8');
+  return problem && { locale, problem };
+}
+
+/**
+ * Where edu-sharing looks: in the language's file, then in the base file. In a file, the template of the context
+ * comes first if the file has it, even without the field; the one without context only if it does not.
+ */
 function lookUp(
   bundle: Bundle,
   locale: LocaleCode,
@@ -51,16 +96,24 @@ function lookUp(
   context: string | undefined,
   field: MailField,
 ): MailText | undefined {
-  const ids = context === undefined ? [name] : [`${name}@${context}`, name];
   for (const file of [locale, BASE_FILE_LOCALE]) {
-    for (const id of ids) {
-      const text = bundle.value(keyFromSegments([id, field]).id, file);
-      if (text !== undefined) {
-        return { text, locale: file };
-      }
+    const withContext = context === undefined ? undefined : `${name}@${context}`;
+    const id = withContext !== undefined && hasTemplate(bundle, withContext, file) ? withContext : name;
+    const text = bundle.value(keyFromSegments([id, field]).id, file);
+    if (text !== undefined) {
+      return { text, locale: file };
     }
   }
   return undefined;
+}
+
+function hasTemplate(bundle: Bundle, id: string, locale: LocaleCode): boolean {
+  return MAIL_FIELDS.some((field) => bundle.value(keyFromSegments([id, field]).id, locale) !== undefined);
+}
+
+/** The style sheet of the base file for the template's context; empty if it has none. */
+function styleSheetOf(bundle: Bundle, templateId: string): string {
+  return styleSheet(bundle.file(BASE_FILE_LOCALE)?.doc.text, splitTemplateId(templateId).context) ?? '';
 }
 
 /**
