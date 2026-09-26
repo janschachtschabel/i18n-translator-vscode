@@ -183,11 +183,6 @@
           "group": "0_open"
         },
         {
-          "command": "eduI18n.check",
-          "when": "view == eduI18n.areas && viewItem =~ /^eduI18n\\.(root|bundle)$/",
-          "group": "1_check"
-        },
-        {
           "command": "eduI18n.revealInExplorer",
           "when": "view == eduI18n.areas && viewItem == eduI18n.bundle",
           "group": "2_files"

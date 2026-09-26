@@ -1,7 +1,8 @@
 import * as vscode from 'vscode';
 import { countBySeverity } from '../../core/report/summary';
+import { messageOf } from '../services/errors';
 import type { WorkspaceIndex } from '../services/workspaceIndex';
-import { showInfo, showWarning } from '../notify';
+import { showError, showInfo, showWarning } from '../notify';
 
 /**
  * Checks all translation files again and reports the result. The notification is not awaited: it stays
@@ -14,8 +15,10 @@ export async function checkTranslations(index: WorkspaceIndex): Promise<void> {
   );
   if (snapshot.roots.length === 0) {
     const configure = vscode.l10n.t('Configure Folders');
-    void showWarning(vscode.l10n.t('No translation files were found.'), configure).then(
-      (choice) => choice === configure && vscode.commands.executeCommand('eduI18n.configureRoots'),
+    runChosen(
+      showWarning(vscode.l10n.t('No translation files were found.'), configure),
+      configure,
+      'eduI18n.configureRoots',
     );
     return;
   }
@@ -34,7 +37,12 @@ export async function checkTranslations(index: WorkspaceIndex): Promise<void> {
           showProblems,
         )
       : showInfo(result, showProblems);
-  void shown.then(
-    (choice) => choice === showProblems && vscode.commands.executeCommand('workbench.actions.view.problems'),
-  );
+  runChosen(shown, showProblems, 'workbench.actions.view.problems');
+}
+
+/** Runs the command whose button the user chose; a failure shows, instead of vanishing into the host's log. */
+function runChosen(chosen: Thenable<string | undefined>, button: string, command: string): void {
+  void chosen
+    .then((choice) => (choice === button ? vscode.commands.executeCommand(command) : undefined))
+    .then(undefined, (error: unknown) => showError(messageOf(error)));
 }
