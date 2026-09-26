@@ -129,7 +129,8 @@ export class BackupService {
     }
     this.lastBackup = created;
     this.log.info(`Backed up ${files.length} translation files (${reason}) to ${base.fsPath}`);
-    await this.prune(id);
+    // The backup is complete: removing old ones is housekeeping, which must not fail it (or the restore after it).
+    await this.prune(id).catch((error: unknown) => this.log.warn('Old backups could not be removed.', error));
     return { id, created: new Date(created), reason, files: files.length };
   }
 
@@ -138,7 +139,11 @@ export class BackupService {
     const ids = await this.ids();
     const infos = await Promise.all(
       ids.map(async (id) => {
-        const manifest = await this.manifest(id);
+        // One unreadable backup must not hide the others.
+        const manifest = await this.manifest(id).catch((error: unknown) => {
+          this.log.warn(`Backup ${id}: its manifest could not be read.`, error);
+          return undefined;
+        });
         return (
           manifest && {
             id,
@@ -234,10 +239,15 @@ export class BackupService {
     const kept = new Set([made, this.restoring]);
     const complete: string[] = [];
     for (const id of await this.ids()) {
-      if (await this.manifest(id)) {
-        complete.push(id);
-      } else if (!kept.has(id) && !(await readIfExists(this.manifestUri(id)))) {
-        await this.remove(id);
+      try {
+        if (await this.manifest(id)) {
+          complete.push(id);
+        } else if (!kept.has(id) && !(await readIfExists(this.manifestUri(id)))) {
+          await this.remove(id);
+        }
+      } catch (error) {
+        // A folder that cannot be read or removed stays; the next backup tries again.
+        this.log.warn(`Backup ${id} could not be checked or removed.`, error);
       }
     }
     let excess = complete.length - this.settings().keep;
@@ -246,8 +256,12 @@ export class BackupService {
         break;
       }
       if (!kept.has(id)) {
-        await this.remove(id);
-        excess--;
+        try {
+          await this.remove(id);
+          excess--;
+        } catch (error) {
+          this.log.warn(`Backup ${id} could not be removed.`, error);
+        }
       }
     }
   }

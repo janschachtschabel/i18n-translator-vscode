@@ -168,6 +168,20 @@ suite('Backups', () => {
     assert.equal(existsSync(unfinished), false);
   });
 
+  // Removing old backups is housekeeping: its failure must fail neither the backup nor a restore (audit L-03).
+  test('backs up and lists the others when an old backup cannot be read', async () => {
+    const broken = join(storage, 'backups', '2026-09-25T08-00-00-000Z');
+    mkdirSync(join(broken, 'manifest.json'), { recursive: true });
+    const backup = await backups.create('manual');
+    assert.ok(backup);
+    assert.deepEqual(
+      (await backups.list()).map((info) => info.id),
+      [backup.id],
+    );
+    // It is not taken for an unfinished backup: it stays for someone to look at.
+    assert.ok(existsSync(broken));
+  });
+
   test('refuses manifests that would lead out of their folder', async () => {
     const backup = await backups.create('manual');
     const path = join(storage, 'backups', backup!.id, 'manifest.json');
