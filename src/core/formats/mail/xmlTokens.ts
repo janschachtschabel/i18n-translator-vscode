@@ -60,6 +60,11 @@ class XmlSyntaxError extends Error {
  * editor would have to expand to show the text as the runtime reads it.
  */
 export function parseXml(text: string): XmlResult {
+  // XML parsers refuse a document with a character XML cannot hold, wherever it stands (edu-sharing's included).
+  const invalid = firstInvalidCharacter(text);
+  if (invalid !== -1) {
+    return { ok: false, range: [invalid, invalid + 1], detail: 'InvalidCharacter' };
+  }
   try {
     return { ok: true, root: new Parser(text).document() };
   } catch (error) {
@@ -91,12 +96,38 @@ export function decodeEntities(raw: string, offset: number): string {
         return entity;
       }
       const code = name[1] === 'x' ? parseInt(name.slice(2), 16) : parseInt(name.slice(1), 10);
-      if (!(code >= 0x9 && code <= 0x10ffff) || (code >= 0xd800 && code <= 0xdfff)) {
+      if (!isXmlCharacter(code)) {
         throw new XmlSyntaxError(range, 'InvalidCharacterReference');
       }
       return String.fromCodePoint(code);
     },
   );
+}
+
+/** The characters of XML 1.0 (tab, line feed, carriage return and the rest without controls and non-characters). */
+export function isXmlCharacter(code: number): boolean {
+  return (
+    code === 0x9 ||
+    code === 0xa ||
+    code === 0xd ||
+    (code >= 0x20 && code <= 0xd7ff) ||
+    (code >= 0xe000 && code <= 0xfffd) ||
+    (code >= 0x10000 && code <= 0x10ffff)
+  );
+}
+
+/** The index of the first character XML cannot hold (a lone surrogate among them), or -1. */
+export function firstInvalidCharacter(text: string): number {
+  for (let index = 0; index < text.length; index++) {
+    const code = text.codePointAt(index)!;
+    if (!isXmlCharacter(code)) {
+      return index;
+    }
+    if (code > 0xffff) {
+      index++;
+    }
+  }
+  return -1;
 }
 
 class Parser {
@@ -250,21 +281,31 @@ class Parser {
     this.position = valueEnd + 1;
   }
 
+  /** `--` must not stand in a comment, nor `-` at its end: XML parsers refuse both. */
   private comment(): XmlOther {
     const start = this.position;
     const end = this.text.indexOf('-->', start + 4);
     if (end === -1) {
       this.fail('UnclosedComment', 4);
     }
+    const body = this.text.slice(start + 4, end);
+    if (body.includes('--') || body.endsWith('-')) {
+      this.fail('DoubleHyphenInComment', end + 3 - start, start);
+    }
     this.position = end + 3;
     return { kind: 'comment', range: [start, this.position] };
   }
 
+  /** The XML declaration (`<?xml …?>`) may only open the document; other instructions may stand anywhere. */
   private instruction(): XmlOther {
     const start = this.position;
     const end = this.text.indexOf('?>', start + 2);
     if (end === -1) {
       this.fail('UnclosedInstruction', 2);
+    }
+    this.position = start + 2;
+    if (this.name().toLowerCase() === 'xml' && start !== 0) {
+      this.fail('MisplacedDeclaration', end + 2 - start, start);
     }
     this.position = end + 2;
     return { kind: 'instruction', range: [start, this.position] };

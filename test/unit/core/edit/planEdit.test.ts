@@ -520,5 +520,27 @@ describe('planEdit with mail templates', () => {
         planEdit(mail, { kind: 'addKey', key: keyFromSegments(['neu', 'subject']), values: { de_DE: 'T' } }),
       ),
     ).toEqual(['templates_de_DE.xml: insert neu.subject = T']);
+    // A name and at most one context, each without "@" or white space, which XML would turn into spaces.
+    for (const template of ['a@', '@b', 'a@b@c', 'a b', 'a\tb']) {
+      expect(
+        summary(
+          planEdit(mail, {
+            kind: 'addKey',
+            key: keyFromSegments([template, 'subject']),
+            values: { de_DE: 'T' },
+          }),
+        ),
+        template,
+      ).toBe('invalid-template-key');
+    }
+    expect(
+      summary(
+        planEdit(mail, {
+          kind: 'addKey',
+          key: keyFromSegments(['a@school', 'subject']),
+          values: { de_DE: 'T' },
+        }),
+      ),
+    ).toEqual(['templates_de_DE.xml: insert a@school.subject = T']);
   });
 });

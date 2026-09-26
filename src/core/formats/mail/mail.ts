@@ -13,8 +13,11 @@ import { applyMailOps } from './mailWrite';
 export const mailAdapter: FormatAdapter = {
   id: 'mail-xml',
   flatKeys: false,
+  // A template is a name and at most one context, without "@" or white space (XML turns it into spaces there).
   validKey: (key) =>
-    key.segments.length === 2 && (MAIL_FIELDS as readonly string[]).includes(key.segments[1]!),
+    key.segments.length === 2 &&
+    /^[^@\s]+(?:@[^@\s]+)?$/.test(key.segments[0]!) &&
+    (MAIL_FIELDS as readonly string[]).includes(key.segments[1]!),
   decode: decodeText,
   parse(doc) {
     const parsed = parseMail(doc.text);

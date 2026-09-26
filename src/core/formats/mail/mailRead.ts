@@ -1,7 +1,7 @@
 import { keyFromSegments } from '../../model/keys';
 import { VALUE_FIELD } from '../../model/types';
 import type { FileProblem, ParsedEntry, ParsedFile, TextRange } from '../adapter';
-import { decodeEntities, parseXml, type XmlElement } from './xmlTokens';
+import { decodeEntities, parseXml, type XmlCData, type XmlElement, type XmlNode } from './xmlTokens';
 
 /** The translatable parts of a template; other elements (the style sheet) are no entries. */
 export const MAIL_FIELDS = ['subject', 'message'] as const;
@@ -99,17 +99,20 @@ export function readMail(text: string): MailReadResult {
     };
   }
   const templates: MailTemplateInfo[] = [];
-  for (const element of root.children) {
+  for (const template of root.children) {
     // edu-sharing reads /templates/template and skips templates without a name.
-    const name = element.kind === 'element' && element.name === 'template' && element.attributes.get('name');
+    if (template.kind !== 'element' || template.name !== 'template') {
+      continue;
+    }
+    const name = template.attributes.get('name');
     if (!name) {
       continue;
     }
-    const template = element as XmlElement;
-    const context = template.attributes.get('context')?.value;
+    // An empty context is a context of its own for edu-sharing's TemplateDescription, unlike none at all.
+    const context = template.attributes.get('context');
     templates.push({
       element: template,
-      id: context ? `${name.value}@${context}` : name.value,
+      id: context ? `${name.value}@${context.value}` : name.value,
       fields: template.children.flatMap((child) =>
         child.kind === 'element' && (MAIL_FIELDS as readonly string[]).includes(child.name)
           ? [fieldInfo(text, child)]
@@ -129,11 +132,21 @@ function fieldInfo(text: string, element: XmlElement): MailFieldInfo {
   if (children.some((child) => child.kind !== 'text' && child.kind !== 'cdata')) {
     return { field, element, value: undefined, valueRange: element.content, mode: 'text' };
   }
-  const blank = (range: TextRange) => /^[ \t\r\n]*$/.test(text.slice(...range));
-  const sections = children.filter((child) => child.kind === 'cdata');
-  if (sections.length === 1 && children.every((child) => child.kind === 'cdata' || blank(child.range))) {
-    const valueRange = withoutLayout(text, sections[0]!.inner);
-    return { field, element, value: lineFeeds(text.slice(...valueRange)), valueRange, mode: 'cdata' };
+  const inCData = cdataRun(text, children);
+  if (inCData) {
+    const [first, last] = inCData;
+    const valueRange: TextRange = [withoutLayout(text, first.inner)[0], withoutLayout(text, last.inner)[1]];
+    let value = '';
+    for (const child of children.slice(children.indexOf(first), children.indexOf(last) + 1)) {
+      if (child.kind === 'cdata') {
+        const from = Math.max(child.inner[0], valueRange[0]);
+        const to = Math.min(child.inner[1], valueRange[1]);
+        value += from < to ? lineFeeds(text.slice(from, to)) : '';
+      } else if (child.kind === 'text') {
+        value += decodeEntities(text.slice(...child.range), child.range[0]);
+      }
+    }
+    return { field, element, value, valueRange, mode: 'cdata' };
   }
   const valueRange = withoutLayout(text, element.content);
   let value = '';
@@ -150,6 +163,31 @@ function fieldInfo(text: string, element: XmlElement): MailFieldInfo {
   return { field, element, value, valueRange, mode: 'text' };
 }
 
+/**
+ * The first and the last CDATA section of a text held in CDATA: its sections are separated by nothing or by
+ * character references only (as the writer splits a text at `]]>` and, in ISO-8859-1, at characters the file cannot
+ * hold), and only blank text stands around them. Undefined for any other content.
+ */
+function cdataRun(text: string, children: readonly XmlNode[]): [XmlCData, XmlCData] | undefined {
+  const sections = children.filter((child): child is XmlCData => child.kind === 'cdata');
+  const first = sections[0];
+  const last = sections[sections.length - 1];
+  if (!first || !last) {
+    return undefined;
+  }
+  const [from, to] = [children.indexOf(first), children.indexOf(last)];
+  const fits = children.every((child, index) => {
+    if (child.kind === 'cdata') {
+      return true;
+    }
+    const raw = text.slice(...child.range);
+    return index > from && index < to
+      ? /^(?:&#x[0-9a-fA-F]+;|&#[0-9]+;)+$/.test(raw)
+      : /^[ \t\r\n]*$/.test(raw);
+  });
+  return fits ? [first, last] : undefined;
+}
+
 /** XML reads every line break as a line feed, in CDATA sections too. */
 function lineFeeds(raw: string): string {
   return raw.replace(/\r\n?/g, '\n');
@@ -160,12 +198,23 @@ function lineFeeds(raw: string): string {
  * the surrounding lines. White space within one line may be meant and stays.
  */
 function withoutLayout(text: string, [start, end]: TextRange): TextRange {
-  const inner = text.slice(start, end);
-  const leading = /^[ \t\r\n]*/.exec(inner)![0];
-  const lead = /[\r\n]/.test(leading) ? leading.length : 0;
-  const trailing = /[ \t\r\n]*$/.exec(inner.slice(lead))![0];
-  const trail = /[\r\n]/.test(trailing) ? trailing.length : 0;
-  return [start + lead, end - trail];
+  const blank = (index: number) => ' \t\r\n'.includes(text[index]!);
+  // Loops, not a regular expression: `/\s*$/` would take quadratic time on long runs of white space.
+  let lead = start;
+  while (lead < end && blank(lead)) {
+    lead++;
+  }
+  if (!/[\r\n]/.test(text.slice(start, lead))) {
+    lead = start;
+  }
+  let trail = end;
+  while (trail > lead && blank(trail - 1)) {
+    trail--;
+  }
+  if (!/[\r\n]/.test(text.slice(trail, end))) {
+    trail = end;
+  }
+  return [lead, trail];
 }
 
 function nameRange(template: MailTemplateInfo): TextRange {

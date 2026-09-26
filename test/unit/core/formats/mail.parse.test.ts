@@ -130,6 +130,54 @@ describe('parseMail', () => {
     }
   });
 
+  it('refuses what XML parsers refuse and the reader could let pass', () => {
+    const control = String.fromCharCode(11);
+    for (const [text, detail] of [
+      [
+        `<templates><template name="t"><subject>a${control}b</subject></template></templates>`,
+        'InvalidCharacter',
+      ],
+      [
+        '<templates><template name="t"><subject>a&#11;b</subject></template></templates>',
+        'InvalidCharacterReference',
+      ],
+      [
+        '<templates><template name="t"><subject>&#xFFFE;</subject></template></templates>',
+        'InvalidCharacterReference',
+      ],
+      ['<templates><!-- a -- b --><template name="t"/></templates>', 'DoubleHyphenInComment'],
+      ['<templates><!-- a ---><template name="t"/></templates>', 'DoubleHyphenInComment'],
+      [' <?xml version="1.0"?><templates/>', 'MisplacedDeclaration'],
+      ['<templates><?xml version="1.0"?></templates>', 'MisplacedDeclaration'],
+    ]) {
+      expect(
+        parseMail(text!).problems.map((problem) => problem.detail),
+        text,
+      ).toEqual([detail]);
+    }
+    expect(parseMail('<?xml version="1.0"?><?xml-stylesheet href="x"?><templates/>').problems).toEqual([]);
+  });
+
+  it('reads a text split across CDATA sections, as the writer splits it, without the layout around it', () => {
+    const text =
+      '<templates><template name="t"><message><![CDATA[\n\t\t\ta ]]]]><![CDATA[> b ]]>&#x20ac;<![CDATA[ c\n\t\t]]></message></template></templates>';
+    const parsed = parseMail(text);
+    const field = parsed.entries[0]!.fields[VALUE_FIELD]!;
+    expect(field.value).toBe('a ]]> b € c');
+    expect(text.slice(...field.valueRange)).toBe('a ]]]]><![CDATA[> b ]]>&#x20ac;<![CDATA[ c');
+  });
+
+  it('tells a template with an empty context from one without', () => {
+    const text =
+      '<templates><template name="t"><subject>A</subject></template>' +
+      '<template name="t" context=""><subject>B</subject></template></templates>';
+    expect(summary(text)).toEqual([
+      [['t', 'subject'], 'A'],
+      [['t@', 'subject'], 'B'],
+    ]);
+    expect(parseMail(text).problems).toEqual([]);
+  });
+
   it('points a syntax error at its place', () => {
     const text = '<templates><template name="t"><subject>A</template></templates>';
     expect(parseMail(text).problems[0]?.range).toEqual([40, 50]);
