@@ -1052,7 +1052,7 @@ was nicht ausdrücklich geändert wurde.
 >   - Hat die Webview ein Modell, schickt der Host nach jedem Lauf nur die neuen oder geänderten Zeilen (`src/shared/patch.ts`). Reihenfolge, Sprachen und Befunde der Einheit kommen nur mit, wenn sie sich änderten; betraf der Lauf eine andere Einheit, kommt nichts.
 >   - Die Webview behält alle anderen Zeilen als dieselben Objekte, deshalb rendert eine geänderte Zelle eine Zeile neu, und Fokus und Scrollposition bleiben.
 >   - Nach `ready` oder `missing` kommt wieder das ganze Modell.
-> - **Konflikt:**
+> - **Konflikt** (Stand 2.15; die Bedienung hat das Review von Block C geändert, siehe dort):
 >   - Ändert sich der Text der gerade bearbeiteten Zelle außerhalb des Editors, bleibt der Entwurf. Das Feld zeigt den neuen Text (in seiner Sprache) mit „Übernehmen“ und „Meinen behalten“, und eine Ansage folgt. Kehrt der Text zum Ausgangstext zurück, verschwindet der Konflikt.
 >   - Im Konflikt führt Tab zu den beiden Schaltflächen, statt zu speichern.
 >   - Enter speichert gegen den alten Stand. Der Host lehnt das ab (B5), und der Entwurf bleibt als „nicht gespeichert“ erhalten, statt ungefragt zu überschreiben.
@@ -1091,6 +1091,64 @@ was nicht ausdrücklich geändert wurde.
 > - **Bewusst offen:**
 >   - Die erste Sicherung einer Sitzung kostet 330–450 ms beim ersten Speichern. Sie früher anzustoßen (etwa beim Öffnen des Editors) würde Sitzungen ohne Änderung sichern und ältere Sicherungen verdrängen.
 >   - Die Befunde brauchen nach dem Speichern rund 200 ms, fast alles davon für Auflisten, Lesen und Prüfen der Wurzel. Nur geänderte Dateien neu zu lesen wäre der nächste Schritt.
+>
+> **Review Block C (Tasks 2.12–2.17, 26.09.2026):** vier Prüfer mit frischem Kontext (Host, Zustand der Webview, Editor mit Tabelle und Liste, Barrierefreiheit nach WCAG 2.2 AA). Ihre Berichte zusammen: 0 kritische, 8 schwere und 32 kleinere Befunde sowie 23 Kleinigkeiten, einige davon doppelt.
+> - **Behoben (schwer):**
+>   - Der Watcher der Marker-Dateien reagierte auf Inhaltsänderungen. Weil `common/de.json` der Marker von Angular ist, suchte jede deutsche Änderung in `common` alle Wurzeln neu. Jetzt nur noch, wenn eine Marker-Datei kommt oder geht.
+>   - Verließ die Zeile des offenen Editors den Filter (etwa „fehlend“, sobald ihr Text geschrieben war), verschwand der Editor mitsamt dem getippten Text. Die Zeile bleibt jetzt, solange ihr Editor offen ist, und die Details bleiben beim Key ihres Editors.
+>   - Blendete ein Layout die Sprache des offenen Editors aus (kompakte Liste), blieb ein unsichtbarer Editor offen. Jetzt bleibt ein getippter Text als „nicht gespeichert“ in seiner Zelle, und eine Ansage folgt. Ohne getippten Text schließt der Editor still.
+>   - Scheiterte ein Text, während seine Zelle schon wieder bearbeitet wurde, stand die Meldung neben einem Editor, der davon nichts wusste. Jetzt geht sie in diesen Editor, und er speichert gegen den Text der Datei. Das Scheitern eines Textes, den ein neuerer derselben Zelle ersetzt hat, zählt nicht mehr.
+>   - Im Konflikt speicherte Enter gegen den alten Stand, und der Host lehnte ab. Jetzt gilt:
+>     - Enter und Tab führen zur Wahl („Neuen Text übernehmen“, „Meinen Text behalten“), Esc verwirft den Entwurf.
+>     - Wer den Editor verlässt, behält einen getippten Entwurf als „nicht gespeichert“; das nächste Öffnen bietet dieselbe Wahl, bis der Nutzer sie trifft.
+>     - Lehnt der Host einen Text als zwischenzeitlich geändert ab (`writeResult.conflict`), gilt dasselbe.
+>     - Solange eigene Texte der Zelle unterwegs sind, ist ein älteres Modell kein Konflikt.
+>   - Nach „Text löschen“ fiel der Fokus auf `<body>`. Er bleibt jetzt auf dem Text des Feldes, auch wenn der Nutzer die Rückfrage ablehnt.
+>   - Die Übergabe des Fokus zwischen Tabelle und Liste scheiterte hinter den ersten 200 gerenderten Zeilen und nach einer verschwundenen aktiven Zeile. Jetzt gilt:
+>     - Die neue Ansicht rendert bis zum übergebenen Key und fokussiert dieselbe Sprache.
+>     - Die Tabelle übergibt den Key an der aktiven Position, also den nachgerückten.
+>     - Einmal gebrauchte Zeilen bleiben gerendert, sodass der Text eines gerade geschlossenen Editors den Fokus zurückbekommt.
+> - **Behoben (klein):**
+>   - Host (Commit `5708873`):
+>     - Vertrauen wird vor jeder Frage geprüft, und nur das Löschen eines Textes fragt nach.
+>     - Jede `edit`-Nachricht bekommt eine Antwort, auch wenn ihre Verarbeitung scheitert.
+>     - Was die Webview an ihre Elemente schreibt, gilt nie als Knoten der Seitenleiste.
+>     - Ein Key-Teil mit Leerzeichen am Rand bekommt eine Warnung.
+>     - `scripts/perf-workspace.mjs` bereitet die Messung von 2.17 vor.
+>   - Texte mit `\r\n`: Das Feld zeigt `\n`, gespeichert wird wieder `\r\n`, und ein unveränderter Text wird nicht gesendet.
+>   - Ansagen:
+>     - Sie nennen Key und Sprache („SAVE in fr: nicht gespeichert. …“).
+>     - Nach dem Löschen kommt „Text gelöscht.“.
+>     - Die geöffnete Einheit wird mit denselben Zahlen angesagt, die die Seite zeigt.
+>   - Tastatur und Screenreader:
+>     - Eine sichtbare Zeile über der Tabelle nennt die Tasten (Enter/F2, in der Key-Spalte F2 und Entf) und beschreibt das Grid. Die aktive Zelle trägt `aria-keyshortcuts`.
+>     - Auf dem Mac löscht auch Cmd+Rücktaste einen Key.
+>     - Die Prüfzeilen im Editor nennen die Schwere für Screenreader.
+>     - Der Fokusrahmen liegt bei Schaltflächen außen, siehe Protokoll, Abschnitt 3.
+>     - Das Feld ist mindestens 24 px hoch.
+>   - „Key hinzufügen“ in der Liste setzt den neuen Key nicht mehr hinter den zuletzt aktiven der Tabelle.
+>   - Tests:
+>     - Die Anfrage-Kennungen kommen aus den gesendeten Nachrichten.
+>     - Der Tastatur-Durchlauf prüft jetzt, dass am letzten und am ersten Halt keine Taste Tab abfängt; bisher prüfte er nur seine eigene Hilfsfunktion.
+>     - Jeder neue Regressionstest schlägt ohne seine Korrektur fehl (Gegenprobe einzeln).
+>   - Neue Module: `state/shownRows.ts` (Zeilen mit den Bearbeitungen), `state/navigation.ts` (nächste Zelle), `components/focus.ts` (verlorener Fokus).
+> - **Gegenlesen der Korrekturen** (ein fünfter Prüfer mit frischem Kontext): 3 schwere und 5 kleinere Befunde sowie 3 Kleinigkeiten, alle behoben. Jeder Test dazu schlägt ohne seine Korrektur fehl.
+>   - Ein wieder angebotener Konflikt verschwand mit dem nächsten Modell, auch dem eines anderen Keys. Enter hätte dann den fremden Text überschrieben, ohne dass der Nutzer gewählt hatte.
+>   - Ein Editor ohne getippten Text blieb im Konflikt als „nicht gespeichert“ zurück, und „Meinen Text behalten“ hätte den alten Text über den neuen geschrieben. Er schließt jetzt still, auch beim Ausblenden.
+>   - Eine Liste, die ohne Nachfolger verschwand (kein Treffer mehr), übergab den Fokus trotzdem. Die nächste Liste nahm ihn später aus der Filterauswahl (WCAG 3.2.2). Jetzt wird nur an das andere Layout übergeben, und die Liste nimmt den Fokus nur, wenn er verloren ist.
+>   - Kleiner:
+>     - Verschwindet die Wahl mit dem Fokus auf einer ihrer Schaltflächen, nimmt das Feld ihn zurück.
+>     - Ein gescheiterter Text nimmt die danach gegen ihn gesendeten Texte derselben Zelle mit. Bisher lehnte der Host sie als geändert ab, und das erschien als fremde Änderung.
+>     - Der Host plant ein `edit` erst, wenn der Index den letzten Schreibvorgang kennt. Sonst meldete ein schnelles zweites Speichern derselben Zelle einen falschen Konflikt (Integrationstest).
+>     - Auch die Details übergeben den Fokus, und die Übergabe behält die Sprache.
+>     - Ein ausgeblendeter Text nennt einen Grund, der nach dem Einblenden noch stimmt.
+>     - Die Tastenzeile nennt Cmd+Rücktaste für den Mac.
+>     - Der Test mit 450 Keys wartet einen Task länger; der alte Fehler zeigte sich erst dann.
+> - **Bewusst offen:**
+>   - `fileStore.ts` hat 378 und `workspaceIndex.ts` 318 Zeilen, beide mit einer Aufgabe.
+>   - Beim Umbenennen von `A.B` in `A` prüft `keyCheck` den Konflikt mit den Kind-Keys weiterhin nicht. Das ist ein älterer Befund und betrifft den Adapter.
+>   - Ein nach dem Neustart wiederhergestellter Editor nimmt sein Ziel aus dem Zustand der Webview. Der Zustand wird geprüft und das Ziel im Index gesucht, kann also nur auf Einheiten des Arbeitsbereichs zeigen (Risiko akzeptiert).
+>   - Aktionen einer Zeile beim Fokus und eine Tastenhilfe auf „?“ gibt es nicht. Die Tastenzeile über der Tabelle und das Kontextmenü decken beides ab.
 
 ### Task 2.1: Textbausteine für das Schreiben
 **Dateien:** Create `src/core/text/edits.ts`, `src/core/text/style.ts`; Test: `test/unit/core/text/edits.test.ts`, `style.test.ts`
