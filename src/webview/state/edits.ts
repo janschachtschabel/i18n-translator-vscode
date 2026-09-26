@@ -113,7 +113,8 @@ export class Edits {
       if (typed && open.conflict) {
         this.reject(open, draft, conflictNotice(open), true);
       } else if (typed) {
-        this.send(open, withLineBreaksOf(open.before, draft), open.before);
+        // The host clears a text of only white space (B2): the cell and the announcement say so.
+        this.send(open, draft.trim() === '' ? '' : withLineBreaksOf(open.before, draft), open.before);
       }
     });
     if (typed && open.conflict) {

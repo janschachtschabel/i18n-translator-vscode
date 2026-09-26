@@ -30,6 +30,9 @@ describe('inlineCheck', () => {
     expect(inlineCheck(undefined, 'Le {{date}}')).toEqual([]);
     expect(inlineCheck('', 'Le {{date}}')).toEqual([]);
     expect(inlineCheck('Am {{date}}', '')).toEqual([]);
+    // Texts of only white space count as none, as in the checks and when saving.
+    expect(inlineCheck(' ', 'Le {{date}}')).toEqual([]);
+    expect(inlineCheck('Am {{date}}', '  ')).toEqual([]);
   });
 
   it('weighs a difference as the checks do by default', () => {

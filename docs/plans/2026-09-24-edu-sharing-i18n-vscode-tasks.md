@@ -676,8 +676,9 @@ was nicht ausdrücklich geändert wurde.
   (`planEdit`), schreibt über den `FileStore` und aktualisiert die betroffene Wurzel sofort (ohne auf den Watcher zu
   warten). Die Webview zeigt den eingegebenen Wert sofort an und gleicht beim nächsten Modell ab.
 - **B2 Nie leere Werte schreiben.** Wird eine Übersetzung geleert, wird ihr Key in dieser Sprache **gelöscht**,
-  damit der Rückfall greift (ein leerer Text würde ihn verhindern, siehe `empty-value`). Referenztexte lassen sich nicht
-  leeren; bestehende absichtlich leere Referenztexte bleiben unberührt.
+  damit der Rückfall greift (ein leerer Text würde ihn verhindern, siehe `empty-value`). Ein Text nur aus Leerraum gilt
+  als geleert (Audit L-06). Referenztexte lassen sich nicht leeren; bestehende absichtlich leere Referenztexte bleiben
+  unberührt.
 - **B3 Operationen statt Textersetzung.** `FileOp`s werden der Reihe nach auf den Text angewandt; nach jeder Operation
   wird neu geparst. Das Ergebnis ist der neue Text (`applyOps` statt `edit(): TextEdit[]` aus dem Design): Minimale
   Edits über mehrere Operationen zusammenzusetzen lohnt sich bei Dateien dieser Größe nicht, und E3 schreibt ohnehin

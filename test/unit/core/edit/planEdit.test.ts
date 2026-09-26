@@ -110,6 +110,26 @@ describe('planEdit: setText', () => {
     expect(plan('common', { kind: 'setText', entryId: id('OLD_KEY'), locale: 'de', value: '' })).toEqual([]);
   });
 
+  // A text of only white space shows as nothing; in a translation it would hide the fallback (audit L-06).
+  it('takes a text of only white space as cleared', () => {
+    expect(plan('common', { kind: 'setText', entryId: id('ASK'), locale: 'fr', value: ' \n ' })).toEqual([
+      'common/fr.json: delete ASK',
+    ]);
+    expect(plan('common', { kind: 'setText', entryId: id('CANCEL'), locale: 'fr', value: '  ' })).toEqual([]);
+    expect(plan('common', { kind: 'setText', entryId: id('SAVE'), locale: 'de', value: '  ' })).toBe(
+      'reference-empty',
+    );
+    // Reference texts that are empty on purpose stay as they are.
+    const [spaced] = analyzeTexts({
+      'spaced/de.json': '{\n  "EMPTY": "",\n  "SPACE": " "\n}\n',
+      'spaced/fr.json': '{\n  "EMPTY": "",\n  "SPACE": " "\n}\n',
+    }).bundles;
+    const setGerman = (key: string, value: string) =>
+      summary(planEdit(spaced!, { kind: 'setText', entryId: id(key), locale: 'de', value }));
+    expect(setGerman('EMPTY', ' ')).toEqual([]);
+    expect(setGerman('SPACE', '')).toEqual([]);
+  });
+
   it('needs a file for the language', () => {
     expect(plan('common', { kind: 'setText', entryId: id('SAVE'), locale: 'es', value: 'Guardar' })).toBe(
       'missing-file',
@@ -215,6 +235,20 @@ describe('planEdit: keys', () => {
     expect(plan('common', { kind: 'addKey', key: key('NEW'), values: { en: 'New' } })).toBe(
       'reference-required',
     );
+    expect(plan('common', { kind: 'addKey', key: key('NEW'), values: { de: '  ', en: 'New' } })).toBe(
+      'reference-required',
+    );
+  });
+
+  it('skips texts of only white space for a new key, also in languages without a file', () => {
+    expect(
+      plan('common', {
+        kind: 'addKey',
+        key: key('NEW'),
+        values: { de: 'Neu', fr: '  ', es: ' ' },
+        after: id('SAVE'),
+      }),
+    ).toEqual(['common/de.json: insert NEW after SAVE = Neu']);
   });
 
   it('adds no key to a bundle without a file in the reference language', () => {

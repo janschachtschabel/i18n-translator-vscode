@@ -65,12 +65,13 @@ function planSetText(
     return fail(editProblem('missing-key', { key: displayKey(key), bundle: bundle.name }));
   }
   const current = bundle.value(entryId, locale);
+  // A text of only white space shows as nothing: it clears the text like an empty one.
+  const cleared = value.trim() === '';
   // Nothing to do, whatever the user saw before: the text already reads as wanted, or there is nothing to
   // clear (intentionally empty reference texts stay).
-  const unchanged =
-    value === ''
-      ? current === undefined || (locale === bundle.reference && current === '')
-      : value === current;
+  const unchanged = cleared
+    ? current === undefined || (locale === bundle.reference && current.trim() === '')
+    : value === current;
   if (unchanged) {
     return done([]);
   }
@@ -78,7 +79,7 @@ function planSetText(
     return fail(editProblem('changed', { key: displayKey(key), locale }));
   }
   const edit = (op: FileOp) => done([{ kind: 'edit', relPath: file.relPath, ops: [op] }]);
-  if (value === '') {
+  if (cleared) {
     if (locale === bundle.reference) {
       return fail(editProblem('reference-empty', { key: displayKey(key) }));
     }
@@ -113,10 +114,11 @@ function planAddKey(
   if (bundle.reference === undefined) {
     return fail(editProblem('no-reference', { bundle: bundle.name }));
   }
-  if (!values[bundle.reference]) {
+  // Texts of only white space count as none, as when a text is set.
+  if (!values[bundle.reference]?.trim()) {
     return fail(editProblem('reference-required', { key: displayKey(key), locale: bundle.reference }));
   }
-  const withoutFile = Object.keys(values).find((locale) => values[locale] !== '' && !bundle.file(locale));
+  const withoutFile = Object.keys(values).find((locale) => values[locale]?.trim() && !bundle.file(locale));
   if (withoutFile !== undefined) {
     return fail(editProblem('missing-file', { bundle: bundle.name, locale: withoutFile }));
   }
@@ -126,7 +128,7 @@ function planAddKey(
   for (const locale of bundle.locales) {
     const value = values[locale];
     const file = bundle.file(locale)!;
-    if (!value) {
+    if (!value?.trim()) {
       continue;
     }
     if (hasSyntaxError(file.parsed)) {

@@ -127,6 +127,20 @@ describe('filterRows', () => {
       expect(keys({ status: 'empty' }, ['it'])).toEqual([]);
     });
 
+    // As in the check `empty-value` (audit L-06).
+    it('takes a text of only white space as empty', () => {
+      const spaced: BundleViewModel = {
+        ...model,
+        rows: model.rows.map((candidate) =>
+          candidate.key === 'ASK'
+            ? { ...candidate, cells: { ...candidate.cells, fr: text('  ') } }
+            : candidate,
+        ),
+      };
+      const empty = filterRows(spaced, { ...DEFAULT_FILTER, status: 'empty' }, ['it']).rows;
+      expect(empty.map((candidate) => candidate.key)).toEqual(['ASK']);
+    });
+
     it('combines with the search', () => {
       expect(keys({ query: 'title', scope: 'keys', status: 'missing' })).toEqual(['ERROR_TITLE']);
       expect(keys({ query: 'title', scope: 'keys', status: 'empty' })).toEqual(['WORKSPACE.TITLE']);

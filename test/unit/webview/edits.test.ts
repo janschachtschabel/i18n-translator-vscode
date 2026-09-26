@@ -128,6 +128,16 @@ describe('editing', () => {
     expect(store.announcement.value.text).toBe('Text gelöscht.');
   });
 
+  // The host deletes a text of only white space like a cleared one (audit L-06).
+  it('clears a text of only white space', () => {
+    const { store, edits, cell, type, lastRequest } = open();
+    type('SAVE', 'fr', '  ');
+    expect(edits().at(-1)!.value).toBe('');
+    expect(cell('SAVE', 'fr').value).toBeUndefined();
+    store.receive({ type: 'writeResult', requestId: lastRequest(), ok: true });
+    expect(store.announcement.value.text).toBe('Text gelöscht.');
+  });
+
   it('shows the old text again when writing fails, marks the cell and keeps the typed text', () => {
     const { store, cell, type, lastRequest } = open();
     type('CANCEL', 'de', 'Abbruch');

@@ -12,10 +12,11 @@ export interface CheckLine {
 /**
  * What the editor says while typing: the placeholders and HTML tags the text lacks or has beyond the reference,
  * as the checks will find them, weighed as their rules are by default (placeholders error, tags warning). Once
- * they match, it says so, if the reference has any. A cleared text is deleted, so the reference applies.
+ * they match, it says so, if the reference has any. A cleared text is deleted, so the reference applies; as in
+ * the checks, a text of only white space counts as none.
  */
 export function inlineCheck(reference: string | undefined, text: string): CheckLine[] {
-  if (reference === undefined || reference === '' || text === '') {
+  if (!reference?.trim() || !text.trim()) {
     return [];
   }
   const referenceScan = scanPlaceholders(reference);

@@ -70,7 +70,7 @@ export function filterRows(
       case 'findings':
         return cells(row, visibleCodes).some((cell) => cell.issues.length > 0);
       case 'empty':
-        return cells(row, visibleCodes).some((cell) => cell.value === '');
+        return cells(row, visibleCodes).some((cell) => cell.value?.trim() === '');
     }
   };
 
