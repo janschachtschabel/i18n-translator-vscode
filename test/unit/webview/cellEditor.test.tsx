@@ -211,6 +211,40 @@ describe('cell editor in the table', () => {
     expect(screen.queryByRole('textbox')).toBeNull();
   });
 
+  // Saving closes the editor and makes its row smaller: the cells below moved away from the pointer while the button
+  // was down, and the click landed beside the cell it was meant for.
+  it('saves on a click elsewhere when the button comes up, so that the click lands on the cell below', async () => {
+    const { posted } = open();
+    act(() => void fireEvent.click(cellOf('SAVE', 2)));
+    typeText('Sauver');
+    act(() => void fireEvent.pointerDown(cellOf('CANCEL', 2)));
+    act(() => cellOf('CANCEL', 2).focus());
+    await nextTask();
+    expect(edits(posted)).toEqual([]);
+    expect(screen.getByRole('textbox', { name: 'SAVE in fr' })).toBeTruthy();
+    act(() => void fireEvent.pointerUp(cellOf('CANCEL', 2)));
+    act(() => void fireEvent.click(cellOf('CANCEL', 2)));
+    await nextTask();
+    expect(edits(posted)).toEqual([
+      expect.objectContaining({ entryId: id('SAVE'), locale: 'fr', value: 'Sauver' }),
+    ]);
+    expect(field()).toBe(screen.getByRole('textbox', { name: 'CANCEL in fr' }));
+  });
+
+  it('saves when the button comes up after a press that became no click', async () => {
+    const { posted } = open();
+    act(() => void fireEvent.click(cellOf('SAVE', 2)));
+    typeText('Sauver');
+    act(() => void fireEvent.pointerDown(screen.getByRole('searchbox')));
+    act(() => screen.getByRole('searchbox').focus());
+    await nextTask();
+    expect(edits(posted)).toEqual([]);
+    act(() => void fireEvent.pointerUp(document.body));
+    await nextTask();
+    expect(edits(posted)).toEqual([expect.objectContaining({ value: 'Sauver' })]);
+    expect(screen.queryByRole('textbox')).toBeNull();
+  });
+
   it('shows the old text again when saving fails, marks the cell and brings the typed text back', () => {
     const { store, send, posted } = open();
     act(() => cellOf('CANCEL', 0).focus());

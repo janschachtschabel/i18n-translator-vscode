@@ -12,6 +12,11 @@ Phasen 5 und 6 vorgezogen sind, zählt sie weiter, ohne die Phase zu nennen. Die
 - **Ein Klick auf eine Zelle öffnet ihren Text zum Bearbeiten**, wie in der alten App; bisher wählte er die Zelle nur,
   und erst ein Doppelklick, Enter oder F2 öffnete sie. Ein Klick mit Umschalt, Strg, Alt oder Cmd, oder einer, der
   eine Textauswahl beendet, wählt weiterhin nur.
+- **Ein Klick auf die nächste Zelle geht nicht mehr verloren.** Während ein Text bearbeitet wird, ist seine Zeile höher
+  (Feld und Hinweise, etwa 89 statt 26 Pixel). Ein Klick auf eine Zelle darunter speicherte schon beim Drücken der
+  Maustaste; die Zeile wurde wieder klein, die Zellen darunter rückten nach oben, und der Klick traf beim Loslassen
+  eine andere Stelle: Die angeklickte Zelle öffnete sich nicht, man musste ein zweites Mal klicken. Jetzt speichert
+  der Klick erst beim Loslassen.
 - **Befunde farbig:** Zellen mit Warnung (etwa „fehlt“, „leer“) sind gelb hinterlegt, Zellen mit Fehler (etwa
   Platzhalter) rot, jeweils mit einem Balken am Anfang; ebenso die Texte in der Liste und in den Details. Symbol und
   Wort bleiben, im hohen Kontrast bleiben Balken und Symbol. Die Symbole nutzen die Listenfarben des Themes, die auch
