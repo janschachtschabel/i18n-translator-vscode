@@ -18,6 +18,18 @@ describe('tagSignature', () => {
     expect(tagSignature('<keine>')).toEqual([]);
     expect(compareTags('Autor: <keine>', 'Author: <not set>')).toEqual({ missing: [], extra: [] });
   });
+
+  it('reads a tag name only up to the next character that cannot belong to it', () => {
+    expect(tagSignature('<b.x>a</b><i_x>')).toEqual(['/b', 'b']);
+  });
+
+  // Texts come from the repository: an unclosed tag must not make the check quadratic (audit S-02).
+  it('scans a long unclosed tag in linear time', () => {
+    const started = performance.now();
+    expect(tagSignature(`<a${'-a'.repeat(50_000)}`)).toEqual([]);
+    expect(tagSignature(`<a${' a'.repeat(50_000)}`)).toEqual([]);
+    expect(performance.now() - started).toBeLessThan(500);
+  });
 });
 
 describe('compareTags', () => {

@@ -1,4 +1,6 @@
-const TAG = /<(\/?)([a-z][a-z0-9-]*)\b[^<>]*>/gi;
+// The name ends where no name character follows, without backtracking into it: with `\b` instead of the lookahead,
+// an unclosed tag like `<a-a-a-…` was scanned again from every word boundary, quadratic in the text's length.
+const TAG = /<(\/?)([a-z][a-z0-9-]*)(?![\w-])[^<>]*>/gi;
 
 /**
  * HTML elements that occur in UI texts and mail templates. Other words in angle brackets are text:
