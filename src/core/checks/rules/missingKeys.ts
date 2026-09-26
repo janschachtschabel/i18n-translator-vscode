@@ -1,4 +1,5 @@
 import type { Bundle } from '../../model/bundle';
+import { BASE_FILE_LOCALE } from '../../model/locale';
 import { displayKey, type EntryKey } from '../../model/keys';
 import type { LocaleCode } from '../../model/types';
 import type { CheckContext, Finding, Rule } from '../types';
@@ -19,8 +20,10 @@ interface Completeness {
 }
 
 /**
- * Compares every readable full locale with the reference. A key only a translation has is an orphan,
- * unless a missing key ends with the same segments: then it is probably misplaced (and reported only as such).
+ * Compares every readable full locale with the keys every language needs: those of the reference, and those of the
+ * file without locale (metadatasets, mail templates), which edu-sharing reads last for every language, so a language
+ * without such a key shows the text of that file. A key only a translation has is an orphan, unless a missing key
+ * ends with the same segments: then it is probably misplaced (and reported only as such).
  */
 function analyze(bundle: Bundle, ctx: CheckContext): Completeness {
   const result: Completeness = { missing: [], orphans: [], misplaced: [] };
@@ -29,14 +32,19 @@ function analyze(bundle: Bundle, ctx: CheckContext): Completeness {
     return result;
   }
   const referenceIds = entryIds(bundle, reference);
+  const base = bundle.locales.includes(BASE_FILE_LOCALE) && isReadable(bundle, BASE_FILE_LOCALE);
+  const needed = base ? new Set([...referenceIds, ...entryIds(bundle, BASE_FILE_LOCALE)]) : referenceIds;
   for (const locale of bundle.locales) {
-    if (locale === reference || !isFullLocale(ctx, locale) || !isReadable(bundle, locale)) {
+    if (!isFullLocale(ctx, locale) || !isReadable(bundle, locale)) {
       continue;
     }
     const ids = entryIds(bundle, locale);
-    const missing = bundle.keys.filter((key) => referenceIds.has(key.id) && !ids.has(key.id));
-    const extra = bundle.keys.filter((key) => ids.has(key.id) && !referenceIds.has(key.id));
+    const missing = bundle.keys.filter((key) => needed.has(key.id) && !ids.has(key.id));
     result.missing.push(...missing.map((key) => ({ locale, key })));
+    if (locale === reference) {
+      continue;
+    }
+    const extra = bundle.keys.filter((key) => ids.has(key.id) && !needed.has(key.id));
     const targets = likelyTargets(extra, missing);
     for (const key of extra) {
       const suggestion = targets.get(key.id);

@@ -43,6 +43,23 @@ describe('missing-key', () => {
   });
 });
 
+describe('missing-key with a file without locale (metadatasets, mail templates)', () => {
+  // edu-sharing falls back to the file without locale last: its keys exist for every language.
+  const bundle = bundleOf('b', {
+    default: '{"A":"a","X":"x"}',
+    de: '{"A":"A"}',
+    fr: '{"A":"a fr","Y":"y"}',
+  });
+
+  it('reports a key of that file as missing in every language that lacks it, the reference included', () => {
+    expect(summarize(run(missingKeyRule, [bundle]))).toEqual(['missing-key b/de X', 'missing-key b/fr X']);
+  });
+
+  it('takes no key of that file for an orphan, but still a key only a translation has', () => {
+    expect(summarize(run(orphanKeyRule, [bundle]))).toEqual(['orphan-key b/fr Y']);
+  });
+});
+
 describe('orphan-key and misplaced-key', () => {
   it('reports keys that only a translation has', () => {
     const bundle = bundleOf('common', { de: '{"a":"A"}', it: '{"a":"A","OLD":"Vecchio"}' });
