@@ -149,6 +149,19 @@ describe('editing', () => {
     expect(store.announcement.value.text).toBe('Text gelöscht.');
   });
 
+  // The host has nothing to clear there and answers ok: the editor announced a deletion that did not happen.
+  it('sends nothing for white space where there is no text to clear: none, or a blank reference text', () => {
+    const { store, edits, type } = open();
+    type('SAVE', 'de-informal', '  ');
+    store.receive({ type: 'bundle', model: withTexts({ SAVE: { de: text('') } }) });
+    type('SAVE', 'de', ' ');
+    expect(edits()).toEqual([]);
+    expect(store.edits.open.value).toBeNull();
+    // A blank translation is cleared: the host deletes it, so that the fallback applies (B2).
+    type('WORKSPACE.TITLE', 'it', ' ');
+    expect(edits()).toEqual([expect.objectContaining({ locale: 'it', value: '', before: '' })]);
+  });
+
   it('shows the old text again when writing fails, marks the cell and keeps the typed text', () => {
     const { store, cell, type, lastRequest } = open();
     type('CANCEL', 'de', 'Abbruch');

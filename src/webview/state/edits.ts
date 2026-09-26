@@ -107,7 +107,7 @@ export class Edits {
       return;
     }
     const draft = this.draft.value;
-    const typed = draft !== toTyped(open.before ?? '');
+    const typed = draft !== toTyped(open.before ?? '') && !this.clearsNothing(open, draft);
     batch(() => {
       this.close(open);
       if (typed && open.conflict) {
@@ -378,6 +378,17 @@ export class Edits {
     }
     this.open.value = { ...open, conflict: { ...open.conflict, text: current } };
     this.announce(conflictNotice(open));
+  }
+
+  /**
+   * Whether a draft clears a text that is not there, which the host leaves as it is (B2): it is blank, and the
+   * cell has no text, or a blank reference text, which stays.
+   */
+  private clearsNothing(open: OpenEditor, draft: string): boolean {
+    const reference = this.model?.locales.some((locale) => locale.code === open.locale && locale.reference);
+    return (
+      draft.trim() === '' && (open.before === undefined || (reference === true && open.before.trim() === ''))
+    );
   }
 
   private send(cell: CellRef, value: string, before: string | undefined): void {
