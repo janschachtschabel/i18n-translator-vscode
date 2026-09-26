@@ -61,7 +61,9 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-describe('a bundle of 2,000 keys in six languages', () => {
+// Rendering 2,000 rows in happy-dom takes 2–3 s alone and more beside other test files; the tests count renders,
+// not time.
+describe('a bundle of 2,000 keys in six languages', { timeout: 20_000 }, () => {
   it('shows the first 200 rows at once and the others in steps', () => {
     vi.useFakeTimers();
     open({}, largeModel(2000));
