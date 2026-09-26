@@ -177,8 +177,34 @@ export function isUnsavedTexts(value: unknown): value is UnsavedText[] {
   if (!Array.isArray(value) || value.length > MAX_UNSAVED_TEXTS || !value.every(isUnsavedText)) {
     return false;
   }
-  const characters = value.reduce((sum, text) => sum + text.text.length + (text.shown?.length ?? 0), 0);
+  const characters = value.reduce((sum, text) => sum + unsavedCharacters(text), 0);
   return characters <= MAX_UNSAVED_CHARACTERS;
+}
+
+/**
+ * The texts that are not saved as the host takes them: each reason cut to the length it keeps, and only the texts
+ * that fit its checks and bounds. It takes the list only as a whole, so one text it refused would cost the others.
+ */
+export function fitUnsavedTexts(texts: readonly UnsavedText[]): UnsavedText[] {
+  const fitted: UnsavedText[] = [];
+  let characters = 0;
+  for (const text of texts) {
+    const fit = { ...text, message: text.message.slice(0, MAX_MESSAGE_LENGTH) };
+    const size = unsavedCharacters(fit);
+    if (
+      isUnsavedText(fit) &&
+      fitted.length < MAX_UNSAVED_TEXTS &&
+      characters + size <= MAX_UNSAVED_CHARACTERS
+    ) {
+      fitted.push(fit);
+      characters += size;
+    }
+  }
+  return fitted;
+}
+
+function unsavedCharacters(text: UnsavedText): number {
+  return text.text.length + (text.shown?.length ?? 0);
 }
 
 function isUnsavedText(value: unknown): value is UnsavedText {
@@ -186,7 +212,9 @@ function isUnsavedText(value: unknown): value is UnsavedText {
     isRecord(value) &&
     isEntryId(value['entryId']) &&
     isId(value['locale']) &&
-    isText(value['text']) &&
+    // A draft keeps a cut-off character of the text it was typed against; the host only keeps it, and saving it
+    // is an edit, checked on its own.
+    isBounded(value['text']) &&
     typeof value['message'] === 'string' &&
     value['message'].length <= MAX_MESSAGE_LENGTH &&
     (value['shown'] === null || isBounded(value['shown'])) &&

@@ -5,6 +5,7 @@ import {
   copyUiState,
   copyUnsavedTexts,
   DEFAULT_UI_STATE,
+  fitUnsavedTexts,
   isPanelState,
   isUiState,
   isUnsavedTexts,
@@ -46,6 +47,8 @@ describe('isWebviewToHost', () => {
       { type: 'uiState', state: DEFAULT_UI_STATE },
       { type: 'unsaved', texts: [] },
       { type: 'unsaved', texts: [unsaved, { ...unsaved, locale: 'it', shown: 'Area', conflict: true }] },
+      // A draft keeps a cut-off character of the file it was typed against; the host only keeps it.
+      { type: 'unsaved', texts: [{ ...unsaved, text: `x${String.fromCharCode(0xd800)}` }] },
     ]) {
       expect(isWebviewToHost(message), JSON.stringify(message)).toBe(true);
     }
@@ -127,6 +130,27 @@ describe('isUnsavedTexts', () => {
       Array.from({ length: count }, () => ({ ...unsaved, text: 'x'.repeat(MAX_TEXT_LENGTH) }));
     expect(isUnsavedTexts(long(10))).toBe(true);
     expect(isUnsavedTexts(long(11))).toBe(false);
+  });
+});
+
+// The host takes the list only as a whole: the webview gives it what fits, so that one text costs no others.
+describe('fitUnsavedTexts', () => {
+  it('cuts a long reason to the length the host keeps', () => {
+    const fitted = fitUnsavedTexts([{ ...unsaved, message: 'x'.repeat(5000) }]);
+    expect(fitted.map((text) => text.message.length)).toEqual([1000]);
+    expect(isUnsavedTexts(fitted)).toBe(true);
+  });
+
+  it('leaves out what the host could not take and keeps the rest', () => {
+    const tooLong = { ...unsaved, locale: 'it', text: 'x'.repeat(MAX_TEXT_LENGTH + 1) };
+    expect(fitUnsavedTexts([tooLong, unsaved])).toEqual([unsaved]);
+    expect(fitUnsavedTexts(Array.from({ length: MAX_UNSAVED_TEXTS + 1 }, () => unsaved))).toHaveLength(
+      MAX_UNSAVED_TEXTS,
+    );
+    const long = Array.from({ length: 11 }, () => ({ ...unsaved, text: 'x'.repeat(MAX_TEXT_LENGTH) }));
+    const fitted = fitUnsavedTexts(long);
+    expect(fitted).toHaveLength(10);
+    expect(isUnsavedTexts(fitted)).toBe(true);
   });
 });
 

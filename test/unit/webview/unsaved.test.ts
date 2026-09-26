@@ -1,6 +1,11 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { DEFAULT_UI_STATE, type UnsavedText, type WebviewToHost } from '../../../src/shared/protocol';
+import {
+  DEFAULT_UI_STATE,
+  isWebviewToHost,
+  type UnsavedText,
+  type WebviewToHost,
+} from '../../../src/shared/protocol';
 import { EditorStore } from '../../../src/webview/state/store';
 import { findingsModel as model, GERMAN, panelState } from './support';
 
@@ -86,6 +91,22 @@ describe('texts that were not saved', () => {
     store.edits.cancel();
     vi.runOnlyPendingTimers();
     expect(kept()).toHaveLength(2);
+  });
+
+  // The host takes the list only as a whole: one text it refused cost it every change after it.
+  it('go to the host in a form it takes, also with a cut-off character from the file or a long reason', () => {
+    vi.useFakeTimers();
+    const { store, type, lastRequest, kept } = open();
+    const cutOff = `Sauver ${String.fromCharCode(0xd83d)}`;
+    type('SAVE', 'fr', cutOff);
+    store.receive({ type: 'writeResult', requestId: lastRequest(), ok: false, message: 'Unreadable.' });
+    type('CANCEL', 'fr', 'Annuler');
+    store.receive({ type: 'writeResult', requestId: lastRequest(), ok: false, message: 'x'.repeat(5000) });
+    vi.runOnlyPendingTimers();
+
+    const texts = kept().at(-1)!;
+    expect(isWebviewToHost({ type: 'unsaved', texts })).toBe(true);
+    expect(texts.map((text) => text.text)).toEqual([cutOff, 'Annuler']);
   });
 
   it('come back from the host into their cells, as a conflict where the cell changed meanwhile', () => {

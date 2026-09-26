@@ -1,5 +1,5 @@
 import { effect, signal } from '@preact/signals';
-import type { UnsavedText, WebviewToHost } from '../../shared/protocol';
+import { fitUnsavedTexts, type UnsavedText, type WebviewToHost } from '../../shared/protocol';
 import type { Edits } from './edits';
 
 /** How long typing rests before the texts that are not saved go to the host. */
@@ -48,7 +48,8 @@ export class KeptUnsaved {
     return restored;
   }
 
-  private keep(texts: UnsavedText[]): void {
+  private keep(all: UnsavedText[]): void {
+    const texts = fitUnsavedTexts(all);
     const json = JSON.stringify(texts);
     if (json !== this.kept) {
       this.kept = json;
