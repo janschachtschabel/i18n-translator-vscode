@@ -101,8 +101,8 @@ describe('package.json welcome views', () => {
   });
 });
 
-// The listing and the activation name only what the extension can do (audit DOC-02): phases 5 and 6 bring the
-// presets for .properties and mail templates, and their activation with them.
+// The listing and the activation name only what the extension can do (audit DOC-02): a format comes with its
+// preset, and its activation with it.
 describe('package.json activation', () => {
   it('activates for the marker files of the presets, and for no format without one', () => {
     const markers = manifest.activationEvents
@@ -111,8 +111,10 @@ describe('package.json activation', () => {
     expect(markers).toEqual(PRESETS.flatMap((preset) => (preset.detect ? [preset.detect.glob] : [])));
   });
 
-  it('names no format that has no preset yet', () => {
-    expect(manifest.keywords).not.toContain('properties');
+  it('names the .properties format once a preset reads it', () => {
+    expect(manifest.keywords.includes('properties')).toBe(
+      PRESETS.some((preset) => preset.format === 'properties'),
+    );
   });
 });
 

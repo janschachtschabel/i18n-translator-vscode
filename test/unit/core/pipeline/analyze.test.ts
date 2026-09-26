@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ANGULAR_PRESET } from '../../../../src/core/area/presets';
+import { ANGULAR_PRESET, MDS_PRESET } from '../../../../src/core/area/presets';
 import { compileVariants, DEFAULT_VARIANTS } from '../../../../src/core/checks/variants';
 import { analyzeRoot, filesToRead } from '../../../../src/core/pipeline/analyze';
 
@@ -31,5 +31,45 @@ describe('analyzeRoot', () => {
     expect(
       filesToRead(ANGULAR_PRESET, 'i18n', ['i18n/common/de.json', 'i18n/README.md', 'other/common/de.json']),
     ).toEqual(['i18n/common/de.json']);
+  });
+});
+
+describe('analyzeRoot with the metadataset preset', () => {
+  const GUARD = 'this_is_a_bug_the_first_line_will_not_be_translated: what the hell\n';
+  const latin1 = (relPath: string, text: string) => ({ relPath, bytes: Buffer.from(text, 'latin1') });
+  const analysis = analyzeRoot(
+    MDS_PRESET,
+    'mds/i18n',
+    [
+      source('mds/i18n/mds.properties', `${GUARD}a: A\nb: B\nb: B2\n`),
+      latin1('mds/i18n/mds_de_DE.properties', `${GUARD}a: Ä\nb: B\n`),
+      latin1('mds/i18n/mds_fr_FR.properties', 'a: à\n'),
+      source('mds/i18n/valuespaces_i18n.properties', 'x: X\n'),
+    ],
+    options,
+  );
+  const mds = analysis.bundles.find((bundle) => bundle.name === 'mds')!;
+
+  it('groups the files by bundle and puts the reference de_DE first', () => {
+    expect(analysis.bundles.map((bundle) => bundle.name)).toEqual(['mds', 'valuespaces_i18n']);
+    expect(mds.locales).toEqual(['de_DE', 'default', 'fr_FR']);
+    expect(mds.value(mds.keys[0]!.id, 'de_DE')).toBe('Ä');
+    expect(mds.value(mds.keys[0]!.id, 'fr_FR')).toBe('à');
+  });
+
+  it('hides the guard line from the bundle and the findings but keeps it with the file', () => {
+    expect(mds.keys.map((key) => key.segments)).toEqual([['a'], ['b']]);
+    expect(analysis.issues.filter((issue) => JSON.stringify(issue).includes('this_is_a_bug'))).toEqual([]);
+    expect(mds.file('de_DE')?.hidden?.map((entry) => entry.key.segments)).toEqual([
+      ['this_is_a_bug_the_first_line_will_not_be_translated'],
+    ]);
+  });
+
+  it('finds the gaps against de_DE and reports repeated keys, but not ISO-8859-1', () => {
+    const summary = analysis.issues.map((issue) => [issue.rule, issue.locale, issue.args['key'] ?? '']);
+    expect(summary).toContainEqual(['missing-key', 'fr_FR', 'b']);
+    expect(summary).toContainEqual(['duplicate-key', 'default', 'b']);
+    expect(summary).toContainEqual(['missing-file', 'de_DE', '']);
+    expect(analysis.issues.filter((issue) => issue.rule === 'not-utf8')).toEqual([]);
   });
 });

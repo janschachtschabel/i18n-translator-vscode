@@ -10,6 +10,7 @@ import './field.css';
 import { hintFor } from './findingHints';
 import { focusIsLost, onFocusLeaving } from './focus';
 import { LocaleLabel } from './localeLabel';
+import { localeName } from './localeName';
 
 interface FieldProps {
   store: EditorStore;
@@ -74,7 +75,7 @@ export function Field({ store, row, locale, cell, editor, referenceText, place }
             onClick={() => store.edit(row.entryId, locale.code, place)}
           >
             {/* The language names the button with its text; the term before it is not its label. */}
-            <span class="visually-hidden">{locale.code}: </span>
+            <span class="visually-hidden">{localeName(locale)}: </span>
             {cell.value !== undefined && cell.value !== '' ? (
               <span class="cell-text" lang={locale.lang} dir="auto">
                 {cell.value}
@@ -124,7 +125,7 @@ export function Field({ store, row, locale, cell, editor, referenceText, place }
             {l10n.t('Delete Text')}
             <span class="visually-hidden">
               {' '}
-              {l10n.t('{key} in {locale}', { key: row.key, locale: locale.code })}
+              {l10n.t('{key} in {locale}', { key: row.key, locale: localeName(locale) })}
             </span>
           </button>
         )}

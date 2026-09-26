@@ -26,4 +26,9 @@ export interface AreaDefinition extends FilePatternSpec {
   mergeSemantics?: MergeSemantics;
   /** Finds roots automatically: every match of `glob` minus the trailing `marker` path is a root. */
   detect?: { glob: string; marker: string };
+  /**
+   * Keys (dotted, as displayed) that are no translations, e.g. the guard line that opens edu-sharing's metadataset
+   * files: bundles, checks and editor leave them out, the files keep them, and new keys never go before them.
+   */
+  ignoredKeys?: string[];
 }

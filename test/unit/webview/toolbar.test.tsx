@@ -2,7 +2,7 @@
 import { act, cleanup, fireEvent, screen, within } from '@testing-library/preact';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { DEFAULT_UI_STATE } from '../../../src/shared/protocol';
-import { renderEditor, axeProblems } from './support';
+import { model, renderEditor, axeProblems } from './support';
 
 const languages = () => within(screen.getByRole('group', { name: 'Angezeigte Sprachen' }));
 const view = () => within(screen.getByRole('group', { name: 'Ansicht' }));
@@ -110,6 +110,17 @@ describe('language chips', () => {
       { type: 'uiState', state: { ...DEFAULT_UI_STATE, hiddenLocales: ['fr'] } },
       { type: 'uiState', state: DEFAULT_UI_STATE },
     ]);
+  });
+
+  it('names the file without locale by its language', () => {
+    const { open } = renderEditor();
+    const [first, ...rest] = model.locales;
+    open(DEFAULT_UI_STATE, {
+      ...model,
+      locales: [{ ...first!, code: 'default', label: 'default (en)' }, ...rest],
+    });
+    expect(languages().getByRole('checkbox', { name: 'default (en) Referenz' })).toBeTruthy();
+    expect(screen.getByRole('columnheader', { name: 'default (en) Referenz' })).toBeTruthy();
   });
 
   it('is reachable with the keyboard', () => {

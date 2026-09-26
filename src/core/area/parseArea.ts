@@ -68,6 +68,11 @@ export function parseAreaDefinition(raw: unknown): ParseAreaResult {
     `"mergeSemantics" must be one of: ${MERGE_SEMANTICS.join(', ')}.`,
   );
   const detect = check(raw.detect, raw.detect === undefined || isDetect(raw.detect), detectMessage());
+  const ignoredKeys = check(
+    raw.ignoredKeys,
+    raw.ignoredKeys === undefined || isStringArray(raw.ignoredKeys),
+    '"ignoredKeys" must be a list of keys.',
+  );
   const roots = parseRoots(raw.roots, raw.detect !== undefined, errors);
 
   if (typeof files === 'string' && typeof localePattern === 'string') {
@@ -101,6 +106,7 @@ export function parseAreaDefinition(raw: unknown): ParseAreaResult {
       bundleOrder: bundleOrder as string[] | undefined,
       mergeSemantics: mergeSemantics as MergeSemantics | undefined,
       detect: detect as AreaDefinition['detect'],
+      ignoredKeys: ignoredKeys as string[] | undefined,
     }),
   };
 }

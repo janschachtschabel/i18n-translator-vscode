@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ANGULAR_PRESET } from '../../../../src/core/area/presets';
+import { ANGULAR_PRESET, MDS_PRESET } from '../../../../src/core/area/presets';
 import { formatMessage } from '../../../../src/core/checks/messages';
 import {
   planAddLanguage,
@@ -450,5 +450,33 @@ describe('planAddLanguage', () => {
     for (const locale of ['../x', 'de/x', 'de\\x', 'c:x', '.', '..']) {
       expect(summary(planAddLanguage(analysis.bundles, permissive, locale)), locale).toBe('invalid-locale');
     }
+  });
+});
+
+describe('planEdit and planAddLanguage with the hidden guard line of metadatasets', () => {
+  const GUARD = 'this_is_a_bug_the_first_line_will_not_be_translated: what the hell\n';
+  const mdsAnalysis = analyzeTexts(
+    {
+      'mds_de_DE.properties': `${GUARD}a: A\nb: B\n`,
+      'mds_fr_FR.properties': `${GUARD}b: B fr\n`,
+      'mds_it_IT.properties': GUARD,
+    },
+    MDS_PRESET,
+  );
+  const mds = mdsAnalysis.bundles[0]!;
+  const flat = (name: string) => keyFromSegments([name]).id;
+
+  it('puts a missing first text after the guard line, never before it', () => {
+    for (const locale of ['fr_FR', 'it_IT']) {
+      expect(summary(planEdit(mds, { kind: 'setText', entryId: flat('a'), locale, value: 'A2' }))).toEqual([
+        `mds_${locale}.properties: insert a after this_is_a_bug_the_first_line_will_not_be_translated = A2`,
+      ]);
+    }
+  });
+
+  it('starts a new language file with the guard line of its reference', () => {
+    expect(summary(planAddLanguage(mdsAnalysis.bundles, MDS_PRESET, 'es_ES'))).toEqual([
+      `create mds_es_ES.properties: ${JSON.stringify('this_is_a_bug_the_first_line_will_not_be_translated=what the hell\n')}`,
+    ]);
   });
 });

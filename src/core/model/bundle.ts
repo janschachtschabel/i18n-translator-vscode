@@ -10,7 +10,10 @@ export interface LoadedFile {
   /** Workspace-relative path with `/` separators. */
   relPath: string;
   doc: DecodedText;
+  /** Without the entries the area hides (`ignoredKeys`). */
   parsed: ParsedFile;
+  /** The hidden entries the file has, in file order; the file keeps them. */
+  hidden?: readonly ParsedEntry[];
 }
 
 /** All locale files of one bundle (an Angular category, a metadataset group, the mail templates). */

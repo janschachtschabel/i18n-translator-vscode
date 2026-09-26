@@ -1,6 +1,6 @@
 {
   "displayName": "edu-sharing i18n",
-  "description": "Check and edit the translation files of edu-sharing (Angular JSON) in a table or list, with undo and backups.",
+  "description": "Check and edit the translation files of edu-sharing (Angular JSON, metadatasets) in a table or list, with undo and backups.",
   "view.container": "edu-sharing i18n",
   "view.areas": "Areas",
   "view.areas.noFolder": "Open a folder with edu-sharing translations: an edu-sharing checkout, or its translation folder (Frontend/src/assets/i18n) or a copy of it.\n[Open Folder](command:vscode.openFolder)",
@@ -48,6 +48,7 @@
   "config.areas.detect": "How the roots are found: marker files in the workspace folder and their path below the root.",
   "config.areas.detect.glob": "Glob that finds the marker files, e.g. `**/common/de.json`.",
   "config.areas.detect.marker": "Path of a marker below its root, e.g. `common/de.json`; the glob must end with it.",
+  "config.areas.ignoredKeys": "Keys that are no translations, e.g. a guard line: the extension hides them and keeps them in the files.",
   "config.variants.base": "Locale the variant falls back to, e.g. `de`.",
   "config.variants.requiredWhen": "Regular expression: when it matches the base text, the variant needs its own text.",
   "config.variants.forbidden": "Regular expression for text the variant should not contain.",

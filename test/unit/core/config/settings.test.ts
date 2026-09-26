@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ANGULAR_PRESET } from '../../../../src/core/area/presets';
+import { ANGULAR_PRESET, MDS_PRESET } from '../../../../src/core/area/presets';
 import { DEFAULT_VARIANTS } from '../../../../src/core/checks/variants';
 import {
   DEFAULT_BACKUP_SETTINGS,
@@ -11,7 +11,7 @@ import {
 describe('parseSettings', () => {
   it('uses the defaults when nothing is configured', () => {
     expect(parseSettings({})).toEqual({ settings: DEFAULT_SETTINGS, errors: [] });
-    expect(DEFAULT_SETTINGS.areas).toEqual([ANGULAR_PRESET]);
+    expect(DEFAULT_SETTINGS.areas).toEqual([ANGULAR_PRESET, MDS_PRESET]);
     expect(DEFAULT_SETTINGS.variants).toEqual(DEFAULT_VARIANTS);
   });
 
@@ -28,13 +28,14 @@ describe('parseSettings', () => {
     expect(errors).toEqual([]);
     expect(settings.areas.map((area) => [area.id, area.roots])).toEqual([
       ['edu-sharing.angular', ['web/i18n']],
+      ['edu-sharing.mds', []],
       ['kunde', ['customer/i18n']],
     ]);
   });
 
   it('skips invalid areas and reports them with their position', () => {
     const { settings, errors } = parseSettings({ areas: [{ id: 'x' }] });
-    expect(settings.areas).toEqual([ANGULAR_PRESET]);
+    expect(settings.areas).toEqual([ANGULAR_PRESET, MDS_PRESET]);
     expect(errors[0]).toMatch(/^eduI18n\.areas\[0\]: /);
   });
 

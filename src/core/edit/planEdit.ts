@@ -1,10 +1,10 @@
 import type { AreaDefinition } from '../area/areaDefinition';
 import { formatFilePattern } from '../area/filePattern';
-import { hasSyntaxError, type FileOp } from '../formats/adapter';
+import { hasSyntaxError, type FileOp, type ParsedEntry } from '../formats/adapter';
 import { ADAPTERS } from '../formats/registry';
 import { parseBundleId, type Bundle, type LoadedFile } from '../model/bundle';
 import { displayKey, isKeyPrefix, keyFromId, keyFromSegments, type EntryKey } from '../model/keys';
-import type { LocaleCode } from '../model/types';
+import { VALUE_FIELD, type LocaleCode } from '../model/types';
 import { detectStyle } from '../text/style';
 import { editProblem, type EditProblem } from './editMessages';
 import { collidingKey, newKeyProblem } from './keyCheck';
@@ -225,10 +225,24 @@ export function planAddLanguage(
     changes.push({
       kind: 'create',
       relPath: bundle.root ? `${bundle.root}/${path}` : path,
-      content: ADAPTERS[area.format].createEmpty(detectStyle(reference?.doc.text ?? '')),
+      content: newFileContent(area, reference),
     });
   }
   return done(changes);
+}
+
+/** An empty file in the layout of the reference file, beginning with the hidden entries the reference has. */
+function newFileContent(area: AreaDefinition, reference: LoadedFile | undefined): string {
+  const adapter = ADAPTERS[area.format];
+  const empty = adapter.createEmpty(detectStyle(reference?.doc.text ?? ''));
+  const ops: FileOp[] = (reference?.hidden ?? []).map((entry) => ({
+    kind: 'insert',
+    key: entry.key,
+    value: entry.fields[VALUE_FIELD]!.value,
+  }));
+  return ops.length === 0
+    ? empty
+    : adapter.applyOps({ text: empty, encoding: 'utf-8', bom: false }, ops).text;
 }
 
 /**
@@ -236,7 +250,7 @@ export function planAddLanguage(
  * or before position `from` of `keys` that the file has inside the key's deepest parent object in that file.
  * The anchor is cut to the level where the new entry starts, so a text that follows `OBJ.X` goes after the
  * object `OBJ`, and a missing parent object goes after its predecessor. `first`: the file has no such key, so the
- * entry goes first in that parent object.
+ * entry goes first in that parent object, but after the hidden entries that open the file.
  */
 function insertAnchor(
   keys: readonly EntryKey[],
@@ -258,7 +272,19 @@ function insertAnchor(
       return keyFromSegments(candidate.segments.slice(0, depth + 1));
     }
   }
-  return 'first';
+  return depth === 0 ? (openingHidden(file) ?? 'first') : 'first';
+}
+
+/**
+ * The last hidden entry before the first text of the file: edu-sharing's metadataset files begin with a guard line
+ * the runtime never reads, and a text in its place would never be read either.
+ */
+function openingHidden(file: LoadedFile): EntryKey | undefined {
+  const start = (entry: ParsedEntry) => entry.fields[VALUE_FIELD]!.keyRange[0];
+  const firstText = file.parsed.entries[0];
+  return (file.hidden ?? [])
+    .filter((entry) => firstText === undefined || start(entry) < start(firstText))
+    .at(-1)?.key;
 }
 
 /** The position of an inserted entry: first in its object, after a sibling, or (undefined) last. */

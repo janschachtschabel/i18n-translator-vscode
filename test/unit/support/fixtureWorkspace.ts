@@ -1,5 +1,6 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
+import type { AreaDefinition } from '../../../src/core/area/areaDefinition';
 import { ANGULAR_PRESET } from '../../../src/core/area/presets';
 import { compileVariants, DEFAULT_VARIANTS } from '../../../src/core/checks/variants';
 import { rootsFromMarkers } from '../../../src/core/discovery/discover';
@@ -44,12 +45,15 @@ export function analyzeFixtureWorkspace(): { roots: string[]; analysis: RootAnal
 
 /**
  * Translation files given as texts (`bundle/locale.json` → content), analyzed like the fixture workspace below
- * the root `i18n`. For cases the fixture workspace does not show.
+ * the root `i18n`, as files of `area`. For cases the fixture workspace does not show.
  */
-export function analyzeTexts(texts: Readonly<Record<string, string>>): RootAnalysis {
+export function analyzeTexts(
+  texts: Readonly<Record<string, string>>,
+  area: AreaDefinition = ANGULAR_PRESET,
+): RootAnalysis {
   const files = Object.entries(texts).map(([path, text]) => ({
     relPath: `i18n/${path}`,
     bytes: new TextEncoder().encode(text),
   }));
-  return analyzeRoot(ANGULAR_PRESET, 'i18n', files, OPTIONS);
+  return analyzeRoot(area, 'i18n', files, OPTIONS);
 }

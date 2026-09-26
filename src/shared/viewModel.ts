@@ -13,6 +13,8 @@ export interface IssueView {
 
 export interface LocaleView {
   code: string;
+  /** How the editor names the language where its code says little: `default (en)` for the file without locale. */
+  label?: string;
   /** BCP 47 tag for the `lang` of its texts, so that screen readers pick the right voice; undefined if none. */
   lang?: string;
   reference: boolean;
@@ -94,9 +96,11 @@ export function buildBundleViewModel(bundle: Bundle, options: ViewModelOptions):
     name: bundle.name,
     locales: codes.map((code) => {
       const inLocale = issues.filter((issue) => issue.locale === code);
-      const lang = languageTag(parseLocale(code, { baseFileLanguage: options.baseFileLanguage }));
+      const info = parseLocale(code, { baseFileLanguage: options.baseFileLanguage });
+      const lang = languageTag(info);
       return {
         code,
+        ...(info.isBaseFile ? { label: `${code} (${info.language})` } : {}),
         ...(lang !== undefined ? { lang } : {}),
         reference: code === bundle.reference,
         variant: options.variants.includes(code),

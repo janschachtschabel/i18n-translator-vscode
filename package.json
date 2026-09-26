@@ -24,7 +24,8 @@
     "i18n",
     "translation",
     "edu-sharing",
-    "ngx-translate"
+    "ngx-translate",
+    "properties"
   ],
   "main": "./dist/extension.js",
   "files": [
@@ -40,6 +41,7 @@
   "l10n": "./l10n",
   "activationEvents": [
     "workspaceContains:**/common/de.json",
+    "workspaceContains:**/metadatasets/i18n/mds.properties",
     "onWebviewPanel:eduI18n.editor"
   ],
   "capabilities": {
@@ -344,6 +346,13 @@
                   }
                 },
                 "description": "%config.areas.detect%"
+              },
+              "ignoredKeys": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "%config.areas.ignoredKeys%"
               }
             }
           }

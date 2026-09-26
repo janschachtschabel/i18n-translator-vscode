@@ -1,6 +1,6 @@
 {
   "displayName": "edu-sharing i18n",
-  "description": "Übersetzungsdateien von edu-sharing (Angular-JSON) prüfen und in Tabelle oder Liste bearbeiten, mit Undo und Sicherungen.",
+  "description": "Übersetzungsdateien von edu-sharing (Angular-JSON, Metadatasets) prüfen und in Tabelle oder Liste bearbeiten, mit Undo und Sicherungen.",
   "view.container": "edu-sharing i18n",
   "view.areas": "Bereiche",
   "view.areas.noFolder": "Öffnen Sie einen Ordner mit Übersetzungen von edu-sharing: einen edu-sharing-Checkout oder dessen Übersetzungsordner (Frontend/src/assets/i18n) bzw. eine Kopie davon.\n[Ordner öffnen](command:vscode.openFolder)",
@@ -48,6 +48,7 @@
   "config.areas.detect": "Wie die Wurzeln gefunden werden: Markerdateien im Arbeitsbereichsordner und ihr Pfad unterhalb der Wurzel.",
   "config.areas.detect.glob": "Glob, der die Markerdateien findet, z. B. `**/common/de.json`.",
   "config.areas.detect.marker": "Pfad eines Markers unterhalb seiner Wurzel, z. B. `common/de.json`; der Glob muss damit enden.",
+  "config.areas.ignoredKeys": "Keys, die keine Übersetzungen sind, z. B. eine Wächterzeile: Die Erweiterung blendet sie aus und behält sie in den Dateien.",
   "config.variants.base": "Sprache, auf die die Variante zurückfällt, z. B. `de`.",
   "config.variants.requiredWhen": "Regulärer Ausdruck: Trifft er auf den Basistext zu, braucht die Variante einen eigenen Text.",
   "config.variants.forbidden": "Regulärer Ausdruck für Text, den die Variante nicht enthalten soll.",

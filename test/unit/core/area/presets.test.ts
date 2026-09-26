@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { compileFilePattern } from '../../../../src/core/area/filePattern';
 import { parseAreaDefinition } from '../../../../src/core/area/parseArea';
-import { ANGULAR_PRESET, PRESETS } from '../../../../src/core/area/presets';
+import { ANGULAR_PRESET, MDS_PRESET, PRESETS } from '../../../../src/core/area/presets';
 
 describe('presets', () => {
   it('pass their own validation', () => {
@@ -22,6 +22,23 @@ describe('presets', () => {
       locale: 'de-no-binnen-i',
     });
     expect(match('README.md')).toBeNull();
+  });
+
+  it('match the edu-sharing metadataset layout, with the file without locale as "default"', () => {
+    const match = compileFilePattern(MDS_PRESET);
+    expect(match('mds.properties')).toEqual({ bundle: 'mds', locale: 'default' });
+    expect(match('mds_de_DE.properties')).toEqual({ bundle: 'mds', locale: 'de_DE' });
+    expect(match('mds_override_de_DE.properties')).toEqual({ bundle: 'mds_override', locale: 'de_DE' });
+    expect(match('valuespaces_i18n.properties')).toEqual({ bundle: 'valuespaces_i18n', locale: 'default' });
+    expect(match('valuespace_lrt_i18n_fr_FR.properties')).toEqual({
+      bundle: 'valuespace_lrt_i18n',
+      locale: 'fr_FR',
+    });
+    expect(match('mds.xml')).toBeNull();
+  });
+
+  it('hide the guard line that opens the main metadataset files', () => {
+    expect(MDS_PRESET.ignoredKeys).toEqual(['this_is_a_bug_the_first_line_will_not_be_translated']);
   });
 
   it('merge Angular categories in the order of edu-sharing TRANSLATION_LIST', () => {

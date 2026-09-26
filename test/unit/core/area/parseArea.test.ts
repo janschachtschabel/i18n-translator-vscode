@@ -47,6 +47,13 @@ describe('parseAreaDefinition', () => {
     expect(errors).toMatch(/"mergeSemantics"/);
   });
 
+  it('accepts a list of hidden keys and refuses anything else', () => {
+    const hidden = { ...customArea, ignoredKeys: ['GUARD', 'A.B'] };
+    expect(parseAreaDefinition(hidden)).toEqual({ ok: true, area: hidden });
+    const result = parseAreaDefinition({ ...customArea, ignoredKeys: 'GUARD' });
+    expect(result.ok ? [] : result.errors).toEqual(['"ignoredKeys" must be a list of keys.']);
+  });
+
   it('requires roots unless the area can be detected', () => {
     const { roots, ...withoutRoots } = customArea;
     expect(parseAreaDefinition(withoutRoots).ok).toBe(false);
