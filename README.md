@@ -83,9 +83,21 @@ Was die Skripte tun und wie man sie steuert:
 - **Nur bestimmte Editoren:** vorher `EDU_I18N_EDITORS` setzen.
   - PowerShell: `$env:EDU_I18N_EDITORS = 'code'`, dann die Zeile oben.
   - Linux und macOS: `… | EDU_I18N_EDITORS=code bash`.
-- **Eine schon heruntergeladene VSIX:** `EDU_I18N_VSIX` auf ihren Pfad setzen.
+- **Eine schon heruntergeladene VSIX:** direkt installieren, etwa aus dem Download-Ordner:
+
+  ```powershell
+  code --install-extension "$env:USERPROFILE\Downloads\edu-sharing-i18n.vsix"
+  ```
+
 - **Vorher lesen:** [install.ps1](scripts/install.ps1) und [install.sh](scripts/install.sh) liegen im Repository und bei
   jeder Release.
+- **Eine heruntergeladene `install.ps1`:** `.\install.ps1` startet sie nicht, denn Windows markiert Downloads als aus
+  dem Internet, und mit der üblichen Ausführungsrichtlinie `RemoteSigned` führt PowerShell solche nicht signierten
+  Skripte nicht aus. So geht es:
+
+  ```powershell
+  powershell -NoProfile -ExecutionPolicy Bypass -File "$env:USERPROFILE\Downloads\install.ps1"
+  ```
 
 **Ohne Skript**, im Browser:
 1. Die [neueste VSIX](https://github.com/janschachtschabel/i18n-translator-vscode/releases/latest/download/edu-sharing-i18n.vsix)
@@ -98,6 +110,14 @@ Gut zu wissen:
 - **Aktualisieren:** denselben Weg noch einmal gehen; die neue Version ersetzt die alte. Was sich geändert hat, steht
   im [CHANGELOG](CHANGELOG.md).
 - **Entfernen:** in der Ansicht „Erweiterungen“ „Deinstallieren“ wählen.
+- **Wo die Erweiterung ist:**
+  - In VS Code steht sie in der Ansicht „Erweiterungen“ (Strg+Umschalt+X) unter „Installiert“ als „edu-sharing i18n“.
+  - Im Terminal zeigt `code --list-extensions --show-versions` die Zeile `janschachtschabel.edu-sharing-i18n@<Version>`.
+  - Ihr Symbol erscheint in der Aktivitätsleiste links. Übersetzungen zeigt die Seitenleiste erst in einem Ordner mit
+    `common/de.json`.
+  - War VS Code beim Installieren offen, einmal „Developer: Reload Window“ ausführen.
+- **Eigene VS-Code-Profile:** Die Kommandozeile installiert ins Standardprofil. Für ein anderes Profil die VSIX dort
+  über „Aus VSIX installieren…“ installieren oder die Erweiterung über ihr Zahnradmenü auf alle Profile anwenden.
 - **Kein Editor gefunden:** Unter macOS in VS Code „Shell Command: Install 'code' command in PATH“ ausführen. Unter
   Windows und Linux richtet die Installation von VS Code den Befehl ein; sonst den Weg im Browser nehmen.
 - **VS-Code-Forks** wie Windsurf oder Cursor installieren die VSIX genauso. Getestet ist die Extension dort nicht.
