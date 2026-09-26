@@ -15,7 +15,10 @@ import { createAreasView, type AreaNode, type AreasTreeProvider } from './views/
 import type { IssueDecorations } from './views/decorations';
 import { IndexStatusBar } from './views/statusBar';
 
-/** Returned by `activate`; the integration tests reach the index and read what the views show through it. */
+/**
+ * Returned by `activate` in the integration tests only, which reach the index and read what the views show through
+ * it. Other extensions get nothing: through it they could write files without the user's confirmations.
+ */
 export interface ExtensionApi {
   index: WorkspaceIndex;
   fileStore: FileStore;
@@ -28,7 +31,7 @@ export interface ExtensionApi {
   };
 }
 
-export function activate(context: vscode.ExtensionContext): ExtensionApi {
+export function activate(context: vscode.ExtensionContext): ExtensionApi | undefined {
   const log = vscode.window.createOutputChannel('edu-sharing i18n', { log: true });
   const index = new WorkspaceIndex(log);
   const backups = new BackupService(context.storageUri, index, log);
@@ -67,6 +70,9 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
   );
   // Not awaited: activation stays fast, and the views update when the first run completes.
   index.refresh().catch((error: unknown) => log.error('Indexing failed.', error));
+  if (context.extensionMode !== vscode.ExtensionMode.Test) {
+    return undefined;
+  }
   return {
     index,
     fileStore,

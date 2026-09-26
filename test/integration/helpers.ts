@@ -7,11 +7,15 @@ import type { HostToWebview } from '../../src/shared/protocol';
 export const EXTENSION_ID = 'janschachtschabel.edu-sharing-i18n';
 
 export async function activateExtension(): Promise<ExtensionApi> {
-  const extension = vscode.extensions.getExtension<ExtensionApi>(EXTENSION_ID);
+  const extension = vscode.extensions.getExtension<ExtensionApi | undefined>(EXTENSION_ID);
   if (!extension) {
     throw new Error(`extension ${EXTENSION_ID} is not installed in the test host`);
   }
-  return extension.activate();
+  const api = await extension.activate();
+  if (!api) {
+    throw new Error(`extension ${EXTENSION_ID} returns its API only in test mode`);
+  }
+  return api;
 }
 
 export function workspaceUri(relPath: string): vscode.Uri {
