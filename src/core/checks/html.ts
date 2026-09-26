@@ -1,6 +1,6 @@
 // The name ends where no name character follows, without backtracking into it: with `\b` instead of the lookahead,
 // an unclosed tag like `<a-a-a-…` was scanned again from every word boundary, quadratic in the text's length.
-const TAG = /<(\/?)([a-z][a-z0-9-]*)(?![\w-])[^<>]*>/gi;
+const TAG = /<(\/?)([a-z][a-z0-9-]*)(?![\w-])([^<>]*)>/gi;
 
 /**
  * HTML elements that occur in UI texts and mail templates. Other words in angle brackets are text:
@@ -16,20 +16,45 @@ const HTML_ELEMENTS = new Set([
   'tbody', 'td', 'tfoot', 'th', 'thead', 'time', 'title', 'tr', 'tt', 'u', 'ul', 'var', 'wbr',
 ]);
 
+/**
+ * Elements whose names are also words that label a value, as `<Title>` translates `<Titel>`: an opening tag
+ * without attributes counts only if the text closes it.
+ */
+// prettier-ignore
+const WORD_ELEMENTS = new Set([
+  'address', 'article', 'aside', 'body', 'button', 'caption', 'code', 'details', 'figure', 'footer', 'head',
+  'header', 'label', 'link', 'main', 'meta', 'section', 'style', 'summary', 'table', 'time', 'title',
+]);
+
 /** Sorted tag names of a text; closing tags are prefixed with `/`. Attributes and letter case are ignored. */
 export function tagSignature(text: string): string[] {
+  const isTag = tagTest(text);
   return [...text.matchAll(TAG)]
-    .map((match) => ({ closing: match[1]!, name: match[2]!.toLowerCase() }))
-    .filter(({ name }) => HTML_ELEMENTS.has(name))
-    .map(({ closing, name }) => `${closing}${name}`)
+    .filter(([, , name, attributes]) => isTag(name!, attributes!))
+    .map(([, closing, name]) => `${closing}${name!.toLowerCase()}`)
     .sort();
 }
 
 /** The text with its HTML tags blanked out; other words in angle brackets stay, as they are text. */
 export function withoutTags(text: string): string {
-  return text.replace(TAG, (tag, _closing, name: string) =>
-    HTML_ELEMENTS.has(name.toLowerCase()) ? ' ' : tag,
+  const isTag = tagTest(text);
+  return text.replace(TAG, (tag, _closing, name: string, attributes: string) =>
+    isTag(name, attributes) ? ' ' : tag,
   );
+}
+
+/** Whether a match of {@link TAG} in `text` is an HTML tag rather than a word in angle brackets. */
+function tagTest(text: string): (name: string, attributes: string) => boolean {
+  const closed = new Set(
+    [...text.matchAll(TAG)].filter(([, closing]) => closing).map(([, , name]) => name!.toLowerCase()),
+  );
+  return (name, attributes) => {
+    const element = name.toLowerCase();
+    return (
+      HTML_ELEMENTS.has(element) &&
+      (!WORD_ELEMENTS.has(element) || closed.has(element) || /[^\s/]/.test(attributes))
+    );
+  };
 }
 
 /** A tag of {@link tagSignature} as it is written in a text: `/b` → `</b>`, `b` → `<b>`. */

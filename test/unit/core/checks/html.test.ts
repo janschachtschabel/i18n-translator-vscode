@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { compareTags, tagSignature } from '../../../../src/core/checks/html';
+import { compareTags, tagSignature, withoutTags } from '../../../../src/core/checks/html';
 
 describe('tagSignature', () => {
   it('lists opening and closing tags, sorted', () => {
@@ -17,6 +17,18 @@ describe('tagSignature', () => {
   it('treats words in angle brackets as text (edu-sharing "<keine>", "<sonstige>")', () => {
     expect(tagSignature('<keine>')).toEqual([]);
     expect(compareTags('Autor: <keine>', 'Author: <not set>')).toEqual({ missing: [], extra: [] });
+  });
+
+  // A translated label may be the name of an element (audit L-09).
+  it('takes element names that are words as tags only with attributes or a closing tag', () => {
+    expect(compareTags('Der <Titel> fehlt', 'The <Title> is missing')).toEqual({ missing: [], extra: [] });
+    expect(tagSignature('um <zeit> Uhr, at <time>')).toEqual([]);
+    expect(tagSignature('<title>Seite</title>')).toEqual(['/title', 'title']);
+    expect(tagSignature('<label for="name">Name')).toEqual(['label']);
+    expect(tagSignature('Name</label>')).toEqual(['/label']);
+    // Other elements are markup also without their closing tag.
+    expect(tagSignature('<b>Achtung')).toEqual(['b']);
+    expect(withoutTags('The <Title> is <b>bold</b>')).toBe('The <Title> is  bold ');
   });
 
   it('reads a tag name only up to the next character that cannot belong to it', () => {

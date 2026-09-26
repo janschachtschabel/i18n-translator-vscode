@@ -295,7 +295,7 @@ Befunde vom Typ „Hinweis" erscheinen standardmäßig nur im Editor (Filter und
 | `key-overridden` | Warnung | ja | gleicher Top-Level-Key in mehreren Kategorien mit anderem Text; die spätere Kategorie gewinnt app-weit | de 27 · en 3 · fr 1 · it 3 |
 | `duplicate-key` | Warnung | ja | Key doppelt in derselben Datei (der letzte gewinnt) | MDS: 14 |
 | `variant-needed` | Warnung | ja | `de` enthält die Sie-Form bzw. `{{GENDER_SEPARATOR}}`, die Variante hat keine eigene Fassung | `de-informal` 133 · `de-no-binnen-i` 6 |
-| `html-mismatch` | Warnung | ja | HTML-Tags weichen von der Referenz ab; nur echte HTML-Elemente, Wörter in spitzen Klammern wie `<keine>` sind Text | 22 (z. B. fehlendes `<b>` in `WORKSPACE.SHARE.PUBLISH_ACTIVE_DOCUMENT`) |
+| `html-mismatch` | Warnung | ja | HTML-Tags weichen von der Referenz ab; nur echte HTML-Elemente, Wörter in spitzen Klammern wie `<keine>` sind Text. Elementnamen, die auch Wörter sind (`<Title>` als Übersetzung von `<Titel>`), zählen nur mit Attributen oder schließendem Tag | 22 (z. B. fehlendes `<b>` in `WORKSPACE.SHARE.PUBLISH_ACTIVE_DOCUMENT`) |
 | `variant-inconsistent` | Hinweis | nein | informelle Variante enthält die Sie-Form (heuristisch) | 5 (teils „Sie" = „they") |
 | `variant-orphan` | Hinweis | nein | Varianten-Key ohne Basis-Key | 2 |
 | `same-as-reference` | Hinweis | nein | identisch mit der Referenz, evtl. unübersetzt (mind. 4 Buchstaben, Ignorierliste) | 338 |
