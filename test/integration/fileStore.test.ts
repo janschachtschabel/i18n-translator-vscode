@@ -1,5 +1,4 @@
 import * as assert from 'node:assert/strict';
-import { chmodSync } from 'node:fs';
 import * as vscode from 'vscode';
 import type { Issue } from '../../src/core/checks/types';
 import { planAddLanguage, planEdit, type BundleEdit } from '../../src/core/edit/planEdit';
@@ -431,22 +430,28 @@ suite('FileStore', () => {
   test('writes every file of a change or none', async () => {
     const files = ['de', 'en', 'fr'].map((locale) => uriOf('common', locale));
     const before = await Promise.all(files.map(read));
-    // The last file of the change cannot be written: the first two must come back.
-    chmodSync(files[2]!.fsPath, 0o444);
-    try {
-      const result = await api.fileStore.write(
-        ref,
-        edit('common', {
-          kind: 'addKey',
-          key: keyFromSegments(['NEW']),
-          values: { de: 'Neu', en: 'New', fr: 'Nouveau' },
-          after: id('SAVE'),
-        }),
-      );
-      assert.ok(!result.ok && result.reason === 'error', JSON.stringify(result));
-    } finally {
-      chmodSync(files[2]!.fsPath, 0o644);
-    }
+    // The last file of the change cannot be written (e.g. read-only): the first two must come back. A failing
+    // write stands in for it, as file permissions do not stop root (audit T-10).
+    const store = new FileStore(api.index, log, {
+      files: {
+        readFile: (uri) => vscode.workspace.fs.readFile(uri),
+        delete: (uri) => vscode.workspace.fs.delete(uri),
+        writeFile: (uri, bytes) =>
+          uri.toString() === files[2]!.toString()
+            ? Promise.reject(vscode.FileSystemError.NoPermissions(uri))
+            : vscode.workspace.fs.writeFile(uri, bytes),
+      },
+    });
+    const result = await store.write(
+      ref,
+      edit('common', {
+        kind: 'addKey',
+        key: keyFromSegments(['NEW']),
+        values: { de: 'Neu', en: 'New', fr: 'Nouveau' },
+        after: id('SAVE'),
+      }),
+    );
+    assert.ok(!result.ok && result.reason === 'error' && !result.notRestored, JSON.stringify(result));
     assert.deepEqual(await Promise.all(files.map(read)), before);
   });
 });
