@@ -15,8 +15,9 @@ const frOf = (root: IndexedRoot) => vscode.Uri.joinPath(root.folder.uri, common(
 const read = (uri: vscode.Uri) => vscode.workspace.fs.readFile(uri);
 
 /**
- * The workspace of the profile "multi" (.vscode-test.mjs): two copies of the fixture, "first" and "second", and
- * "nested", a folder inside "first" that holds its translation folder. Skipped in the other profiles (audit T-05).
+ * The workspace of the profile "multi" (.vscode-test.mjs): two copies of the fixture, "first" and "second";
+ * "nested", a folder inside "first" that holds its translation folder; and "data", the translation folder of a third
+ * copy itself. Skipped in the other profiles (audit T-05).
  */
 suite('multi-root workspace', () => {
   let api: ExtensionApi;
@@ -35,9 +36,36 @@ suite('multi-root workspace', () => {
 
   test('indexes each translation folder once, in the innermost workspace folder', async () => {
     assert.deepEqual((await roots()).map((root) => [root.folder.name, root.analysis.root]).sort(), [
+      ['data', ''],
       ['nested', 'src/assets/i18n'],
       ['second', 'Frontend/src/assets/i18n'],
     ]);
+  });
+
+  // Many open the translation folder itself (…/assets/i18n) rather than the checkout: its root is the folder.
+  test('reads and writes in a workspace folder that is the translation folder itself', async () => {
+    const data = rootIn(await roots(), 'data');
+    assert.equal(common(data).file('fr')!.relPath, 'common/fr.json');
+    const fr = frOf(data);
+    const before = await read(fr);
+    try {
+      const result = await api.fileStore.write(rootRef(data), (analysis) =>
+        planEdit(
+          analysis.bundles.find((bundle) => bundle.name === 'common')!,
+          {
+            kind: 'setText',
+            entryId: keyFromSegments(['ASK']).id,
+            locale: 'fr',
+            value: 'Continuer ?',
+          },
+        ),
+      );
+      assert.deepEqual(result, { ok: true });
+      assert.match(new TextDecoder().decode(await read(fr)), /"ASK": "Continuer \?"/);
+    } finally {
+      await vscode.workspace.fs.writeFile(fr, before);
+      await api.index.refresh();
+    }
   });
 
   test('writes into the folder of the edited root only', async () => {
@@ -94,6 +122,6 @@ suite('multi-root workspace', () => {
   // Two installations had editors of the same name (audit L-13).
   test('names the workspace folder in the titles of the editors of the same bundle', async () => {
     const titles = (await roots()).map((root) => api.editors.open(root, common(root)).panel.title);
-    assert.deepEqual(titles.sort(), ['common (nested)', 'common (second)']);
+    assert.deepEqual(titles.sort(), ['common (data)', 'common (nested)', 'common (second)']);
   });
 });

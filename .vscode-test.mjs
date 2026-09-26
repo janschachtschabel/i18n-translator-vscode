@@ -13,19 +13,21 @@ function freshWorkspace(label) {
 }
 
 /**
- * A workspace of three folders (audit T-05): two copies of the fixture, and a folder inside the first that holds
- * its translation folder, which then belongs to the innermost folder only.
+ * A workspace of four folders (audit T-05): two copies of the fixture; a folder inside the first that holds its
+ * translation folder, which then belongs to the innermost folder only; and the translation folder of a third copy
+ * itself, as many open it.
  */
 function multiRootWorkspace() {
   const folder = 'out/test-workspace/multi';
   rmSync(folder, { recursive: true, force: true });
-  for (const name of ['first', 'second']) {
+  for (const name of ['first', 'second', 'third']) {
     cpSync('test/fixtures/workspace-basic', `${folder}/${name}`, { recursive: true });
   }
   const folders = [
     { path: 'first', name: 'first' },
     { path: 'second', name: 'second' },
     { path: 'first/Frontend', name: 'nested' },
+    { path: 'third/Frontend/src/assets/i18n', name: 'data' },
   ];
   writeFileSync(`${folder}/multi.code-workspace`, JSON.stringify({ folders }, null, 2));
   return `${folder}/multi.code-workspace`;
