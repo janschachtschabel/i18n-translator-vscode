@@ -258,6 +258,10 @@ export class EditorPanel implements vscode.Disposable {
    * may have changed another bundle, then this one gets nothing), or that it is gone.
    */
   private show(snapshot: IndexSnapshot): Promise<void> {
+    // An editor that closed meanwhile (e.g. while `init` was on its way) shows nothing: its title would throw.
+    if (this.disposed) {
+      return Promise.resolve();
+    }
     // Roots may come and go, e.g. with a second checkout: the title names the root while there are several.
     this.panel.title = editorTitle(snapshot, this.target);
     const found = findBundle(snapshot, this.target);

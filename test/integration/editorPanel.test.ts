@@ -2,12 +2,13 @@ import * as assert from 'node:assert';
 import * as vscode from 'vscode';
 import { planEdit } from '../../src/core/edit/planEdit';
 import { keyFromSegments } from '../../src/core/model/keys';
+import { EditorPanel } from '../../src/extension/panels/editorPanel';
 import { undoFromEditor } from '../../src/extension/panels/undoHandler';
 import { rootRef } from '../../src/extension/services/workspaceIndex';
 import { sameBytes } from '../../src/extension/services/files';
 import { DEFAULT_FILTER } from '../../src/shared/filter';
 import { DEFAULT_UI_STATE, type UiState } from '../../src/shared/protocol';
-import { activateExtension, answering, nextPost } from './helpers';
+import { activateExtension, answering, EXTENSION_ID, nextPost } from './helpers';
 
 function editorTabs(): string[] {
   return vscode.window.tabGroups.all
@@ -131,6 +132,37 @@ suite('editor panel', () => {
     const disposed = new Promise<void>((resolve) => panel.onDidDispose(() => resolve()));
     assert.strictEqual(editors.restore(panel, { bundleId: 42 }), undefined);
     await disposed;
+  });
+
+  // Setting the title of a closed panel throws: closing an editor while it loaded logged an error.
+  test('closes while it loads without an error', async () => {
+    const { index, fileStore } = await activateExtension();
+    const root = (await index.refresh()).roots[0]!;
+    const common = root.analysis.bundles.find((bundle) => bundle.name === 'common')!;
+    const errors: unknown[] = [];
+    const quiet = () => undefined;
+    const log = { error: (...args: unknown[]) => void errors.push(args), warn: quiet, debug: quiet };
+    const panel = vscode.window.createWebviewPanel('eduI18n.editor', '', vscode.ViewColumn.One);
+    const editor = new EditorPanel(
+      panel,
+      { folder: root.folder.uri.toString(), bundleId: common.id },
+      {
+        extensionUri: vscode.extensions.getExtension(EXTENSION_ID)!.extensionUri,
+        workspaceState: { keys: () => [], get: quiet, update: async () => undefined } as vscode.Memento,
+        index,
+        fileStore,
+        prompts: answering(),
+        log: log as unknown as vscode.LogOutputChannel,
+        command: async () => undefined,
+      },
+    );
+    panel.onDidDispose(() => editor.dispose());
+
+    // The answer to `ready` is on its way when the panel closes.
+    const ready = editor.receive({ type: 'ready' });
+    panel.dispose();
+    await ready;
+    assert.deepStrictEqual(errors, []);
   });
 
   test('keeps the view state of a bundle for the next time its editor opens', async () => {
