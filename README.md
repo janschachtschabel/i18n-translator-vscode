@@ -104,8 +104,8 @@ Grenzen: Die Extension erkennt höchstens 20 Wurzeln je Bereich und Arbeitsberei
 `eduI18n.roots` festlegen), prüft keine Wurzel mit mehr als 5.000 Dateien und liest keine Übersetzungsdatei über 5 MB.
 Hinter symbolischen Verknüpfungen im Arbeitsbereichsordner liest und schreibt sie keine Datei: Eine Verknüpfung könnte
 aus dem Ordner herausführen.
-Reguläre Ausdrücke aus den Einstellungen dürfen höchstens 1.000 Zeichen lang sein und keine wiederholte Gruppe haben,
-die mit einem wiederholten Teil beginnt, wie `(a+)+`.
+Reguläre Ausdrücke aus den Einstellungen dürfen höchstens 1.000 Zeichen lang sein und keine mehr als dreimal
+wiederholte Gruppe haben, die mit einem wiederholten Teil beginnt, wie `(a+)+` oder `(a+){1,20}`.
 
 ## Protokoll
 

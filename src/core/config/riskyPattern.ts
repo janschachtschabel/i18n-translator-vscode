@@ -1,7 +1,16 @@
 const MAX_PATTERN_LENGTH = 1000;
 
+/**
+ * How often a group that starts with a repeated part may repeat: `(a+){3}` splits a text no more ways than `a+a+a+`,
+ * while `(a+){20}` or `(a+){1,100}` backtrack like `(a+)+` on any text a path or a translation holds.
+ */
+const MAX_REPEATS = 3;
+
 /** `*`, `+`, `?` or `{n}`, `{n,}`, `{n,m}`, each possibly lazy; group 2 is set for `{n,…}`, group 3 is its maximum. */
 const QUANTIFIER = /(?:[*+?]|\{(\d+)(,(\d*))?\})\??/y;
+
+/** `(?=`, `(?!`, `(?<=` or `(?<!`. */
+const LOOKAROUND = /\(\?<?[=!]/y;
 
 /** A group while it is scanned. */
 interface Group {
@@ -9,12 +18,15 @@ interface Group {
   startsRepeated: boolean;
   /** Whether the next atom starts an alternative. */
   atStart: boolean;
+  /** Whether it is a lookaround, which matches no characters. */
+  lookaround: boolean;
 }
 
 /**
  * Why a regular expression from the settings is refused, or undefined if it is not: it is very long, or a group
- * repeated without bound has an alternative that starts with a repeated part, like `(a+)+` or `(\s*\w+)*`. The
- * extension host runs the expressions on every index run, and such a group can take exponential time.
+ * repeated more than {@link MAX_REPEATS} times has an alternative that starts with a repeated part, like `(a+)+`,
+ * `(\s*\w+)*` or `(a+){1,20}`. The extension host runs the expressions on every index run, and such a group can take
+ * exponential time.
  *
  * simplify: other exponential forms, such as overlapping alternatives in `(a|aa)+`, pass. The settings come from
  * a trusted workspace; a full analysis would need a regex parser.
@@ -23,7 +35,7 @@ export function riskyPattern(source: string): string | undefined {
   if (source.length > MAX_PATTERN_LENGTH) {
     return `it is longer than ${MAX_PATTERN_LENGTH} characters`;
   }
-  const groups: Group[] = [{ startsRepeated: false, atStart: true }];
+  const groups: Group[] = [{ startsRepeated: false, atStart: true, lookaround: false }];
   // The atom a quantifier would repeat: whether it started an alternative, and the group it was, if one.
   let last: { first: boolean; group?: Group } | undefined;
   let index = 0;
@@ -32,8 +44,9 @@ export function riskyPattern(source: string): string | undefined {
     QUANTIFIER.lastIndex = index;
     const quantifier = last && QUANTIFIER.exec(source);
     if (quantifier) {
-      const unbounded = /^[*+]/.test(quantifier[0]) || quantifier[3] === '';
-      if (unbounded && last!.group?.startsRepeated) {
+      const max = quantifier[2] === undefined ? quantifier[1] : quantifier[3];
+      const repeats = /^[*+]/.test(quantifier[0]) || max === '' || Number(max) > MAX_REPEATS;
+      if (repeats && last!.group?.startsRepeated) {
         return 'a repeated group starts with a repeated part, which can take exponential time';
       }
       current.startsRepeated ||= last!.first;
@@ -43,16 +56,22 @@ export function riskyPattern(source: string): string | undefined {
     }
     const char = source[index]!;
     if (char === '(') {
-      groups.push({ startsRepeated: false, atStart: true });
+      LOOKAROUND.lastIndex = index;
+      groups.push({ startsRepeated: false, atStart: true, lookaround: LOOKAROUND.test(source) });
       last = undefined;
       index += groupOpeningLength(source, index);
     } else if (char === ')' && groups.length > 1) {
       const group = groups.pop()!;
       const parent = groups.at(-1)!;
-      last = { first: parent.atStart, group };
-      // A group that starts with a repeated part lets the alternative it starts start with one too.
-      parent.startsRepeated ||= parent.atStart && group.startsRepeated;
-      parent.atStart = false;
+      if (group.lookaround) {
+        // It matches no characters: the next atom starts the alternative if the lookaround did.
+        last = { first: false };
+      } else {
+        last = { first: parent.atStart, group };
+        // A group that starts with a repeated part lets the alternative it starts start with one too.
+        parent.startsRepeated ||= parent.atStart && group.startsRepeated;
+        parent.atStart = false;
+      }
       index++;
     } else if (char === '|') {
       current.atStart = true;

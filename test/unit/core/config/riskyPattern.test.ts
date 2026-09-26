@@ -19,6 +19,13 @@ describe('riskyPattern', () => {
       '(x|y+)+',
       '(a{2,})+',
       '(a+){2,}',
+      // A bound or a count above a few repeats the group just as often.
+      '(a+){4}',
+      '(a+){20}',
+      '(a+){1,100}',
+      // A lookaround matches no characters, so the repeated part after it starts the group.
+      '(?:(?=a)a+)+',
+      '(?:(?<!b)a+)*',
       '(?<word>a?b)+',
       // Escapes and classes are one atom each, whatever they contain.
       '(\\)+)+',
@@ -40,6 +47,8 @@ describe('riskyPattern', () => {
       '(a+)',
       '(a+)?',
       '(a+){3}',
+      '(a+){2,3}',
+      '(?:(?=a+)b)+',
       '(ab)+',
       'a+b+',
       '\\(a+\\)+',
