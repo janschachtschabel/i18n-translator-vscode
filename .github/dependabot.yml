@@ -6,7 +6,21 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    ignore:
+      # The types of the oldest supported VS Code (engines.vscode): newer ones offer APIs that 1.90 lacks, and vsce
+      # refuses to package with them. They move by hand, together with engines.vscode.
+      - dependency-name: '@types/vscode'
+      # The types of the Node version the extension targets (engines.node, .nvmrc): minor and patch updates only.
+      - dependency-name: '@types/node'
+        update-types: ['version-update:semver-major']
+      # A new major of TypeScript waits until typescript-eslint supports it; 7.0 does not even install with it.
+      - dependency-name: typescript
+        update-types: ['version-update:semver-major']
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
+    groups:
+      # The release job downloads what the build uploaded: both actions move together.
+      artifact-actions:
+        patterns: ['actions/upload-artifact', 'actions/download-artifact']

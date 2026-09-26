@@ -88,3 +88,10 @@ Die Version folgt den Phasen: `0.<Phase>.<Korrektur>`. Eine Release entsteht aus
 Sie betreffen nur den lokalen Testlauf und landen nicht in der VSIX.
 Die CI prüft deshalb nur die Laufzeitabhängigkeiten (`npm audit --omit=dev`), und Dependabot schlägt
 Aktualisierungen der Pakete und der gepinnten Actions vor.
+
+Einige Updates schlägt Dependabot bewusst nicht vor (`.github/dependabot.yml`):
+- `@types/vscode`: Es folgt von Hand `engines.vscode`, also der ältesten unterstützten VS-Code-Version.
+- Major-Updates von `@types/node`: Die Typen passen zur Node-Version aus `engines.node` und `.nvmrc`.
+- Major-Updates von TypeScript: Sie warten, bis `typescript-eslint` sie unterstützt.
+- `actions/upload-artifact` und `actions/download-artifact` kommen nur gemeinsam, weil der Release-Job lädt, was der
+  Build hochgeladen hat.
