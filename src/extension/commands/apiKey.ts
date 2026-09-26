@@ -29,7 +29,10 @@ export async function setApiKey({ keys, prompts }: ApiKeyContext): Promise<boole
     return false;
   }
   await keys.set(typed);
-  void showInfo(vscode.l10n.t("The b-api key is saved in VS Code's secret storage."));
+  const test = vscode.l10n.t('Test Connection');
+  void showInfo(vscode.l10n.t("The b-api key is saved in VS Code's secret storage."), test).then(
+    (chosen) => chosen === test && vscode.commands.executeCommand('eduI18n.testAiConnection'),
+  );
   return true;
 }
 

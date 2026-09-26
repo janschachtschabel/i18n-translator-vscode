@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { selectModel, testAiConnection } from './commands/aiConnection';
 import { clearApiKey, setApiKey } from './commands/apiKey';
 import { backUpNow, restoreBackup } from './commands/backup';
 import { checkTranslations } from './commands/check';
@@ -11,6 +12,7 @@ import { undoLastChange } from './commands/undoLastChange';
 import { DiagnosticsPublisher } from './diagnostics/diagnosticsPublisher';
 import { EditorPanels } from './panels/editorPanels';
 import { MailPreview } from './panels/mailPreview';
+import { AiService } from './services/aiService';
 import { ApiKeyStore } from './services/apiKeyStore';
 import { BackupService } from './services/backupService';
 import { FileStore } from './services/fileStore';
@@ -28,7 +30,7 @@ export interface ExtensionApi {
   fileStore: FileStore;
   editors: EditorPanels;
   mailPreview: MailPreview;
-  ai: { keys: ApiKeyStore };
+  ai: { keys: ApiKeyStore; service: AiService };
   views: {
     areas: AreasTreeProvider;
     areasView: vscode.TreeView<AreaNode>;
@@ -46,6 +48,7 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi | undef
   });
   const keyContext = { index, fileStore, prompts: vscodePrompts };
   const keys = new ApiKeyStore(context.secrets);
+  const ai = new AiService(keys, log);
   const mailPreview = new MailPreview(index, log);
   const editors = new EditorPanels({
     extensionUri: context.extensionUri,
@@ -68,6 +71,7 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi | undef
     mailPreview,
     areas.disposable,
     statusBar,
+    ai,
     vscode.commands.registerCommand('eduI18n.check', () => checkTranslations(index)),
     vscode.commands.registerCommand('eduI18n.configureRoots', () => configureRoots()),
     // Returns nothing: VS Code would send a result to the workbench on every click in the tree.
@@ -83,6 +87,8 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi | undef
     vscode.commands.registerCommand('eduI18n.clearApiKey', () =>
       clearApiKey({ keys, prompts: vscodePrompts }),
     ),
+    vscode.commands.registerCommand('eduI18n.testAiConnection', () => testAiConnection(ai, log)),
+    vscode.commands.registerCommand('eduI18n.selectModel', () => selectModel(ai, vscodePrompts, log)),
   );
   // Not awaited: activation stays fast, and the views update when the first run completes.
   index.refresh().catch((error: unknown) => log.error('Indexing failed.', error));
@@ -94,7 +100,7 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi | undef
     fileStore,
     editors,
     mailPreview,
-    ai: { keys },
+    ai: { keys, service: ai },
     views: {
       areas: areas.provider,
       areasView: areas.view,

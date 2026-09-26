@@ -172,6 +172,16 @@
         "command": "eduI18n.clearApiKey",
         "title": "%cmd.clearApiKey%",
         "category": "edu-sharing i18n"
+      },
+      {
+        "command": "eduI18n.testAiConnection",
+        "title": "%cmd.testAiConnection%",
+        "category": "edu-sharing i18n"
+      },
+      {
+        "command": "eduI18n.selectModel",
+        "title": "%cmd.selectModel%",
+        "category": "edu-sharing i18n"
       }
     ],
     "menus": {
@@ -203,6 +213,16 @@
           "command": "eduI18n.setApiKey",
           "when": "view == eduI18n.areas",
           "group": "2_ai@1"
+        },
+        {
+          "command": "eduI18n.testAiConnection",
+          "when": "view == eduI18n.areas",
+          "group": "2_ai@2"
+        },
+        {
+          "command": "eduI18n.selectModel",
+          "when": "view == eduI18n.areas",
+          "group": "2_ai@3"
         }
       ],
       "view/item/context": [
