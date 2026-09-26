@@ -1,0 +1,17 @@
+<templates>
+  <template name="header">
+    <message><![CDATA[
+      <div>Kopf</div>
+    ]]>
+    </message>
+  </template>
+  <template name="stylesheet">
+    <style><![CDATA[
+      body{}
+    ]]></style>
+  </template>
+  <template name="invited">
+    <subject>Einladung</subject>
+    <message><![CDATA[<p>Hallo {{name}}</p>]]></message>
+  </template>
+</templates>

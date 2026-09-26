@@ -133,7 +133,7 @@ function fieldInfo(text: string, element: XmlElement): MailFieldInfo {
   const sections = children.filter((child) => child.kind === 'cdata');
   if (sections.length === 1 && children.every((child) => child.kind === 'cdata' || blank(child.range))) {
     const valueRange = withoutLayout(text, sections[0]!.inner);
-    return { field, element, value: text.slice(...valueRange), valueRange, mode: 'cdata' };
+    return { field, element, value: lineFeeds(text.slice(...valueRange)), valueRange, mode: 'cdata' };
   }
   const valueRange = withoutLayout(text, element.content);
   let value = '';
@@ -143,10 +143,16 @@ function fieldInfo(text: string, element: XmlElement): MailFieldInfo {
     const to = Math.min(end, valueRange[1]);
     if (from < to) {
       // Layout is only ever cut off white space at the edges of text, never inside a CDATA section.
-      value += child.kind === 'cdata' ? text.slice(from, to) : decodeEntities(text.slice(from, to), from);
+      const raw = lineFeeds(text.slice(from, to));
+      value += child.kind === 'cdata' ? raw : decodeEntities(raw, from);
     }
   }
   return { field, element, value, valueRange, mode: 'text' };
+}
+
+/** XML reads every line break as a line feed, in CDATA sections too. */
+function lineFeeds(raw: string): string {
+  return raw.replace(/\r\n?/g, '\n');
 }
 
 /**

@@ -283,7 +283,8 @@
                 "type": "string",
                 "enum": [
                   "json-nested",
-                  "properties"
+                  "properties",
+                  "mail-xml"
                 ],
                 "description": "%config.areas.format%"
               },
