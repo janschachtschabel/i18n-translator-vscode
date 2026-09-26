@@ -616,7 +616,8 @@
     "format:check": "prettier --check .",
     "test:unit": "vitest run --coverage",
     "test:integration": "node esbuild.mjs && node esbuild.mjs --tests && vscode-test",
-    "check:repo": "tsx scripts/check-repo.ts"
+    "check:repo": "tsx scripts/check-repo.ts",
+    "notices": "tsx scripts/third-party-notices.ts"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

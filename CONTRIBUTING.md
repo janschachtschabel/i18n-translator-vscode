@@ -25,6 +25,7 @@ Mit **F5** („Run Extension") startet ein Extension Development Host mit dem Be
 | `npm run test:unit` | Unit-Tests (vitest) |
 | `npm run test:integration` | Integrationstests in VS Code 1.90.0 und stable (`-- --label min` bzw. `-- --label stable` für nur eine Version) |
 | `npm run package` | erzeugt die VSIX |
+| `npm run notices` | schreibt `ThirdPartyNotices.txt` neu; nach jeder neuen oder aktualisierten Laufzeitabhängigkeit, ein Test prüft es |
 
 ## Architektur
 
