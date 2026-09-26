@@ -33,6 +33,14 @@ function multiRootWorkspace() {
   return `${folder}/multi.code-workspace`;
 }
 
+/** A data folder like the one of the old standalone app: Angular JSON, metadatasets and mail templates. */
+function formatsWorkspace() {
+  const folder = 'out/test-workspace/formats';
+  rmSync(folder, { recursive: true, force: true });
+  cpSync('test/fixtures/workspace-formats', folder, { recursive: true });
+  return folder;
+}
+
 const base = {
   files: 'out/test/integration/**/*.test.js',
   mocha: { ui: 'tdd', timeout: 20000 },
@@ -51,6 +59,14 @@ export default defineConfig([
     workspaceFolder: multiRootWorkspace(),
     ...base,
     files: 'out/test/integration/multiRoot.test.js',
+  },
+  // All three formats in one data folder; the suite skips itself where there are no mail templates.
+  {
+    label: 'formats',
+    version: 'stable',
+    workspaceFolder: formatsWorkspace(),
+    ...base,
+    files: 'out/test/integration/formats.test.js',
   },
   ...(process.env.EDU_I18N_PERF
     ? [

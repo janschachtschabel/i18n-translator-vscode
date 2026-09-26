@@ -1,0 +1,16 @@
+<templates>
+	<template name="invited">
+		<subject>Einladung</subject>
+		<message><![CDATA[
+			<p>Hallo {{name}}</p>
+		]]>
+		</message>
+	</template>
+	<template name="added_inbox">
+		<subject>Neues Objekt</subject>
+		<message><![CDATA[
+			<p>Etwas Neues</p>
+		]]>
+		</message>
+	</template>
+</templates>
