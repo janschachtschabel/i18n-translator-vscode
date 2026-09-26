@@ -5,7 +5,7 @@ import { rootsFromMarkers } from '../../core/discovery/discover';
 import { filesToRead, type SourceFile } from '../../core/pipeline/analyze';
 import { revisionOf } from '../../core/util/hash';
 import { messageOf } from './errors';
-import { linkOnPath } from './links';
+import { isLinkType, linkedFolders, linkOnTheWay } from './links';
 import { relativeUriPath } from './uriPaths';
 
 /**
@@ -75,12 +75,14 @@ export async function readFiles(
   report: (message: string) => void,
   limits = ROOT_LIMITS,
 ): Promise<SourceFile[]> {
-  const checked = new Set<string>();
+  const linked = await linkedFolders(folder.uri, paths);
   const files = await Promise.all(
     paths.map(async (relPath) => {
       const uri = vscode.Uri.joinPath(folder.uri, relPath);
       try {
-        const link = await linkOnPath(folder.uri, relPath, checked);
+        // One look at the file tells whether it is a link itself and how large it is.
+        const stat = await vscode.workspace.fs.stat(uri);
+        const link = linkOnTheWay(relPath, linked) ?? (isLinkType(stat.type) ? relPath : undefined);
         if (link !== undefined) {
           report(
             vscode.l10n.t('{file} is reached through the symbolic link {link} and was not read.', {
@@ -90,7 +92,7 @@ export async function readFiles(
           );
           return undefined;
         }
-        if ((await vscode.workspace.fs.stat(uri)).size > limits.fileBytes) {
+        if (stat.size > limits.fileBytes) {
           const size = `${Math.round(limits.fileBytes / 1024)} KB`;
           report(vscode.l10n.t('{file} is larger than {size} and was not read.', { file: relPath, size }));
           return undefined;
