@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ANGULAR_PRESET, MDS_PRESET } from '../../../../src/core/area/presets';
+import { ANGULAR_PRESET, MAIL_PRESET, MDS_PRESET } from '../../../../src/core/area/presets';
 import { formatMessage } from '../../../../src/core/checks/messages';
 import {
   planAddLanguage,
@@ -478,5 +478,47 @@ describe('planEdit and planAddLanguage with the hidden guard line of metadataset
     expect(summary(planAddLanguage(mdsAnalysis.bundles, MDS_PRESET, 'es_ES'))).toEqual([
       `create mds_es_ES.properties: ${JSON.stringify('this_is_a_bug_the_first_line_will_not_be_translated=what the hell\n')}`,
     ]);
+  });
+});
+
+describe('planEdit with mail templates', () => {
+  const mail = analyzeTexts(
+    {
+      'templates_de_DE.xml':
+        '<templates><template name="a"><subject>A</subject><message>MA</message></template>' +
+        '<template name="b"><message>MB</message></template></templates>',
+      'templates_fr_FR.xml': '<templates><template name="a"><subject>A fr</subject></template></templates>',
+    },
+    MAIL_PRESET,
+  ).bundles[0]!;
+  const field = (...segments: string[]) => keyFromSegments(segments).id;
+
+  it('fills a missing field in its template, after the field before it', () => {
+    expect(
+      summary(
+        planEdit(mail, { kind: 'setText', entryId: field('a', 'message'), locale: 'fr_FR', value: 'M' }),
+      ),
+    ).toEqual(['templates_fr_FR.xml: insert a.message after a.subject = M']);
+  });
+
+  it('fills a missing template after the template before it', () => {
+    expect(
+      summary(
+        planEdit(mail, { kind: 'setText', entryId: field('b', 'message'), locale: 'fr_FR', value: 'M' }),
+      ),
+    ).toEqual(['templates_fr_FR.xml: insert b.message after a = M']);
+  });
+
+  it('refuses a new key that names no field of a template', () => {
+    expect(
+      summary(
+        planEdit(mail, { kind: 'addKey', key: keyFromSegments(['neu', 'titel']), values: { de_DE: 'T' } }),
+      ),
+    ).toBe('invalid-template-key');
+    expect(
+      summary(
+        planEdit(mail, { kind: 'addKey', key: keyFromSegments(['neu', 'subject']), values: { de_DE: 'T' } }),
+      ),
+    ).toEqual(['templates_de_DE.xml: insert neu.subject = T']);
   });
 });

@@ -53,4 +53,20 @@ export const MDS_PRESET: AreaDefinition = {
   detect: { glob: '**/metadatasets/i18n/mds.properties', marker: 'mds.properties' },
 };
 
-export const PRESETS: readonly AreaDefinition[] = [ANGULAR_PRESET, MDS_PRESET];
+/**
+ * Mail templates of edu-sharing (`config/defaults/src/main/resources/mailtemplates/`): one bundle `templates`;
+ * `templates.xml` is the English base file (`default`), `templates_{locale}.xml` the languages. Subject and message of
+ * every template are the texts. Override files (`templates_de_DE_override.xml`) do not belong to it.
+ */
+export const MAIL_PRESET: AreaDefinition = {
+  id: 'edu-sharing.mail',
+  label: 'Mail templates',
+  format: 'mail-xml',
+  roots: [],
+  files: 'templates[_{locale}].xml',
+  localePattern: '[a-z]{2}_[A-Z]{2}',
+  bundleName: 'templates',
+  detect: { glob: '**/mailtemplates/templates.xml', marker: 'templates.xml' },
+};
+
+export const PRESETS: readonly AreaDefinition[] = [ANGULAR_PRESET, MDS_PRESET, MAIL_PRESET];

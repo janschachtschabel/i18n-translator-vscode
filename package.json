@@ -42,6 +42,7 @@
   "activationEvents": [
     "workspaceContains:**/common/de.json",
     "workspaceContains:**/metadatasets/i18n/mds.properties",
+    "workspaceContains:**/mailtemplates/templates.xml",
     "onWebviewPanel:eduI18n.editor"
   ],
   "capabilities": {

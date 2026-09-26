@@ -1,4 +1,5 @@
 import type { AreaDefinition } from '../area/areaDefinition';
+import { ADAPTERS } from '../formats/registry';
 import type { Bundle } from '../model/bundle';
 import { displayKey, isKeyPrefix, type EntryKey } from '../model/keys';
 import { editProblem, editWarning, type EditProblem, type EditWarning } from './editMessages';
@@ -16,6 +17,9 @@ export interface KeyCheck {
 export function newKeyProblem(key: EntryKey, bundle: Bundle): EditProblem | undefined {
   if (key.segments.length === 0 || key.segments.some((segment) => segment.trim() === '')) {
     return editProblem('invalid-key', {});
+  }
+  if (ADAPTERS[bundle.format].validKey?.(key) === false) {
+    return editProblem('invalid-template-key', { key: displayKey(key) });
   }
   if (bundle.keys.some((existing) => existing.id === key.id)) {
     return editProblem('key-exists', { key: displayKey(key), bundle: bundle.name });

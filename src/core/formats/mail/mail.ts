@@ -2,7 +2,7 @@ import { decodeText } from '../../text/decode';
 import { encodeText } from '../../text/encode';
 import { DEFAULT_STYLE } from '../../text/style';
 import type { FormatAdapter } from '../adapter';
-import { parseMail } from './mailRead';
+import { MAIL_FIELDS, parseMail } from './mailRead';
 import { applyMailOps } from './mailWrite';
 
 /**
@@ -13,6 +13,8 @@ import { applyMailOps } from './mailWrite';
 export const mailAdapter: FormatAdapter = {
   id: 'mail-xml',
   flatKeys: false,
+  validKey: (key) =>
+    key.segments.length === 2 && (MAIL_FIELDS as readonly string[]).includes(key.segments[1]!),
   decode: decodeText,
   parse(doc) {
     const parsed = parseMail(doc.text);

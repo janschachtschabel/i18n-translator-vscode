@@ -1,4 +1,4 @@
-import type { AreaDefinition } from '../area/areaDefinition';
+import type { AreaDefinition, FormatId } from '../area/areaDefinition';
 import type { ParsedEntry, ParsedFile } from '../formats/adapter';
 import type { DecodedText } from '../text/decode';
 import type { EntryKey } from './keys';
@@ -19,6 +19,8 @@ export interface LoadedFile {
 /** All locale files of one bundle (an Angular category, a metadataset group, the mail templates). */
 export interface Bundle {
   readonly areaId: AreaId;
+  /** The file format of the area, for what depends on it (e.g. which keys are valid). */
+  readonly format: FormatId;
   /** Unique across areas and roots, see {@link parseBundleId}. */
   readonly id: BundleId;
   /** Area root the bundle lies below; two roots are two separate installations. */
@@ -87,6 +89,7 @@ export function buildBundle(
 
   return {
     areaId: area.id,
+    format: area.format,
     id: JSON.stringify([area.id, root, name]),
     root,
     name,

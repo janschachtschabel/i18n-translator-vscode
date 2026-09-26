@@ -26,18 +26,28 @@ export async function addKey(
     void showError(localize(editProblem('no-reference', { bundle: bundle.name }).message));
     return;
   }
-  const flat = ADAPTERS[root.analysis.area.format].flatKeys;
+  const { format } = root.analysis.area;
+  const flat = ADAPTERS[format].flatKeys;
   const parse = (text: string) => parseKeyInput(text.trim(), flat);
   const check = (text: string) => checkNewKey(parse(text), bundle, root.analysis.bundles, root.analysis.area);
   const title = vscode.l10n.t('Add Key to {bundle}', { bundle: bundle.name });
+  const [prompt, placeHolder] = flat
+    ? [vscode.l10n.t('The new key as it stands in the file, e.g. section_title.'), 'section_title']
+    : format === 'mail-xml'
+      ? [
+          vscode.l10n.t('The new key: the template, a dot, then subject or message, e.g. invited.subject.'),
+          'invited.subject',
+        ]
+      : [
+          vscode.l10n.t(
+            'The new key, with a dot between its parts, e.g. SECTION.TITLE. A dot inside a part is written \\.',
+          ),
+          'SECTION.TITLE',
+        ];
   const typed = await context.prompts.input({
     title,
-    prompt: flat
-      ? vscode.l10n.t('The new key as it stands in the file, e.g. section_title.')
-      : vscode.l10n.t(
-          'The new key, with a dot between its parts, e.g. SECTION.TITLE. A dot inside a part is written \\.',
-        ),
-    placeHolder: flat ? 'section_title' : 'SECTION.TITLE',
+    prompt,
+    placeHolder,
     check: (text) => keyCheckMessage(parse(text), check(text)),
   });
   if (typed === undefined) {

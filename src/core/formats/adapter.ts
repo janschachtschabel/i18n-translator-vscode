@@ -73,6 +73,8 @@ export interface FormatAdapter {
   readonly id: FormatId;
   /** A key is one segment, dots included (.properties); otherwise it is a path of segments. */
   readonly flatKeys: boolean;
+  /** Whether a new key fits the format, where not every path does (mail templates: `[template, field]`). */
+  validKey?(key: EntryKey): boolean;
   decode(bytes: Uint8Array): DecodedText;
   parse(doc: DecodedText): ParsedFile;
   /** Applies the operations in order; encoding and byte order mark stay. Throws {@link EditError}. */

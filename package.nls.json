@@ -1,6 +1,6 @@
 {
   "displayName": "edu-sharing i18n",
-  "description": "Check and edit the translation files of edu-sharing (Angular JSON, metadatasets) in a table or list, with undo and backups.",
+  "description": "Check and edit the translation files of edu-sharing (Angular JSON, metadatasets, mail templates) in a table or list, with undo and backups.",
   "view.container": "edu-sharing i18n",
   "view.areas": "Areas",
   "view.areas.noFolder": "Open a folder with edu-sharing translations: an edu-sharing checkout, or its translation folder (Frontend/src/assets/i18n) or a copy of it.\n[Open Folder](command:vscode.openFolder)",

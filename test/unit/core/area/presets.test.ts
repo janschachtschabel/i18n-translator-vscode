@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { compileFilePattern } from '../../../../src/core/area/filePattern';
 import { parseAreaDefinition } from '../../../../src/core/area/parseArea';
-import { ANGULAR_PRESET, MDS_PRESET, PRESETS } from '../../../../src/core/area/presets';
+import { ANGULAR_PRESET, MAIL_PRESET, MDS_PRESET, PRESETS } from '../../../../src/core/area/presets';
 
 describe('presets', () => {
   it('pass their own validation', () => {
@@ -39,6 +39,14 @@ describe('presets', () => {
 
   it('hide the guard line that opens the main metadataset files', () => {
     expect(MDS_PRESET.ignoredKeys).toEqual(['this_is_a_bug_the_first_line_will_not_be_translated']);
+  });
+
+  it('match the edu-sharing mail templates as one bundle, without the override files', () => {
+    const match = compileFilePattern(MAIL_PRESET);
+    expect(match('templates.xml')).toEqual({ bundle: 'templates', locale: 'default' });
+    expect(match('templates_de_DE.xml')).toEqual({ bundle: 'templates', locale: 'de_DE' });
+    expect(match('templates_de_DE_override.xml')).toBeNull();
+    expect(match('templates_override.xml')).toBeNull();
   });
 
   it('read {name} placeholders in metadatasets and {{name}} in Angular', () => {

@@ -12,6 +12,7 @@ export type EditProblemCode =
   | 'path-conflict'
   | 'not-a-text'
   | 'invalid-key'
+  | 'invalid-template-key'
   | 'invalid-locale'
   | 'locale-exists'
   | 'changed'
@@ -42,6 +43,8 @@ export const EDIT_MESSAGES: Readonly<Record<EditProblemCode | EditWarningCode, s
   'path-conflict': '{key} collides with {other}: a key cannot be a text and contain other keys.',
   'not-a-text': '{file} has a value at {key} that is not a text; correct the file first.',
   'invalid-key': 'Every part of a key needs a name, e.g. SECTION.TITLE.',
+  'invalid-template-key':
+    '{key} is no text of a mail template: name the template, then subject or message, e.g. invited.subject.',
   'invalid-locale': '{locale} is not a valid language code for {area}.',
   'locale-exists': 'Every bundle already has a file for {locale}.',
   changed: '{key} in {locale} was changed in the meantime.',

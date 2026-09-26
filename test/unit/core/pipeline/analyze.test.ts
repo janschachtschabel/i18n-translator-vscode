@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ANGULAR_PRESET, MDS_PRESET } from '../../../../src/core/area/presets';
+import { ANGULAR_PRESET, MAIL_PRESET, MDS_PRESET } from '../../../../src/core/area/presets';
 import { compileVariants, DEFAULT_VARIANTS } from '../../../../src/core/checks/variants';
 import { analyzeRoot, filesToRead } from '../../../../src/core/pipeline/analyze';
 
@@ -71,5 +71,46 @@ describe('analyzeRoot with the metadataset preset', () => {
     expect(summary).toContainEqual(['duplicate-key', 'default', 'b']);
     expect(summary).toContainEqual(['missing-file', 'de_DE', '']);
     expect(analysis.issues.filter((issue) => issue.rule === 'not-utf8')).toEqual([]);
+  });
+});
+
+describe('analyzeRoot with the mail template preset', () => {
+  const template = (name: string, fields: string) => `<template name="${name}">${fields}</template>`;
+  const file = (...templates: string[]) => `<templates>${templates.join('')}</templates>`;
+  const analysis = analyzeRoot(
+    MAIL_PRESET,
+    'mail',
+    [
+      source('mail/templates.xml', file(template('invited', '<subject>S</subject><message>M</message>'))),
+      source(
+        'mail/templates_de_DE.xml',
+        file(
+          template('invited', '<subject>Einladung</subject><message><![CDATA[Hallo {{name}}]]></message>'),
+          template('added_inbox', '<message>Neu</message>'),
+        ),
+      ),
+      source(
+        'mail/templates_fr_FR.xml',
+        file(template('invited', '<subject>Invitation</subject><message>Bonjour {{nom}}</message>')),
+      ),
+    ],
+    options,
+  );
+  const templates = analysis.bundles[0]!;
+
+  it('reads one bundle with a row per field and de_DE as reference', () => {
+    expect(analysis.bundles.map((bundle) => bundle.name)).toEqual(['templates']);
+    expect(templates.locales).toEqual(['de_DE', 'default', 'fr_FR']);
+    expect(templates.keys.map((key) => key.segments.join('.'))).toEqual([
+      'invited.subject',
+      'invited.message',
+      'added_inbox.message',
+    ]);
+  });
+
+  it('finds a missing template and differing placeholders', () => {
+    const summary = analysis.issues.map((issue) => [issue.rule, issue.locale, issue.args['key'] ?? '']);
+    expect(summary).toContainEqual(['missing-key', 'fr_FR', 'added_inbox.message']);
+    expect(summary).toContainEqual(['placeholder-mismatch', 'fr_FR', 'invited.message']);
   });
 });
