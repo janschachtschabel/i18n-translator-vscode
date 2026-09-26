@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { htmlMismatchRule } from '../../../src/core/checks/rules/htmlMismatch';
 import { placeholderMismatchRule } from '../../../src/core/checks/rules/placeholderMismatch';
-import { inlineCheck } from '../../../src/webview/components/inlineCheck';
+import { inlineCheck } from '../../../src/webview/inlineCheck';
 import { setTranslations } from '../../../src/webview/l10n';
 import german from '../../../l10n/bundle.l10n.de.json';
 

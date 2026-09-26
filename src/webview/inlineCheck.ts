@@ -1,8 +1,8 @@
-import type { PlaceholderSyntax } from '../../core/area/areaDefinition';
-import { asTag, compareTags, tagSignature } from '../../core/checks/html';
-import { asPlaceholder, compareParams, scanPlaceholders } from '../../core/checks/placeholders';
-import type { Severity } from '../../core/checks/types';
-import { l10n } from '../l10n';
+import type { PlaceholderSyntax } from '../core/area/areaDefinition';
+import { asTag, compareTags, tagSignature } from '../core/checks/html';
+import { asPlaceholder, compareParams, scanPlaceholders } from '../core/checks/placeholders';
+import type { Severity } from '../core/checks/types';
+import { l10n } from './l10n';
 
 /** A line of the check under the editor; `ok`: placeholders and tags are as in the reference. */
 export interface CheckLine {

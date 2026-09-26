@@ -5,7 +5,8 @@ import type { EditorStore, LocaleColumn } from '../state/store';
 import { SEVERITY_SYMBOLS, severityWord } from './cellStatus';
 import './cellEditor.css';
 import { focusIsLost } from './focus';
-import { inlineCheck, type CheckLine } from './inlineCheck';
+import { grow } from './grow';
+import { inlineCheck, type CheckLine } from '../inlineCheck';
 import { isCommand } from '../shortcuts';
 import { localeName } from './localeName';
 import { trackPointer, whenPointerUp } from './pointer';
@@ -253,12 +254,4 @@ function symbolOf(line: CheckLine): string {
 function handled(event: KeyboardEvent): void {
   event.preventDefault();
   event.stopPropagation();
-}
-
-/** Makes the field as high as its text (design §7.1: never scroll inside a cell); without a layout, it keeps one line. */
-function grow(field: HTMLTextAreaElement): void {
-  field.style.height = 'auto';
-  if (field.scrollHeight > 0) {
-    field.style.height = `${field.scrollHeight + field.offsetHeight - field.clientHeight}px`;
-  }
 }
