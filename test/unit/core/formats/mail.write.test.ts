@@ -229,6 +229,28 @@ describe('mailAdapter: encoding and new files', () => {
     expect(valueOf(written.text, 't', 'message')).toBe('5 €');
   });
 
+  it('follows an encoding the XML declaration names, as Java does', () => {
+    const latin1 =
+      '<?xml version="1.0" encoding="ISO-8859-1"?>\n<templates><template name="t"><subject>S</subject></template></templates>\n';
+    const decoded = mailAdapter.decode(Buffer.from(latin1, 'latin1'));
+    expect(decoded.encoding).toBe('latin-1');
+    expect(mailAdapter.parse(decoded).problems).toEqual([]);
+    const written = mailAdapter.encode(
+      mailAdapter.applyOps(decoded, [{ kind: 'set', key: key('t', 'subject'), value: 'Grüße €' }]),
+    );
+    expect(Buffer.from(written).toString('latin1')).toBe(
+      latin1.replace('<subject>S', '<subject>Grüße &#x20ac;'),
+    );
+  });
+
+  it('reads no file whose declaration names an encoding it cannot keep', () => {
+    const text = '<?xml version="1.0" encoding="windows-1252"?><templates/>';
+    const parsed = mailAdapter.parse(mailAdapter.decode(Buffer.from(text, 'latin1')));
+    expect(
+      parsed.problems.map((problem) => [problem.code, problem.detail, text.slice(...problem.range)]),
+    ).toEqual([['parse-error', 'UnsupportedEncoding', 'windows-1252']]);
+  });
+
   it('reports a file that is not UTF-8, which Java reads as UTF-8 without a declaration', () => {
     expect(mailAdapter.parse(doc('<templates/>', 'latin-1')).problems.map((problem) => problem.code)).toEqual(
       ['not-utf8'],
