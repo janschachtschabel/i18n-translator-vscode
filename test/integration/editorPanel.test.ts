@@ -136,7 +136,7 @@ suite('editor panel', () => {
 
   // Setting the title of a closed panel throws: closing an editor while it loaded logged an error.
   test('closes while it loads without an error', async () => {
-    const { index, fileStore } = await activateExtension();
+    const { index, fileStore, ai } = await activateExtension();
     const root = (await index.refresh()).roots[0]!;
     const common = root.analysis.bundles.find((bundle) => bundle.name === 'common')!;
     const errors: unknown[] = [];
@@ -155,6 +155,8 @@ suite('editor panel', () => {
         log: log as unknown as vscode.LogOutputChannel,
         command: async () => undefined,
         preview: quiet,
+        ai: ai.service,
+        consent: ai.consent,
       },
     );
     panel.onDidDispose(() => editor.dispose());

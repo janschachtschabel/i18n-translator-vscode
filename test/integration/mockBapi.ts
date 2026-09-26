@@ -12,6 +12,8 @@ export interface MockRequest {
 export interface MockAnswer {
   status: number;
   body: unknown;
+  /** Waits this long before it answers, e.g. for a request that is cancelled meanwhile. */
+  delayMs?: number;
 }
 
 /** A b-api on 127.0.0.1 for the integration tests: it answers with `answer` and keeps the requests it got. */
@@ -29,9 +31,14 @@ export async function startMockBapi(answer: (request: MockRequest) => MockAnswer
         body: data === '' ? undefined : (JSON.parse(data) as unknown),
       };
       requests.push(request);
-      const { status, body } = answer(request);
-      outgoing.writeHead(status, { 'content-type': 'application/json' });
-      outgoing.end(JSON.stringify(body));
+      const { status, body, delayMs = 0 } = answer(request);
+      setTimeout(() => {
+        // The client may have given up meanwhile.
+        if (!outgoing.destroyed) {
+          outgoing.writeHead(status, { 'content-type': 'application/json' });
+          outgoing.end(JSON.stringify(body));
+        }
+      }, delayMs);
     });
   });
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));

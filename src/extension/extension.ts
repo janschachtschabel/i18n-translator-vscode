@@ -12,6 +12,7 @@ import { undoLastChange } from './commands/undoLastChange';
 import { DiagnosticsPublisher } from './diagnostics/diagnosticsPublisher';
 import { EditorPanels } from './panels/editorPanels';
 import { MailPreview } from './panels/mailPreview';
+import { AiConsent } from './services/aiConsent';
 import { AiService } from './services/aiService';
 import { ApiKeyStore } from './services/apiKeyStore';
 import { BackupService } from './services/backupService';
@@ -30,7 +31,7 @@ export interface ExtensionApi {
   fileStore: FileStore;
   editors: EditorPanels;
   mailPreview: MailPreview;
-  ai: { keys: ApiKeyStore; service: AiService };
+  ai: { keys: ApiKeyStore; service: AiService; consent: AiConsent };
   views: {
     areas: AreasTreeProvider;
     areasView: vscode.TreeView<AreaNode>;
@@ -49,6 +50,7 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi | undef
   const keyContext = { index, fileStore, prompts: vscodePrompts };
   const keys = new ApiKeyStore(context.secrets);
   const ai = new AiService(keys, log);
+  const consent = new AiConsent(context.globalState);
   const mailPreview = new MailPreview(index, log);
   const editors = new EditorPanels({
     extensionUri: context.extensionUri,
@@ -59,6 +61,8 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi | undef
     prompts: vscodePrompts,
     command: (command, target, entryId) => runEditorCommand(keyContext, command, target, entryId),
     preview: (target, entryId) => mailPreview.show(target, entryId),
+    ai,
+    consent,
   });
   const areas = createAreasView(index);
   const statusBar = new IndexStatusBar(index);
@@ -100,7 +104,7 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi | undef
     fileStore,
     editors,
     mailPreview,
-    ai: { keys, service: ai },
+    ai: { keys, service: ai, consent },
     views: {
       areas: areas.provider,
       areasView: areas.view,

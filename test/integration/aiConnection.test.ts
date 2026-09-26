@@ -2,7 +2,7 @@ import * as assert from 'node:assert/strict';
 import * as vscode from 'vscode';
 import { selectModel, testAiConnection } from '../../src/extension/commands/aiConnection';
 import type { ExtensionApi } from '../../src/extension/extension';
-import { activateExtension, answering } from './helpers';
+import { activateExtension, answering, settled } from './helpers';
 import { startMockBapi, type MockAnswer, type MockRequest } from './mockBapi';
 
 // The profiles set B_API_KEY to a key of their own (.vscode-test.mjs); every request goes to a server on this
@@ -40,8 +40,12 @@ suite('AI connection', () => {
   async function serve(answer: (request: MockRequest) => MockAnswer) {
     bapi = await startMockBapi(answer);
     await config().update('ai.baseUrl', bapi.url, vscode.ConfigurationTarget.Global);
-    const status = await api.ai.service.status();
-    assert.match(status.settings.baseUrl, /^http:\/\/127\.0\.0\.1:\d+$/, 'requests stay on this machine');
+    // The new address applies a moment after the write; checked before anything is sent.
+    const status = await settled(
+      () => api.ai.service.status(),
+      (current) => current.settings.baseUrl === bapi!.url,
+    );
+    assert.equal(status.settings.baseUrl, bapi.url, 'requests stay on this machine');
     assert.equal(status.keySource, 'env');
     return bapi;
   }

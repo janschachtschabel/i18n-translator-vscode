@@ -79,6 +79,25 @@ export function waitFor<T>(
   });
 }
 
+/**
+ * Reads `read` until `done` holds, e.g. a setting that applies a moment after it was written; gives the last value
+ * after `timeoutMs`, for the caller's assertion to fail on.
+ */
+export async function settled<T>(
+  read: () => Promise<T>,
+  done: (value: T) => boolean,
+  timeoutMs = 5000,
+): Promise<T> {
+  const end = Date.now() + timeoutMs;
+  for (;;) {
+    const value = await read();
+    if (done(value) || Date.now() > end) {
+      return value;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+}
+
 /** The next message of `type` the host sends to the webview. */
 export function nextPost<T extends HostToWebview['type']>(
   panel: EditorPanel,

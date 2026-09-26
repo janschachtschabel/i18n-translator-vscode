@@ -24,33 +24,31 @@ const openSettings = (): Step => ({
   run: () => vscode.commands.executeCommand('workbench.action.openSettings', 'eduI18n.ai'),
 });
 
-/** Says why the AI cannot be used and offers the step that solves it (WCAG 3.3.3). */
-export async function explainUnavailable(reason: AiUnavailable): Promise<void> {
+/** Why the AI cannot be used, in words: for a message and for the editor. */
+export function unavailableMessage(reason: AiUnavailable): string {
   switch (reason) {
     case 'disabled':
-      return offer(
-        showWarning,
-        vscode.l10n.t('The AI functions are turned off (eduI18n.ai.enabled).'),
-        openSettings(),
-      );
+      return vscode.l10n.t('The AI functions are turned off (eduI18n.ai.enabled).');
     case 'untrusted':
-      return offer(
-        showWarning,
-        vscode.l10n.t('The AI functions are off in Restricted Mode. Trust the workspace to use them.'),
-        {
-          label: vscode.l10n.t('Manage Workspace Trust'),
-          run: () => vscode.commands.executeCommand('workbench.trust.manage'),
-        },
-      );
+      return vscode.l10n.t('The AI functions are off in Restricted Mode. Trust the workspace to use them.');
     case 'no-key':
-      return offer(
-        showWarning,
-        vscode.l10n.t(
-          'No b-api key is set. The AI functions need one; it is the key B_API_KEY of the old app.',
-        ),
-        setKey(),
+      return vscode.l10n.t(
+        'No b-api key is set. The AI functions need one; it is the key B_API_KEY of the old app.',
       );
   }
+}
+
+/** Says why the AI cannot be used and offers the step that solves it (WCAG 3.3.3). */
+export async function explainUnavailable(reason: AiUnavailable): Promise<void> {
+  const step: Record<AiUnavailable, Step> = {
+    disabled: openSettings(),
+    untrusted: {
+      label: vscode.l10n.t('Manage Workspace Trust'),
+      run: () => vscode.commands.executeCommand('workbench.trust.manage'),
+    },
+    'no-key': setKey(),
+  };
+  return offer(showWarning, unavailableMessage(reason), step[reason]);
 }
 
 /**
@@ -70,13 +68,22 @@ export async function showAiFailure(
   if (error.code === 'aborted') {
     return;
   }
-  const { host, settings } = status;
-  const [message, step] = failure(error, host, settings.model, settings.timeoutSeconds);
-  const request = error.requestId ? ` ${vscode.l10n.t('Request ID: {id}', { id: error.requestId })}` : '';
-  return offer(showError, message + request, ...(step ? [step] : []));
+  const [, step] = failure(error, status);
+  return offer(showError, aiFailureMessage(error, status), ...(step ? [step] : []));
 }
 
-function failure(error: AiError, host: string, model: string, timeout: number): [string, Step?] {
+/** Why a request failed, with its cause and how to solve it, in words: for a message and for the editor. */
+export function aiFailureMessage(error: unknown, status: AiStatus): string {
+  if (!(error instanceof AiError)) {
+    return vscode.l10n.t('The AI request failed: {error}', { error: messageOf(error) });
+  }
+  const [message] = failure(error, status);
+  const request = error.requestId ? ` ${vscode.l10n.t('Request ID: {id}', { id: error.requestId })}` : '';
+  return message + request;
+}
+
+function failure(error: AiError, { host, settings }: AiStatus): [string, Step?] {
+  const { model, timeoutSeconds: timeout } = settings;
   const status = String(error.status ?? '');
   switch (error.code) {
     case 'unauthorized':

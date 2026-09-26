@@ -18,10 +18,13 @@ import {
 import { diffModels } from '../../shared/patch';
 import { buildBundleViewModel, type BundleViewModel } from '../../shared/viewModel';
 import type { Prompts } from '../commands/prompts';
+import type { AiConsent } from '../services/aiConsent';
+import type { AiService } from '../services/aiService';
 import { localize } from '../localize';
 import { messageOf } from '../services/errors';
 import type { FileStore } from '../services/fileStore';
 import type { IndexedRoot, IndexSnapshot, WorkspaceIndex } from '../services/workspaceIndex';
+import { AiPanel } from './aiPanel';
 import { editorTitle } from './editorTitle';
 import { findBundle } from './findBundle';
 import { applyEdit, type EditAnswer, type EditRequest } from './editHandler';
@@ -46,6 +49,9 @@ export interface EditorServices {
   command: (command: EditorCommand, target: PanelState, entryId: string | undefined) => Promise<void>;
   /** Shows the mail of the key's template beside the editor. */
   preview: (target: PanelState, entryId: string) => void;
+  /** The AI connection, and the notice before texts go to it. */
+  ai: AiService;
+  consent: AiConsent;
 }
 
 /** The editor of one bundle: its webview panel and the conversation with the webview. */
@@ -61,6 +67,7 @@ export class EditorPanel implements vscode.Disposable {
   private sent: BundleViewModel | undefined;
   /** The root the model was built from: a run of another root leaves it, and the bundle, as they are. */
   private sentRoot: IndexedRoot | undefined;
+  private readonly aiPanel: AiPanel;
 
   constructor(
     readonly panel: vscode.WebviewPanel,
@@ -79,8 +86,10 @@ export class EditorPanel implements vscode.Disposable {
       language: pageLanguage(vscode.env.language, vscode.l10n.bundle),
       title,
     });
+    this.aiPanel = new AiPanel(target, services, (message) => this.post(message));
     this.subscriptions = [
       this.posted,
+      this.aiPanel,
       panel.webview.onDidReceiveMessage((message: unknown) => this.receive(message)),
     ];
   }
@@ -111,6 +120,9 @@ export class EditorPanel implements vscode.Disposable {
         undo: () => undoFromEditor(this.target, this.services),
         command: ({ command, entryId }) => this.services.command(command, this.target, entryId),
         preview: ({ entryId }) => this.services.preview(this.target, entryId),
+        aiSuggest: (request) => this.aiPanel.suggest(request),
+        aiCancel: (request) => this.aiPanel.cancel(request),
+        aiSetup: () => this.aiPanel.setup(),
       },
       this.services.log,
     );
@@ -163,6 +175,7 @@ export class EditorPanel implements vscode.Disposable {
       panelState: this.target,
       unsaved: this.storedUnsaved(),
     });
+    await this.aiPanel.sendState();
     // Before the first index run (a panel restored at startup), `update` brings the bundle.
     const snapshot = this.services.index.current();
     if (snapshot) {
