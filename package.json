@@ -2,7 +2,7 @@
   "name": "edu-sharing-i18n",
   "displayName": "%displayName%",
   "description": "%description%",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "publisher": "janschachtschabel",
   "license": "Apache-2.0",
   "repository": {
