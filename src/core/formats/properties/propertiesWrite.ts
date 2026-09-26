@@ -2,7 +2,7 @@ import { displayKey, type EntryKey } from '../../model/keys';
 import { applyEdits } from '../../text/edits';
 import { detectStyle, type TextStyle } from '../../text/style';
 import { EditError, type FileOp } from '../adapter';
-import { readDefinitions, type Definition } from './propertiesRead';
+import { endsInOddBackslashes, readDefinitions, type Definition } from './propertiesRead';
 
 /**
  * Applies the operations one after another and re-reads the text in between. Only the lines of the affected keys
@@ -62,8 +62,11 @@ function insertLine(
     place === 'first'
       ? definitions[0]
       : ((place && lastDefinition(definitions, place)) ?? definitions[definitions.length - 1]);
-  const separator = (anchor && usableSeparator(text, anchor)) ?? firstUsableSeparator(text, definitions);
-  const line = escapeKey(nameOf(key)) + separator + escapeValue(value, /[=:]/.test(separator));
+  const name = nameOf(key);
+  const found = (anchor && usableSeparator(text, anchor)) ?? firstUsableSeparator(text, definitions);
+  // Java skips white space at the start of a line: an empty key needs `=` or `:` to keep its value a value.
+  const separator = name === '' && !/[=:]/.test(found) ? '=' : found;
+  const line = escapeKey(name) + separator + escapeValue(value, /[=:]/.test(separator));
   const eol = style.eol;
   if (!anchor) {
     const content = text === '' || /[\r\n]$/.test(text) ? line + eol : eol + line;
@@ -72,8 +75,10 @@ function insertLine(
   if (place === 'first') {
     return applyEdits(text, [{ offset: anchor.lineStart, length: 0, content: line + eol }]);
   }
+  // A backslash that ends the file continues nothing yet; a blank line keeps it from continuing into the new line.
+  const blank = endsInOddBackslashes(text, anchor.lineStart, anchor.valueRange[1]) ? eol : '';
   // The last line of a file without a final line break keeps it that way.
-  const content = hasLineBreak(anchor) ? line + eol : eol + line;
+  const content = hasLineBreak(anchor) ? blank + line + eol : eol + blank + line;
   return applyEdits(text, [{ offset: anchor.lineEnd, length: 0, content }]);
 }
 
@@ -159,11 +164,15 @@ function firstUsableSeparator(text: string, definitions: readonly Definition[]):
   return '=';
 }
 
+const BACKSLASH = '\\';
 const CONTROL_ESCAPES: Readonly<Record<string, string>> = {
   '\t': '\\t',
   '\n': '\\n',
   '\r': '\\r',
   '\f': '\\f',
+  // Line and paragraph separators, which editors offer to remove, as escapes Java reads exactly.
+  [String.fromCharCode(0x2028)]: `${BACKSLASH}u2028`,
+  [String.fromCharCode(0x2029)]: `${BACKSLASH}u2029`,
 };
 
 /** Like `Properties.store`: white space, separators and comment signs are escaped anywhere in a key. */

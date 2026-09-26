@@ -55,6 +55,27 @@ describe('parseProperties', () => {
     expect(summary('a=b\\\n')).toEqual([[['a'], 'b']]);
   });
 
+  it('lets the range of an empty value cover a backslash Java drops, so that a new value replaces it', () => {
+    expect(field('hint=\\')?.valueRange).toEqual([5, 6]);
+    expect(field('hint=\\\n')?.valueRange).toEqual([5, 6]);
+  });
+
+  it('takes a line of only a backslash for nothing, as Java 9+ does: the next line starts anew', () => {
+    expect(summary('\\\n\n!a\na=1')).toEqual([[['a'], '1']]);
+    expect(summary('\\\n#c\na=1')).toEqual([[['a'], '1']]);
+    expect(summary('  \\\na=1')).toEqual([[['a'], '1']]);
+  });
+
+  it('reads a lone backslash at the very end as an empty key, like Java, with a range at its place', () => {
+    const parsed = parseProperties('a=1\n\\');
+    expect(parsed.entries.map((entry) => entry.key.segments)).toEqual([['a'], ['']]);
+    expect(parsed.entries[1]?.fields[VALUE_FIELD]).toEqual({
+      value: '',
+      keyRange: [4, 4],
+      valueRange: [4, 5],
+    });
+  });
+
   it('turns escapes into characters', () => {
     expect(summary('a=tab\\there\\u00e4\\=\\\\end\\n\\r\\f\\q')).toEqual([
       [['a'], 'tab\there\u00e4=\\end\n\r\fq'],

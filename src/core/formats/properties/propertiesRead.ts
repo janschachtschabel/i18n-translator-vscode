@@ -26,6 +26,8 @@ const CONTROL_ESCAPES: Readonly<Record<string, string>> = { t: '\t', n: '\n', r:
 /** A logical line: its physical lines joined the way Java joins them. */
 interface LogicalLine {
   content: string;
+  /** Where the logical line begins, after the white space of its first physical line. */
+  start: number;
   /** Offset in the text of every character of `content`. */
   offsets: number[];
   /** End of the last physical line, before its line break. */
@@ -81,6 +83,10 @@ export function readDefinitions(text: string): ReadResult {
       continue;
     }
     const line = logicalLine(text, start, end);
+    if ('restart' in line) {
+      position = line.restart;
+      continue;
+    }
     const definition = splitLine(line, lineStart);
     if ('problem' in definition) {
       return { ok: false, problem: definition.problem };
@@ -95,8 +101,12 @@ export function readDefinitions(text: string): ReadResult {
  * Joins a line that ends in an odd number of backslashes with the next one, without that backslash and the
  * leading white space of the next line. A comment sign there belongs to the text; an empty next line ends the
  * logical line. A backslash at the end of the text continues nothing and is dropped.
+ *
+ * A line of only a backslash leaves nothing joined, so Java 9+ still stands at the start of a logical line: the
+ * next line is read anew, blank or comment lines included (`restart`). Only at the end of the text does it make
+ * an entry, with an empty key.
  */
-function logicalLine(text: string, start: number, end: number): LogicalLine {
+function logicalLine(text: string, start: number, end: number): LogicalLine | { restart: number } {
   let content = '';
   const offsets: number[] = [];
   let from = start;
@@ -109,7 +119,10 @@ function logicalLine(text: string, start: number, end: number): LogicalLine {
       offsets.push(index);
     }
     if (!continued || next >= text.length) {
-      return { content, offsets, end: to, next };
+      return { content, start, offsets, end: to, next };
+    }
+    if (content === '') {
+      return { restart: next };
     }
     from = skipWhiteSpace(text, next);
     to = physicalLineEnd(text, from);
@@ -152,13 +165,16 @@ function splitLine(line: LogicalLine, lineStart: number): Definition | { problem
   if (typeof value !== 'string') {
     return value;
   }
-  const keyStart = offsets[0]!;
+  const keyStart = offsets[0] ?? line.start;
+  // An empty value begins right after the last character read: a backslash Java dropped at the end is replaced
+  // with the value instead of turning its first letter into an escape.
+  const afterContent = content.length > 0 ? offsets[content.length - 1]! + 1 : line.start;
   return {
     key,
     value,
     lineStart,
     keyRange: [keyStart, keyLength > 0 ? offsets[keyLength - 1]! + 1 : keyStart],
-    valueRange: [valueStart < content.length ? offsets[valueStart]! : line.end, line.end],
+    valueRange: [valueStart < content.length ? offsets[valueStart]! : afterContent, line.end],
     lineEnd: line.next,
   };
 }
@@ -197,7 +213,8 @@ function unescape(line: LogicalLine, from: number, to: number): string | { probl
   return result;
 }
 
-function endsInOddBackslashes(text: string, from: number, to: number): boolean {
+/** Whether `text[from, to)` ends in an odd run of backslashes, which continues the line in Java. */
+export function endsInOddBackslashes(text: string, from: number, to: number): boolean {
   let count = 0;
   while (to - count > from && text[to - count - 1] === '\\') {
     count++;
@@ -214,7 +231,7 @@ function skipWhiteSpace(text: string, from: number): number {
 }
 
 /** The position of the next line break (`\r` or `\n`), or the end of the text. */
-export function physicalLineEnd(text: string, from: number): number {
+function physicalLineEnd(text: string, from: number): number {
   let index = from;
   while (index < text.length && text[index] !== '\n' && text[index] !== '\r') {
     index++;
@@ -223,7 +240,7 @@ export function physicalLineEnd(text: string, from: number): number {
 }
 
 /** The position after the line break at `at` (`\r\n`, `\r` or `\n`); `at` itself if there is none. */
-export function afterLineBreak(text: string, at: number): number {
+function afterLineBreak(text: string, at: number): number {
   if (text[at] === '\r') {
     return text[at + 1] === '\n' ? at + 2 : at + 1;
   }

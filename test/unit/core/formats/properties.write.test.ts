@@ -51,6 +51,18 @@ describe('propertiesAdapter.applyOps: set', () => {
     expect(valueOf(apply('c=3\n', set('c', ':x')), 'c')).toBe(':x');
   });
 
+  it('replaces a backslash the file ends in when an empty value gets a text', () => {
+    expect(apply('hint=\\', set('hint', 'user list'))).toBe('hint=user list');
+    expect(apply('hint=\\\n', set('hint', 'tab'))).toBe('hint=tab\n');
+  });
+
+  it('writes line and paragraph separators as escapes, since editors offer to remove them', () => {
+    const value = `x${String.fromCharCode(0x2028)}y${String.fromCharCode(0x2029)}z`;
+    const written = apply('a=1\n', set('a', value));
+    expect(written).toBe('a=x\\u2028y\\u2029z\n');
+    expect(valueOf(written, 'a')).toBe(value);
+  });
+
   it('writes values that read back unchanged', () => {
     for (const value of [
       'back\\slash',
@@ -110,6 +122,21 @@ describe('propertiesAdapter.applyOps: insert', () => {
     const text = apply('a=1\n', { kind: 'insert', key: key('#x y=z:w!'), value: '9', after: key('a') });
     expect(text).toBe('a=1\n\\#x\\ y\\=z\\:w\\!=9\n');
     expect(valueOf(text, '#x y=z:w!')).toBe('9');
+  });
+
+  it('keeps a backslash the file ends in from continuing into the new line', () => {
+    for (const text of ['dir=C:\\', 'dir=C:\\\n']) {
+      const written = apply(text, { kind: 'insert', key: key('neu'), value: '9', after: key('dir') });
+      expect(written, text).toBe(text.endsWith('\n') ? 'dir=C:\\\n\nneu=9\n' : 'dir=C:\\\n\nneu=9');
+      expect(valueOf(written, 'dir')).toBe('C:');
+      expect(valueOf(written, 'neu')).toBe('9');
+    }
+  });
+
+  it('writes "=" for an empty key, where white space alone would make the value the key', () => {
+    const written = apply('a 1\n', { kind: 'insert', key: key(''), value: 'v', after: key('a') });
+    expect(written).toBe('a 1\n=v\n');
+    expect(valueOf(written, '')).toBe('v');
   });
 
   it('uses "=" when the anchor has no separator on its own line', () => {
