@@ -7,8 +7,11 @@ export function readerText(text: string, syntax: PlaceholderSyntax | undefined):
   return withoutTags(withoutPlaceholders(text, syntax));
 }
 
-/** An address such as `http://…`: letters in it are no words. */
-const URL = /[a-z][a-z0-9+.-]*:\/\/\S*/gi;
+/**
+ * An address such as `http://…`: letters in it are no words. The scheme starts only where no scheme character is
+ * before it: otherwise every letter of a long word would start a new attempt, in quadratic time.
+ */
+const URL = /(?<![a-z0-9+.-])[a-z][a-z0-9+.-]*:\/\/\S*/gi;
 
 /** The words of a text alone: without placeholders, tags and links. */
 export function wordsOnly(text: string, syntax: PlaceholderSyntax | undefined): string {
