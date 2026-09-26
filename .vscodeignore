@@ -21,3 +21,4 @@ vitest.config.mts
 .nvmrc
 .prettierrc.json
 .prettierignore
+.claude/**
