@@ -6,21 +6,18 @@ import {
   type EditorCommand,
   type HostToWebview,
   type UiState,
-  type UnsavedText,
   type WebviewToHost,
 } from '../../shared/protocol';
-import type { BundleViewModel, LocaleView } from '../../shared/viewModel';
+import type { BundleViewModel } from '../../shared/viewModel';
 import { formatNumber, l10n, setTranslations } from '../l10n';
+import { sameColumnsAsBefore, type LocaleColumn } from './columns';
 import { Edits, type CellRef, type EditorPlace } from './edits';
+import { KeptUnsaved } from './keptUnsaved';
 import { compactLocales, layoutFor } from './layout';
 import { nextCell } from './navigation';
 import { showEdits, withRowOf, type ShownRow } from './shownRows';
 
-/**
- * What the rows and headers show of a language: not its counts, which the chips take from the model, so that a
- * new count renders no row again.
- */
-export type LocaleColumn = Pick<LocaleView, 'code' | 'lang' | 'reference' | 'variant' | 'hasFile'>;
+export type { LocaleColumn } from './columns';
 
 /** Where the focus was in a layout that gave way to the other: a key (null: the header row) and a language (null: the key). */
 export interface FocusHandoff {
@@ -41,9 +38,6 @@ export type View =
   | { kind: 'loading' }
   | { kind: 'bundle'; model: BundleViewModel }
   | { kind: 'missing'; name: string };
-
-/** How long typing rests before the texts that are not saved go to the host. */
-const UNSAVED_DELAY_MS = 300;
 
 /** A text for screen readers; a new `id` has them read it again, even if the text is the same. */
 export interface Announcement {
@@ -66,7 +60,7 @@ export class EditorStore {
   private readonly hiddenLocales = computed(() => this.uiState.value.hiddenLocales);
   private readonly compactLocale = computed(() => this.uiState.value.compactLocale);
   private readonly filter = computed(() => this.uiState.value.filter);
-  private columns: readonly LocaleColumn[] = [];
+  private readonly sameColumns = sameColumnsAsBefore();
   /**
    * The languages the rows show: the visible ones, in the compact list the reference and one more. The same array
    * as long as the columns are the same, also with new counts of findings: the rows, which show no counts, then
@@ -82,10 +76,7 @@ export class EditorStore {
         : this.layout.value === 'compact'
           ? compactLocales(view.model.locales, hiddenLocales, compactLocale)
           : view.model.locales.filter((locale) => !hiddenLocales.includes(locale.code));
-    if (!sameColumns(shown, this.columns)) {
-      this.columns = shown;
-    }
-    return this.columns;
+    return this.sameColumns(shown);
   });
   /** The rows the filter lets through, looking at the languages that are shown; undefined without a bundle. */
   readonly filtered = computed((): FilterResult | undefined => {
@@ -114,13 +105,7 @@ export class EditorStore {
   });
   /** The key of the table's active cell, whose details the table shows; null before it has one. */
   readonly detailsKey = signal<string | null>(null);
-  /** The texts the host kept for the bundle, until the first model after `init` has them back in their cells. */
-  private restoring: readonly UnsavedText[] | undefined;
-  /** Whether the texts that are not saved go to the host: only once those it kept are back, or they would be lost. */
-  private readonly keepsUnsaved = signal(false);
-  /** The texts the host has (as JSON), so that only a change goes to it. */
-  private keptUnsaved = '[]';
-  private unsavedTimer: ReturnType<typeof setTimeout> | undefined;
+  private readonly unsaved = new KeptUnsaved(this.edits, (message) => this.host.postMessage(message));
   /** The row the details show: that of their open editor, else of the table's active key; undefined: none. */
   readonly detailsRow = computed(() => {
     const open = this.edits.open.value;
@@ -145,15 +130,6 @@ export class EditorStore {
         this.edits.park();
       }
     });
-    // The texts that are not saved go to the host, which keeps them per bundle; while typing, a moment later.
-    effect(() => {
-      const texts = this.edits.unsaved();
-      if (!this.keepsUnsaved.value) {
-        return;
-      }
-      clearTimeout(this.unsavedTimer);
-      this.unsavedTimer = setTimeout(() => this.keepUnsaved(texts), UNSAVED_DELAY_MS);
-    });
   }
 
   receive(message: HostToWebview): void {
@@ -163,9 +139,7 @@ export class EditorStore {
         this.uiState.value = message.uiState;
         this.host.setState(message.panelState);
         this.edits.reset();
-        this.restoring = message.unsaved ?? [];
-        this.keptUnsaved = JSON.stringify(this.restoring);
-        this.keepsUnsaved.value = false;
+        this.unsaved.expect(message.unsaved ?? []);
         // The host follows up with the bundle, or with it once the first index run is done.
         this.view.value = { kind: 'loading' };
         break;
@@ -176,9 +150,7 @@ export class EditorStore {
           this.announce('');
         }
         this.edits.update(message.model);
-        const restored = this.restoring ? this.edits.restore(this.restoring) : 0;
-        this.restoring = undefined;
-        this.keepsUnsaved.value = true;
+        const restored = this.unsaved.restore();
         this.view.value = { kind: 'bundle', model: message.model };
         const back =
           restored > 0
@@ -226,15 +198,6 @@ export class EditorStore {
   /** Has screen readers read `text` once they have finished what they are reading. */
   announce(text: string): void {
     this.announcement.value = { text, id: this.announcement.value.id + 1 };
-  }
-
-  /** Gives the host the texts that are not saved, if they are not what it has. */
-  private keepUnsaved(texts: UnsavedText[]): void {
-    const json = JSON.stringify(texts);
-    if (json !== this.keptUnsaved) {
-      this.keptUnsaved = json;
-      this.host.postMessage({ type: 'unsaved', texts });
-    }
   }
 
   /**
@@ -343,23 +306,6 @@ export class EditorStore {
     const row = this.rows.value.find((candidate) => candidate.entryId === open.entryId);
     return view.kind === 'bundle' && row ? nextCell([row], view.model.locales, open, direction) : undefined;
   }
-}
-
-/** Whether two lists of languages make the same columns. */
-function sameColumns(a: readonly LocaleColumn[], b: readonly LocaleColumn[]): boolean {
-  return (
-    a.length === b.length &&
-    a.every((locale, index) => {
-      const other = b[index]!;
-      return (
-        locale.code === other.code &&
-        locale.lang === other.lang &&
-        locale.reference === other.reference &&
-        locale.variant === other.variant &&
-        locale.hasFile === other.hasFile
-      );
-    })
-  );
 }
 
 export function missingNotice(name: string): string {
