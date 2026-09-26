@@ -8,7 +8,7 @@ import { previewMail } from './commands/previewMail';
 import { vscodePrompts } from './commands/prompts';
 import { undoLastChange } from './commands/undoLastChange';
 import { DiagnosticsPublisher } from './diagnostics/diagnosticsPublisher';
-import { EditorPanels } from './panels/editorPanel';
+import { EditorPanels } from './panels/editorPanels';
 import { MailPreview } from './panels/mailPreview';
 import { BackupService } from './services/backupService';
 import { FileStore } from './services/fileStore';
