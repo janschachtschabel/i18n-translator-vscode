@@ -91,12 +91,49 @@ erste baute `Properties.load` aus dem JDK nach und verglich 1,5 Millionen Zufall
 
 Offen, mit Begründung:
 - **Template-Ansicht mit HTML-Vorschau** (Task 6.4) und **KI für Templates** (6.5) folgen mit Phase 3; die Nachrichten
-  stehen bis dahin als HTML in der Tabelle.
+  stehen bis dahin als HTML in der Tabelle. *Die Vorschau gibt es seit Abschnitt 7; hervorgehobener Code und KI folgen.*
 - **Unübersetzbare Werte der Basisdatei:** Keys wie die Lizenz-URLs von `mds` hat nur die Basisdatei. Sie zählen jetzt
   als fehlend in den anderen Sprachen, obwohl der englische Rückfall dort genügt. Abhilfe bis zu den akzeptierten
   Warnungen (Phase 7): den Wert in die Sprachdateien übernehmen oder den Schweregrad von `missing-key` anpassen.
+  *Behoben, siehe Abschnitt 7.*
 - **Override-Dateien** (`mds_override*`, `templates_*_override.xml`) prüft die Extension wie eigene Einheiten bzw. gar
   nicht; zur Laufzeit legen sie sich über die Grunddateien. Ob sie wie Sprachvarianten dünn besetzt sein dürfen, ist
-  eine offene Frage.
+  eine offene Frage. *Ja, siehe Abschnitt 7.*
 - **Zeilenenden nur mit CR** (klassisches Mac OS): Das Lesen versteht sie, neue Zeilen schreibt die Extension dann mit
-  LF. Keine der geprüften Dateien nutzt sie.
+  LF. Keine der geprüften Dateien nutzt sie. *Behoben, siehe Abschnitt 7.*
+
+## 7. Offene Punkte behoben (26.09.2026)
+
+Die Punkte aus Abschnitt 6 und die NIT zu `validKey`, umgesetzt nach der Taskliste (Abschnitt „Offene Punkte aus
+0.3.0“, Entscheidungen P1–P6). Code wie in Commit `734dc58`.
+
+| Prüfung | Aufruf | Ergebnis |
+|---|---|---|
+| Unit- und Komponententests | `npm run test:unit` | 870 bestanden |
+| Integrationstests stable (1.139.1) und 1.90.0 | `npm run test:integration` | je 89 bestanden, 17 ausgelassen |
+| Profil `multi` | ebenda | 5 bestanden |
+| Profil `formats`, mit der Vorschau aus den Details und dem Kontextmenü | ebenda | 11 bestanden |
+| Typen, Lint, Format | `npm run typecheck`, `npm run lint`, `npm run format:check` | ohne Befund |
+
+| Punkt | Umsetzung | Nachweis |
+|---|---|---|
+| Keys der Basisdatei ohne Wörter | Sie fehlen den anderen Sprachen nicht mehr, und wer sie hat, bekommt keinen `orphan-key` | Clone: `mds` 98 → 71 fehlende Keys (9 Lizenz-Links × 3 Sprachen), Metadatasets wieder 2.605 wie in Design §2.3; Datenordner: `mds` 30 → 3 (es bleibt der eine Key mit Text); `passwordRequest` bleibt eine Lücke |
+| Override-Einheiten | Bereichsfeld `overrideBundlePattern` (`.+_override`, Angular `override`): keine Befunde zu fehlenden oder verwaisten Keys und fehlenden Dateien, die übrigen Regeln gelten | Unit-Tests; die `mds_override*`-Dateien sind im Clone und im Datenordner leer |
+| Mail-Overrides | bleiben außerhalb des Mail-Bereichs: Sie ersetzen ganze Templates und kommen weder im Clone noch im Datenordner vor | – |
+| Verlorene Zeichen | Regel `lost-character` | je 67 Befunde im Clone und im Datenordner: 62 `?` zwischen Buchstaben in `fr_FR` (Apostrophe, `n?ud` für `nœud`), 5 Ersatzzeichen für Umlaute in `mds.properties`; kein Fehlalarm |
+| Zeilenenden nur mit CR | `detectStyle` erkennt `\r`; JSON- und Mail-Schreiber finden Zeilenanfänge über `lineStartAt` | Unit-Tests: Einfügen, Löschen und Umbenennen ergeben in JSON, `.properties` und Mail-XML mit CR dasselbe wie mit LF |
+| `validKey` | Hinweis am Hook, welche Meldung ein abgelehnter Key bekommt | – |
+| Mail-Vorschau | eigener Tab ohne Skripte, je Mail ein `iframe sandbox="" srcdoc` | Abnahme unten |
+
+Abnahme der Vorschau in VS Code 1.139.1 mit der Kopie des Datenordners (`out/acceptance/preview.mjs`, echte Maus- und
+Tastaturereignisse über das DevTools-Protokoll):
+
+| Schritt | Ergebnis |
+|---|---|
+| Klick auf „Preview Mail“ in den Details von `invited.subject` | Tab „Mail Preview: invited“ in Gruppe 2 neben dem Editor; der Fokus bleibt auf dem Knopf im Editor, dessen Gruppe aktiv |
+| Seite | vier Sprachen (`de_DE (reference)`, `default (en)`, `fr_FR`, `it_IT`), je ein Rahmen mit `sandbox=""`, kein Skript |
+| Rahmen | `about:srcdoc` mit dem `lang` der Mail; `.content` hat `max-width: 500px` aus dem Stylesheet von edu-sharing, das Stylesheet greift also im Rahmen |
+| Befehlspalette „Preview mail“ | fragt nach dem Template des Editors („Choose a mail template“) |
+| Probe-Template (nur in der Kopie) mit Skript, entferntem Bild, `meta refresh` und Link | das Skript läuft nicht („Blocked script execution … sandboxed“), keine Anfrage an `http(s)` (das Bild: „violates … img-src data:“), keine Weiterleitung (die Rahmen bleiben `about:srcdoc`); in den drei Sprachen ohne das Template steht der Hinweis auf die Basisdatei |
+| Details unter der Tabelle in der geteilten Ansicht | vorher 40 von 434 px, der Knopf verdeckt; behoben (`734dc58`): 190 px (40 %), der Knopf sichtbar |
+| Kopie | danach unverändert (`git status` leer) |

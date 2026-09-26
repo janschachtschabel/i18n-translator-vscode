@@ -1670,6 +1670,11 @@ Netzwerkanfrage.
 README, `docs/einstellungen.md`, CHANGELOG (0.3.0), Design (6.4), Abnahmeprotokoll (Abschnitt „Offene Punkte“);
 Review-Befunde in eigenen Commits; `npm run test:integration`; Push auf `feat/extension-v1`, CI einmal prüfen.
 
+**Ergebnis (26.09.2026):** O1–O6 umgesetzt, Nachweise in
+[`docs/verification/phasen-5-6.md`](../verification/phasen-5-6.md), Abschnitt 7. Befund der Abnahme: Unter der Tabelle
+schrumpften die Details mit ihr auf etwa 40 px und verdeckten den Knopf der Vorschau; sie behalten jetzt ihren Anteil
+(`734dc58`).
+
 ---
 
 ## Phasen 3–8 (Gliederung – Detailtasks folgen vor Phasenstart)

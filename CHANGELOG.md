@@ -28,10 +28,26 @@ zeigt jetzt alle drei Bereiche, jeden im selben Editor mit einer Spalte je Sprac
   - Texte mit Zeichen, die XML nicht erlaubt (etwa ein aus Folien kopierter vertikaler Tabulator), lehnt der Editor ab:
     edu-sharing könnte sonst keine Mail dieser Sprache mehr lesen.
   - Die Kodierung aus der XML-Deklaration gilt, wie für Java.
+- **Mail-Vorschau:** „Mail-Vorschau“ (Details, Kontextmenü einer Zeile, Befehlspalette) zeigt neben dem Editor die Mail
+  eines Templates in jeder Sprache, die Referenz zuerst, zusammengesetzt wie von edu-sharing: das Stylesheet der
+  Basisdatei, Kopf, Text und Fuß, jedes Teil mit dem Rückfall von edu-sharing. Ein Hinweis nennt jede Sprache, die
+  Texte der Basisdatei zeigt. Die Vorschau führt keine Skripte aus und lädt nichts nach; jede Mail steht in einem
+  abgeschotteten Rahmen.
 - **Lücken gegenüber der Basisdatei:** Einen Key, den nur die Datei ohne Sprachkürzel hat, meldet die Extension als
   fehlend in jeder Sprache ohne ihn, die Referenz eingeschlossen; dort erscheint zur Laufzeit der englische Text.
+  Ausgenommen sind Texte ohne Wörter, etwa Lizenz-Links: Für sie ist der englische Rückfall richtig.
+- **Override-Einheiten** (`mds_override`, die Angular-Kategorie `override`) enthalten nur, was sie ändern: keine
+  Befunde mehr zu fehlenden oder verwaisten Keys und zu fehlenden Dateien. Neues Bereichsfeld `overrideBundlePattern`.
+- **Verlorene Zeichen:** Die neue Regel `lost-character` meldet ein Fragezeichen zwischen Buchstaben oder ein
+  Ersatzzeichen. Beides bleibt, wenn eine Datei in einer Kodierung gespeichert wurde, die das Zeichen nicht kennt. In
+  den Metadatasets von edu-sharing sind es 62 Fragezeichen in `fr_FR` (etwa `l?apprentissage`) und 5 Ersatzzeichen für
+  Umlaute in `mds.properties`.
+- **Zeilenenden nur mit CR** (klassisches Mac OS) bleiben beim Schreiben erhalten; vorher bekamen neue Zeilen ein LF.
+- **Details unter der Tabelle** behalten ihren Anteil an der Höhe, etwa neben der Mail-Vorschau; vorher schrumpften
+  sie auf wenige Pixel.
 - **Neue Sprache:** Die Abfrage schlägt einen Code in der Form des Bereichs vor (`es` oder `es_ES`).
-- **Eigene Bereiche:** die Formate `properties` und `mail-xml` sowie die Felder `ignoredKeys` und `placeholderSyntax`,
+- **Eigene Bereiche:** die Formate `properties` und `mail-xml` sowie die Felder `ignoredKeys`, `placeholderSyntax` und
+  `overrideBundlePattern`,
   siehe [Einstellungen](docs/einstellungen.md#edui18nareas).
 - **Geprüft gegen edu-sharing:** Alle 116 Übersetzungsdateien des Repositorys lassen sich lesen und byte-gleich
   zurückschreiben, und jeder Text, auf sich selbst gesetzt, liest sich gleich zurück

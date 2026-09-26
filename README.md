@@ -23,7 +23,8 @@ i18n-App (`data/1.0.0/` mit `json/`, `metadatasets/i18n/` und `mailtemplates/`).
 - Sprachvarianten (`de-informal`, `de-no-binnen-i`);
 - Keys, die eine andere Einheit überschreibt;
 - verwaiste oder vermutlich verschobene Keys;
-- Texte, die mit der Referenz übereinstimmen.
+- Texte, die mit der Referenz übereinstimmen;
+- Zeichen, die beim Speichern in einer anderen Kodierung verloren gingen (`l?apprentissage`).
 
 Die Befunde stehen an drei Stellen:
 - in der Ansicht „Probleme“;
@@ -70,7 +71,11 @@ Tabelle mit einer Spalte je Sprache oder, in schmalen Fenstern, als Liste:
 Gut zu wissen:
 - **Die Datei ohne Sprachkürzel** (`mds.properties`, `templates.xml`) liest edu-sharing als letzten Rückfall. Der
   Editor nennt sie `default (en)`; die Sprache legt `eduI18n.baseFileLanguage` fest. Ein Key, den nur sie hat, fehlt
-  deshalb den anderen Sprachen, auch der Referenz: Dort erscheint der englische Text.
+  deshalb den anderen Sprachen, auch der Referenz: Dort erscheint der englische Text. Ausgenommen sind Texte ohne
+  Wörter, etwa die Lizenz-Links von `mds.properties`: Für sie ist der englische Rückfall richtig.
+- **Override-Einheiten** wie `mds_override` und die Angular-Kategorie `override` legen sich zur Laufzeit über die
+  anderen und enthalten nur, was sie ändern. Für sie meldet die Extension keine fehlenden Keys oder Dateien (Feld
+  `overrideBundlePattern`, siehe [Einstellungen](docs/einstellungen.md#edui18nareas)).
 - **Metadatasets:**
   - Ein Key ist der ganze Name, Punkte eingeschlossen (`ccm:lrt.video`).
   - Platzhalter haben eine Klammer (`{user}`), nur `{{GENDER_SEPARATOR}}` hat zwei.
@@ -83,6 +88,13 @@ Gut zu wissen:
     Referenz.
   - Ein neuer Key heißt `Template.subject` oder `Template.message`.
   - Templates ohne Betreff und Nachricht, etwa das Stylesheet, erscheinen nicht und bleiben unverändert.
+  - **Mail-Vorschau:** „Mail-Vorschau“ in den Details einer Zeile, im Kontextmenü einer Zeile oder in der
+    Befehlspalette zeigt neben dem Editor die Mail des Templates in jeder Sprache, die Referenz zuerst, so
+    zusammengesetzt, wie edu-sharing sie verschickt: Stylesheet, Kopf, Text und Fuß. Fehlen einer Sprache Texte, sagt
+    ein Hinweis, dass die Mail die der Basisdatei zeigt. Die Vorschau führt keine Skripte aus und lädt nichts nach,
+    auch keine Bilder; Platzhalter wie `{{firstName}}` bleiben stehen.
+  - Override-Dateien (`templates_de_DE_override.xml`) ersetzen zur Laufzeit ganze Templates; die Extension zeigt sie
+    nicht.
 - **Andere Ordner:** Für Übersetzungen, die anders liegen, lassen sich Wurzeln festlegen oder eigene Bereiche
   anlegen, siehe [Einstellungen](docs/einstellungen.md#bereiche-und-ordner).
 
@@ -200,6 +212,7 @@ Gut zu wissen:
      Sprachen aus oder ein, etwa um nur Referenz und Französisch nebeneinander zu sehen. Alt+M (Filter „fehlend“)
      zeigt nur die Keys, denen in einer sichtbaren Sprache ein Text fehlt; eine fehlende Zelle zeigt „–“.
    - Lange Texte wie die Nachrichten der Mail-Templates zeigt „Lange Texte umbrechen“ ganz.
+   - **Mail-Templates ansehen:** „Mail-Vorschau“ in den Details zeigt die Mail in jeder Sprache neben dem Editor.
 5. **Text bearbeiten:** eine Zelle wählen, Enter oder F2 drücken, tippen und mit Enter speichern. Bei mehrzeiligen
    Texten speichert Strg+Enter; Esc bricht ab.
    - Der Editor prüft schon beim Tippen, etwa Platzhalter und HTML-Tags.
@@ -223,6 +236,7 @@ In der Befehlspalette unter „edu-sharing i18n“:
 | Übersetzungsordner festlegen… | die Ordner selbst wählen, wenn die Erkennung sie nicht findet; speichert `eduI18n.roots` für den Arbeitsbereichsordner (nur in einem vertrauenswürdigen Arbeitsbereich) |
 | Key hinzufügen… | einen Key in allen Sprachen einer Einheit anlegen, mit Rückfragen |
 | Sprache hinzufügen… | eine Sprachdatei je Einheit anlegen (leer, der Rückfall greift) |
+| Mail-Vorschau | die Mail eines Templates in jeder Sprache neben dem Editor zeigen, wie edu-sharing sie verschickt |
 | Letzte Änderung an Übersetzungsdateien rückgängig machen | das letzte Schreiben dieser Sitzung zurücknehmen |
 | Übersetzungsdateien jetzt sichern | eine Sicherung von Hand |
 | Übersetzungsdateien aus einer Sicherung wiederherstellen… | eine Sicherung wählen und zurückholen; der aktuelle Stand wird vorher gesichert |
@@ -342,7 +356,7 @@ Laut [Taskliste](docs/plans/2026-09-24-edu-sharing-i18n-vscode-tasks.md):
 - Füllen aus einem Übersetzungsspeicher oder per KI (b-api, siehe [oben](#ki-füllen-und-b-api-schlüssel)), immer mit
   Prüfliste;
 - Import und Export (CSV, JSON, `.properties`, Mail-XML);
-- Mail-Templates: eine Ansicht mit HTML-Vorschau neben der Referenz;
+- Mail-Templates: hervorgehobener HTML-Code, die Vorschau schon beim Tippen und im Farbschema von VS Code;
 - Kontext, Review-Status und eine Übersicht;
 - Feinschliff: Doku auch auf Englisch, vollständige Übersetzung der Meldungen, Rauchtest in VS-Code-Forks.
 
@@ -358,8 +372,8 @@ Siehe [CONTRIBUTING.md](CONTRIBUTING.md).
 
 A VS Code extension to check and edit the translation files of edu-sharing: Angular JSON, metadatasets (`.properties`)
 and mail templates (XML), in a checkout or in a data folder with copies of them. It shows findings in the Problems
-panel and offers a translation editor with a column per language. Writes change only the edited line and keep each
-file's encoding and layout, with undo and backups.
+panel and offers a translation editor with a column per language, with a preview of each mail template in every
+language. Writes change only the edited line and keep each file's encoding and layout, with undo and backups.
 
 - **Status:** work in progress: checking and editing are done for all three areas.
 - **Install:** on Windows, run

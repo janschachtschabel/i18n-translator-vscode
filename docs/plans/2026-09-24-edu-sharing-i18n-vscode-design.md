@@ -277,6 +277,11 @@ export type FileOp =
 > Feld eine Zeile; `fieldMode` entfällt. Keys von `.properties` sind ein Segment (`flatKeys`). Metadatasets schreiben
 > Platzhalter mit einer Klammer (`{user}`), daher kennt ein Bereich seine `placeholderSyntax`. Die Wächterzeile der
 > MDS-Dateien blendet `ignoredKeys` aus.
+>
+> **Stand offene Punkte aus 0.3.0, 26.09.2026 (Entscheidungen P1–P6 der Taskliste):** Die Mail-Vorschau (Kern von
+> 6.4) ist ein eigener Tab ohne Skripte; jede Mail steht in einem `iframe sandbox="" srcdoc`, die CSP des Editors
+> bleibt unverändert. Override-Einheiten nennt das Bereichsfeld `overrideBundlePattern`. Die Regel `lost-character`
+> kommt hinzu. Keys der Basisdatei ohne Wörter fehlen den anderen Sprachen nicht.
 
 **Golden-Regeln (Tests für jeden Adapter):**
 1. Laden und ohne Änderung schreiben ergibt **byte-identische** Dateien.
@@ -683,8 +688,9 @@ Umfang: S ≈ 0,5–1 Tag · M ≈ 2–3 Tage · L ≈ 4–5 Tage (grobe Schätz
 
 **Geänderte Reihenfolge (26.09.2026):** Der Nutzer öffnet den Datenordner der alten App und möchte alle drei Bereiche
 wie dort nebeneinander vergleichen und füllen. Phase 5 und der Kern von Phase 6 (Lesen, Schreiben, Regeln,
-Bearbeiten in der Tabelle) kommen deshalb vor den Phasen 3 und 4; Template-Ansicht mit Vorschau und KI für Templates
-folgen mit der KI. Die Tasks stehen in der Taskliste unter „Phasen 5 und 6 (Kern)".
+Bearbeiten in der Tabelle) kommen deshalb vor den Phasen 3 und 4. Die Vorschau neben dem Editor kam am selben Tag
+hinzu (Taskliste, „Offene Punkte aus 0.3.0"); hervorgehobener Code und KI für Templates folgen mit der KI. Die Tasks
+stehen in der Taskliste unter „Phasen 5 und 6 (Kern)".
 
 ## 12. Verifikationsplan
 

@@ -286,7 +286,7 @@ Standard: `{}`. Der Schweregrad je Prüfregel ist `error` (Fehler), `warning` (W
 | `non-string-value` | Warnung | Ein Wert ist kein Text, z. B. eine Zahl oder eine Liste. |
 | `duplicate-key` | Warnung | Ein Key kommt in derselben Datei doppelt vor; nur eine Definition gilt: in JSON und `.properties` die letzte, in einem Mail-Template das erste Feld und das letzte Template. |
 | `missing-file` | Warnung | Einer Einheit fehlt die Datei einer Sprache. |
-| `missing-key` | Warnung | Ein Key der Referenz fehlt in einer Sprache; der Rückfalltext erscheint. |
+| `missing-key` | Warnung | Ein Key der Referenz fehlt in einer Sprache, ebenso ein Key der Datei ohne Sprachkürzel, dessen Text Wörter hat (ein Lizenz-Link etwa nicht); der Rückfalltext erscheint. |
 | `empty-value` | Warnung | Ein Text ist leer, obwohl die Referenz einen hat; er verdeckt den Rückfall. |
 | `orphan-key` | Warnung | Ein Key existiert in einer Sprache, aber nicht in der Referenz. |
 | `misplaced-key` | Warnung | Ein verwaister Key, dessen letztes Segment zu einem fehlenden Key passt: vermutlich falsch einsortiert. |
