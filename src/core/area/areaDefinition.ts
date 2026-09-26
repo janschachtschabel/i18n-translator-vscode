@@ -37,4 +37,10 @@ export interface AreaDefinition extends FilePatternSpec {
   ignoredKeys?: string[];
   /** How the texts write placeholders; `double-brace` if not set. */
   placeholderSyntax?: PlaceholderSyntax;
+  /**
+   * Regular expression for the whole name of the bundles that override others at runtime (edu-sharing reads
+   * `mds_override_de_DE` before `mds_de_DE`): they hold only what they change, so no key or file of theirs is
+   * reported missing, and no key orphaned.
+   */
+  overrideBundlePattern?: string;
 }

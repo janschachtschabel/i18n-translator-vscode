@@ -50,6 +50,7 @@
   "config.areas.detect.marker": "Path of a marker below its root, e.g. `common/de.json`; the glob must end with it.",
   "config.areas.ignoredKeys": "Keys that are no translations, e.g. a guard line: the extension hides them and keeps them in the files.",
   "config.areas.placeholderSyntax": "How the texts write placeholders: `double-brace` for `{{name}}` (default, Angular and mail templates), `single-brace` for `{name}` (metadatasets).",
+  "config.areas.overrideBundlePattern": "Regular expression for the names of bundles that override others at runtime, e.g. `.+_override`: they hold only what they change, so the extension reports no missing keys or files for them.",
   "config.variants.base": "Locale the variant falls back to, e.g. `de`.",
   "config.variants.requiredWhen": "Regular expression: when it matches the base text, the variant needs its own text.",
   "config.variants.forbidden": "Regular expression for text the variant should not contain.",

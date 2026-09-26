@@ -363,6 +363,10 @@
                   "single-brace"
                 ],
                 "description": "%config.areas.placeholderSyntax%"
+              },
+              "overrideBundlePattern": {
+                "type": "string",
+                "description": "%config.areas.overrideBundlePattern%"
               }
             }
           }

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { compileFilePattern } from '../../../../src/core/area/filePattern';
 import { parseAreaDefinition } from '../../../../src/core/area/parseArea';
 import { ANGULAR_PRESET, MAIL_PRESET, MDS_PRESET, PRESETS } from '../../../../src/core/area/presets';
+import { isOverrideBundle } from '../../../../src/core/checks/rules/support';
 
 describe('presets', () => {
   it('pass their own validation', () => {
@@ -47,6 +48,20 @@ describe('presets', () => {
     expect(match('templates_de_DE.xml')).toEqual({ bundle: 'templates', locale: 'de_DE' });
     expect(match('templates_de_DE_override.xml')).toBeNull();
     expect(match('templates_override.xml')).toBeNull();
+  });
+
+  // MetadataReader reads {group}_override_{locale} before {group}_{locale}; Angular loads `override` last.
+  it('know the override bundles of edu-sharing, which hold only what they change', () => {
+    const overrides = (preset: typeof MDS_PRESET, names: string[]) =>
+      names.filter((name) => isOverrideBundle(preset, name));
+    expect(overrides(MDS_PRESET, ['mds', 'mds_override', 'valuespaces_i18n_override', 'override'])).toEqual([
+      'mds_override',
+      'valuespaces_i18n_override',
+    ]);
+    expect(overrides(ANGULAR_PRESET, ['common', 'override', 'overrides', 'x-override'])).toEqual([
+      'override',
+    ]);
+    expect(overrides(MAIL_PRESET, ['templates'])).toEqual([]);
   });
 
   it('read {name} placeholders in metadatasets and {{name}} in Angular', () => {

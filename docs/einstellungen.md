@@ -85,6 +85,7 @@ Eingebaut sind drei Bereiche. Angular-JSON, `edu-sharing.angular`:
   "localePattern": "[a-z]{2}(?:-[a-z0-9]+)*",
   "bundleOrder": ["common", "admin", "recycle", "workspace", "…", "override"],
   "mergeSemantics": "shallow-toplevel",
+  "overrideBundlePattern": "override",
   "detect": { "glob": "**/common/de.json", "marker": "common/de.json" }
 }
 ```
@@ -100,6 +101,7 @@ Metadatasets, `edu-sharing.mds`:
   "localePattern": "[a-z]{2}_[A-Z]{2}",
   "ignoredKeys": ["this_is_a_bug_the_first_line_will_not_be_translated"],
   "placeholderSyntax": "single-brace",
+  "overrideBundlePattern": ".+_override",
   "detect": { "glob": "**/metadatasets/i18n/mds.properties", "marker": "mds.properties" }
 }
 ```
@@ -151,17 +153,24 @@ eingebauten ersetzt diesen.
 | `mergeSemantics` | | `shallow-toplevel` oder `none`, siehe unten |
 | `ignoredKeys` | | Keys, die keine Übersetzungen sind: Einheit, Prüfungen und Editor lassen sie aus, die Dateien behalten sie, und neue Keys kommen nie davor |
 | `placeholderSyntax` | | `double-brace` (Standard, `{{name}}`) oder `single-brace` (`{name}`); danach prüft die Extension Platzhalter. `{{GENDER_SEPARATOR}}` gilt in beiden |
+| `overrideBundlePattern` | | regulärer Ausdruck für den ganzen Namen von Einheiten, die zur Laufzeit andere überschreiben, siehe unten |
 
 `mergeSemantics`:
 - `shallow-toplevel`: Die Anwendung führt die Einheiten flach zusammen; eine spätere Einheit ersetzt ganze Werte der
   obersten Ebene. Das schaltet die Prüfungen `key-overridden` und `subtree-lost` ein.
 - `none`: Die Einheiten werden nicht zusammengeführt.
 
+`overrideBundlePattern`: edu-sharing liest `mds_override_de_DE.properties` vor `mds_de_DE.properties` und
+`mds_override.properties` vor `mds.properties`; Angular lädt die Kategorie `override` zuletzt. Eine solche Datei
+enthält nur, was sie ändert. Für passende Einheiten meldet die Extension deshalb keine fehlenden oder verwaisten
+Keys und keine fehlenden Dateien; Platzhalter, HTML und die übrigen Regeln prüft sie wie überall.
+
 Regeln für Pfade und Ausdrücke:
 - **Pfade:** `files` und `roots` bleiben im Arbeitsbereich.
   - Verboten sind absolute Pfade, `..`, `\` sowie leere oder `.`-Segmente.
   - Trennzeichen ist `/`.
-- **Reguläre Ausdrücke:** `localePattern`, `bundlePattern` und die Varianten sind JavaScript-Ausdrücke ohne Flags.
+- **Reguläre Ausdrücke:** `localePattern`, `bundlePattern`, `overrideBundlePattern` und die Varianten sind
+  JavaScript-Ausdrücke ohne Flags.
   - Groß- und Kleinschreibung zählt.
   - Sie dürfen höchstens 1.000 Zeichen lang sein.
   - Verboten ist eine mehr als dreimal wiederholte Gruppe, die mit einem wiederholten Teil beginnt, wie `(a+)+`

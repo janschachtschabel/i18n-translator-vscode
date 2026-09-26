@@ -9,6 +9,7 @@ import {
   fileLocation,
   finding,
   isFullLocale,
+  isOverrideBundle,
   isReadable,
   keyLocation,
   readableReference,
@@ -25,12 +26,13 @@ interface Completeness {
  * file without locale (metadatasets, mail templates) that have words to translate: edu-sharing reads that file last
  * for every language, so a language without such a key shows its English text. A key whose text there has none, such
  * as a license link, is right as it falls back. A key only a translation has is an orphan, unless a missing key ends
- * with the same segments: then it is probably misplaced (and reported only as such).
+ * with the same segments: then it is probably misplaced (and reported only as such). An override bundle holds only
+ * what it changes and gets none of these findings.
  */
 function analyze(bundle: Bundle, ctx: CheckContext): Completeness {
   const result: Completeness = { missing: [], orphans: [], misplaced: [] };
   const reference = readableReference(bundle);
-  if (reference === undefined) {
+  if (reference === undefined || isOverrideBundle(ctx.area, bundle.name)) {
     return result;
   }
   const referenceIds = entryIds(bundle, reference);

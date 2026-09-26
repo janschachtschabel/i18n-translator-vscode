@@ -7,7 +7,7 @@ import {
   type MergeSemantics,
   type PlaceholderSyntax,
 } from './areaDefinition';
-import { compileFilePattern } from './filePattern';
+import { assertEmbeddableRegex, compileFilePattern } from './filePattern';
 import { normalizeRoot } from './rootPath';
 
 export type ParseAreaResult = { ok: true; area: AreaDefinition } | { ok: false; errors: string[] };
@@ -81,6 +81,18 @@ export function parseAreaDefinition(raw: unknown): ParseAreaResult {
       PLACEHOLDER_SYNTAXES.includes(raw.placeholderSyntax as PlaceholderSyntax),
     `"placeholderSyntax" must be one of: ${PLACEHOLDER_SYNTAXES.join(', ')}.`,
   );
+  const overrideBundlePattern = check(
+    raw.overrideBundlePattern,
+    isOptionalString(raw.overrideBundlePattern),
+    '"overrideBundlePattern" must be a string.',
+  );
+  if (typeof overrideBundlePattern === 'string') {
+    try {
+      assertEmbeddableRegex(overrideBundlePattern, 'overrideBundlePattern');
+    } catch (error) {
+      errors.push((error as Error).message);
+    }
+  }
   const roots = parseRoots(raw.roots, raw.detect !== undefined, errors);
 
   if (typeof files === 'string' && typeof localePattern === 'string') {
@@ -116,6 +128,7 @@ export function parseAreaDefinition(raw: unknown): ParseAreaResult {
       detect: detect as AreaDefinition['detect'],
       ignoredKeys: ignoredKeys as string[] | undefined,
       placeholderSyntax: placeholderSyntax as PlaceholderSyntax | undefined,
+      overrideBundlePattern: overrideBundlePattern as string | undefined,
     }),
   };
 }

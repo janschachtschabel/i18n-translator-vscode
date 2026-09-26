@@ -7,7 +7,9 @@ import {
   missingKeyRule,
   orphanKeyRule,
 } from '../../../../../src/core/checks/rules/missingKeys';
+import { placeholderMismatchRule } from '../../../../../src/core/checks/rules/placeholderMismatch';
 import { compileVariants } from '../../../../../src/core/checks/variants';
+import { ANGULAR_PRESET } from '../../../../../src/core/area/presets';
 import { bundleOf, contextOf, run, summarize } from './helpers';
 
 describe('missing-key', () => {
@@ -142,6 +144,23 @@ describe('orphan-key and misplaced-key', () => {
   it('points to the key in the translation', () => {
     const [finding] = run(orphanKeyRule, [bundleOf('common', { de: '{}', it: '{"OLD":"x"}' })]);
     expect(finding?.location).toEqual({ relPath: 'i18n/common/it.json', range: [1, 6] });
+  });
+});
+
+describe('override bundles', () => {
+  // edu-sharing reads mds_override_de_DE before mds_de_DE: an override file holds only what it changes.
+  const area = { ...ANGULAR_PRESET, overrideBundlePattern: 'override' };
+  const override = bundleOf('override', { de: '{"a":"{{n}} A","b":"B"}', fr: '{"a":"a","c":"c"}' }, area);
+  const common = bundleOf('common', { de: '{"a":"A"}', fr: '{}', en: '{"a":"a"}' }, area);
+  const ctx = contextOf([override, common], area);
+
+  it('get no findings about missing keys or files', () => {
+    const rules = [missingKeyRule, orphanKeyRule, misplacedKeyRule, missingFileRule];
+    expect(summarize(rules.flatMap((rule) => rule.run(ctx)))).toEqual(['missing-key common/fr a']);
+  });
+
+  it('get the findings about their texts', () => {
+    expect(summarize(placeholderMismatchRule.run(ctx))).toEqual(['placeholder-mismatch override/fr a']);
   });
 });
 

@@ -1,3 +1,4 @@
+import type { AreaDefinition } from '../../area/areaDefinition';
 import { hasSyntaxError } from '../../formats/adapter';
 import type { Bundle } from '../../model/bundle';
 import type { EntryKey } from '../../model/keys';
@@ -15,6 +16,13 @@ export function readableReference(bundle: Bundle): LocaleCode | undefined {
   return bundle.reference !== undefined && isReadable(bundle, bundle.reference)
     ? bundle.reference
     : undefined;
+}
+
+/** A bundle that overrides others at runtime holds only what it changes, like a sparse variant. */
+export function isOverrideBundle(area: AreaDefinition, name: string): boolean {
+  return (
+    area.overrideBundlePattern !== undefined && new RegExp(`^(?:${area.overrideBundlePattern})$`).test(name)
+  );
 }
 
 /** Full locales must contain every key; sparse variants only contain what differs from their base. */

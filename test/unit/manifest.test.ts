@@ -13,6 +13,7 @@ import {
 } from '../../src/core/config/settings';
 
 interface SettingSchema {
+  type?: string;
   default?: unknown;
   enum?: unknown[];
   properties?: Record<string, SettingSchema>;
@@ -77,6 +78,7 @@ describe('package.json configuration', () => {
     expect(area['format']?.enum).toEqual([...FORMAT_IDS]);
     expect(area['mergeSemantics']?.enum).toEqual([...MERGE_SEMANTICS]);
     expect(area['placeholderSyntax']?.enum).toEqual([...PLACEHOLDER_SYNTAXES]);
+    expect(area['overrideBundlePattern']?.type).toBe('string');
   });
 });
 

@@ -50,6 +50,7 @@
   "config.areas.detect.marker": "Pfad eines Markers unterhalb seiner Wurzel, z. B. `common/de.json`; der Glob muss damit enden.",
   "config.areas.ignoredKeys": "Keys, die keine Übersetzungen sind, z. B. eine Wächterzeile: Die Erweiterung blendet sie aus und behält sie in den Dateien.",
   "config.areas.placeholderSyntax": "Wie die Texte Platzhalter schreiben: `double-brace` für `{{name}}` (Standard, Angular und Mail-Templates), `single-brace` für `{name}` (Metadatasets).",
+  "config.areas.overrideBundlePattern": "Regulärer Ausdruck für die Namen von Einheiten, die zur Laufzeit andere überschreiben, z. B. `.+_override`: Sie enthalten nur, was sie ändern; die Erweiterung meldet für sie keine fehlenden Keys oder Dateien.",
   "config.variants.base": "Sprache, auf die die Variante zurückfällt, z. B. `de`.",
   "config.variants.requiredWhen": "Regulärer Ausdruck: Trifft er auf den Basistext zu, braucht die Variante einen eigenen Text.",
   "config.variants.forbidden": "Regulärer Ausdruck für Text, den die Variante nicht enthalten soll.",

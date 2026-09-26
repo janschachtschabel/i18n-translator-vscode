@@ -31,6 +31,8 @@ export const ANGULAR_PRESET: AreaDefinition = {
     'override',
   ],
   mergeSemantics: 'shallow-toplevel',
+  // Loaded last, it replaces texts of the other categories: it holds only what it changes.
+  overrideBundlePattern: 'override',
   detect: { glob: '**/common/de.json', marker: 'common/de.json' },
 };
 
@@ -50,6 +52,9 @@ export const MDS_PRESET: AreaDefinition = {
   ignoredKeys: ['this_is_a_bug_the_first_line_will_not_be_translated'],
   // edu-sharing fills `{user}` and the like there; only `{{GENDER_SEPARATOR}}` keeps two braces.
   placeholderSyntax: 'single-brace',
+  // MetadataReader reads `{group}_override_{locale}` before `{group}_{locale}`, and `{group}_override` before
+  // `{group}`: such files hold only what they change.
+  overrideBundlePattern: '.+_override',
   detect: { glob: '**/metadatasets/i18n/mds.properties', marker: 'mds.properties' },
 };
 

@@ -63,6 +63,19 @@ describe('parseAreaDefinition', () => {
     ]);
   });
 
+  it('accepts a pattern for override bundles and refuses one that is no string, invalid or risky', () => {
+    const overrides = { ...customArea, overrideBundlePattern: '.+_override' };
+    expect(parseAreaDefinition(overrides)).toEqual({ ok: true, area: overrides });
+    for (const [pattern, error] of [
+      [7, '"overrideBundlePattern" must be a string.'],
+      ['(', 'overrideBundlePattern is not a valid regular expression'],
+      ['(a+)+', 'overrideBundlePattern is refused'],
+    ] as const) {
+      const result = parseAreaDefinition({ ...customArea, overrideBundlePattern: pattern });
+      expect(result.ok ? '' : result.errors.join('\n'), String(pattern)).toContain(error);
+    }
+  });
+
   it('requires roots unless the area can be detected', () => {
     const { roots, ...withoutRoots } = customArea;
     expect(parseAreaDefinition(withoutRoots).ok).toBe(false);
