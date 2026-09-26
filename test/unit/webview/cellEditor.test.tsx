@@ -163,8 +163,10 @@ describe('cell editor in the table', () => {
     act(() => cellOf('SAVE', 2).focus());
     press('Enter');
     typeText('Sauver');
-    // VS Code takes the focus: the field stays the active element of the page and gets it back later.
-    act(() => void fireEvent.blur(field()));
+    // VS Code takes the focus: the field stays the active element of the page and gets it back later. The editor
+    // listens to focusout, which a blur event alone would never reach (audit T-02).
+    act(() => void fireEvent.focusOut(field()));
+    expect(document.activeElement).toBe(field());
     await nextTask();
     expect(edits(posted)).toEqual([]);
     expect(screen.getByRole('textbox')).toBeTruthy();

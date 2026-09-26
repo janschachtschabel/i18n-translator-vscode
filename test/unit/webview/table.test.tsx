@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { act, cleanup, fireEvent, screen, waitFor, within } from '@testing-library/preact';
+import { act, cleanup, fireEvent, screen, within } from '@testing-library/preact';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_FILTER } from '../../../src/shared/filter';
 import { findingsModel as model, openWith as open, row, text, axeProblems } from './support';
@@ -32,6 +32,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
+  vi.useRealTimers();
 });
 
 describe('table', () => {
@@ -161,7 +162,9 @@ describe('table', () => {
     expect(fireEvent.keyDown(cellOf('SAVE', 1), { key: ' ' })).toBe(false);
   });
 
-  it('renders a large bundle in steps', async () => {
+  // With fake timers the steps come when the test says so, not when a busy machine gets to them (audit T-01).
+  it('renders a large bundle in steps', () => {
+    vi.useFakeTimers();
     const rows = Array.from({ length: 450 }, (_, index) =>
       row(`KEY_${index}`, {
         de: text(`Text ${index}`),
@@ -171,9 +174,14 @@ describe('table', () => {
       }),
     );
     open({}, { ...model, rows });
+    const rendered = () => grid().querySelectorAll('.grid-body [role="row"]').length;
     expect(grid().getAttribute('aria-rowcount')).toBe('451');
-    expect(within(grid()).getAllByRole('row').length).toBeLessThan(451);
-    await waitFor(() => expect(within(grid()).getAllByRole('row')).toHaveLength(451));
+    expect(rendered()).toBe(200);
+    // Each step plans the next once it has rendered.
+    for (let step = 0; step < 5 && rendered() < 450; step++) {
+      act(() => void vi.runOnlyPendingTimers());
+    }
+    expect(rendered()).toBe(450);
   });
 
   it('moves the focus to a row that is not rendered yet', () => {
