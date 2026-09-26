@@ -51,42 +51,58 @@ function analyze(bundle: Bundle, ctx: CheckContext): Completeness {
 }
 
 /**
+ * More pairs than this among keys with the same last segment get no suggestions; their keys stay orphans. Real
+ * files have a few; crafted ones (`A0.X` … `An.X` against `B0.X` … `Bn.X`) would need quadratic time and memory.
+ */
+const MAX_PAIRS_PER_ENDING = 10_000;
+
+/**
  * Pairs extra keys with missing keys that end in the same segments, the longest common ending first and
  * ties in key order. Each missing key is suggested once, so moving every key as suggested never collides.
+ * Keys pair only within their last segment, so each segment is paired on its own.
  */
 function likelyTargets(extra: readonly EntryKey[], missing: readonly EntryKey[]): Map<string, EntryKey> {
-  const missingByLast = new Map<string, EntryKey[]>();
-  for (const key of missing) {
-    const group = missingByLast.get(lastSegment(key));
-    if (group) {
-      group.push(key);
-    } else {
-      missingByLast.set(lastSegment(key), [key]);
-    }
-  }
-  const pairs = extra.flatMap((key, keyIndex) =>
-    (missingByLast.get(lastSegment(key)) ?? []).map((target, targetIndex) => ({
-      key,
-      target,
-      length: commonSuffixLength(key.segments, target.segments),
-      keyIndex,
-      targetIndex,
-    })),
-  );
-  pairs.sort((a, b) => b.length - a.length || a.keyIndex - b.keyIndex || a.targetIndex - b.targetIndex);
+  const missingByLast = byLastSegment(missing);
   const targets = new Map<string, EntryKey>();
-  const taken = new Set<string>();
-  for (const { key, target } of pairs) {
-    if (!targets.has(key.id) && !taken.has(target.id)) {
-      targets.set(key.id, target);
-      taken.add(target.id);
+  for (const [last, keys] of byLastSegment(extra)) {
+    const candidates = missingByLast.get(last) ?? [];
+    if (candidates.length === 0 || keys.length * candidates.length > MAX_PAIRS_PER_ENDING) {
+      continue;
+    }
+    const pairs = keys.flatMap((key, keyIndex) =>
+      candidates.map((target, targetIndex) => ({
+        key,
+        target,
+        length: commonSuffixLength(key.segments, target.segments),
+        keyIndex,
+        targetIndex,
+      })),
+    );
+    pairs.sort((a, b) => b.length - a.length || a.keyIndex - b.keyIndex || a.targetIndex - b.targetIndex);
+    const taken = new Set<string>();
+    for (const { key, target } of pairs) {
+      if (!targets.has(key.id) && !taken.has(target.id)) {
+        targets.set(key.id, target);
+        taken.add(target.id);
+      }
     }
   }
   return targets;
 }
 
-function lastSegment(key: EntryKey): string {
-  return key.segments[key.segments.length - 1]!;
+/** The keys by their last segment, each group in key order. */
+function byLastSegment(keys: readonly EntryKey[]): Map<string, EntryKey[]> {
+  const groups = new Map<string, EntryKey[]>();
+  for (const key of keys) {
+    const last = key.segments[key.segments.length - 1]!;
+    const group = groups.get(last);
+    if (group) {
+      group.push(key);
+    } else {
+      groups.set(last, [key]);
+    }
+  }
+  return groups;
 }
 
 function commonSuffixLength(a: readonly string[], b: readonly string[]): number {

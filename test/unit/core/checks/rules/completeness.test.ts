@@ -95,6 +95,20 @@ describe('orphan-key and misplaced-key', () => {
     expect(summarize(run(orphanKeyRule, [bundle]))).toEqual(['orphan-key common/fr X.TITLE']);
   });
 
+  // Files come from the repository: pairing every extra key with every missing key of the same ending would take
+  // quadratic time and memory (audit S-03).
+  it('suggests nothing where too many keys share an ending, and reports them as orphans', () => {
+    const texts = (prefix: string) =>
+      JSON.stringify(
+        Object.fromEntries(Array.from({ length: 2_000 }, (_, i) => [`${prefix}${i}`, { X: 'x' }])),
+      );
+    const bundle = bundleOf('common', { de: texts('A'), fr: texts('B') });
+    const started = performance.now();
+    expect(run(misplacedKeyRule, [bundle])).toEqual([]);
+    expect(run(orphanKeyRule, [bundle])).toHaveLength(2_000);
+    expect(performance.now() - started).toBeLessThan(2_000);
+  });
+
   it('points to the key in the translation', () => {
     const [finding] = run(orphanKeyRule, [bundleOf('common', { de: '{}', it: '{"OLD":"x"}' })]);
     expect(finding?.location).toEqual({ relPath: 'i18n/common/it.json', range: [1, 6] });
