@@ -15,4 +15,14 @@ describe('hintFor', () => {
       }
     }
   });
+
+  it('names placeholders in the syntax of the area', () => {
+    expect(hintFor('placeholder-malformed')).toContain('{{name}}');
+    expect(hintFor('placeholder-malformed', 'single-brace')).toContain('{name}');
+    expect(hintFor('placeholder-malformed', 'single-brace')).toContain('{{GENDER_SEPARATOR}}');
+  });
+
+  it('does not claim which of repeated definitions counts, which differs between formats', () => {
+    expect(hintFor('duplicate-key')).not.toMatch(/last|first/);
+  });
 });

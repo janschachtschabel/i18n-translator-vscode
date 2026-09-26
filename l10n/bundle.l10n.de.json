@@ -30,7 +30,7 @@
   "{key} in {locale} was changed in the meantime.": "{key} in {locale} wurde inzwischen geändert.",
   "{key} in {locale}: not saved. {message}": "{key} in {locale}: nicht gespeichert. {message}",
   "{key} is also defined in {winner}, which comes later in the merge order: its {locale} text replaces this one.": "{key} ist auch in {winner} definiert, das in der Merge-Reihenfolge später kommt: Dessen {locale}-Text ersetzt diesen.",
-  "{key} is defined more than once in this file; only the last definition is used.": "{key} ist in dieser Datei mehrfach definiert; nur die letzte Definition gilt.",
+  "{key} is defined more than once in this file; only one of the definitions counts.": "{key} ist in dieser Datei mehrfach definiert; nur eine der Definitionen gilt.",
   "{key} is empty in {locale}; the empty text replaces the fallback.": "{key} ist in {locale} leer; statt des Rückfalltexts wird nichts angezeigt.",
   "{key} is missing in {locale}.": "{key} fehlt in {locale}.",
   "{key} is no text of a mail template: name the template, then subject or message, e.g. invited.subject.": "{key} ist kein Text eines Mail-Templates: Nennen Sie das Template und dann subject oder message, z. B. invited.subject.",
@@ -153,7 +153,7 @@
   "Problems while indexing: {0}": "Probleme beim Indizieren: {0}",
   "reference": "Referenz",
   "Regular expression": "Regulärer Ausdruck",
-  "Remove the other definitions from the file; only the last one counts.": "Entfernen Sie die übrigen Definitionen aus der Datei; nur die letzte gilt.",
+  "Remove the other definitions from the file and keep the one the editor shows.": "Entfernen Sie die übrigen Definitionen aus der Datei und behalten Sie die, die der Editor zeigt.",
   "Rename {key}": "{key} umbenennen",
   "Rename {key} only in {bundle}, or in every bundle that has it?": "{key} nur in {bundle} umbenennen oder in jeder Einheit, die ihn hat?",
   "Replace the value in the file with a text.": "Ersetzen Sie den Wert in der Datei durch einen Text.",
@@ -240,5 +240,6 @@
   "Workspace folder of the translations": "Arbeitsbereichsordner der Übersetzungen",
   "Wrap long texts": "Lange Texte umbrechen",
   "Write a text of its own for this variant, without the words the finding names.": "Schreiben Sie für diese Variante einen eigenen Text ohne die Wörter, die der Befund nennt.",
-  "Write each placeholder as {{name}}, with two braces on each side.": "Schreiben Sie jeden Platzhalter als {{name}}, mit zwei geschweiften Klammern auf jeder Seite."
+  "Write each placeholder as {{name}}, with two braces on each side.": "Schreiben Sie jeden Platzhalter als {{name}}, mit zwei geschweiften Klammern auf jeder Seite.",
+  "Write each placeholder as {name}, with one brace on each side; only {{GENDER_SEPARATOR}} has two.": "Schreiben Sie jeden Platzhalter als {name}, mit einer geschweiften Klammer auf jeder Seite; nur {{GENDER_SEPARATOR}} hat zwei."
 }

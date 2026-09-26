@@ -1,10 +1,12 @@
+import type { PlaceholderSyntax } from '../../core/area/areaDefinition';
 import { l10n } from '../l10n';
 
 /**
  * How to solve a finding in a cell (design §7.1: findings with explanation and solution); its message is the
- * explanation. Undefined for findings that no cell shows, e.g. about a file.
+ * explanation. Undefined for findings that no cell shows, e.g. about a file. Placeholders are named in the syntax
+ * of the bundle's area.
  */
-export function hintFor(rule: string): string | undefined {
+export function hintFor(rule: string, syntax: PlaceholderSyntax = 'double-brace'): string | undefined {
   switch (rule) {
     case 'missing-key':
       return l10n.t('Add the translation.');
@@ -15,7 +17,11 @@ export function hintFor(rule: string): string | undefined {
     case 'misplaced-key':
       return l10n.t('Move the text to the key the finding suggests.');
     case 'placeholder-malformed':
-      return l10n.t('Write each placeholder as {{name}}, with two braces on each side.');
+      return syntax === 'single-brace'
+        ? l10n.t(
+            'Write each placeholder as {name}, with one brace on each side; only {{GENDER_SEPARATOR}} has two.',
+          )
+        : l10n.t('Write each placeholder as {{name}}, with two braces on each side.');
     case 'placeholder-mismatch':
       return l10n.t('Use the placeholders of the reference unchanged; the application fills them in.');
     case 'html-mismatch':
@@ -33,7 +39,7 @@ export function hintFor(rule: string): string | undefined {
     case 'same-as-reference':
       return l10n.t('Translate the text, unless it is meant to stay the same, e.g. a name.');
     case 'duplicate-key':
-      return l10n.t('Remove the other definitions from the file; only the last one counts.');
+      return l10n.t('Remove the other definitions from the file and keep the one the editor shows.');
     case 'non-string-value':
       return l10n.t('Replace the value in the file with a text.');
     default:

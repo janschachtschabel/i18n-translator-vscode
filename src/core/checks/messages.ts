@@ -10,7 +10,7 @@ export interface MessageText {
 export const ISSUE_MESSAGES: Readonly<Record<RuleId, string>> = {
   'parse-error': 'The file cannot be read: {detail}.',
   'non-string-value': '{key} has a value that is not text.',
-  'duplicate-key': '{key} is defined more than once in this file; only the last definition is used.',
+  'duplicate-key': '{key} is defined more than once in this file; only one of the definitions counts.',
   'not-utf8': 'The file is not valid UTF-8.',
   'missing-file': 'The {locale} file of {bundle} is missing.',
   'missing-key': '{key} is missing in {locale}.',

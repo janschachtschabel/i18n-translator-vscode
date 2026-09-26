@@ -96,7 +96,7 @@ export function Field({ store, row, locale, cell, editor, referenceText, place }
               </p>
             )}
             {cell.issues.map((issue, index) => {
-              const hint = hintFor(issue.rule);
+              const hint = hintFor(issue.rule, store.placeholderSyntax.value);
               return (
                 <div key={index}>
                   <p class="card-finding">
