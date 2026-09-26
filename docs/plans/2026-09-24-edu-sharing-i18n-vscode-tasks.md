@@ -690,7 +690,9 @@ was nicht ausdrücklich geändert wurde.
   `jsonc-parser` dient nur noch zum Parsen.
 - **B5 Rebase statt Abbruch.** Jede Änderung trägt die Revision (Hash) der Datei, auf der sie beruht. Hat sich die
   Datei inzwischen geändert, werden die Operationen auf den neuen Stand angewandt. Ein Konflikt entsteht nur, wenn ein
-  betroffener Key inzwischen fehlt oder einen anderen Text hat als der Ausgangswert der Änderung.
+  betroffener Key inzwischen fehlt oder einen anderen Text hat als der Ausgangswert der Änderung. Als Grundlage gelten
+  alle Dateien der geänderten Einheiten, nicht nur die geschriebenen: Ändert ein `git pull` die Referenz, wird neu
+  geplant (Audit L-11).
 - **B6 Webview-Technik.** Preact und `@preact/signals`, eigener esbuild-Build (`platform: 'browser'`, IIFE) nach
   `dist/webview/`; Codicons werden dorthin kopiert. Typprüfung über `tsconfig.webview.json` (DOM-Typen, kein Node).
   Komponententests mit vitest, `happy-dom`, `@testing-library/preact` und `axe-core`

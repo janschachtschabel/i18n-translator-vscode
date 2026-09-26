@@ -4,6 +4,7 @@ import { applyChanges } from '../../core/edit/applyChanges';
 import type { EditProblem } from '../../core/edit/editMessages';
 import type { PlanResult } from '../../core/edit/planEdit';
 import { ADAPTERS } from '../../core/formats/registry';
+import type { LoadedFile } from '../../core/model/bundle';
 import type { RootAnalysis } from '../../core/pipeline/analyze';
 import { revisionOf } from '../../core/util/hash';
 import { messageOf } from './errors';
@@ -209,16 +210,27 @@ export class FileStore {
       if (dirty.length > 0) {
         return { ok: false, reason: 'dirty', files: dirty };
       }
-      const onDisk = await Promise.all(targets.map((target) => readIfExists(target.uri, this.files)));
-      const changed = targets.filter((target, i) => !holds(onDisk[i], target.write.before, adapter));
-      if (changed.length === 0) {
+      // The plan rests on every file of the bundles it changes (B5), not only on those it writes: e.g. a key that a
+      // git pull deleted from the others must not come back in the file that is written.
+      const written = new Set(targets.map((target) => target.write.relPath));
+      const inputs = bundleFiles(analysis, [...written])
+        .filter((file) => !written.has(file.relPath))
+        .map((file) => ({ uri: vscode.Uri.joinPath(indexed.folder.uri, ...file.relPath.split('/')), file }));
+      const [onDisk, inputsOnDisk] = await Promise.all([
+        Promise.all(targets.map((target) => readIfExists(target.uri, this.files))),
+        Promise.all(inputs.map((input) => readIfExists(input.uri, this.files))),
+      ]);
+      const uris = [
+        ...targets.filter((target, i) => !holds(onDisk[i], target.write.before, adapter)),
+        ...inputs.filter((input, i) => !holds(inputsOnDisk[i], input.file.doc, adapter)),
+      ].map((changed) => changed.uri);
+      if (uris.length === 0) {
         return this.commit(
           'write',
           targets.map((target, i) => ({ uri: target.uri, bytes: target.bytes, before: onDisk[i] })),
           started,
         );
       }
-      const uris = changed.map((target) => target.uri);
       if (attempt === PLAN_ATTEMPTS) {
         return { ok: false, reason: 'changed', files: uris };
       }
@@ -414,9 +426,22 @@ function inRoot(uri: vscode.Uri, indexed: IndexedRoot): boolean {
   );
 }
 
-/** How many bundles a write changes: the area's file pattern tells the bundle of every path, new ones too. */
+/** How many bundles a write changes. */
 function bundlesOf(analysis: RootAnalysis, relPaths: readonly string[]): number {
+  return new Set(bundleNames(analysis, relPaths)).size;
+}
+
+/** The files of the bundles that `relPaths` belong to, as the analysis read them. */
+function bundleFiles(analysis: RootAnalysis, relPaths: readonly string[]): LoadedFile[] {
+  const names = new Set(bundleNames(analysis, relPaths));
+  return analysis.bundles
+    .filter((bundle) => names.has(bundle.name))
+    .flatMap((bundle) => bundle.locales.map((locale) => bundle.file(locale)!));
+}
+
+/** The bundle of each path by the area's file pattern, which knows new files too; the path itself if none. */
+function bundleNames(analysis: RootAnalysis, relPaths: readonly string[]): string[] {
   const match = compileFilePattern(analysis.area);
   const prefix = analysis.root === '' ? '' : `${analysis.root}/`;
-  return new Set(relPaths.map((relPath) => match(relPath.slice(prefix.length))?.bundle ?? relPath)).size;
+  return relPaths.map((relPath) => match(relPath.slice(prefix.length))?.bundle ?? relPath);
 }

@@ -118,6 +118,25 @@ suite('FileStore', () => {
     assert.ok((await read(fr)).includes('"ASK": "Autre chose ?"'));
   });
 
+  // A git pull may delete a key everywhere while the index still has it: a text for it would bring the key back
+  // as an orphan. The plan rests on every file of the bundle, not only on those it writes (audit L-11).
+  test('plans again when another file of the bundle changed on disk since indexing', async () => {
+    await changeOnDisk(uriOf('common', 'de'), '  "CANCEL": "Abbrechen",\n', '');
+    await changeOnDisk(uriOf('common', 'en'), '  "CANCEL": "Cancel",\n', '');
+    await changeOnDisk(uriOf('common', 'it'), '  "CANCEL": "Annulla",\n', '');
+    const fr = uriOf('common', 'fr');
+    const before = await read(fr);
+    const result = await api.fileStore.write(
+      ref,
+      edit('common', { kind: 'setText', entryId: id('CANCEL'), locale: 'fr', value: 'Annuler' }),
+    );
+    assert.ok(
+      !result.ok && result.reason === 'problem' && result.problem.code === 'missing-key',
+      JSON.stringify(result),
+    );
+    assert.equal(await read(fr), before);
+  });
+
   test('undoes the last write byte for byte', async () => {
     const fr = uriOf('common', 'fr');
     const before = await vscode.workspace.fs.readFile(fr);
