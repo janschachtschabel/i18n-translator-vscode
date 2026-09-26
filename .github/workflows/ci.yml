@@ -61,6 +61,11 @@ jobs:
       - name: Package VSIX
         if: runner.os == 'Linux'
         run: npm run package
+      # The VSIX holds the production build (minified), which the tests above did not run: activation and the
+      # editor, with its webview, once more on exactly that build.
+      - name: Smoke test of the packaged build
+        if: runner.os == 'Linux'
+        run: xvfb-run -a npx vscode-test --label stable --grep "activation|editor panel"
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         if: runner.os == 'Linux'
         with:
