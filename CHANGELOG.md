@@ -5,6 +5,11 @@ Bis 0.2 entsprach die Stufe der Phase der [Taskliste](docs/plans/2026-09-24-edu-
 Phasen 5 und 6 vorgezogen sind, zählt sie weiter, ohne die Phase zu nennen. Die Installation beschreibt das
 [README](README.md#installation).
 
+## Unveröffentlicht
+
+- **Eingabefelder für Keys und Sprachen** („Key hinzufügen…“, „Key umbenennen…“, „Sprache hinzufügen…“) schließen
+  jetzt auch mit einem Klick daneben und haben ein X in der Titelzeile; bisher schloss sie nur Esc.
+
 ## 0.3.0 – 26.09.2026
 
 Metadatasets und Mail-Templates kommen hinzu, vorgezogen vor Füllen und Import/Export. Ein edu-sharing-Checkout oder

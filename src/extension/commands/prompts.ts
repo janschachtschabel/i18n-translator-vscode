@@ -1,11 +1,6 @@
 import * as vscode from 'vscode';
 import { askModal } from '../notify';
-
-/** What a check of typed text says: an error keeps it from being accepted, a warning does not. */
-export interface InputCheck {
-  message: string;
-  warning?: boolean;
-}
+import { askInput, type InputOptions } from './inputBox';
 
 export interface PickItem<T> {
   label: string;
@@ -19,13 +14,7 @@ export interface PickItem<T> {
  */
 export interface Prompts {
   /** Text the user types, checked while typing; undefined: cancelled. */
-  input(options: {
-    title: string;
-    prompt: string;
-    value?: string;
-    placeHolder?: string;
-    check: (text: string) => InputCheck | undefined;
-  }): Promise<string | undefined>;
+  input(options: InputOptions): Promise<string | undefined>;
   /** A modal question with one action; false: cancelled. */
   confirm(message: string, action: string, detail?: string): Promise<boolean>;
   /** A modal question with several actions; undefined: cancelled. */
@@ -36,27 +25,16 @@ export interface Prompts {
 
 /** The questions as VS Code asks them. */
 export const vscodePrompts: Prompts = {
-  input: ({ title, prompt, value, placeHolder, check }) =>
-    Promise.resolve(
-      vscode.window.showInputBox({
-        title,
-        prompt,
-        value,
-        placeHolder,
-        ignoreFocusOut: true,
-        validateInput: (text) => {
-          const result = check(text);
-          return (
-            result && {
-              message: result.message,
-              severity: result.warning
-                ? vscode.InputBoxValidationSeverity.Warning
-                : vscode.InputBoxValidationSeverity.Error,
-            }
-          );
-        },
+  input: (options) =>
+    askInput(vscode.window.createInputBox(), options, {
+      closeButton: { iconPath: new vscode.ThemeIcon('close'), tooltip: vscode.l10n.t('Cancel (Escape)') },
+      validation: ({ message, warning }) => ({
+        message,
+        severity: warning
+          ? vscode.InputBoxValidationSeverity.Warning
+          : vscode.InputBoxValidationSeverity.Error,
       }),
-    ),
+    }),
   confirm: async (message, action, detail) => (await askModal(message, detail, action)) === action,
   choose: async (message, actions, detail) => askModal(message, detail, ...actions),
   pick: async (items, placeHolder) =>

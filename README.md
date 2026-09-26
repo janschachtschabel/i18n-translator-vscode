@@ -223,6 +223,8 @@ Gut zu wissen:
    - Kontextmenü der Key-Spalte: Key hinzufügen, umbenennen oder löschen, Sprache hinzufügen.
    - Schaltflächen in der Titelleiste des Editors: Key oder Sprache hinzufügen.
    - Kontextmenü einer Einheit in der Seitenleiste: Key oder Sprache hinzufügen, dazu „Im Explorer zeigen“.
+   - Die Eingabefelder dieser Befehle schließen ohne Änderung mit Esc, dem X in ihrer Titelzeile oder einem Klick
+     daneben.
 7. **Zurücknehmen:** Strg+Z im Editor nimmt die letzte Änderung zurück. Ältere Stände holt
    „Übersetzungsdateien aus einer Sicherung wiederherstellen…“ zurück.
 

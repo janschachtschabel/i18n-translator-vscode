@@ -66,6 +66,7 @@
   "Before restoring a backup": "Vor dem Wiederherstellen einer Sicherung",
   "Before the first change of a session": "Vor der ersten Änderung einer Sitzung",
   "Bundles with this key: {bundles}": "Einheiten mit diesem Key: {bundles}",
+  "Cancel (Escape)": "Abbrechen (Escape)",
   "Change the text in the bundle that comes later, or keep the key in one bundle only.": "Ändern Sie den Text in der Einheit, die später kommt, oder behalten Sie den Key nur in einer Einheit.",
   "Changed in the meantime: {files}. Nothing was written.": "Inzwischen geändert: {files}. Es wurde nichts geschrieben.",
   "Changed outside the editor:": "Außerhalb des Editors geändert:",
