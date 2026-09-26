@@ -1601,14 +1601,18 @@ frischem Kontext den ganzen Block mit `/better-coding-review`.
   Zeilenanfänge über einen gemeinsamen Helfer, der `\r` kennt. Neue Zeilen in solchen Dateien enden dann mit `\r`.
 - **P5 `validKey`.** Die Meldung `invalid-template-key` spricht von Mail-Templates. Solange nur der Mail-Adapter den
   Hook hat, genügt ein Hinweis am Hook; ein zweites Format bräuchte eine eigene Meldung (keine neue Mechanik, YAGNI).
-- **P6 Mail-Vorschau (Kern von Task 6.4).** Ein Knopf „Vorschau“ an jedem Sprachfeld einer Mail-Zeile (Details und
-  Liste) öffnet neben dem Editor einen Tab „Vorschau“: die Mail des Templates so zusammengesetzt wie
-  `MailTemplate.getContent` (`<style>` des Templates `stylesheet` aus der Basisdatei, `header`, der Text in
-  `<div class='content'>`, `footer` in `<div class='footer'>`, jedes Teil mit Rückfall auf die Basisdatei und auf das
-  Template ohne Kontext), dazu der Betreff. Links die Referenz, rechts die gewählte Sprache. Der Tab hat keine Skripte
-  (`enableScripts: false`) und eine eigene CSP ohne Netzwerk; jede Mail steht in einem `iframe sandbox="" srcdoc`. Er
-  folgt Dateiänderungen und dem nächsten Klick auf „Vorschau“. Die CSP des Editors bleibt unverändert. Später:
-  hervorgehobener HTML-Code, Umschalten auf das Theme, Vorschau beim Tippen.
+- **P6 Mail-Vorschau (Kern von Task 6.4).** „Mail-Vorschau“ öffnet neben dem Editor einen Tab mit der Mail eines
+  Templates in jeder Sprache der Einheit, die Referenz zuerst, so zusammengesetzt wie `MailTemplate.getContent`
+  (`<style>` des Templates `stylesheet` aus der Basisdatei, `header`, der Text in `<div class='content'>`, `footer` in
+  `<div class='footer'>`, jedes Teil mit Rückfall auf die Basisdatei und auf das Template ohne Kontext), dazu der
+  Betreff und ein Hinweis, wo eine Sprache Texte der Basisdatei zeigt. Aufruf über einen Knopf in den Details, das
+  Kontextmenü einer Zeile oder Karte (wie Umbenennen und Löschen) und die Befehlspalette (dort mit Auswahl des
+  Templates). Ein Knopf je Sprachfeld hätte in der Liste 150 Tabstopps mehr bedeutet; alle Sprachen nebeneinander
+  entsprechen dem Wunsch, Sprachfassungen gegenüberzustellen. Der Tab hat keine Skripte (`enableScripts: false`) und
+  eine eigene CSP ohne Netzwerk; jede Mail steht in einem `iframe sandbox="" srcdoc`. Er folgt jedem Indexlauf. Die
+  CSP des Editors bleibt unverändert; die Nachricht `preview` liest nur und geht deshalb nicht über die
+  Key-Befehle, die im eingeschränkten Modus nichts tun. Später: hervorgehobener HTML-Code, Umschalten auf das Theme,
+  Vorschau beim Tippen.
 
 ### Task O1: Zeilenenden nur mit CR
 **Dateien:** Modify `src/core/text/style.ts`, `src/core/text/lineIndex.ts` (`lineStartAt`), `src/core/formats/json/jsonWrite.ts`,
@@ -1648,13 +1652,16 @@ Fehler; ungültiger Ausdruck → Fehler.
 
 ### Task O6: Mail-Vorschau
 **Dateien:** Create `src/core/formats/mail/mailCompose.ts`, `src/extension/panels/mailPreview.ts`,
-`src/extension/panels/mailPreviewHtml.ts`; Modify `src/shared/protocol.ts` (`preview`), `src/shared/viewModel.ts` (`mailPreview`),
-`src/webview/components/field.tsx`, `editorPanel.ts`, `extension.ts`, l10n, Doku; Test: `mailCompose.test.ts`,
-`mailPreviewHtml.test.ts`, `protocol.test.ts`, `field.test.tsx`, `formats.test.ts` (Integration)
+`src/extension/panels/mailPreviewHtml.ts`, `src/extension/commands/previewMail.ts`; Modify `src/shared/protocol.ts`
+(`preview`), `src/shared/viewModel.ts` (`mailPreview`), `src/webview/components/details.tsx`, `keyContext.ts`,
+`store.ts`, `editorPanel.ts`, `extension.ts`, `package.json` (Befehl, Kontextmenü), l10n, Doku; Test:
+`mail.compose.test.ts`, `mailPreviewHtml.test.ts`, `protocol.test.ts`, `viewModel.test.ts`, `details.test.tsx`,
+`table.test.tsx`, `list.test.tsx`, `formats.test.ts` (Integration)
 **Testfälle:** Zusammensetzung in der Reihenfolge von `getContent`; fehlender Text in `fr_FR` → Text der Basisdatei;
 `name@ctx` nimmt `header@ctx`, sonst `header`; ohne `stylesheet` kein `<style>`; `srcdoc` escapt `& " < >`; jedes `iframe`
-hat `sandbox=""` und einen Titel; CSP ohne `script-src` und ohne Netzwerk; `preview` mit ungültiger Sprache wird
-verworfen; Knopf nur in Mail-Einheiten; Integration: Vorschau öffnet neben dem Editor und zeigt Betreff und Text.
+hat `sandbox=""` und einen Titel; CSP ohne `script-src` und ohne Netzwerk; `preview` mit ungültigem Key wird
+verworfen; Knopf und Kontextmenü nur in Mail-Einheiten; Integration: Vorschau öffnet neben dem Editor, der den Fokus
+behält, zeigt alle Sprachen und folgt einem gespeicherten Text.
 **Abnahme:** CDP mit der Kopie des Datenordners: Vorschau von `invited` in `de_DE` und `fr_FR`, Stylesheet greift, keine
 Netzwerkanfrage.
 **Commit:** `feat: preview mail templates beside the editor`

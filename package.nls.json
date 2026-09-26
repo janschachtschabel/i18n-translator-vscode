@@ -15,6 +15,7 @@
   "cmd.undoLastChange": "Undo last change to translation files",
   "cmd.openEditor": "Open translation editor…",
   "cmd.addKey": "Add key…",
+  "cmd.previewMail": "Preview mail",
   "cmd.renameKey": "Rename key…",
   "cmd.deleteKey": "Delete key…",
   "cmd.addLanguage": "Add language…",

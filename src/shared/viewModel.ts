@@ -53,6 +53,8 @@ export interface BundleViewModel {
   name: string;
   /** How the texts write placeholders, for the check while typing; `double-brace` if not set. */
   placeholderSyntax?: PlaceholderSyntax;
+  /** The bundle holds mail templates: the editor offers the preview of a row's mail. */
+  mailPreview?: true;
   locales: LocaleView[];
   rows: RowView[];
   /** Findings about the bundle as a whole, without a language. */
@@ -100,6 +102,7 @@ export function buildBundleViewModel(bundle: Bundle, options: ViewModelOptions):
     bundleId: bundle.id,
     name: bundle.name,
     ...(options.placeholderSyntax === 'single-brace' ? { placeholderSyntax: options.placeholderSyntax } : {}),
+    ...(bundle.format === 'mail-xml' ? { mailPreview: true as const } : {}),
     locales: codes.map((code) => {
       const inLocale = issues.filter((issue) => issue.locale === code);
       const info = parseLocale(code, { baseFileLanguage: options.baseFileLanguage });

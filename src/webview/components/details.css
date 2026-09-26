@@ -24,6 +24,10 @@
   overflow-wrap: anywhere;
 }
 
+.details-action {
+  margin-block-end: 8px;
+}
+
 /* The term above its text: the details are too narrow for both side by side. */
 .details .card-fields {
   grid-template-columns: minmax(0, 1fr);

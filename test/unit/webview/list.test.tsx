@@ -3,7 +3,7 @@ import { act, cleanup, fireEvent, screen, within } from '@testing-library/preact
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { UiState } from '../../../src/shared/protocol';
 import { DEFAULT_FILTER } from '../../../src/shared/filter';
-import { findingsModel, openWith as open, axeProblems, row, text } from './support';
+import { findingsModel, openWith as open, axeProblems, mailModel, row, text } from './support';
 
 function setWidth(width: number) {
   Object.defineProperty(window, 'innerWidth', { value: width, configurable: true });
@@ -262,6 +262,19 @@ describe('list', () => {
     expect(JSON.parse(cardOf('CANCEL').dataset['vscodeContext']!)).toEqual({
       webviewSection: 'key',
       entryId: JSON.stringify(['CANCEL']),
+    });
+  });
+
+  it('marks the cards of mail templates, whose context menu offers the preview', () => {
+    setWidth(600);
+    open({}, mailModel);
+    const card = within(screen.getByRole('list', { name: 'templates' }))
+      .getByRole('heading', { level: 2, name: 'invited.message' })
+      .closest('li')!;
+    expect(JSON.parse(card.dataset['vscodeContext']!)).toEqual({
+      webviewSection: 'key',
+      entryId: JSON.stringify(['invited', 'message']),
+      mailTemplate: true,
     });
   });
 

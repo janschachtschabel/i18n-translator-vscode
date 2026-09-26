@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MDS_PRESET } from '../../../src/core/area/presets';
+import { MAIL_PRESET, MDS_PRESET } from '../../../src/core/area/presets';
 import { formatMessage } from '../../../src/core/checks/messages';
 import type { Issue } from '../../../src/core/checks/types';
 import { keyFromSegments } from '../../../src/core/model/keys';
@@ -69,6 +69,21 @@ describe('buildBundleViewModel', () => {
       ['de_DE', undefined, 'de-DE'],
       ['default', 'default (en)', 'en'],
     ]);
+  });
+
+  it('offers the mail preview for mail templates only', () => {
+    const mail = analyzeTexts(
+      { 'templates.xml': '<templates><template name="t"><subject>S</subject></template></templates>' },
+      MAIL_PRESET,
+    );
+    const options = {
+      issues: [],
+      variants: [],
+      baseFileLanguage: 'en',
+      localize: (message: { template: string }) => message.template,
+    };
+    expect(buildBundleViewModel(mail.bundles[0]!, options).mailPreview).toBe(true);
+    expect(common.mailPreview).toBeUndefined();
   });
 
   it('puts the texts and the findings into their cells', () => {

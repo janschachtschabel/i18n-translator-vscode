@@ -4,7 +4,14 @@ import { applyEdits, type TextEdit } from '../../text/edits';
 import { lineStartAt } from '../../text/lineIndex';
 import { detectStyle } from '../../text/style';
 import { EditError, type FileOp, type TextRange } from '../adapter';
-import { MAIL_FIELDS, readMail, type MailField, type MailFieldInfo, type MailTemplateInfo } from './mailRead';
+import {
+  MAIL_FIELDS,
+  readMail,
+  splitTemplateId,
+  type MailField,
+  type MailFieldInfo,
+  type MailTemplateInfo,
+} from './mailRead';
 import type { XmlElement } from './xmlTokens';
 import { cdataInner, escapeAttribute, fieldBody, type Writer } from './xmlText';
 
@@ -83,7 +90,7 @@ function insertField(
   }
   const anchor =
     place === 'first' ? 'first' : place && effectiveTemplate(templates, place.segments[0]!)?.element;
-  const { name, context } = splitId(id);
+  const { name, context } = splitTemplateId(id);
   const start = `<template name="${escapeAttribute(name, writer)}"${
     context === undefined ? '' : ` context="${escapeAttribute(context, writer)}"`
   }>`;
@@ -260,12 +267,6 @@ function partsOf(key: EntryKey): { id: string; field: MailField } {
     throw new RangeError(`A mail template key is [template, subject or message]: ${displayKey(key)}`);
   }
   return { id: id!, field: field as MailField };
-}
-
-/** `name@context` names the template of a context; the context follows the last `@`. */
-function splitId(id: string): { name: string; context?: string } {
-  const at = id.lastIndexOf('@');
-  return at > 0 ? { name: id.slice(0, at), context: id.slice(at + 1) } : { name: id };
 }
 
 /** The white space from the start of the line to `offset`, or undefined if something else stands there. */

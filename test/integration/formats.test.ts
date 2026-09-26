@@ -8,7 +8,7 @@ import type { KeyCommandContext } from '../../src/extension/commands/commandTarg
 import type { Prompts } from '../../src/extension/commands/prompts';
 import type { ExtensionApi } from '../../src/extension/extension';
 import { rootRef, type IndexedRoot } from '../../src/extension/services/workspaceIndex';
-import { activateExtension, answering, keepTranslationFiles, nextPost } from './helpers';
+import { activateExtension, answering, keepTranslationFiles, nextPost, waitFor } from './helpers';
 
 const decoder = new TextDecoder();
 
@@ -150,6 +150,51 @@ suite('a data folder with all three areas', () => {
       ['de_DE', 'default (en)', 'fr_FR'],
     );
     assert.equal(model.rows[1]!.cells['fr_FR']!.value, undefined);
+  });
+
+  test('previews a mail beside its editor in every language, the reference first, as edu-sharing sends it', async () => {
+    const mail = await rootOf('edu-sharing.mail');
+    const editor = api.editors.open(mail, bundleOf(mail, 'templates'));
+    await nextPost(editor, 'bundle');
+    const rendered = waitFor(api.mailPreview.onDidRender, () => true);
+    // What the webview sends when the button in the details is pressed.
+    await editor.receive({ type: 'preview', entryId: keyFromSegments(['invited', 'message']).id });
+    const html = await rendered;
+    assert.match(html, /<h1>Mail template invited<\/h1>/);
+    assert.deepEqual(
+      [...html.matchAll(/<h2 id="[^"]+">([^<]*)<\/h2>/g)].map((match) => match[1]),
+      ['de_DE (reference)', 'default (en)', 'fr_FR'],
+    );
+    assert.equal(html.match(/<iframe sandbox="" /g)?.length, 3);
+    assert.match(html, /fr_FR lacks texts of this template: the mail shows those of default \(en\)/);
+    // VS Code shows the tab a little after the panel exists.
+    const previewTab = () =>
+      vscode.window.tabGroups.all
+        .flatMap((group) => group.tabs)
+        .find((candidate) => candidate.label === 'Mail Preview: invited');
+    if (!previewTab()) {
+      await waitFor(vscode.window.tabGroups.onDidChangeTabs, () => previewTab() !== undefined);
+    }
+    assert.notEqual(previewTab()!.group.viewColumn, editor.panel.viewColumn);
+    assert.equal(editor.panel.active, true);
+  });
+
+  test('previews the template of a key from the context menu and follows a saved text', async () => {
+    const mail = await rootOf('edu-sharing.mail');
+    const editor = api.editors.open(mail, bundleOf(mail, 'templates'));
+    await nextPost(editor, 'bundle');
+    let rendered = waitFor(api.mailPreview.onDidRender, () => true);
+    await vscode.commands.executeCommand('eduI18n.previewMail', {
+      webview: 'eduI18n.editor',
+      webviewSection: 'key',
+      entryId: keyFromSegments(['invited', 'subject']).id,
+      mailTemplate: true,
+    });
+    assert.match(await rendered, /<h1>Mail template invited<\/h1>/);
+    rendered = waitFor(api.mailPreview.onDidRender, (html) => html.includes('Bonjour'));
+    const written = await setText(mail, 'templates', ['invited', 'message'], 'fr_FR', '<p>Bonjour</p>');
+    assert.equal(written.ok, true);
+    assert.doesNotMatch(await rendered, /fr_FR lacks texts/);
   });
 
   test('opens a metadataset with the placeholders it uses', async () => {

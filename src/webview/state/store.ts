@@ -1,4 +1,5 @@
 import { computed, effect, signal } from '@preact/signals';
+import { keyFromId } from '../../core/model/keys';
 import { filterRows, type FilterResult, type RowFilter } from '../../shared/filter';
 import { applyPatch } from '../../shared/patch';
 import {
@@ -58,6 +59,11 @@ export class EditorStore {
   readonly placeholderSyntax = computed(() => {
     const view = this.view.value;
     return (view.kind === 'bundle' && view.model.placeholderSyntax) || 'double-brace';
+  });
+  /** Whether the bundle holds mail templates, whose rows the host can preview as the mail. */
+  readonly mailPreview = computed(() => {
+    const view = this.view.value;
+    return view.kind === 'bundle' && view.model.mailPreview === true;
   });
   // Their own signals, so that a change of one part of the view state recomputes only what depends on it: a new
   // filter makes no new list of languages (the rows render again only when their props change), and wrapping
@@ -291,6 +297,13 @@ export class EditorStore {
   /** Asks the host for a key or language command; it asks the user for names and confirmations itself. */
   command(command: EditorCommand, entryId?: string): void {
     this.host.postMessage({ type: 'command', command, ...(entryId !== undefined ? { entryId } : {}) });
+  }
+
+  /** Has the host show the mail of the key's template beside the editor, which keeps the focus. */
+  previewMail(entryId: string): void {
+    this.host.postMessage({ type: 'preview', entryId });
+    const template = keyFromId(entryId).segments[0] ?? '';
+    this.announce(l10n.t('The preview beside the editor shows the mail {template}.', { template }));
   }
 
   /** Undoes the last change of this session to the translation files, in whichever bundle it was. */

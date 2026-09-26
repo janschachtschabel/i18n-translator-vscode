@@ -157,6 +157,11 @@
         "title": "%cmd.addLanguage%",
         "category": "edu-sharing i18n",
         "enablement": "isWorkspaceTrusted"
+      },
+      {
+        "command": "eduI18n.previewMail",
+        "title": "%cmd.previewMail%",
+        "category": "edu-sharing i18n"
       }
     ],
     "menus": {
@@ -220,6 +225,11 @@
         }
       ],
       "webview/context": [
+        {
+          "command": "eduI18n.previewMail",
+          "when": "webviewId == 'eduI18n.editor' && webviewSection == 'key' && mailTemplate",
+          "group": "0_preview@1"
+        },
         {
           "command": "eduI18n.addKey",
           "when": "webviewId == 'eduI18n.editor' && webviewSection == 'key'",

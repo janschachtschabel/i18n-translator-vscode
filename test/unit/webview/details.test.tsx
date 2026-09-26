@@ -2,7 +2,7 @@
 import { act, cleanup, fireEvent, screen, within } from '@testing-library/preact';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { DEFAULT_FILTER } from '../../../src/shared/filter';
-import { openWith as open, axeProblems } from './support';
+import { openWith as open, axeProblems, mailModel } from './support';
 
 const id = (key: string) => JSON.stringify(key.split('.'));
 const grid = () => screen.getByRole('grid', { name: 'common' });
@@ -125,5 +125,22 @@ describe('details', () => {
     expect(await axeProblems()).toEqual([]);
     act(() => void fireEvent.click(inDetails().getByRole('button', { name: /^fr: / })));
     expect(await axeProblems()).toEqual([]);
+  });
+});
+
+describe('the mail preview in the details', () => {
+  it('opens beside the editor for the template of the active key, and says so', async () => {
+    const { posted, store } = open({}, mailModel);
+    act(() => void fireEvent.click(inDetails().getByRole('button', { name: 'Mail-Vorschau' })));
+    expect(posted.filter((message) => message.type === 'preview')).toEqual([
+      { type: 'preview', entryId: id('invited.subject') },
+    ]);
+    expect(store.announcement.value.text).toBe('Die Vorschau neben dem Editor zeigt die Mail invited.');
+    expect(await axeProblems()).toEqual([]);
+  });
+
+  it('is offered for mail templates only', () => {
+    open();
+    expect(inDetails().queryByRole('button', { name: 'Mail-Vorschau' })).toBeNull();
   });
 });

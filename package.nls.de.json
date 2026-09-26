@@ -15,6 +15,7 @@
   "cmd.undoLastChange": "Letzte Änderung an Übersetzungsdateien rückgängig machen",
   "cmd.openEditor": "Übersetzungseditor öffnen…",
   "cmd.addKey": "Key hinzufügen…",
+  "cmd.previewMail": "Mail-Vorschau",
   "cmd.renameKey": "Key umbenennen…",
   "cmd.deleteKey": "Key löschen…",
   "cmd.addLanguage": "Sprache hinzufügen…",

@@ -136,7 +136,11 @@ interface CardProps {
 }
 
 const Card = memo(({ row, locales, store, reference, editor }: CardProps) => (
-  <li class="card" data-entry={entryAttribute(row.entryId)} data-vscode-context={keyContext(row.entryId)}>
+  <li
+    class="card"
+    data-entry={entryAttribute(row.entryId)}
+    data-vscode-context={keyContext(row.entryId, store.mailPreview.value)}
+  >
     {/* It can take the focus, so that the focus has a place when the list replaces the table. */}
     <h2 class="card-key" tabIndex={-1}>
       {row.key}

@@ -28,6 +28,12 @@ export interface MailTemplateInfo {
   fields: MailFieldInfo[];
 }
 
+/** `name@context` names the template of a context; the context follows the last `@`. */
+export function splitTemplateId(id: string): { name: string; context?: string } {
+  const at = id.lastIndexOf('@');
+  return at > 0 ? { name: id.slice(0, at), context: id.slice(at + 1) } : { name: id };
+}
+
 export type MailReadResult =
   { ok: true; root: XmlElement; templates: MailTemplateInfo[] } | { ok: false; problem: FileProblem };
 

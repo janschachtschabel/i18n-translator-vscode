@@ -43,6 +43,11 @@ export function Details({ store, locales, reference }: DetailsProps) {
       <h2 id={TITLE_ID} class="details-title">
         {row ? l10n.t('Details: {key}', { key: row.key }) : l10n.t('Details')}
       </h2>
+      {row && store.mailPreview.value && (
+        <button type="button" class="details-action" onClick={() => store.previewMail(row.entryId)}>
+          {l10n.t('Preview Mail')}
+        </button>
+      )}
       {row ? (
         <dl class="card-fields">
           {locales.map((locale) => (
