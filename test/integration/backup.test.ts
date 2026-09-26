@@ -120,6 +120,17 @@ suite('Backups', () => {
     );
   });
 
+  // Filling a language with AI writes many texts at once (design §5: a backup before mass changes).
+  test('backs up before a write of many texts at once, also right after another backup', async () => {
+    assert.deepEqual(await store.write(ref, setAsk('Continuer ?')), { ok: true });
+    now += MINUTE;
+    assert.deepEqual(await store.write(ref, setAsk('Continuer ?!'), { bulk: true }), { ok: true });
+    assert.deepEqual(
+      (await backups.list()).map((backup) => backup.reason),
+      ['bulk', 'first-write'],
+    );
+  });
+
   test('keeps only the newest backups', async () => {
     settings = { keep: 2, intervalMinutes: 10 };
     for (let count = 0; count < 4; count++) {

@@ -8,6 +8,7 @@ import { askModal, showError, showInfo } from '../notify';
 const REASONS: Readonly<Record<BackupReason, () => string>> = {
   'first-write': () => vscode.l10n.t('Before the first change of a session'),
   'several-bundles': () => vscode.l10n.t('Before a change of several bundles'),
+  bulk: () => vscode.l10n.t('Before writing many texts at once'),
   interval: () => vscode.l10n.t('Periodically while editing'),
   manual: () => vscode.l10n.t('Created by hand'),
   restore: () => vscode.l10n.t('Before restoring a backup'),

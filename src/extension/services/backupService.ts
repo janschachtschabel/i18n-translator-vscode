@@ -67,7 +67,7 @@ export class BackupService {
    * For the file store, before it writes. A failed backup is reported but does not stop a change; before a
    * restore, it throws, and the restore does not happen.
    */
-  async beforeWrite(kind: 'write' | 'restore', bundles: number): Promise<void> {
+  async beforeWrite(kind: 'write' | 'bulk' | 'restore', bundles: number): Promise<void> {
     const reason = this.reasonFor(kind, bundles);
     if (!reason) {
       return;
@@ -194,7 +194,7 @@ export class BackupService {
     return { files, skipped: manifest.files.length - files.length };
   }
 
-  private reasonFor(kind: 'write' | 'restore', bundles: number): BackupReason | undefined {
+  private reasonFor(kind: 'write' | 'bulk' | 'restore', bundles: number): BackupReason | undefined {
     if (kind === 'restore') {
       return 'restore';
     }
@@ -203,6 +203,9 @@ export class BackupService {
     const { intervalMinutes } = this.settings();
     if (this.failedAt !== undefined && this.now() - this.failedAt < Math.max(intervalMinutes, 10) * 60_000) {
       return undefined;
+    }
+    if (kind === 'bulk') {
+      return 'bulk';
     }
     if (this.lastBackup === undefined) {
       return 'first-write';

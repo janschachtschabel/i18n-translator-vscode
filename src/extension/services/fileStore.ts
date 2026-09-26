@@ -37,7 +37,7 @@ export type Planner = (analysis: RootAnalysis) => PlanResult;
  * changes (for a restore, how many files it may change). It runs inside the store's queue, so it must not call
  * write, restore, undo or exclusive.
  */
-export type BeforeWrite = (kind: 'write' | 'restore', bundles: number) => Promise<void>;
+export type BeforeWrite = (kind: 'write' | 'bulk' | 'restore', bundles: number) => Promise<void>;
 
 /** A file and the bytes it gets back, e.g. from a backup. */
 export interface RestoredFile {
@@ -108,9 +108,12 @@ export class FileStore {
     return this.trusted();
   }
 
-  /** Plans the edit on the current files and writes the result. Never throws; failures are results. */
-  write(ref: RootRef, plan: Planner): Promise<WriteResult> {
-    return this.enqueue(() => this.writeNow(ref, plan));
+  /**
+   * Plans the edit on the current files and writes the result. Never throws; failures are results. `bulk`: the write
+   * changes many texts at once (e.g. reviewed suggestions of the AI), which is always backed up first.
+   */
+  write(ref: RootRef, plan: Planner, options: { bulk?: boolean } = {}): Promise<WriteResult> {
+    return this.enqueue(() => this.writeNow(ref, plan, options.bulk === true));
   }
 
   /** Gives files their bytes back, as one write that can be undone; files that already have them stay. */
@@ -154,7 +157,7 @@ export class FileStore {
     });
   }
 
-  private async writeNow(ref: RootRef, plan: Planner): Promise<WriteResult> {
+  private async writeNow(ref: RootRef, plan: Planner, bulk: boolean): Promise<WriteResult> {
     if (!this.canWrite()) {
       return { ok: false, reason: 'untrusted' };
     }
@@ -198,7 +201,7 @@ export class FileStore {
         // Before the checks of editors and disk: between checking the files and writing them, nothing slow may
         // happen, and a backup can take a few hundred milliseconds.
         await this.beforeWrite(
-          'write',
+          bulk ? 'bulk' : 'write',
           bundlesOf(
             analysis,
             targets.map((target) => target.write.relPath),

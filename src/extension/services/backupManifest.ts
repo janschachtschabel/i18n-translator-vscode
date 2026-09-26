@@ -1,9 +1,16 @@
 import * as vscode from 'vscode';
 import { isPlainRelativePath } from '../../core/area/rootPath';
 
-export type BackupReason = 'first-write' | 'several-bundles' | 'interval' | 'manual' | 'restore';
+export type BackupReason = 'first-write' | 'several-bundles' | 'bulk' | 'interval' | 'manual' | 'restore';
 
-const REASONS: readonly BackupReason[] = ['first-write', 'several-bundles', 'interval', 'manual', 'restore'];
+const REASONS: readonly BackupReason[] = [
+  'first-write',
+  'several-bundles',
+  'bulk',
+  'interval',
+  'manual',
+  'restore',
+];
 
 /** The file of a backup folder that describes it. */
 export const MANIFEST = 'manifest.json';

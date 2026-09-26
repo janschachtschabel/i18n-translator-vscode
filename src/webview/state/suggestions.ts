@@ -54,7 +54,7 @@ export class Suggestions {
     return this.edits.takeBackSuggestion();
   }
 
-  receive(message: AiHostToWebview): void {
+  receive(message: Extract<AiHostToWebview, { type: 'aiState' | 'aiSuggestion' }>): void {
     if (message.type === 'aiState') {
       const { available, reason, model } = message;
       this.ai.value = { available, ...(reason ? { reason } : {}), model };

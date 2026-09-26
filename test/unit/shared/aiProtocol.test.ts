@@ -25,4 +25,27 @@ describe('AI messages from the webview', () => {
       expect(isWebviewToHost(invalid), JSON.stringify(invalid)).toBe(false);
     }
   });
+
+  it('accepts filling and the reviewed texts to write, within bounds', () => {
+    expect(isWebviewToHost({ type: 'aiFill' })).toBe(true);
+    const item = { entryId, value: 'Espace de travail', before: null };
+    const apply = {
+      type: 'aiApply',
+      requestId: 'a1',
+      jobId: 'fill-1',
+      items: [item, { ...item, before: '' }],
+    };
+    expect(isWebviewToHost(apply)).toBe(true);
+    for (const invalid of [
+      { ...apply, jobId: '' },
+      { ...apply, items: 'all' },
+      { ...apply, items: [{ ...item, entryId: 'no id' }] },
+      { ...apply, items: [{ ...item, value: 7 }] },
+      { ...apply, items: [{ ...item, value: 'x'.repeat(100_001) }] },
+      { ...apply, items: [{ ...item, before: 3 }] },
+      { ...apply, items: Array.from({ length: 2001 }, () => item) },
+    ]) {
+      expect(isWebviewToHost(invalid)).toBe(false);
+    }
+  });
 });
