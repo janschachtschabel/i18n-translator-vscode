@@ -1,3 +1,4 @@
+import { VALUE_FIELD } from '../../model/types';
 import { decodeText } from '../../text/decode';
 import { encodeText } from '../../text/encode';
 import { escapeBeyondLatin1 } from '../../text/unicodeEscape';
@@ -14,6 +15,10 @@ export const propertiesAdapter: FormatAdapter = {
   flatKeys: true,
   decode: decodeText,
   parse: (doc) => parseProperties(doc.text),
+  entryLine: (doc, entry) => {
+    const { keyRange, valueRange } = entry.fields[VALUE_FIELD]!;
+    return doc.text.slice(keyRange[0], valueRange[1]);
+  },
   applyOps: (doc, ops) => ({ ...doc, text: applyPropertiesOps(doc.text, ops) }),
   encode: (doc) =>
     encodeText(doc.encoding === 'latin-1' ? { ...doc, text: escapeBeyondLatin1(doc.text) } : doc),

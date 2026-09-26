@@ -35,7 +35,7 @@ describe('analyzeRoot', () => {
 });
 
 describe('analyzeRoot with the metadataset preset', () => {
-  const GUARD = 'this_is_a_bug_the_first_line_will_not_be_translated: what the hell\n';
+  const GUARD = 'this_is_a_bug_the_first_line_will_not_be_translated: guard\n';
   const latin1 = (relPath: string, text: string) => ({ relPath, bytes: Buffer.from(text, 'latin1') });
   const analysis = analyzeRoot(
     MDS_PRESET,

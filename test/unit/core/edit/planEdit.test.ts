@@ -454,7 +454,7 @@ describe('planAddLanguage', () => {
 });
 
 describe('planEdit and planAddLanguage with the hidden guard line of metadatasets', () => {
-  const GUARD = 'this_is_a_bug_the_first_line_will_not_be_translated: what the hell\n';
+  const GUARD = 'this_is_a_bug_the_first_line_will_not_be_translated: guard\n';
   const mdsAnalysis = analyzeTexts(
     {
       'mds_de_DE.properties': `${GUARD}a: A\nb: B\n`,
@@ -474,9 +474,19 @@ describe('planEdit and planAddLanguage with the hidden guard line of metadataset
     }
   });
 
+  it('takes the guard line over as the reference writes it, with its separator and line break', () => {
+    const crlf = analyzeTexts(
+      { 'mds_de_DE.properties': `${GUARD.replace('\n', '\r\n')}a: A\r\n` },
+      MDS_PRESET,
+    );
+    expect(summary(planAddLanguage(crlf.bundles, MDS_PRESET, 'es_ES'))).toEqual([
+      `create mds_es_ES.properties: ${JSON.stringify(GUARD.replace('\n', '\r\n'))}`,
+    ]);
+  });
+
   it('starts a new language file with the guard line of its reference', () => {
     expect(summary(planAddLanguage(mdsAnalysis.bundles, MDS_PRESET, 'es_ES'))).toEqual([
-      `create mds_es_ES.properties: ${JSON.stringify('this_is_a_bug_the_first_line_will_not_be_translated=what the hell\n')}`,
+      `create mds_es_ES.properties: ${JSON.stringify(GUARD)}`,
     ]);
   });
 });

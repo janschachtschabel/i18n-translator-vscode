@@ -77,6 +77,11 @@ export interface FormatAdapter {
   validKey?(key: EntryKey): boolean;
   /** Whether the format cannot hold a text (mail templates: characters XML forbids, such as most controls). */
   invalidText?(value: string): boolean;
+  /**
+   * An entry as its file writes it, for formats of one entry per (logical) line: a new file begins with the hidden
+   * entries of its reference written the same way, separator included.
+   */
+  entryLine?(doc: DecodedText, entry: ParsedEntry): string;
   decode(bytes: Uint8Array): DecodedText;
   parse(doc: DecodedText): ParsedFile;
   /** Applies the operations in order; encoding and byte order mark stay. Throws {@link EditError}. */

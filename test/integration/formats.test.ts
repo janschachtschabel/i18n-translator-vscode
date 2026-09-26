@@ -132,7 +132,7 @@ suite('a data folder with all three areas', () => {
     await addLanguage(context(answering('es_ES')), mds);
     assert.equal(
       await textOf(mds, 'mds_es_ES.properties'),
-      'this_is_a_bug_the_first_line_will_not_be_translated=guard\n',
+      'this_is_a_bug_the_first_line_will_not_be_translated: guard\n',
     );
     assert.equal(await textOf(mds, 'valuespaces_i18n_es_ES.properties'), '');
   });

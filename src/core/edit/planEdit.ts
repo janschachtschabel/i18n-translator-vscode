@@ -243,8 +243,14 @@ export function planAddLanguage(
 /** An empty file in the layout of the reference file, beginning with the hidden entries the reference has. */
 function newFileContent(area: AreaDefinition, reference: LoadedFile | undefined): string {
   const adapter = ADAPTERS[area.format];
-  const empty = adapter.createEmpty(detectStyle(reference?.doc.text ?? ''));
-  const ops: FileOp[] = (reference?.hidden ?? []).map((entry) => ({
+  const style = detectStyle(reference?.doc.text ?? '');
+  const empty = adapter.createEmpty(style);
+  const hidden = reference?.hidden ?? [];
+  if (reference && hidden.length > 0 && adapter.entryLine) {
+    // Line formats take the lines over as the reference writes them, separator and line break included.
+    return empty + hidden.map((entry) => adapter.entryLine!(reference.doc, entry) + style.eol).join('');
+  }
+  const ops: FileOp[] = hidden.map((entry) => ({
     kind: 'insert',
     key: entry.key,
     value: entry.fields[VALUE_FIELD]!.value,
