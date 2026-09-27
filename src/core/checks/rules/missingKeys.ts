@@ -73,6 +73,12 @@ function analyze(bundle: Bundle, ctx: CheckContext): Completeness {
 const MAX_PAIRS_PER_ENDING = 10_000;
 
 /**
+ * Pairs one language takes over all endings: below the limit per ending, many endings together still paired millions
+ * of keys (audit S-11). The keys of the endings beyond it get no suggestions and stay orphans.
+ */
+const MAX_PAIRS = 100_000;
+
+/**
  * Pairs extra keys with missing keys that end in the same segments, the longest common ending first and
  * ties in key order. Each missing key is suggested once, so moving every key as suggested never collides.
  * Keys pair only within their last segment, so each segment is paired on its own.
@@ -80,11 +86,14 @@ const MAX_PAIRS_PER_ENDING = 10_000;
 function likelyTargets(extra: readonly EntryKey[], missing: readonly EntryKey[]): Map<string, EntryKey> {
   const missingByLast = byLastSegment(missing);
   const targets = new Map<string, EntryKey>();
+  let budget = MAX_PAIRS;
   for (const [last, keys] of byLastSegment(extra)) {
     const candidates = missingByLast.get(last) ?? [];
-    if (candidates.length === 0 || keys.length * candidates.length > MAX_PAIRS_PER_ENDING) {
+    const count = keys.length * candidates.length;
+    if (count === 0 || count > MAX_PAIRS_PER_ENDING || count > budget) {
       continue;
     }
+    budget -= count;
     const pairs = keys.flatMap((key, keyIndex) =>
       candidates.map((target, targetIndex) => ({
         key,

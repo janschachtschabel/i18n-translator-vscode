@@ -50,4 +50,26 @@ suite('root files', () => {
     assert.equal(reported.length, 1);
     assert.match(reported[0]!, /common\/de\.json.*larger/);
   });
+
+  // Many files below the limit still add up, and each is read and parsed (audit S-11): once the files of a root pass
+  // its budget, the others are left out.
+  test('reads no more of a root than its budget of bytes, and says so', async () => {
+    const reported: string[] = [];
+    const paths = [`${ROOT}/admin/de.json`, `${ROOT}/common/de.json`, `${ROOT}/common/en.json`];
+    const sizes = await Promise.all(
+      paths.map(
+        async (path) => (await vscode.workspace.fs.stat(vscode.Uri.joinPath(folder().uri, path))).size,
+      ),
+    );
+    const read = await readFiles(folder(), paths, (message) => reported.push(message), {
+      ...ROOT_LIMITS,
+      rootBytes: sizes[0]! + sizes[1]!,
+    });
+    assert.deepEqual(
+      read.map((file) => file.relPath),
+      paths.slice(0, 2),
+    );
+    assert.equal(reported.length, 1);
+    assert.match(reported[0]!, /common\/en\.json.*together/);
+  });
 });

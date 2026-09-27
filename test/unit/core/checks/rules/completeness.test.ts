@@ -141,6 +141,24 @@ describe('orphan-key and misplaced-key', () => {
     expect(performance.now() - started).toBeLessThan(2_000);
   });
 
+  // Below the limit per ending, many endings together still paired millions of keys (audit S-11): beyond 100,000
+  // pairs of a language, the keys of the remaining endings get no suggestions.
+  it('suggests nothing for the endings beyond a budget of pairs, and reports their keys as orphans', () => {
+    const texts = (prefix: string) =>
+      JSON.stringify(
+        Object.fromEntries(
+          Array.from({ length: 100 }, (_, i) => [
+            `${prefix}${i}`,
+            Object.fromEntries(Array.from({ length: 20 }, (_, j) => [`E${j}`, 'x'])),
+          ]),
+        ),
+      );
+    // 20 endings of 100 keys each: 10,000 pairs per ending, 200,000 in all.
+    const bundle = bundleOf('common', { de: texts('A'), fr: texts('B') });
+    expect(run(misplacedKeyRule, [bundle])).toHaveLength(1_000);
+    expect(run(orphanKeyRule, [bundle])).toHaveLength(1_000);
+  });
+
   it('points to the key in the translation', () => {
     const [finding] = run(orphanKeyRule, [bundleOf('common', { de: '{}', it: '{"OLD":"x"}' })]);
     expect(finding?.location).toEqual({ relPath: 'i18n/common/it.json', range: [1, 6] });

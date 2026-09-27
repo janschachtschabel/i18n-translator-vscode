@@ -427,7 +427,9 @@ zusammen).
 Damit ein Repository VS Code nicht lahmlegen kann, gilt:
 - höchstens 20 erkannte Wurzeln je Bereich und Arbeitsbereichsordner (mehr lassen sich in `eduI18n.roots` festlegen);
 - keine Wurzel mit mehr als 5.000 Dateien, wobei alle Dateien unter der Wurzel zählen;
-- keine Übersetzungsdatei über 5 MB;
+- keine Übersetzungsdatei über 5 MB, und höchstens 10 MB Übersetzungsdateien je Wurzel;
+- höchstens 100.000 Texte je Wurzel; eine Datei, die darüber hinausginge, meldet die Prüfung als unlesbar
+  („TooManyEntries“). Die größte Wurzel von edu-sharing hat rund 14.000 Texte in 0,9 MB;
 - keine Datei hinter einer symbolischen Verknüpfung im Arbeitsbereichsordner, weil sie aus dem Ordner herausführen
   könnte.
 

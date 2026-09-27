@@ -19,9 +19,19 @@ export interface RootLimits {
   files: number;
   /** Bytes of one translation file. */
   fileBytes: number;
+  /**
+   * Bytes of the translation files of a root together: each file below the limit is still read and parsed (audit
+   * S-11). edu-sharing's largest root has 0.9 MB.
+   */
+  rootBytes: number;
 }
 
-export const ROOT_LIMITS: RootLimits = { roots: 20, files: 5000, fileBytes: 5 * 1024 * 1024 };
+export const ROOT_LIMITS: RootLimits = {
+  roots: 20,
+  files: 5000,
+  fileBytes: 5 * 1024 * 1024,
+  rootBytes: 10 * 1024 * 1024,
+};
 
 /** The roots of an area in a workspace folder, from its marker files: a search of the whole folder. */
 export async function detectRoots(
@@ -66,8 +76,8 @@ export async function listRoot(
 }
 
 /**
- * Unreadable files (e.g. deleted since the listing), files reached through a symbolic link and files beyond the
- * size limit are reported and left out.
+ * Unreadable files (e.g. deleted since the listing), files reached through a symbolic link, files beyond the size
+ * limit and those beyond the budget of the root are reported and left out.
  */
 export async function readFiles(
   folder: vscode.WorkspaceFolder,
@@ -76,37 +86,70 @@ export async function readFiles(
   limits = ROOT_LIMITS,
 ): Promise<SourceFile[]> {
   const linked = await linkedFolders(folder.uri, paths);
-  const files = await Promise.all(
+  const unreadable = (relPath: string, error: unknown) =>
+    report(vscode.l10n.t('{file} could not be read: {error}', { file: relPath, error: messageOf(error) }));
+  // One look at each file tells whether it is a link itself and how large it is.
+  const looked = await Promise.all(
     paths.map(async (relPath) => {
       const uri = vscode.Uri.joinPath(folder.uri, relPath);
       try {
-        // One look at the file tells whether it is a link itself and how large it is.
-        const stat = await vscode.workspace.fs.stat(uri);
-        const link = linkOnTheWay(relPath, linked) ?? (isLinkType(stat.type) ? relPath : undefined);
-        if (link !== undefined) {
-          report(
-            vscode.l10n.t('{file} is reached through the symbolic link {link} and was not read.', {
-              file: relPath,
-              link,
-            }),
-          );
-          return undefined;
-        }
-        if (stat.size > limits.fileBytes) {
-          const size = `${Math.round(limits.fileBytes / 1024)} KB`;
-          report(vscode.l10n.t('{file} is larger than {size} and was not read.', { file: relPath, size }));
-          return undefined;
-        }
+        return { relPath, uri, stat: await vscode.workspace.fs.stat(uri) };
+      } catch (error) {
+        unreadable(relPath, error);
+        return undefined;
+      }
+    }),
+  );
+  // In the order given, so that the files a budget leaves out do not depend on which look answers first.
+  let budget = limits.rootBytes;
+  const chosen: { relPath: string; uri: vscode.Uri }[] = [];
+  for (const file of looked) {
+    if (!file) {
+      continue;
+    }
+    const { relPath, stat } = file;
+    const link = linkOnTheWay(relPath, linked) ?? (isLinkType(stat.type) ? relPath : undefined);
+    if (link !== undefined) {
+      report(
+        vscode.l10n.t('{file} is reached through the symbolic link {link} and was not read.', {
+          file: relPath,
+          link,
+        }),
+      );
+    } else if (stat.size > limits.fileBytes) {
+      report(
+        vscode.l10n.t('{file} is larger than {size} and was not read.', {
+          file: relPath,
+          size: kilobytes(limits.fileBytes),
+        }),
+      );
+    } else if (stat.size > budget) {
+      report(
+        vscode.l10n.t('{file} was not read: the files of its folder are larger than {size} together.', {
+          file: relPath,
+          size: kilobytes(limits.rootBytes),
+        }),
+      );
+    } else {
+      budget -= stat.size;
+      chosen.push(file);
+    }
+  }
+  const files = await Promise.all(
+    chosen.map(async ({ relPath, uri }) => {
+      try {
         return { relPath, bytes: await vscode.workspace.fs.readFile(uri) };
       } catch (error) {
-        report(
-          vscode.l10n.t('{file} could not be read: {error}', { file: relPath, error: messageOf(error) }),
-        );
+        unreadable(relPath, error);
         return undefined;
       }
     }),
   );
   return files.filter((file) => file !== undefined);
+}
+
+function kilobytes(bytes: number): string {
+  return `${Math.round(bytes / 1024)} KB`;
 }
 
 /** The revision of each file by its path: whether a root still has the files it had when it was indexed. */
