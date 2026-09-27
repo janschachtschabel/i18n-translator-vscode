@@ -127,31 +127,32 @@ describe('applyMailOps with many operations', () => {
   );
 
   // Each text read the whole file again (audit P-07): a check of all texts of a language with every correction chosen.
-  // Each text looked its template up among all templates of the file (review of audit P-07).
-  it('writes the texts of many templates at once in well under a second', () => {
+  // Each text looked its template up among all templates of the file (review of audit P-07): 10,000 texts of 5,000
+  // templates took 1.9 s. Now they take about as long as one, both mostly reading the file. Timed against one in the
+  // same run, the bound holds with coverage and on a slower machine too.
+  it('writes the texts of many templates in about the time of one', () => {
     const names = Array.from({ length: 5_000 }, (_, index) => `template_${index}`);
     const text = `<templates>\n${names
       .map(
         (name) =>
-          `\t<template name="${name}">\n\t\t<subject>Ein Betreff</subject>\n` +
-          `\t\t<message><![CDATA[<p>Eine Nachricht, wie sie edu-sharing verschickt.</p>]]></message>\n\t</template>`,
+          `\t<template name="${name}">\n\t\t<subject>S</subject>\n` +
+          `\t\t<message><![CDATA[<p>M</p>]]></message>\n\t</template>`,
       )
       .join('\n')}\n</templates>\n`;
     const ops: FileOp[] = names.flatMap((name) => [
       { kind: 'set', key: key(name, 'subject'), value: 'Un sujet' } as const,
-      {
-        kind: 'set',
-        key: key(name, 'message'),
-        value: '<p>Un message, comme edu-sharing l’envoie.</p>',
-      } as const,
+      { kind: 'set', key: key(name, 'message'), value: '<p>Un message</p>' } as const,
     ]);
-    const started = performance.now();
-    const written = applyMailOps(doc(text), ops);
-    const elapsed = performance.now() - started;
-    const read = readMail(written);
+    const timed = (run: () => string) => {
+      const started = performance.now();
+      const written = run();
+      return { written, ms: performance.now() - started };
+    };
+    const one = timed(() => applyMailOps(doc(text), ops.slice(0, 1)));
+    const all = timed(() => applyMailOps(doc(text), ops));
+    const read = readMail(all.written);
     expect(read.ok && read.templates.every((template) => template.fields.length === 2)).toBe(true);
-    expect(written.split('Un sujet')).toHaveLength(names.length + 1);
-    // Reading the file once takes most of it: 5,000 templates are 750 KB. Looked up one by one: 1.9 s.
-    expect(elapsed).toBeLessThan(800);
+    expect(all.written.split('Un sujet')).toHaveLength(names.length + 1);
+    expect(all.ms).toBeLessThan(one.ms * 5 + 50);
   });
 });

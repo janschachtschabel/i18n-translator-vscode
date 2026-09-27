@@ -200,6 +200,7 @@ describe('applyJsonOps with many operations', () => {
     expect(
       Object.values(JSON.parse(written) as Record<string, string>).every((value) => value === 'Un texte'),
     ).toBe(true);
-    expect(elapsed).toBeLessThan(300);
+    // 41 ms here, a few times that with coverage beside other test files in the CI; one by one: 5.4 s.
+    expect(elapsed).toBeLessThan(1500);
   });
 });

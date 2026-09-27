@@ -36,7 +36,8 @@ describe('lineStartAt', () => {
     }
     const elapsed = performance.now() - started;
     expect(starts.every((start, index) => start === index * line.length)).toBe(true);
-    expect(elapsed).toBeLessThan(500);
+    // Milliseconds here, up to a few hundred with coverage beside other test files; the old search took 5.4 s.
+    expect(elapsed).toBeLessThan(1500);
   });
 
   it('takes the end of the text for an offset beyond it, and its start for one before it', () => {
