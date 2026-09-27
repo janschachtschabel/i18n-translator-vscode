@@ -47,9 +47,11 @@ const VALUES = [
   String.fromCharCode(0x2028),
 ];
 
-/** A .properties text with comments, blank lines, continued lines, escapes and any line break. */
+/** A .properties text with comments, blank lines, continued lines, escapes and any line breaks, also mixed. */
 function propertiesText(rng: ReturnType<typeof random>): string {
   const eol = rng.pick([LF, CR + LF, CR]);
+  // Mixed line breaks: a CR and an LF after it are one, which the writer must not split or join by mistake.
+  const mixed = rng.next() < 0.3;
   const lines: string[] = [];
   const count = Math.floor(rng.next() * 8);
   for (let index = 0; index < count; index++) {
@@ -61,6 +63,9 @@ function propertiesText(rng: ReturnType<typeof random>): string {
       lines.push('');
     } else if (kind < 0.35) {
       lines.push(`${name}=first part ${BACKSLASH}`, '    second part');
+    } else if (kind < 0.4) {
+      // A line of only a backslash, and one that a blank line ends.
+      lines.push(rng.pick([BACKSLASH, `${name}=ends ${BACKSLASH}`]), '');
     } else {
       const separator = rng.pick(['=', ':', ' ', ' = ', '\t:\t']);
       lines.push(
@@ -70,7 +75,12 @@ function propertiesText(rng: ReturnType<typeof random>): string {
   }
   // A batch keeps the line break of the file; one by one, a text left without any takes the default (LF). Comments
   // stay, so that a file of CR or CRLF keeps one of its own whatever the operations delete.
-  const text = (eol === LF ? '' : `# generated${eol}# file${eol}`) + lines.join(eol);
+  const header = eol === LF && !mixed ? '' : `# generated${eol}# file${eol}`;
+  const text =
+    header +
+    lines
+      .map((line, index) => (index === 0 ? '' : mixed ? rng.pick([LF, CR + LF, CR]) : eol) + line)
+      .join('');
   const ending = rng.next();
   // Ends with a line break, without one, or with a backslash that continues nothing.
   return ending < 0.5
@@ -135,7 +145,7 @@ function outcome(run: () => string): string {
 
 describe('applyPropertiesOps with many operations', () => {
   it('writes exactly what the operations write one by one, each on the text read again', () => {
-    for (let seed = 1; seed <= 1500; seed++) {
+    for (let seed = 1; seed <= 10000; seed++) {
       const rng = random(seed);
       const text = propertiesText(rng);
       const ops = operations(rng, text);

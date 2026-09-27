@@ -52,7 +52,9 @@ function readAgain(text: string): File {
 function edited(file: File, edit: TextEdit, start: number, end: number): File {
   const text = applyEdits(file.text, [edit]);
   const delta = edit.content.length - edit.length;
-  const lines = read(text.slice(start, end + delta)).map((definition) => moved(definition, start));
+  // A CR at the end and an LF after it are one line break, which the edit may have joined: read them together.
+  const until = text[end + delta - 1] === '\r' && text[end + delta] === '\n' ? end + delta + 1 : end + delta;
+  const lines = read(text.slice(start, until)).map((definition) => moved(definition, start));
   return {
     text,
     definitions: [
