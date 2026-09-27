@@ -7,6 +7,8 @@ import {
   activateExtension,
   answering,
   editorWith,
+  jobEnd,
+  keepTranslationFiles,
   PAGE_LOAD_MS,
   settled,
   waitFor,
@@ -66,10 +68,21 @@ suite('Check with AI', function () {
     await bapi.close();
   });
 
+  let restoreFiles: () => Promise<void>;
+
+  setup(async () => {
+    restoreFiles = await keepTranslationFiles();
+  });
+
+  teardown(async () => {
+    await restoreFiles();
+  });
+
   test('checks the translations of a language, and lists what it finds with a correction', async () => {
-    const { editorPanel, posts, close } = await editorWith(api, answering('fr'));
+    const prompts = answering('fr');
+    const { editorPanel, posts, close } = await editorWith(api, prompts);
     try {
-      const ended = waitFor(editorPanel.onDidPost, (message) => message.type === 'aiJobEnd');
+      const ended = jobEnd({ editorPanel, posts }, prompts);
       await editorPanel.receive({ type: 'aiCheck' });
       assert.deepEqual(await ended, { type: 'aiJobEnd', jobId: 'check-1', status: 'done', missing: 0 });
       assert.deepEqual(
@@ -99,10 +112,11 @@ suite('Check with AI', function () {
   });
 
   test('writes a chosen correction against the text it checked, which one undo takes back', async () => {
-    const { editorPanel, posts, close } = await editorWith(api, answering('fr'));
+    const prompts = answering('fr');
+    const { editorPanel, posts, close } = await editorWith(api, prompts);
     const before = await read();
     try {
-      const ended = waitFor(editorPanel.onDidPost, (message) => message.type === 'aiJobEnd');
+      const ended = jobEnd({ editorPanel, posts }, prompts);
       await editorPanel.receive({ type: 'aiCheck' });
       await ended;
       const [item] = posts.flatMap((message) => (message.type === 'aiJobItems' ? message.items : []));

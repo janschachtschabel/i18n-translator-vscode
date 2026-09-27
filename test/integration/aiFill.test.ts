@@ -8,6 +8,8 @@ import {
   activateExtension,
   answering,
   editorWith,
+  jobEnd,
+  keepTranslationFiles,
   PAGE_LOAD_MS,
   settled,
   waitFor,
@@ -58,6 +60,16 @@ suite('Fill with AI', function () {
     await bapi.close();
   });
 
+  let restoreFiles: () => Promise<void>;
+
+  setup(async () => {
+    restoreFiles = await keepTranslationFiles();
+  });
+
+  teardown(async () => {
+    await restoreFiles();
+  });
+
   /** An editor of `common` whose questions the answers answer, and the messages it sends to its webview. */
   async function editor(...answers: (string | boolean)[]) {
     const prompts = answering(...answers);
@@ -67,7 +79,7 @@ suite('Fill with AI', function () {
   test('asks which language, and suggests its missing and empty texts, by key', async () => {
     const { editorPanel, posts, prompts, close } = await editor('fr');
     try {
-      const ended = waitFor(editorPanel.onDidPost, (message) => message.type === 'aiJobEnd');
+      const ended = jobEnd({ editorPanel, posts }, prompts);
       await editorPanel.receive({ type: 'aiFill' });
       assert.deepEqual(await ended, { type: 'aiJobEnd', jobId: 'fill-1', status: 'done', missing: 0 });
       // Picking the language is no question `asked` keeps; a few texts need no confirmation, the consent was given.
@@ -96,10 +108,10 @@ suite('Fill with AI', function () {
   });
 
   test('writes the reviewed texts as one change, which one undo takes back', async () => {
-    const { editorPanel, posts, close } = await editor('fr');
+    const { editorPanel, posts, prompts, close } = await editor('fr');
     const before = await read();
     try {
-      const ended = waitFor(editorPanel.onDidPost, (message) => message.type === 'aiJobEnd');
+      const ended = jobEnd({ editorPanel, posts }, prompts);
       await editorPanel.receive({ type: 'aiFill' });
       await ended;
       const items = posts.flatMap((message) => (message.type === 'aiJobItems' ? message.items : []));
@@ -136,10 +148,10 @@ suite('Fill with AI', function () {
   });
 
   test('skips a text that changed meanwhile, and writes nothing for an older job', async () => {
-    const { editorPanel, posts, close } = await editor('fr');
+    const { editorPanel, posts, prompts, close } = await editor('fr');
     const before = await read();
     try {
-      const ended = waitFor(editorPanel.onDidPost, (message) => message.type === 'aiJobEnd');
+      const ended = jobEnd({ editorPanel, posts }, prompts);
       await editorPanel.receive({ type: 'aiFill' });
       await ended;
       const result = waitFor(editorPanel.onDidPost, (message) => message.type === 'aiApplyResult');

@@ -63,11 +63,13 @@ export function waitFor<T>(
   event: vscode.Event<T>,
   predicate: (value: T) => boolean,
   timeoutMs = 10000,
+  /** What happened instead, for the message of a timeout. */
+  context?: () => string,
 ): Promise<T> {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
       subscription.dispose();
-      reject(new Error(`no matching event within ${timeoutMs} ms`));
+      reject(new Error(`no matching event within ${timeoutMs} ms${context ? `; ${context()}` : ''}`));
     }, timeoutMs);
     const subscription = event((value) => {
       if (predicate(value)) {
@@ -106,6 +108,23 @@ export function nextPost<T extends HostToWebview['type']>(
   return waitFor(panel.onDidPost, (message) => message.type === type) as Promise<
     Extract<HostToWebview, { type: T }>
   >;
+}
+
+/**
+ * The end of the AI job an editor started. A job that gets no language or no consent, or finds nothing to do, ends
+ * without a message: failing, it says what the editor asked and posted instead.
+ */
+export function jobEnd(
+  editor: { editorPanel: EditorPanel; posts: readonly HostToWebview[] },
+  prompts: { asked: readonly string[] },
+): Promise<Extract<HostToWebview, { type: 'aiJobEnd' }>> {
+  return waitFor(
+    editor.editorPanel.onDidPost,
+    (message) => message.type === 'aiJobEnd',
+    10000,
+    () =>
+      `asked ${JSON.stringify(prompts.asked)}; posted ${editor.posts.map((message) => message.type).join(', ')}`,
+  ) as Promise<Extract<HostToWebview, { type: 'aiJobEnd' }>>;
 }
 
 /** How long an editor's page may take to load: suites that open editors give their tests twice as long. */

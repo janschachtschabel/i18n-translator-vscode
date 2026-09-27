@@ -58,7 +58,8 @@ suite('AI suggestion for a cell', function () {
     const common = root.analysis.bundles.find((bundle) => bundle.name === 'common')!;
     panel = api.editors.open(root, common);
     panel.onDidPost((message) => posts.push(message));
-    await nextPost(panel, 'bundle');
+    // When the suite runs alone, its page is the first of the window, which may take long to load (CI, VS Code 1.90).
+    await waitFor(panel.onDidPost, (message) => message.type === 'bundle', PAGE_LOAD_MS);
   });
 
   teardown(async () => {
@@ -80,7 +81,10 @@ suite('AI suggestion for a cell', function () {
   }
 
   async function suggest(key: string, locale: string, requestId: string) {
-    const answer = nextPost(panel, 'aiSuggestion');
+    const answer = waitFor(
+      panel.onDidPost,
+      (message) => message.type === 'aiSuggestion' && message.requestId === requestId,
+    ) as Promise<Extract<HostToWebview, { type: 'aiSuggestion' }>>;
     await panel.receive({ type: 'aiSuggest', requestId, entryId: id(key), locale });
     return answer;
   }
