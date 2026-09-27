@@ -39,6 +39,12 @@ const prompt = (changes: Partial<TranslationPrompt> = {}): TranslationPrompt => 
 });
 
 describe('translationMessages', () => {
+  it('explains the gender marker in metadatasets too, which write it with two braces', () => {
+    expect(translationMessages(prompt({ syntax: 'single-brace' }))[0]!.content).toContain(
+      '{{GENDER_SEPARATOR}} marks a gender form in German texts',
+    );
+  });
+
   it('keeps its wording, which review diffs show: full, variant, metadatasets, mail', () => {
     const cases: Partial<TranslationPrompt>[] = [
       {},

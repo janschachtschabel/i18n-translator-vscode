@@ -1,7 +1,7 @@
 import type { PlaceholderSyntax } from '../area/areaDefinition';
 import { AiError } from './aiErrors';
 import type { AnswerFormat, ChatMessage } from './modelProfiles';
-import type { PromptItem, PromptLanguage } from './prompts';
+import { GENDER_MARKER_RULE, type PromptItem, type PromptLanguage } from './prompts';
 
 /** A translation to check: its key, the text it was translated from, the translation, and other languages. */
 export interface CheckItem extends PromptItem {
@@ -51,6 +51,7 @@ export function checkMessages(prompt: CheckPrompt): ChatMessage[] {
   const checks = [
     '- the meaning: nothing missing, added or wrong;',
     `- every placeholder exactly as in the source, e.g. ${example};`,
+    `- ${GENDER_MARKER_RULE}`,
     '- HTML tags and entities as in the source;',
     ...(html ? ['- the conditions of e-mails, such as {{if …}} … {{endif}}, as in the source;'] : []),
     '- the form of address and the terms the description of the language asks for, the same in every text;',

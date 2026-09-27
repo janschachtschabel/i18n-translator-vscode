@@ -39,6 +39,8 @@ from German (formal, use 'Sie') [de] to French [fr].
 
 Rules:
 - Keep every placeholder exactly as in the source, e.g. {name}: do not translate, add or remove any.
+- {{GENDER_SEPARATOR}} marks a gender form in German texts (it becomes *). In German keep it, unless the
+  description of the target language says otherwise; in other languages leave it out.
 - Keep HTML tags and entities as in the source; translate only the text between them.
 - Keep the meaning, the tone and about the length of the source: texts of buttons and labels stay short.
 - Use the typography of the target language (quotation marks, spaces, capitals).

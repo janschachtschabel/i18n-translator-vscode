@@ -28,6 +28,14 @@ export interface TranslationPrompt {
 }
 
 /**
+ * What the prompts say about the German gender marker, which the checks do not count as a placeholder: a variant
+ * without gender forms (`de-no-binnen-i`) and other languages leave it out.
+ */
+export const GENDER_MARKER_RULE =
+  '{{GENDER_SEPARATOR}} marks a gender form in German texts (it becomes *). In German keep it, unless the\n' +
+  '  description of the target language says otherwise; in other languages leave it out.';
+
+/**
  * The messages that ask a model to translate `items` (design §6.8): the languages, the rules the checks enforce,
  * and the texts as JSON, so that nothing in them can pass for an instruction of the prompt's own.
  */
@@ -47,12 +55,8 @@ export function translationMessages(prompt: TranslationPrompt): ChatMessage[] {
       ];
   const rules = [
     `- Keep every placeholder exactly as in the source, e.g. ${example}: do not translate, add or remove any.`,
-    ...(syntax === 'double-brace'
-      ? [
-          '- {{GENDER_SEPARATOR}} marks a gender form in German texts (it becomes *). In German keep it, unless the',
-          '  description of the target language says otherwise; in other languages leave it out.',
-        ]
-      : []),
+    // Also in metadatasets, which write only this token with two braces.
+    `- ${GENDER_MARKER_RULE}`,
     '- Keep HTML tags and entities as in the source; translate only the text between them.',
     ...(html
       ? [

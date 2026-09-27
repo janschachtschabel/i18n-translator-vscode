@@ -47,6 +47,14 @@ describe('checkMessages', () => {
     });
   });
 
+  it('does not count the gender marker as a placeholder to keep: a variant or another language leaves it out', () => {
+    for (const syntax of ['double-brace', 'single-brace'] as const) {
+      const system = checkMessages(prompt({ syntax }))[0]!.content;
+      expect(system, syntax).toContain('{{GENDER_SEPARATOR}} marks a gender form in German texts');
+      expect(system, syntax).toMatch(/unless the\s+description of the target language says otherwise/);
+    }
+  });
+
   it('checks a variant against its base, and mail templates with their conditions', () => {
     const variant = checkMessages(
       prompt({ variant: true, target: { code: 'de-informal', description: "German informal: use 'du'" } }),

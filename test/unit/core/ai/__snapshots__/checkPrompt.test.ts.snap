@@ -7,6 +7,8 @@ educational content, from German (formal, use 'Sie') [de] to French [fr].
 Check:
 - the meaning: nothing missing, added or wrong;
 - every placeholder exactly as in the source, e.g. {{name}};
+- {{GENDER_SEPARATOR}} marks a gender form in German texts (it becomes *). In German keep it, unless the
+  description of the target language says otherwise; in other languages leave it out.
 - HTML tags and entities as in the source;
 - the form of address and the terms the description of the language asks for, the same in every text;
 - spelling, grammar and the typography of the target language;
@@ -30,6 +32,8 @@ only where the variant needs it, and follow the description of the variant.
 Check:
 - the meaning: nothing missing, added or wrong;
 - every placeholder exactly as in the source, e.g. {{name}};
+- {{GENDER_SEPARATOR}} marks a gender form in German texts (it becomes *). In German keep it, unless the
+  description of the target language says otherwise; in other languages leave it out.
 - HTML tags and entities as in the source;
 - the form of address and the terms the description of the language asks for, the same in every text;
 - spelling, grammar and the typography of the target language;
