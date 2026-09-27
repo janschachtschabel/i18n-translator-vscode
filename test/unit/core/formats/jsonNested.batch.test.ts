@@ -187,4 +187,19 @@ describe('applyJsonOps with many operations', () => {
     expect(paths.every(([group, name]) => parsed[group!]![name!]!.startsWith('Un texte'))).toBe(true);
     expect(elapsed).toBeLessThan(300);
   });
+
+  // Each text looked its key up among all properties of its object: 10,000 texts of one flat object took 6.8 s
+  // (review of audit P-07).
+  it('writes the texts of a large flat object at once in well under a second', () => {
+    const names = Array.from({ length: 10_000 }, (_, index) => `KEY_${index}`);
+    const text = `{\n${names.map((name) => `  "${name}": "Ein Text"`).join(',\n')}\n}\n`;
+    const ops: FileOp[] = names.map((name) => ({ kind: 'set', key: key([name]), value: 'Un texte' }));
+    const started = performance.now();
+    const written = applyJsonOps(text, ops);
+    const elapsed = performance.now() - started;
+    expect(
+      Object.values(JSON.parse(written) as Record<string, string>).every((value) => value === 'Un texte'),
+    ).toBe(true);
+    expect(elapsed).toBeLessThan(300);
+  });
 });

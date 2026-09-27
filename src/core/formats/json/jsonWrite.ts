@@ -27,10 +27,10 @@ export function applyJsonOps(text: string, ops: readonly FileOp[]): string {
     const op = ops[index]!;
     if (op.kind === 'set') {
       const run = setRun(ops, index);
-      const root = parseObject(base);
+      const find = propertyFinder(parseObject(base));
       current = applyEdits(
         base,
-        run.map((set) => valueEdit(root, set.key, set.value)),
+        run.map((set) => valueEdit(find, set.key, set.value)),
       );
       index += run.length;
     } else {
@@ -81,8 +81,8 @@ function parseObject(text: string): Node {
 }
 
 /** The edit that gives the text of `key` a new value. */
-function valueEdit(root: Node, key: EntryKey, value: string): TextEdit {
-  const property = findProperty(root, key.segments);
+function valueEdit(find: PropertyFinder, key: EntryKey, value: string): TextEdit {
+  const property = find(key.segments);
   if (!property) {
     throw new EditError('missing-key', `${displayKey(key)} does not exist in this file.`, key);
   }
@@ -306,6 +306,35 @@ function propertiesOf(object: Node): Property[] {
     const [key, value] = node.children ?? [];
     return key && value ? [{ node, key, value }] : [];
   });
+}
+
+/** Finds the property of a path, as {@link findProperty} does. */
+type PropertyFinder = (segments: readonly string[]) => Property | undefined;
+
+/**
+ * Finds properties in the tree of `root` by name, each object read once: a run of texts in an object of many
+ * properties then costs one pass over them, not one per text (10,000 texts of a flat object took 6.8 s, review of
+ * audit P-07).
+ */
+function propertyFinder(root: Node): PropertyFinder {
+  const byName = new Map<Node, Map<unknown, Property>>();
+  const named = (object: Node, name: string) => {
+    let properties = byName.get(object);
+    if (!properties) {
+      // The last definition of a name wins, as in lastNamed.
+      properties = new Map(propertiesOf(object).map((property) => [property.key.value, property]));
+      byName.set(object, properties);
+    }
+    return properties.get(name);
+  };
+  return (segments) => {
+    let object: Node | undefined = root;
+    for (const segment of segments.slice(0, -1)) {
+      const property: Property | undefined = object && named(object, segment);
+      object = property?.value.type === 'object' ? property.value : undefined;
+    }
+    return object && named(object, segments[segments.length - 1]!);
+  };
 }
 
 /** The definition that applies: with duplicated keys, JSON.parse keeps the last one. */

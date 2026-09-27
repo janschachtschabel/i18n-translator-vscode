@@ -30,7 +30,8 @@ export function applyMailOps(doc: DecodedText, ops: readonly FileOp[]): string {
     const op = ops[index]!;
     if (op.kind === 'set') {
       const run = setRun(ops, index);
-      const { templates } = read(current);
+      // By id, each the last of those with it, as effectiveTemplate: one pass over the templates for the run.
+      const templates = new Map(read(current).templates.map((template) => [template.id, template]));
       current = applyEdits(
         current,
         run.map((set) => fieldEdit(templates, set.key, set.value, writer)),
@@ -57,13 +58,13 @@ function applyOp(text: string, op: Exclude<FileOp, SetOp>, writer: Writer): stri
 
 /** The edit that gives the field of `key` a new text. */
 function fieldEdit(
-  templates: readonly MailTemplateInfo[],
+  templates: ReadonlyMap<string, MailTemplateInfo>,
   key: EntryKey,
   value: string,
   writer: Writer,
 ): TextEdit {
   const { id, field } = partsOf(key);
-  const info = firstField(effectiveTemplate(templates, id), field);
+  const info = firstField(templates.get(id), field);
   if (!info) {
     throw new EditError('missing-key', `${displayKey(key)} does not exist in this file.`, key);
   }

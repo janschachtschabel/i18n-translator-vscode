@@ -127,8 +127,9 @@ describe('applyMailOps with many operations', () => {
   );
 
   // Each text read the whole file again (audit P-07): a check of all texts of a language with every correction chosen.
+  // Each text looked its template up among all templates of the file (review of audit P-07).
   it('writes the texts of many templates at once in well under a second', () => {
-    const names = Array.from({ length: 300 }, (_, index) => `template_${index}`);
+    const names = Array.from({ length: 5_000 }, (_, index) => `template_${index}`);
     const text = `<templates>\n${names
       .map(
         (name) =>
@@ -149,7 +150,8 @@ describe('applyMailOps with many operations', () => {
     const elapsed = performance.now() - started;
     const read = readMail(written);
     expect(read.ok && read.templates.every((template) => template.fields.length === 2)).toBe(true);
-    expect(written.split('Un sujet')).toHaveLength(301);
-    expect(elapsed).toBeLessThan(300);
+    expect(written.split('Un sujet')).toHaveLength(names.length + 1);
+    // Reading the file once takes most of it: 5,000 templates are 750 KB. Looked up one by one: 1.9 s.
+    expect(elapsed).toBeLessThan(800);
   });
 });
