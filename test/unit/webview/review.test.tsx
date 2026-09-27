@@ -419,7 +419,7 @@ describe('filling with AI', () => {
       message: 'Die b-api hat den Schlüssel abgelehnt (HTTP 401).',
     });
     expect(inReview().getByRole('status').textContent).toBe(
-      'Abgebrochen: Die b-api hat den Schlüssel abgelehnt (HTTP 401).',
+      'Fehlgeschlagen: Die b-api hat den Schlüssel abgelehnt (HTTP 401).',
     );
     // Without a suggestion, there is nothing to discard.
     expect(inReview().queryByRole('button', { name: 'Verwerfen' })).toBeNull();

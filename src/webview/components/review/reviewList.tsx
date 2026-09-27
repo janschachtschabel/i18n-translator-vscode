@@ -178,7 +178,7 @@ function statusText(list: ReviewListData): string {
     case 'cancelled':
       return l10n.t('Cancelled. Suggestions: {count}.', { count });
     case 'failed':
-      return l10n.t('Stopped: {message}', { message: progress.message });
+      return l10n.t('Failed: {message}', { message: progress.message });
   }
 }
 
@@ -191,9 +191,14 @@ function checkStatus({ progress, received, total }: ReviewListData): string {
         done: formatNumber(progress.done),
         total: formatNumber(progress.total),
       });
-    case 'done': {
+    case 'done':
+    case 'cancelled': {
       const checked = total - progress.missing;
       const counts = { checked: formatNumber(checked), fine: formatNumber(checked - received), notes };
+      if (progress.kind === 'cancelled') {
+        // The texts without an answer were mostly never asked: no count of them.
+        return l10n.t('Cancelled. Checked: {checked} · fine: {fine} · notes: {notes}.', counts);
+      }
       return progress.missing > 0
         ? l10n.t('Done. Checked: {checked} · fine: {fine} · notes: {notes} · without an answer: {missing}.', {
             ...counts,
@@ -201,9 +206,7 @@ function checkStatus({ progress, received, total }: ReviewListData): string {
           })
         : l10n.t('Done. Checked: {checked} · fine: {fine} · notes: {notes}.', counts);
     }
-    case 'cancelled':
-      return l10n.t('Cancelled. Notes: {notes}.', { notes });
     case 'failed':
-      return l10n.t('Stopped: {message}', { message: progress.message });
+      return l10n.t('Failed: {message}', { message: progress.message });
   }
 }

@@ -282,7 +282,7 @@ describe('the AI suggestion in the cell editor', () => {
     expect(help()).not.toContain('Strg+I');
     send({ type: 'aiState', available: true, model: 'gpt-6-luna' });
     expect(shortcuts('CANCEL', 2)).toBe('Enter F2 Control+I Meta+I');
-    expect(help()).toContain('Strg+I holt einen KI-Vorschlag für einen Text.');
+    expect(help()).toContain('Strg+I (auf dem Mac Cmd+I) holt einen KI-Vorschlag für einen Text.');
     // The reference has nothing to translate from.
     act(() => cellOf('CANCEL', 0).focus());
     expect(shortcuts('CANCEL', 0)).toBe('Enter F2');

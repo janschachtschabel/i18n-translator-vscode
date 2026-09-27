@@ -117,6 +117,15 @@ describe('checking with AI', () => {
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Mit KI prüfen…' }));
   });
 
+  it('sums up what a cancelled check found in the texts it checked', () => {
+    const { send } = checking();
+    // Of nine texts, seven were answered before the cancel: two with a note, five fine.
+    send({ type: 'aiJobEnd', jobId: 'check-1', status: 'cancelled', missing: 2 });
+    expect(inList().getByRole('status').textContent).toBe(
+      'Abgebrochen. Geprüft: 7 · in Ordnung: 5 · Hinweise: 2.',
+    );
+  });
+
   it('counts the texts without an answer, and says so when nothing is to be done', () => {
     const { send } = open();
     send({ type: 'aiState', available: true, model: 'gpt-6-luna' });
