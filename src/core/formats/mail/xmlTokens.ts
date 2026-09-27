@@ -89,7 +89,8 @@ export function decodeEntities(raw: string, offset: number): string {
         throw new XmlSyntaxError(range, 'InvalidEntity');
       }
       if (!name.startsWith('#')) {
-        const entity = ENTITIES[name];
+        // Own keys only: "&constructor;" must not find Object.prototype.constructor (audit L-26).
+        const entity = Object.hasOwn(ENTITIES, name) ? ENTITIES[name] : undefined;
         if (entity === undefined) {
           throw new XmlSyntaxError(range, 'UnknownEntity');
         }
