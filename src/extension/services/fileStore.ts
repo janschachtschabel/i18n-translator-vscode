@@ -346,6 +346,12 @@ export class FileStore {
       });
       return { ok: false, reason: 'error', message };
     }
+    // Nothing to restore, nothing to back up: the backup would also cost the oldest one beyond `keep` (audit L-28).
+    // After the backup, checkAndPut compares again.
+    const current = await Promise.all(files.map((file) => readIfExists(file.uri, this.files)));
+    if (files.every((file, i) => current[i] !== undefined && sameBytes(current[i]!, file.bytes))) {
+      return { ok: true };
+    }
     try {
       await this.beforeWrite('restore', files.length);
     } catch (error) {

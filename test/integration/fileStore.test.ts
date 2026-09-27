@@ -391,6 +391,17 @@ suite('FileStore', () => {
     });
   }
 
+  // A restore of the bytes the files have backed up first, and the pruning of backups beyond `keep` then removed the
+  // oldest one for a change that did not happen (audit L-28).
+  test('backs up nothing before a restore that would change nothing', async () => {
+    const fr = uriOf('common', 'fr');
+    let backups = 0;
+    const store = new FileStore(api.index, log, { beforeWrite: async () => void backups++ });
+    const result = await store.restore([{ uri: fr, bytes: await vscode.workspace.fs.readFile(fr) }]);
+    assert.deepEqual(result, { ok: true });
+    assert.equal(backups, 0);
+  });
+
   test('runs exclusive tasks, such as a manual backup, between writes', async () => {
     const order: string[] = [];
     const write = api.fileStore.write(ref, (analysis) => {
