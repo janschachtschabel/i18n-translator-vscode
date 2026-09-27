@@ -1,6 +1,7 @@
 import * as assert from 'node:assert';
 import * as vscode from 'vscode';
 import { keyFromSegments } from '../../src/core/model/keys';
+import { ROOT_LIMITS } from '../../src/extension/services/rootFiles';
 import { rootRef, WorkspaceIndex, type IndexSnapshot } from '../../src/extension/services/workspaceIndex';
 import { activateExtension, waitFor, workspaceUri } from './helpers';
 
@@ -36,6 +37,27 @@ suite('workspace index', () => {
       const first = index.refresh();
       const latest = index.latest();
       assert.strictEqual(await latest, await first);
+    } finally {
+      index.dispose();
+      log.dispose();
+    }
+  });
+
+  // A run of one root that failed, e.g. past the file limit, let its error escape: the old findings stayed and nothing
+  // said so until a full run (audit L-22). A full run names such a root as not checked.
+  test('names a root it could not index again, and keeps its last analysis until a run succeeds', async () => {
+    const log = vscode.window.createOutputChannel('edu-sharing i18n (index tests)', { log: true });
+    const limits = { ...ROOT_LIMITS };
+    const index = new WorkspaceIndex(log, limits);
+    try {
+      const first = await index.refresh();
+      const ref = rootRef(first.roots[0]!);
+      limits.files = 1;
+      const failed = await index.refreshRoot(ref);
+      assert.match(failed.errors.join('\n'), /could not be checked: the folder holds more than 1 files/);
+      assert.strictEqual(failed.roots[0]!.analysis, first.roots[0]!.analysis);
+      limits.files = ROOT_LIMITS.files;
+      assert.deepStrictEqual((await index.refreshRoot(ref)).errors, []);
     } finally {
       index.dispose();
       log.dispose();

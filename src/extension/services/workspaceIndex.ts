@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import type { AreaDefinition } from '../../core/area/areaDefinition';
 import type { Settings } from '../../core/config/settings';
 import type { AreaId } from '../../core/model/types';
 import { analyzeRoot, type RootAnalysis } from '../../core/pipeline/analyze';
@@ -6,7 +7,16 @@ import { analysisOptions, BACKUP_SETTING_KEYS, SETTING_KEYS } from '../../core/c
 import { excludeGlob, readBackupSettings, readSettings } from '../config';
 import { messageOf } from './errors';
 import { IndexWatchers, type WatchedPattern } from './indexWatchers';
-import { detectRoots, fixedRoots, listRoot, readFiles, revisionsOf, sameRevisions } from './rootFiles';
+import {
+  detectRoots,
+  fixedRoots,
+  listRoot,
+  readFiles,
+  revisionsOf,
+  ROOT_LIMITS,
+  sameRevisions,
+  type RootLimits,
+} from './rootFiles';
 import { SerialRunner } from './serialRunner';
 
 export interface IndexedRoot {
@@ -77,7 +87,11 @@ export class WorkspaceIndex implements vscode.Disposable {
   private snapshot: IndexSnapshot | undefined;
   private disposed = false;
 
-  constructor(private readonly log: vscode.LogOutputChannel) {
+  /** `limits`: what a repository may hold (rootFiles.ts); the tests give smaller ones. */
+  constructor(
+    private readonly log: vscode.LogOutputChannel,
+    private readonly limits: RootLimits = ROOT_LIMITS,
+  ) {
     this.subscriptions.push(
       vscode.workspace.onDidChangeConfiguration((event) => {
         // Not the AI settings, which no run reads: a change of the model would read the workspace anew. The backup
@@ -196,7 +210,7 @@ export class WorkspaceIndex implements vscode.Disposable {
         }
         let areaRoots: readonly string[];
         try {
-          areaRoots = fixed ?? (await timed('detect', () => detectRoots(folder, area, exclude)));
+          areaRoots = fixed ?? (await timed('detect', () => detectRoots(folder, area, exclude, this.limits)));
         } catch (error) {
           this.log.error(`Could not look for roots of ${area.id}.`, error);
           generalErrors.push(
@@ -226,25 +240,16 @@ export class WorkspaceIndex implements vscode.Disposable {
           const errors: string[] = [];
           rootErrors.set(key, errors);
           try {
-            const paths = await timed('list', () => listRoot(folder, area, root, exclude));
+            const paths = await timed('list', () => listRoot(folder, area, root, exclude, this.limits));
             const files = await timed('read', () =>
-              readFiles(folder, paths, (error) => errors.push(inFolder(folder, error))),
+              readFiles(folder, paths, (error) => errors.push(inFolder(folder, error)), this.limits),
             );
             const analysis = await timed('analyze', () => analyzeRoot(area, root, files, options));
             roots.push({ folder, settings, analysis });
             revisions.set(key, revisionsOf(files));
           } catch (error) {
             this.log.error(`Could not index ${area.id} in ${root || '.'}.`, error);
-            errors.push(
-              inFolder(
-                folder,
-                vscode.l10n.t('{area} in {root} could not be checked: {error}', {
-                  area: area.label,
-                  root: root || '.',
-                  error: messageOf(error),
-                }),
-              ),
-            );
+            errors.push(notChecked(folder, area, root, error));
           }
         }
       }
@@ -287,17 +292,38 @@ export class WorkspaceIndex implements vscode.Disposable {
     const started = Date.now();
     const { folder, settings, analysis: before } = this.snapshot.roots[position]!;
     const errors: string[] = [];
-    const paths = await listRoot(folder, before.area, before.root, excludeGlob(settings.exclude));
-    const files = await readFiles(folder, paths, (error) => errors.push(inFolder(folder, error)));
-    const revisions = revisionsOf(files);
-    const unchanged =
-      errors.length === 0 &&
-      (this.rootErrors.get(key)?.length ?? 0) === 0 &&
-      sameRevisions(this.revisions.get(key), revisions);
-    if (unchanged || this.disposed) {
-      return this.snapshot;
+    let revisions: ReadonlyMap<string, string>;
+    let analysis: RootAnalysis;
+    try {
+      const paths = await listRoot(
+        folder,
+        before.area,
+        before.root,
+        excludeGlob(settings.exclude),
+        this.limits,
+      );
+      const files = await readFiles(
+        folder,
+        paths,
+        (error) => errors.push(inFolder(folder, error)),
+        this.limits,
+      );
+      revisions = revisionsOf(files);
+      const unchanged =
+        errors.length === 0 &&
+        (this.rootErrors.get(key)?.length ?? 0) === 0 &&
+        sameRevisions(this.revisions.get(key), revisions);
+      if (unchanged || this.disposed) {
+        return this.snapshot;
+      }
+      analysis = analyzeRoot(before.area, before.root, files, analysisOptions(settings).options);
+    } catch (error) {
+      // As a full run does, the root is named as not checked; its last analysis stays, so that its editors keep their
+      // model until a run succeeds (audit L-22).
+      this.log.error(`Could not index ${before.area.id} in ${before.root || '.'}.`, error);
+      this.rootErrors.set(key, [notChecked(folder, before.area, before.root, error)]);
+      return this.publish(this.snapshot.roots, started);
     }
-    const analysis = analyzeRoot(before.area, before.root, files, analysisOptions(settings).options);
     this.rootErrors.set(key, errors);
     this.revisions.set(key, revisions);
     const roots = this.snapshot.roots.map((indexed, index) =>
@@ -323,6 +349,23 @@ export class WorkspaceIndex implements vscode.Disposable {
     target.clear();
     source.forEach((value, key) => target.set(key, value));
   }
+}
+
+/** The message about a root that a run could not index. */
+function notChecked(
+  folder: vscode.WorkspaceFolder,
+  area: AreaDefinition,
+  root: string,
+  error: unknown,
+): string {
+  return inFolder(
+    folder,
+    vscode.l10n.t('{area} in {root} could not be checked: {error}', {
+      area: area.label,
+      root: root || '.',
+      error: messageOf(error),
+    }),
+  );
 }
 
 /** A message about a folder, named when the workspace has several. */
