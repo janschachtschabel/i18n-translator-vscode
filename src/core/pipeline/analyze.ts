@@ -120,7 +120,11 @@ function withoutHidden(
     parsed: {
       entries: parsed.entries.filter((entry) => !hides(entry.key)),
       problems: parsed.problems.filter((problem) => !hides(problem.key)),
-      topLevelKeys: parsed.topLevelKeys.filter((top) => !ignoredKeys.includes(top)),
+      // A top-level name goes with its hidden entry only: an object of that name keeps its texts, and the merge needs
+      // its name for them.
+      topLevelKeys: parsed.topLevelKeys.filter(
+        (top) => !hidden.some(({ key }) => key.segments.length === 1 && key.segments[0] === top),
+      ),
     },
     hidden,
   };

@@ -52,6 +52,24 @@ describe('analyzeRoot', () => {
     ).toEqual(['fr']);
   });
 
+  // A hidden entry took every top-level name in ignoredKeys out of the file, also one of an object whose texts stay:
+  // the merge found no winner for them and threw, and the root could not be checked (audit L-24).
+  it('hides a top-level name only with its entry, not an object of that name', () => {
+    const area = { ...ANGULAR_PRESET, ignoredKeys: ['LEGACY', 'SENTINEL'] };
+    const analysis = analyzeRoot(
+      area,
+      'i18n',
+      [
+        source('i18n/common/de.json', '{"SENTINEL":"x","LEGACY":{"OLD":"alt"},"OK":"gut"}'),
+        source('i18n/admin/de.json', '{"ADMIN":"Verwaltung"}'),
+      ],
+      options,
+    );
+    const common = analysis.bundles.find((bundle) => bundle.name === 'common')!;
+    expect(common.file('de')?.parsed.topLevelKeys).toEqual(['LEGACY', 'OK']);
+    expect(common.value(common.keys.find((key) => key.segments[0] === 'LEGACY')!.id, 'de')).toBe('alt');
+  });
+
   it('selects only the files that belong to the area below the root', () => {
     expect(
       filesToRead(ANGULAR_PRESET, 'i18n', ['i18n/common/de.json', 'i18n/README.md', 'other/common/de.json']),
