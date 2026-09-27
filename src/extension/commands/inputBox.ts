@@ -1,4 +1,5 @@
 import type * as vscode from 'vscode';
+import { plainNotice } from '../views/viewText';
 
 /** What a check of typed text says: an error keeps it from being accepted, a warning does not. */
 export interface InputCheck {
@@ -54,15 +55,17 @@ export function askInput(
   options: InputOptions,
   parts: InputBoxParts,
 ): Promise<string | undefined> {
+  // VS Code turns `[label](command:…)` in the prompt and the check into links that run commands, and both name keys
+  // and bundles from the workspace: they show as text (audit S-10).
   const validate = (text: string) => {
     const result = options.check(text);
-    box.validationMessage = result && parts.validation(result);
+    box.validationMessage = result && parts.validation({ ...result, message: plainNotice(result.message) });
     return result;
   };
   return new Promise((resolve) => {
     let answer: string | undefined;
     box.title = options.title;
-    box.prompt = options.prompt;
+    box.prompt = plainNotice(options.prompt);
     box.placeholder = options.placeHolder;
     box.value = options.value ?? '';
     box.buttons = [parts.closeButton];

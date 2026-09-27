@@ -8,6 +8,18 @@ const nodeBuiltins = (message) => builtinModules.map((name) => ({ name, message 
 const NEUTRAL_NODE_MESSAGE = 'src/core and src/shared must also run in the webview; keep Node APIs out.';
 const WEBVIEW_NODE_MESSAGE = 'The webview runs in a browser, not in Node.';
 const HTML_MESSAGE = 'Show texts as text: they come from files and are never parsed as HTML.';
+const NOTIFICATION_RULE = {
+  selector:
+    "MemberExpression[object.property.name='window'][property.name=/^show(Information|Warning|Error)Message$/]",
+  message:
+    'Show notifications through src/extension/notify.ts: names from the workspace must not become links.',
+};
+const INPUT_BOX_RULE = {
+  selector:
+    "MemberExpression[object.property.name='window'][property.name=/^(createInputBox|showInputBox)$/]",
+  message:
+    'Ask for text through askInput (src/extension/commands/prompts.ts): prompts and checks name keys and bundles from the workspace, which must not become links.',
+};
 
 /**
  * Layer rule for platform-neutral code (no VS Code, no Node, no DOM): the extension host, the webview and CLI
@@ -93,20 +105,15 @@ export default defineConfig(
     },
   },
   {
-    // Notification texts carry names from the workspace, and VS Code turns `[label](command:…)` in them into links
-    // that run commands: they go through notify.ts, which keeps links from forming (audit S-01).
+    // Notification texts and the prompts and checks of input boxes carry names from the workspace, and VS Code turns
+    // `[label](command:…)` in them into links that run commands: they go through notify.ts and askInput, which keep
+    // links from forming (audits S-01 and S-10).
     files: ['src/extension/**/*.ts'],
-    ignores: ['src/extension/notify.ts'],
-    rules: {
-      'no-restricted-syntax': [
-        'error',
-        {
-          selector:
-            "MemberExpression[object.property.name='window'][property.name=/^show(Information|Warning|Error)Message$/]",
-          message:
-            'Show notifications through src/extension/notify.ts: names from the workspace must not become links.',
-        },
-      ],
-    },
+    ignores: ['src/extension/notify.ts', 'src/extension/commands/prompts.ts'],
+    rules: { 'no-restricted-syntax': ['error', NOTIFICATION_RULE, INPUT_BOX_RULE] },
+  },
+  {
+    files: ['src/extension/commands/prompts.ts'],
+    rules: { 'no-restricted-syntax': ['error', NOTIFICATION_RULE] },
   },
 );

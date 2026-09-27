@@ -132,6 +132,28 @@ describe('askInput', () => {
     expect(box.validationMessage).toBeUndefined();
   });
 
+  // VS Code turns `[label](command:…)` in the prompt and the check of an input box into links that run commands, and
+  // the checks of keys name keys and bundles from the files (audit S-10).
+  it('shows the prompt and the check as text, so that no link forms from the names in them', () => {
+    const box = new FakeBox();
+    void askInput(
+      box,
+      {
+        title: 'Rename Key',
+        prompt: 'New name for [A](command:foo)',
+        check: () => ({ message: 'A collides with A.[B](command:bar)' }),
+      },
+      parts,
+    );
+    const message = (box.validationMessage as vscode.InputBoxValidationMessage).message;
+    expect(box.prompt).not.toContain('](');
+    expect(message).not.toContain('](');
+    // Readable as before: only an invisible character comes between the brackets.
+    const invisible = String.fromCharCode(0x200b);
+    expect(box.prompt?.replaceAll(invisible, '')).toBe('New name for [A](command:foo)');
+    expect(message.replaceAll(invisible, '')).toBe('A collides with A.[B](command:bar)');
+  });
+
   it('keeps a text with an error from being accepted, but accepts one with a warning', async () => {
     const box = new FakeBox();
     const answer = ask(box);

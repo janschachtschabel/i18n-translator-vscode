@@ -45,8 +45,9 @@ eingecheckten Fixtures bleiben so unberührt.
 | `scripts` | Kommandozeilen-Werkzeuge wie `check-repo` und `smoke-ai` | `src/core`, Node |
 
 Die Regeln für `src/core`, `src/shared` und `src/webview` erzwingt ESLint (`no-restricted-imports`, keine DOM-Globals
-im Kern). Außerdem: Meldungen des Hosts gehen nur über `src/extension/notify.ts`, weil VS Code `[Text](command:…)` in
-Meldungen zu Links macht und Namen aus dem Arbeitsbereich darin stehen.
+im Kern). Außerdem gehen Meldungen des Hosts nur über `src/extension/notify.ts` und Eingabefelder nur über `askInput`
+(`src/extension/commands/prompts.ts`). Der Grund: VS Code macht `[Text](command:…)` in Meldungen sowie im Hinweis und in
+der Prüfmeldung eines Eingabefelds zu Links, und darin stehen Namen aus dem Arbeitsbereich.
 
 ## Tests
 
