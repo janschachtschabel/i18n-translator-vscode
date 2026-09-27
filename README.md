@@ -355,9 +355,10 @@ der Seitenleiste „Bereiche“ und in der Befehlspalette („edu-sharing i18n: 
   Texte, die sie selbst braucht. Ab fünf Anfragen fragt die Extension noch einmal nach, mit Modell und Adresse.
 - Die Vorschläge erscheinen Paket für Paket in einer Prüfliste an Stelle der Tabelle: je Text die Quelle, der bisherige
   Text, der Vorschlag zum Bearbeiten mit der Prüfung und ein Kästchen „übernehmen“.
-- Vorgewählt ist jeder Vorschlag, den die Datei so aufnehmen kann. Einer mit abweichenden Platzhaltern oder ein leerer
-  bleibt abgewählt, mit dem Grund; wählbar bleibt er. „Alle auswählen“ wählt jeden Text dazu, der
-  etwas zu schreiben hat (nicht leer, nicht der Text der Zelle); „Keine auswählen“ wählt alle ab.
+- Vorgewählt ist jeder Vorschlag, den die Datei so aufnehmen kann. Einer mit abweichenden Platzhaltern bleibt
+  abgewählt, mit dem Grund; wählbar bleibt er. Ein leerer lässt sich nicht wählen: Er schriebe nichts. „Alle
+  auswählen“ wählt jeden Text, der etwas zu schreiben hat (nicht leer, nicht der Text der Zelle); „Keine auswählen“
+  wählt alle ab.
 - „Ausgewählte übernehmen (n)“ schreibt die gewählten Texte auf einmal: vorher eine Sicherung, danach ein Schritt
   „Letzte Änderung rückgängig“. Ein Text, der sich inzwischen geändert hat, wird übersprungen und bleibt mit dem Grund
   in der Liste.

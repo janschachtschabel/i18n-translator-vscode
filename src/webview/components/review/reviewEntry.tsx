@@ -1,7 +1,7 @@
 import type { PlaceholderSyntax } from '../../../core/area/areaDefinition';
 import { inlineCheck, type CheckLine } from '../../inlineCheck';
 import { l10n } from '../../l10n';
-import type { Review, ReviewItem } from '../../state/review';
+import { writable, type Review, type ReviewItem } from '../../state/review';
 import { SEVERITY_SYMBOLS, severityWord } from '../cellStatus';
 import { EmptyValue } from '../emptyValue';
 import { memo } from '../memo';
@@ -43,8 +43,8 @@ export const ReviewEntry = memo(
           <input
             type="checkbox"
             checked={item.chosen}
-            // The text the cell has leaves nothing to write.
-            disabled={item.text === item.before}
+            // An empty text, or the one the cell has, leaves nothing to write.
+            disabled={!writable(item)}
             aria-label={l10n.t('Apply {key}', { key: item.key })}
             aria-describedby={reasons || undefined}
             onChange={() => review.toggle(item.entryId)}

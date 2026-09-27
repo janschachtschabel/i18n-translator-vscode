@@ -127,20 +127,21 @@ export class Review {
   }
 
   setText(entryId: string, text: string): void {
-    this.change(entryId, (item) => ({ ...item, text, chosen: item.chosen && text !== item.before }));
+    this.change(entryId, (item) => ({ ...item, text, chosen: item.chosen && writable({ ...item, text }) }));
   }
 
+  /** Only a text that has something to write can be chosen: an empty one, or the cell's, would write nothing. */
   toggle(entryId: string): void {
-    this.change(entryId, (item) => ({ ...item, chosen: !item.chosen && item.text !== item.before }));
+    this.change(entryId, (item) => ({ ...item, chosen: !item.chosen && writable(item) }));
   }
 
-  /** Chooses every text that has something to write, keeping those chosen by hand; or none. */
+  /** Chooses every text that has something to write, or none. */
   chooseAll(chosen: boolean): void {
     const list = this.list.peek();
     if (list) {
       this.list.value = {
         ...list,
-        items: list.items.map((item) => ({ ...item, chosen: chosen && (item.chosen || writable(item)) })),
+        items: list.items.map((item) => ({ ...item, chosen: chosen && writable(item) })),
       };
     }
   }

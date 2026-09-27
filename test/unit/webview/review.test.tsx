@@ -127,7 +127,7 @@ describe('filling with AI', () => {
     expect(none().getAttribute('aria-disabled')).toBe('true');
   });
 
-  it('keeps a text chosen by hand when choosing all, and offers all until every text to write is chosen', () => {
+  it('lets no one choose an empty text, which would write nothing, not even Select All', () => {
     const { send } = filling();
     send({
       type: 'aiJobItems',
@@ -139,12 +139,26 @@ describe('filling with AI', () => {
     const all = () => inReview().getByRole('button', { name: 'Alle auswählen' });
     const box = (key: string) =>
       inReview().getByRole('checkbox', { name: `${key} übernehmen` }) as HTMLInputElement;
-    // The empty text by hand: as many chosen as there are texts to write, yet ERROR_TITLE is not.
-    act(() => void fireEvent.click(box('SAVE')));
-    expect(all().getAttribute('aria-disabled')).toBe('false');
+    expect(box('SAVE').disabled).toBe(true);
     act(() => void fireEvent.click(all()));
-    expect(['CANCEL', 'ERROR_TITLE', 'SAVE'].map((key) => box(key).checked)).toEqual([true, true, true]);
+    expect(['CANCEL', 'ERROR_TITLE', 'SAVE'].map((key) => box(key).checked)).toEqual([true, true, false]);
     expect(all().getAttribute('aria-disabled')).toBe('true');
+    // Typed into, it can be chosen; emptied again, it leaves the choice.
+    act(
+      () =>
+        void fireEvent.input(inReview().getByRole('textbox', { name: 'SAVE in fr' }), {
+          target: { value: 'Enregistrer' },
+        }),
+    );
+    act(() => void fireEvent.click(box('SAVE')));
+    expect(box('SAVE').checked).toBe(true);
+    act(
+      () =>
+        void fireEvent.input(inReview().getByRole('textbox', { name: 'SAVE in fr' }), {
+          target: { value: '  ' },
+        }),
+    );
+    expect([box('SAVE').checked, box('SAVE').disabled]).toEqual([false, true]);
   });
 
   it('keeps the focus in the list when its job ends and takes Cancel with it', () => {
