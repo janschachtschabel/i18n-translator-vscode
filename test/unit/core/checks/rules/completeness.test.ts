@@ -43,6 +43,17 @@ describe('missing-key', () => {
     const editorial = bundleOf('editorial', { de: '{"b":"B"}' });
     expect(run(missingKeyRule, [common, editorial])).toEqual([]);
   });
+
+  // Spreading every missing key as an argument overflowed the call stack from about 126,000 keys on, and the whole
+  // root could not be checked (audit L-23). The budget of a root (S-11) stays below that, V8's stack may not.
+  it('reports any number of missing keys', () => {
+    const keys = Array.from({ length: 130_000 }, (_, index) => `K${index}`);
+    const bundle = bundleOf('common', {
+      de: JSON.stringify(Object.fromEntries(keys.map((key) => [key, 'x']))),
+      fr: '{}',
+    });
+    expect(run(missingKeyRule, [bundle])).toHaveLength(130_000);
+  });
 });
 
 describe('missing-key with a file without locale (metadatasets, mail templates)', () => {

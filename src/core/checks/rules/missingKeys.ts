@@ -48,7 +48,10 @@ function analyze(bundle: Bundle, ctx: CheckContext): Completeness {
     }
     const ids = entryIds(bundle, locale);
     const missing = bundle.keys.filter((key) => needed.has(key.id) && !ids.has(key.id));
-    result.missing.push(...missing.map((key) => ({ locale, key })));
+    // One by one: spreading them as arguments overflows the stack from about 126,000 keys on (audit L-23).
+    for (const key of missing) {
+      result.missing.push({ locale, key });
+    }
     if (locale === reference) {
       continue;
     }
