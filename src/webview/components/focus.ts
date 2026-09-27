@@ -1,6 +1,27 @@
+import { useLayoutEffect, type Inputs } from 'preact/hooks';
+
 /** The focus went with the element that had it: on the page, nothing has it. */
 export function focusIsLost(): boolean {
   return document.activeElement === null || document.activeElement === document.body;
+}
+
+/**
+ * Gives a focus that got lost, e.g. with the element that had it, to the first of `targets` there is: after each
+ * render in which `inputs` changed (after every render without them), before the page is painted, and only when
+ * `when` says the component can know where it belongs. A focus the user took elsewhere stays there.
+ */
+export function useFocusFallback(
+  targets: () => readonly (HTMLElement | null | undefined)[],
+  inputs?: Inputs,
+  when: () => boolean = () => true,
+): void {
+  useLayoutEffect(() => {
+    if (when() && focusIsLost()) {
+      targets()
+        .find((target) => target != null)
+        ?.focus();
+    }
+  }, inputs);
 }
 
 /**

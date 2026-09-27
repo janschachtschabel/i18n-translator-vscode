@@ -5,7 +5,7 @@ import { writable, type ReviewList as ReviewListData } from '../../state/review'
 import type { EditorStore } from '../../state/store';
 import '../cellEditor.css';
 import { StatusNote } from '../statusNote';
-import { focusIsLost } from '../focus';
+import { focusIsLost, useFocusFallback } from '../focus';
 import { localeName } from '../localeName';
 import { useIncrementalCount } from '../useIncrementalCount';
 import './review.css';
@@ -62,11 +62,7 @@ export function ReviewList({ store, list, locales }: ReviewListProps) {
   }, []);
   // What had the focus may go while the list stays: Cancel when the job ends, a written entry, the choice buttons
   // with the last entry. The focus goes to the heading then, not to the page.
-  useLayoutEffect(() => {
-    if (focusIsLost()) {
-      heading.current?.focus();
-    }
-  }, [running, list.items.length]);
+  useFocusFallback(() => [heading.current], [running, list.items.length]);
   // Closing with the focus in it, or lost, the list hands it back to the button that started its job.
   useLayoutEffect(
     () => () => {

@@ -4,7 +4,7 @@ import type { OpenEditor } from '../state/edits';
 import type { EditorStore, LocaleColumn } from '../state/store';
 import { StatusNote, StatusSymbol } from './statusNote';
 import './cellEditor.css';
-import { focusIsLost } from './focus';
+import { focusIsLost, useFocusFallback } from './focus';
 import { grow } from './grow';
 import { inlineCheck } from '../inlineCheck';
 import { isCommand } from '../shortcuts';
@@ -77,11 +77,11 @@ export function CellEditor({ store, editor, locale, keyText, referenceText }: Ce
   // The choice went with the focus on one of its buttons (e.g. the text is back as it was), or a suggestion came
   // after a dialog of VS Code (the consent) took the focus from the page: the field takes it, before the table or the
   // list would give it to the cell or the card. Not while VS Code has the focus: the user may be typing there.
-  useLayoutEffect(() => {
-    if (!editor.conflict && focusIsLost() && document.hasFocus()) {
-      field.current?.focus();
-    }
-  }, [editor.conflict, editor.suggestion]);
+  useFocusFallback(
+    () => [field.current],
+    [editor.conflict, editor.suggestion],
+    () => !editor.conflict && document.hasFocus(),
+  );
   // A dialog of VS Code took the focus from the page, which leaves it with nothing: when the page gets it back, the
   // field takes it, also when nothing changed in the editor meanwhile (the request failed, or is still on its way).
   useEffect(() => {

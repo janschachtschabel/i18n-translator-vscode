@@ -1,9 +1,9 @@
-import { useEffect, useLayoutEffect } from 'preact/hooks';
+import { useEffect } from 'preact/hooks';
 import type { BundleViewModel } from '../shared/viewModel';
 import { LiveRegion } from './a11y/liveRegion';
 import { FileFindings } from './components/fileFindings';
 import { FilterBar, RESULT_ID } from './components/filterBar';
-import { focusIsLost } from './components/focus';
+import { useFocusFallback } from './components/focus';
 import { Details } from './components/details';
 import { CompactChoice } from './components/list/compactChoice';
 import { List } from './components/list/list';
@@ -87,11 +87,11 @@ function BundleRows({ store, model }: { store: EditorStore; model: BundleViewMod
   const empty = rows.length === 0;
   // No key is left to show: the list goes with the focus in it (the grid stays, and gives it to its header). The count
   // of keys takes it, not the page (audit F-04).
-  useLayoutEffect(() => {
-    if (empty && focusIsLost()) {
-      document.getElementById(RESULT_ID)?.focus();
-    }
-  }, [empty]);
+  useFocusFallback(
+    () => [document.getElementById(RESULT_ID)],
+    [empty],
+    () => empty,
+  );
   return (
     <>
       <Toolbar store={store} />

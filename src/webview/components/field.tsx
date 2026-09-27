@@ -9,7 +9,7 @@ import { StatusNote, StatusSymbol } from './statusNote';
 import { EmptyValue } from './emptyValue';
 import './field.css';
 import { hintFor } from './findingHints';
-import { focusIsLost, onFocusLeaving } from './focus';
+import { onFocusLeaving, useFocusFallback } from './focus';
 import { LocaleLabel } from './localeLabel';
 import { localeName } from './localeName';
 
@@ -37,12 +37,14 @@ export function Field({ store, row, locale, cell, editor, referenceText, place }
   /** The user took the focus out of the field, e.g. with a click beside its editor, which then saves. */
   const left = useRef(false);
   const notesId = `${useId()}-notes`;
+  // After Enter or Esc the text takes the focus back; after Tab, the next editor has it; after a click beside the
+  // editor, the focus stays where the click put it.
+  useFocusFallback(
+    () => [button.current],
+    undefined,
+    () => wasEditing.current && !editor && !left.current && !store.edits.open.peek(),
+  );
   useLayoutEffect(() => {
-    // After Enter or Esc the text takes the focus back; after Tab, the next editor has it; after a click beside
-    // the editor, the focus stays where the click put it.
-    if (wasEditing.current && !editor && !left.current && focusIsLost() && !store.edits.open.peek()) {
-      button.current?.focus();
-    }
     wasEditing.current = editor !== undefined;
   });
   const hasNotes = cell.notSaved !== undefined || cell.issues.length > 0;
