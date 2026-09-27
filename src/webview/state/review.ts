@@ -134,6 +134,17 @@ export class Review {
     this.change(entryId, (item) => ({ ...item, chosen: !item.chosen && item.text !== item.before }));
   }
 
+  /** Chooses every text that has something to write, keeping those chosen by hand; or none. */
+  chooseAll(chosen: boolean): void {
+    const list = this.list.peek();
+    if (list) {
+      this.list.value = {
+        ...list,
+        items: list.items.map((item) => ({ ...item, chosen: chosen && (item.chosen || writable(item)) })),
+      };
+    }
+  }
+
   /** Cancels the job; the suggestions that came stay. */
   cancel(): void {
     const list = this.list.peek();
@@ -241,4 +252,9 @@ export class Review {
     const key = displayKey(keyFromId(entryId));
     return { entryId, key, source, before, text, chosen: !blocked, ...(problem ? { problem } : {}) };
   }
+}
+
+/** Whether a text has something to write: not empty, and not the text the cell has. */
+export function writable(item: Pick<ReviewItem, 'text' | 'before'>): boolean {
+  return item.text.trim() !== '' && item.text !== item.before;
 }

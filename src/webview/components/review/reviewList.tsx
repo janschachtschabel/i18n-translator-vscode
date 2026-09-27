@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef } from 'preact/hooks';
 import type { LocaleView } from '../../../shared/viewModel';
 import { formatNumber, l10n } from '../../l10n';
-import type { ReviewList as ReviewListData } from '../../state/review';
+import { writable, type ReviewList as ReviewListData } from '../../state/review';
 import type { EditorStore } from '../../state/store';
 import '../cellEditor.css';
 import { SEVERITY_SYMBOLS, severityWord } from '../cellStatus';
@@ -31,6 +31,7 @@ export function ReviewList({ store, list, locales }: ReviewListProps) {
   const source = locales.find((locale) => locale.code === list.source);
   const count = useIncrementalCount(list.items.length);
   const chosen = list.items.filter((item) => item.chosen).length;
+  const allChosen = list.items.every((item) => item.chosen || !writable(item));
   const running = progress.kind === 'running';
   const kind = useRef(list.kind);
   kind.current = list.kind;
@@ -86,6 +87,16 @@ export function ReviewList({ store, list, locales }: ReviewListProps) {
           >
             {l10n.t('Apply selected ({count})', { count: formatNumber(chosen) })}
           </button>
+          {list.items.length > 0 && (
+            <>
+              <button type="button" disabled={allChosen} onClick={() => review.chooseAll(true)}>
+                {l10n.t('Select All')}
+              </button>
+              <button type="button" disabled={chosen === 0} onClick={() => review.chooseAll(false)}>
+                {l10n.t('Select None')}
+              </button>
+            </>
+          )}
           {running && (
             <button type="button" onClick={() => review.cancel()}>
               {l10n.t('Cancel')}

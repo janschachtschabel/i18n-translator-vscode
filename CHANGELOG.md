@@ -26,6 +26,7 @@ Phasen 5 und 6 vorgezogen sind, zählt sie weiter, ohne die Phase zu nennen. Die
     ihn zu setzen.
   - **KI einrichten…** (Werkzeugleiste, Seitenleiste, Befehlspalette) zeigt Schlüssel, Adresse der b-api und Modell auf
     einen Blick und führt zu den Schritten; neu ist „b-api-Adresse festlegen…“ für eine andere Adresse als Staging.
+  - Die Prüfliste hat „Alle auswählen“ und „Keine auswählen“.
   - Anbieter, Modell und Denkaufwand gelten wie die Adresse nur aus den Benutzereinstellungen: Ein Repository kann den
     Schlüssel nicht auf ein anderes Modell lenken. Eine Adresse, die die KI nicht nutzen darf (etwa `http:`), schaltet
     sie ab, statt auf Staging zurückzufallen.

@@ -82,6 +82,49 @@ describe('filling with AI', () => {
     expect(within(ai()!).getByRole('button', { name: 'KI einrichten…' })).toBeTruthy();
   });
 
+  it('chooses all suggestions that have something to write, or none', () => {
+    const { send } = filling();
+    send({
+      type: 'aiJobItems',
+      jobId: 'fill-1',
+      done: 3,
+      total: 3,
+      items: [item('SAVE', 'Speichern', ' ', '')],
+    });
+    const all = () => inReview().getByRole('button', { name: 'Alle auswählen' });
+    const none = () => inReview().getByRole('button', { name: 'Keine auswählen' });
+    const chosen = () =>
+      (inReview().getAllByRole('checkbox') as HTMLInputElement[]).filter((box) => box.checked).length;
+    expect(chosen()).toBe(1);
+    act(() => void fireEvent.click(all()));
+    // The empty suggestion has nothing to write.
+    expect(chosen()).toBe(2);
+    expect(all().hasAttribute('disabled')).toBe(true);
+    act(() => void fireEvent.click(none()));
+    expect(chosen()).toBe(0);
+    expect(none().hasAttribute('disabled')).toBe(true);
+  });
+
+  it('keeps a text chosen by hand when choosing all, and offers all until every text to write is chosen', () => {
+    const { send } = filling();
+    send({
+      type: 'aiJobItems',
+      jobId: 'fill-1',
+      done: 3,
+      total: 3,
+      items: [item('SAVE', 'Speichern', ' ', '')],
+    });
+    const all = () => inReview().getByRole('button', { name: 'Alle auswählen' });
+    const box = (key: string) =>
+      inReview().getByRole('checkbox', { name: `${key} übernehmen` }) as HTMLInputElement;
+    // The empty text by hand: as many chosen as there are texts to write, yet ERROR_TITLE is not.
+    act(() => void fireEvent.click(box('SAVE')));
+    expect(all().hasAttribute('disabled')).toBe(false);
+    act(() => void fireEvent.click(all()));
+    expect(['CANCEL', 'ERROR_TITLE', 'SAVE'].map((key) => box(key).checked)).toEqual([true, true, true]);
+    expect(all().hasAttribute('disabled')).toBe(true);
+  });
+
   it('shows the suggestions in place of the table as they come, with progress, and cancels', () => {
     const { send, posted: messages } = filling();
     expect(screen.queryByRole('grid')).toBeNull();
