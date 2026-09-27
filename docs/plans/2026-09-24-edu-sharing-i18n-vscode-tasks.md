@@ -2000,8 +2000,33 @@ ist in VS Code belegt (in der Capture-Phase abfangen, Knopf als zweiter Weg).
     vorhandenen; ein zweiter Auswahlschritt brächte keine Wahl, die die Prüfliste nicht besser trifft.
   - Die Befehle `fill` und `aiReview` mit Einträgen in Seitenleiste und Editor-Titel gibt es nicht: Füllen und Prüfen
     brauchen den offenen Editor (die Prüfliste liegt dort) und stehen in seiner Werkzeugleiste.
-  - Das Kästchen eines Befunds ohne Korrektur bleibt `disabled`: Mit `aria-disabled` würde das gesteuerte Kästchen im
-    memoisierten Eintrag umschalten, ohne dass sich der Zustand ändert. Der Grund ist über das Textfeld erreichbar.
+  - Das Kästchen eines Befunds ohne Korrektur, eines leeren Textes und eines mit kaputtem Zeichen bleibt `disabled`,
+    also außerhalb der Tab-Reihenfolge: Der Grund steht auch in der Beschreibung des Textfelds, das darin liegt.
+    (Die zuerst notierte Begründung, `aria-disabled` ließe das Kästchen ohne Zustandsänderung umschalten, trifft
+    nicht zu: `toggle` erzeugt stets einen neuen Eintrag, der das Kästchen zurücksetzt.)
+  - „Alle auswählen“ wählt auch Texte mit abweichenden Platzhaltern, die die Vorauswahl bewusst auslässt (K4): wer
+    alle wählt, will alle; die Einträge zeigen ihren Fehler weiter. Frage an den Nutzer, ob es so bleiben soll.
+- **Zweites Review** (dieselbe Aufteilung, frischer Kontext; beide: bereit zum Mergen). Behoben:
+  - Webview: „Alle/Keine auswählen“ auch während des Schreibens gesperrt; ein verlorener Fokus geht auch bei
+    offener Liste an die Überschrift (geschriebener Eintrag, letzte Einträge); nicht verfügbare Knöpfe über Farben
+    statt Deckkraft gedimmt, damit der Fokusring 3,64:1 behält (Dark Modern, in Chromium nachgerechnet); die Zahl der
+    gewählten Texte wird angesagt; ein Text mit kaputtem Zeichen ist nicht wählbar (der Host lehnt sonst das ganze
+    Schreiben ab); ein Test, der den Fokus-Schutz nicht prüfte (Mutation überlebte), prüft ihn jetzt.
+  - Host und Kern: „KI einrichten…“ nennt zuerst, wenn die KI ausgeschaltet oder im eingeschränkten Modus ist;
+    „b-api-Adresse festlegen…“ ändert für die geltende Adresse nichts; ein beim Lesen der Einstellungen gestoppter
+    Auftrag erklärt nichts mehr; der Stapel-Schreiber liest CR und folgendes LF zusammen (Zufallstest jetzt mit
+    gemischten Zeilenenden, 10.000 Fälle, fand den Fall).
+  - **Vorhandener Fehler, behoben:** Endete die letzte Zeile einer `.properties`-Datei mit LF-Zeilenenden auf einen
+    Backslash und ein einzelnes CR, verschmolz das LF der Leerzeile, die der Schreiber vor einen neuen Key setzt, mit
+    dem CR: Der Backslash setzte sich in die neue Zeile fort, der Wert davor änderte sich, der neue Key ging verloren.
+- **3.14 und 3.15 abgeschlossen:** CONTRIBUTING beschreibt die Mock-b-api und den Live-Test. `EDU_I18N_AI_SMOKE=1 npm
+  run smoke:ai` gegen Staging: 140 Modelle mit `gpt-6-luna`, Übersetzung 3 von 3 mit Platzhaltern, Prüfung 3 von 3,
+  der umbenannte Platzhalter als Fehler gefunden. Die Suche nach dem Wert von `B_API_KEY` in Profil, Protokollen,
+  Einstellungen, Test-Arbeitsbereichen und Quellen findet nichts. Abnahme in VS Code 1.139.1 mit der Kopie des
+  Datenordners (`out/acceptance/review-focus.mjs`, `review-focus2.mjs`, echte Maus und Tastatur): „KI einrichten…“ zeigt
+  Schlüssel aus `B_API_KEY`, Staging und `gpt-6-luna`; Füllen von de-informal (22 Texte); Prüfen von de-no-binnen-i
+  (23 geprüft, 18 Hinweise); Übernehmen behält den Fokus, „Verwerfen“ gibt ihn an den Knopf des Auftrags zurück;
+  Umschalt+Tab bringt das Feld unter dem festen Kopf hervor (107 px unter einem Kopf bis 102 px).
 - **Offen, als Folgeaufgaben:**
   - Die Prüfliste vergleicht Texte mit `\r\n` nicht normalisiert und stellt sie beim Schreiben nicht wieder her (wie
     `toTyped`/`withLineBreaksOf` im Zellen-Editor); im Datenordner gibt es solche Texte nicht.

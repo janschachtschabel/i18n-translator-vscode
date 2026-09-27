@@ -46,7 +46,13 @@ Phasen 5 und 6 vorgezogen sind, zählt sie weiter, ohne die Phase zu nennen. Die
     der Liste und kehrt beim Schließen zum Knopf zurück, der den Auftrag begann; der feste Kopf verdeckt kein
     fokussiertes Feld mehr. Das Kästchen eines abgewählten Textes nennt den Grund, das Textfeld Quelle und bisherigen
     Text. Der Fortschritt wird in Zehnteln angesagt statt nach jedem Paket; eine abgebrochene Prüfung fasst zusammen,
-    was sie geprüft hat.
+    was sie geprüft hat. Nach „Alle auswählen“ und „Keine auswählen“ wird die Zahl der gewählten Texte angesagt;
+    nicht verfügbare Knöpfe behalten einen deutlichen Fokusrahmen. Ein Text mit kaputtem Zeichen (etwa einem halben
+    Emoji) lässt sich nicht wählen, statt das ganze Schreiben scheitern zu lassen. „KI einrichten…“ nennt zuerst, wenn
+    die KI ausgeschaltet oder im eingeschränkten Modus ist.
+- **`.properties`: Ein neuer Key verändert den Text davor nicht mehr**, wenn die letzte Zeile auf einen Backslash und
+  ein einzelnes CR endet (Datei mit gemischten Zeilenenden): Bisher setzte sich der Backslash in die neue Zeile fort,
+  der Wert davor bekam die neue Zeile angehängt, und der neue Key fehlte.
 - Ein Dialog von VS Code (etwa diese Rückfrage) schließt das offene Textfeld nicht mehr; danach bekommt das Textfeld
   den Fokus zurück.
 - Eine Änderung der KI-Einstellungen liest den Arbeitsbereich nicht mehr neu ein. Ungültige Sicherungseinstellungen
