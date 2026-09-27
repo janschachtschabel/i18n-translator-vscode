@@ -283,6 +283,21 @@ describe('cell editor in the table', () => {
     expect(edits(posted)).toEqual([expect.objectContaining({ value: 'Sauver' })]);
   });
 
+  it('keeps waiting for a finger still down while another pointer moves without a button, e.g. a pen', async () => {
+    const { posted } = open();
+    act(() => void fireEvent.click(cellOf('SAVE', 2)));
+    typeText('Sauver');
+    act(() => void fireEvent.pointerDown(screen.getByRole('searchbox'), { pointerId: 1 }));
+    act(() => screen.getByRole('searchbox').focus());
+    act(() => void fireEvent.pointerMove(document.body, { pointerId: 2, buttons: 0 }));
+    await nextTask();
+    expect(edits(posted)).toEqual([]);
+    // The finger's own move with no button down: its release was missed.
+    act(() => void fireEvent.pointerMove(document.body, { pointerId: 1, buttons: 0 }));
+    await nextTask();
+    expect(edits(posted)).toEqual([expect.objectContaining({ value: 'Sauver' })]);
+  });
+
   it('waits for the last of several pointers, e.g. two fingers', async () => {
     const { posted } = open();
     act(() => void fireEvent.click(cellOf('SAVE', 2)));

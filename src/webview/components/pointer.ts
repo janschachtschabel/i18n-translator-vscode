@@ -30,12 +30,13 @@ export function trackPointer(): void {
   window.addEventListener('pointerdown', (event) => pressed.add(event.pointerId), true);
   window.addEventListener('pointerup', (event) => up(event.pointerId), true);
   window.addEventListener('pointercancel', (event) => up(event.pointerId), true);
-  // The page missed a button coming up (e.g. a native menu took the pointer): a move with none down tells.
+  // The page missed a button coming up (e.g. a native menu took the pointer): a move of that pointer with none down
+  // tells. Another pointer's move says nothing of it: a pen may hover while a finger is down.
   window.addEventListener(
     'pointermove',
     (event) => {
-      if (event.buttons === 0 && pressed.size > 0) {
-        release();
+      if (event.buttons === 0 && pressed.has(event.pointerId)) {
+        up(event.pointerId);
       }
     },
     true,
