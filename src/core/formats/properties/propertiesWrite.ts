@@ -35,9 +35,9 @@ function applyOp(file: File, op: FileOp, style: TextStyle, bom: boolean): File {
     case 'insert':
       return insertLine(file, op.key, op.value, op.first ? 'first' : op.after, style, bom);
     case 'delete':
-      return readAgain(removeEvery(file.text, op.key, true));
+      return readAgain(removeEvery(file.text, op.key, true, bom));
     case 'rename':
-      return readAgain(renameKey(file.text, op.from, op.to));
+      return readAgain(renameKey(file.text, op.from, op.to, bom));
   }
 }
 
@@ -123,7 +123,9 @@ function insertLine(
   const line = escapeKey(name) + separator + escapeValue(value, /[=:]/.test(separator));
   const eol = style.eol;
   if (!anchor) {
-    const content = text === '' || /[\r\n]$/.test(text) ? line + eol : eol + line;
+    // In an empty file with a byte order mark, the first line stays free: Java reads the mark as part of its key.
+    const content =
+      text === '' ? (bom ? eol : '') + line + eol : /[\r\n]$/.test(text) ? line + eol : eol + line;
     return edited(file, { offset: text.length, length: 0, content }, text.length, text.length);
   }
   if (place === 'first' && !(bom && anchor.lineStart === 0)) {
@@ -148,7 +150,7 @@ function insertLine(
 }
 
 /** Renames the definition that applies; earlier ones of the old name were hidden by it and must not come back. */
-function renameKey(text: string, from: EntryKey, to: EntryKey): string {
+function renameKey(text: string, from: EntryKey, to: EntryKey, bom: boolean): string {
   const definitions = read(text);
   const definition = lastDefinition(definitions, from);
   if (!definition) {
@@ -162,25 +164,32 @@ function renameKey(text: string, from: EntryKey, to: EntryKey): string {
   }
   const [start, end] = definition.keyRange;
   const renamed = applyEdits(text, [{ offset: start, length: end - start, content: escapeKey(nameOf(to)) }]);
-  return removeEvery(renamed, from, false);
+  return removeEvery(renamed, from, false, bom);
 }
 
 /** Removes every definition of the key with its lines; `required`: the key must be there. */
-function removeEvery(text: string, key: EntryKey, required: boolean): string {
+function removeEvery(text: string, key: EntryKey, required: boolean, bom: boolean): string {
   let current = text;
   let definition = lastDefinition(read(current), key);
   if (!definition && required) {
     throw new EditError('missing-key', `${displayKey(key)} does not exist in this file.`, key);
   }
   while (definition) {
-    current = removeLines(current, definition);
+    current = removeLines(current, definition, bom);
     definition = lastDefinition(read(current), key);
   }
   return current;
 }
 
-/** The lines of a definition; for a last line without line break, the line break before it goes instead. */
-function removeLines(text: string, definition: Definition): string {
+/**
+ * The lines of a definition; for a last line without line break, the line break before it goes instead. In a file
+ * with a byte order mark, the first line stays, empty: the next key would take the mark (audit L-25).
+ */
+function removeLines(text: string, definition: Definition, bom: boolean): string {
+  if (bom && definition.lineStart === 0 && hasLineBreak(definition)) {
+    const lineBreak = text.slice(definition.lineEnd - 2, definition.lineEnd) === '\r\n' ? 2 : 1;
+    return applyEdits(text, [{ offset: 0, length: definition.lineEnd - lineBreak, content: '' }]);
+  }
   let start = definition.lineStart;
   if (!hasLineBreak(definition) && start > 0) {
     start -= text.slice(0, start).endsWith('\r\n') ? 2 : 1;

@@ -231,6 +231,11 @@ describe('propertiesAdapter: encoding', () => {
     ]);
     // A comment in the first line takes the mark; the keys after it are found.
     expect(propertiesAdapter.parse(bom('# c\na=1\n')).problems).toEqual([]);
+    // Java skips white space only after the mark, which it reads as a key: the key after the spaces is lost as well
+    // (audit L-25).
+    expect(propertiesAdapter.parse(bom('  a=1\nb=2\n')).problems).toEqual([
+      { code: 'bom-first-key', range: [2, 3], key: key('a') },
+    ]);
   });
 
   it('never puts a new key into the first line of a file with a byte order mark', () => {
@@ -239,6 +244,19 @@ describe('propertiesAdapter: encoding', () => {
       { kind: 'insert', key: key('n'), value: '9', first: true },
     ]);
     expect(written.text).toBe('a=1\nn=9\n');
+  });
+
+  // Two more ways put a key into the first line, whose byte order mark Java reads as part of it (audit L-25).
+  it('keeps the first line of a file with a byte order mark free of keys, also when it has none yet', () => {
+    const bom = (text: string) => ({ text, encoding: 'utf-8' as const, bom: true });
+    const firstKey = (text: string) =>
+      propertiesAdapter.parse(bom(text)).problems.filter((problem) => problem.code === 'bom-first-key');
+    const inserted = propertiesAdapter.applyOps(bom(''), [{ kind: 'insert', key: key('n'), value: '9' }]);
+    expect(inserted.text).toBe('\nn=9\n');
+    expect(firstKey(inserted.text)).toEqual([]);
+    const deleted = propertiesAdapter.applyOps(bom('a=1\nb=2\n'), [{ kind: 'delete', key: key('a') }]);
+    expect(deleted.text).toBe('\nb=2\n');
+    expect(firstKey(deleted.text)).toEqual([]);
   });
 
   it('reads ISO-8859-1 without a finding: Java falls back to it on purpose', () => {
