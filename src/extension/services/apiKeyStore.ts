@@ -1,10 +1,10 @@
 import type * as vscode from 'vscode';
+import { keyProblem } from '../../core/ai/apiKey';
 
 /** Where the b-api key comes from: VS Code's secret storage, the environment variable B_API_KEY, or nowhere. */
 export type KeySource = 'secret' | 'env' | 'none';
 
 const SECRET = 'eduI18n.bApiKey';
-const MAX_KEY_LENGTH = 512;
 
 /**
  * The b-api key: kept in VS Code's secret storage, which the operating system encrypts, or taken from the environment
@@ -50,23 +50,4 @@ export class ApiKeyStore {
   clear(): Thenable<void> {
     return this.secrets.delete(SECRET);
   }
-}
-
-/**
- * Why a typed key cannot be one, before it is trimmed; undefined if it can. A key is visible ASCII, as a header
- * carries it: a zero-width space, which copying from a web page may add, survives trimming and would fail every
- * request as if the network were down.
- */
-export function keyProblem(value: string): 'empty' | 'blank' | 'characters' | 'too-long' | undefined {
-  const key = value.trim();
-  if (key === '') {
-    return 'empty';
-  }
-  if (/\s/.test(key)) {
-    return 'blank';
-  }
-  if (!/^[\x21-\x7E]+$/.test(key)) {
-    return 'characters';
-  }
-  return key.length > MAX_KEY_LENGTH ? 'too-long' : undefined;
 }

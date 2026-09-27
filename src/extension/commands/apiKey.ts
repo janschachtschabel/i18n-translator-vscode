@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { showInfo } from '../notify';
-import { keyProblem, type ApiKeyStore } from '../services/apiKeyStore';
+import { keyProblem } from '../../core/ai/apiKey';
+import type { ApiKeyStore } from '../services/apiKeyStore';
 import type { Prompts } from './prompts';
 
 export interface ApiKeyContext {
