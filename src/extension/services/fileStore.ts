@@ -1,18 +1,11 @@
 import * as vscode from 'vscode';
-import { compileFilePattern } from '../../core/area/filePattern';
-import { applyChanges, type FileWrite } from '../../core/edit/applyChanges';
 import type { EditProblem } from '../../core/edit/editMessages';
-import type { PlanResult } from '../../core/edit/planEdit';
 import type { FormatAdapter } from '../../core/formats/adapter';
-import { ADAPTERS } from '../../core/formats/registry';
-import type { LoadedFile } from '../../core/model/bundle';
-import type { RootAnalysis } from '../../core/pipeline/analyze';
 import { revisionOf } from '../../core/util/hash';
 import { messageOf } from './errors';
 import { firstLinked } from './links';
 import { holds, isDirty, putAllOrNone, readIfExists, relative, sameBytes, type FileAccess } from './files';
 import { UndoHistory, type UndoEntry, type UndoLimits } from './undoHistory';
-import { insideRoot, relativeUriPath } from './uriPaths';
 import {
   rootRef,
   type IndexedRoot,
@@ -20,9 +13,9 @@ import {
   type RootRef,
   type WorkspaceIndex,
 } from './workspaceIndex';
+import { bundleFiles, bundlesOf, inRoot, planTargets, type Planner, type Target } from './writeScope';
 
-/** Plans an edit on the current state of a root. The store plans again when files changed on disk (B5). */
-export type Planner = (analysis: RootAnalysis) => PlanResult;
+export type { Planner } from './writeScope';
 
 /**
  * Runs before the files are checked and written, e.g. to back them up; `bundles` is how many bundles the write
@@ -66,13 +59,6 @@ type WrittenFile = Replacement & { bytes: Uint8Array };
 
 /** What the check of a step found: the files to write, or the result that ends the step without writing. */
 type Checked<W extends Replacement, R> = { write: W[] } | { result: R };
-
-/** A file that a planned write changes: where it is, the change, and the bytes it gets. */
-interface Target {
-  uri: vscode.Uri;
-  write: FileWrite;
-  bytes: Uint8Array;
-}
 
 /** What an undo did: which files got their bytes back, or why none did. */
 export type UndoResult =
@@ -186,39 +172,18 @@ export class FileStore {
         });
         return { ok: false, reason: 'error', message };
       }
-      const { analysis } = indexed;
-      const adapter = ADAPTERS[analysis.area.format];
-      const planned = plan(analysis);
-      if (!planned.ok) {
-        return { ok: false, reason: 'problem', problem: planned.problem };
+      const planned = planTargets(indexed, plan);
+      if (!('targets' in planned)) {
+        return planned;
       }
-      const applied = applyChanges(planned.changes, analysis.bundles, adapter);
-      if (!applied.ok) {
-        return { ok: false, reason: 'problem', problem: applied.problem };
-      }
-      if (applied.writes.length === 0) {
-        return { ok: true };
-      }
-      const outside = applied.writes.find((write) => !insideRoot(write.relPath, analysis.root));
-      if (outside) {
-        const message = vscode.l10n.t('{file} lies outside the translation folder {root}.', {
-          file: outside.relPath,
-          root: analysis.root,
-        });
-        return { ok: false, reason: 'error', message };
-      }
-      const targets = applied.writes.map((write) => ({
-        uri: vscode.Uri.joinPath(indexed.folder.uri, ...write.relPath.split('/')),
-        write,
-        bytes: adapter.encode(write.after),
-      }));
+      const { targets, adapter } = planned;
       if (!backedUp) {
         // Before the checks of editors and disk: between checking the files and writing them, nothing slow may
         // happen, and a backup can take a few hundred milliseconds.
         await this.beforeWrite(
           bulk ? 'bulk' : 'write',
           bundlesOf(
-            analysis,
+            indexed.analysis,
             targets.map((target) => target.write.relPath),
           ),
         );
@@ -474,36 +439,4 @@ export class FileStore {
       this.log.error('Indexing after writing failed.', error);
     }
   }
-}
-
-/** Whether a file lies inside the area root of an indexed workspace folder. */
-function inRoot(uri: vscode.Uri, indexed: IndexedRoot): boolean {
-  const folder = indexed.folder.uri;
-  const relPath = relativeUriPath(folder.path, uri.path);
-  return (
-    uri.scheme === folder.scheme &&
-    uri.authority === folder.authority &&
-    relPath !== undefined &&
-    insideRoot(relPath, indexed.analysis.root)
-  );
-}
-
-/** How many bundles a write changes. */
-function bundlesOf(analysis: RootAnalysis, relPaths: readonly string[]): number {
-  return new Set(bundleNames(analysis, relPaths)).size;
-}
-
-/** The files of the bundles that `relPaths` belong to, as the analysis read them. */
-function bundleFiles(analysis: RootAnalysis, relPaths: readonly string[]): LoadedFile[] {
-  const names = new Set(bundleNames(analysis, relPaths));
-  return analysis.bundles
-    .filter((bundle) => names.has(bundle.name))
-    .flatMap((bundle) => bundle.locales.map((locale) => bundle.file(locale)!));
-}
-
-/** The bundle of each path by the area's file pattern, which knows new files too; the path itself if none. */
-function bundleNames(analysis: RootAnalysis, relPaths: readonly string[]): string[] {
-  const match = compileFilePattern(analysis.area);
-  const prefix = analysis.root === '' ? '' : `${analysis.root}/`;
-  return relPaths.map((relPath) => match(relPath.slice(prefix.length))?.bundle ?? relPath);
 }
