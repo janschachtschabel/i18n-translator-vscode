@@ -385,6 +385,34 @@ describe('filling with AI', () => {
     expect(store.uiState.value.filter.status).toBe('all');
   });
 
+  it('takes nothing of another job or write, keeps the list on Esc, and has none on a page loaded again', () => {
+    const editor = filling();
+    const { send, posted: messages } = editor;
+    send({
+      type: 'aiJobItems',
+      jobId: 'fill-0',
+      done: 3,
+      total: 3,
+      items: [item('ASK', 'Fragen', 'Demander')],
+    });
+    expect(inReview().queryByRole('textbox', { name: 'ASK in fr' })).toBeNull();
+    send({ type: 'aiJobEnd', jobId: 'fill-0', status: 'done', missing: 0 });
+    expect(inReview().getByRole('progressbar')).toBeTruthy();
+    // Only its buttons close the list (K10).
+    act(
+      () =>
+        void fireEvent.keyDown(inReview().getByRole('textbox', { name: 'CANCEL in fr' }), { key: 'Escape' }),
+    );
+    expect(screen.queryByRole('region', { name: /^KI-Vorschläge/ })).not.toBeNull();
+    expect(posted(messages, 'aiCancel')).toEqual([]);
+    act(() => void fireEvent.click(inReview().getByRole('button', { name: 'Ausgewählte übernehmen (1)' })));
+    send({ type: 'aiApplyResult', requestId: 'apply-other', written: [id('CANCEL')], skipped: [] });
+    expect(screen.getByRole('region', { name: /^KI-Vorschläge/ }).querySelector('ol')!.inert).toBe(true);
+    // A page loaded again has no list: the host cancelled the job of the page before.
+    editor.open();
+    expect(screen.queryByRole('region', { name: /^KI-Vorschläge/ })).toBeNull();
+  });
+
   it('keeps the list while its job runs, and says which texts were not saved', () => {
     const { send, posted: messages, store } = filling();
     act(() => void fireEvent.click(inReview().getByRole('button', { name: 'Ausgewählte übernehmen (1)' })));
