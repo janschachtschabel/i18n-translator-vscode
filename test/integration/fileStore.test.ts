@@ -127,6 +127,62 @@ suite('FileStore', () => {
     assert.ok((await read(fr)).includes('"ASK": "Autre chose ?"'));
   });
 
+  /**
+   * A store whose first look at the index finds `fr.json` as a run of the index read it while another program wrote
+   * it in place: empty. On disk it has its texts again, with `MINUTE` changed. CI once saw a watcher's run, due from
+   * the test before, read it so.
+   */
+  const readWhileWritten = async (): Promise<FileStore> => {
+    const fr = uriOf('common', 'fr');
+    const bytes = await vscode.workspace.fs.readFile(fr);
+    await vscode.workspace.fs.writeFile(fr, new Uint8Array());
+    const halfWritten = await api.index.refreshRoot(ref);
+    await vscode.workspace.fs.writeFile(fr, bytes);
+    await changeOnDisk(fr, '"MINUTE": "Minute"', '"MINUTE": "Minuto"');
+    await api.index.refreshRoot(ref);
+    return new FileStore(staleOnce(halfWritten), log);
+  };
+
+  test('plans again rather than report a conflict that only a file read while written shows', async () => {
+    const store = await readWhileWritten();
+    const result = await store.write(ref, setAsk('Continuer ?', 'Voulez-vous continuer ?'));
+    assert.deepEqual(result, { ok: true });
+    const text = await read(uriOf('common', 'fr'));
+    assert.ok(text.includes('"MINUTE": "Minuto"') && text.includes('"ASK": "Continuer ?"'), text);
+  });
+
+  test('plans again rather than write nothing where only a file read while written has no text', async () => {
+    const store = await readWhileWritten();
+    assert.deepEqual(await store.write(ref, setAsk('', 'Voulez-vous continuer ?')), { ok: true });
+    const text = await read(uriOf('common', 'fr'));
+    assert.ok(text.includes('"MINUTE": "Minuto"') && !text.includes('"ASK"'), text);
+  });
+
+  // In a root with files the index does not read (a link, too large), each run of it makes a new analysis.
+  test('reports a problem after planning three times when each run of the index makes a new analysis', async () => {
+    const renewed = (snapshot: IndexSnapshot): IndexSnapshot => ({
+      ...snapshot,
+      roots: snapshot.roots.map((indexed) => ({ ...indexed, analysis: { ...indexed.analysis } })),
+    });
+    const index: Pick<WorkspaceIndex, 'current' | 'latest' | 'refresh' | 'refreshRoot' | 'whileWriting'> = {
+      current: () => renewed(api.index.current()!),
+      latest: () => api.index.latest(),
+      refresh: () => api.index.refresh(),
+      refreshRoot: async (root) => renewed(await api.index.refreshRoot(root)),
+      whileWriting: (task) => api.index.whileWriting(task),
+    };
+    let plans = 0;
+    const result = await new FileStore(index as WorkspaceIndex, log).write(ref, (analysis) => {
+      plans++;
+      return setAsk('Continuer ?', 'Autre chose ?')(analysis);
+    });
+    assert.ok(
+      !result.ok && result.reason === 'problem' && result.problem.code === 'changed',
+      JSON.stringify(result),
+    );
+    assert.equal(plans, 3);
+  });
+
   // A git pull may delete a key everywhere while the index still has it: a text for it would bring the key back
   // as an orphan. The plan rests on every file of the bundle, not only on those it writes (audit L-11).
   test('plans again when another file of the bundle changed on disk since indexing', async () => {

@@ -64,7 +64,7 @@ type Checked<W extends Replacement, R> = { write: W[] } | { result: R };
 export type UndoResult =
   { ok: true; files: vscode.Uri[] } | { ok: false; reason: 'declined' } | Exclude<WriteResult, { ok: true }>;
 
-/** Plans per write: when files change on disk between planning and writing, the edit is planned again. */
+/** Plans per write: when the files on disk no longer hold what a plan read, the edit is planned again. */
 const PLAN_ATTEMPTS = 3;
 
 /**
@@ -174,7 +174,15 @@ export class FileStore {
       }
       const planned = planTargets(indexed, plan);
       if (!('targets' in planned)) {
-        return planned;
+        // A problem, or nothing to write, holds only if the files still have what the plan read: a run of the index
+        // may have read one while another program wrote it, and seen it empty. An error (a plan that leaves the
+        // root) does not come from the texts.
+        const fromTexts = planned.ok || planned.reason === 'problem';
+        if (!fromTexts || attempt === PLAN_ATTEMPTS || (await this.stillIndexed(ref, indexed))) {
+          return planned;
+        }
+        this.log.info('Planning again on the root as indexed now.');
+        continue;
       }
       const { targets, adapter } = planned;
       if (!backedUp) {
@@ -408,6 +416,17 @@ export class FileStore {
         result: failure.notRestored.length > 0 ? { ...error, notRestored: failure.notRestored } : error,
       };
     });
+  }
+
+  /**
+   * Whether the files of the root still hold what `indexed` read: a new run of the root finds them as they were and
+   * keeps its analysis. If not, the index has them now. A run that fails keeps the analysis as well, and the outcome
+   * of the plan stands; in a root with files the index does not read (a link, too large), each run makes a new
+   * analysis, and the store plans again until its last attempt.
+   */
+  private async stillIndexed(ref: RootRef, indexed: IndexedRoot): Promise<boolean> {
+    const snapshot = await this.index.refreshRoot(ref);
+    return snapshot.roots.some((candidate) => candidate.analysis === indexed.analysis);
   }
 
   /** The indexed root, after a new run if the last one does not have it (e.g. before the first run ended). */
