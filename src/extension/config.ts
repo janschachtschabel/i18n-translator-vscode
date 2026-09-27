@@ -26,11 +26,19 @@ export function readBackupSettings(): { settings: BackupSettings; errors: string
 
 /**
  * Reads and validates the `eduI18n.ai.*` settings, which apply to the window. The address of the b-api is read from
- * the user settings only (scope `machine`), so that no workspace can send the key elsewhere.
+ * the user settings only (scope `machine`), so that no workspace can send the key elsewhere. The AI turned off in the
+ * user settings stays off: the consent names that setting as the way to turn it off, and a repository must not turn it
+ * back on (audit S-12); a workspace may still turn it off.
  */
 export function readAiSettings(): { settings: AiSettings; errors: string[] } {
   const config = vscode.workspace.getConfiguration('eduI18n');
-  return parseAiSettings(Object.fromEntries(AI_SETTING_KEYS.map((key) => [key, config.get(key)])));
+  const raw: Record<string, unknown> = Object.fromEntries(
+    AI_SETTING_KEYS.map((key) => [key, config.get(key)]),
+  );
+  if (config.inspect<boolean>('ai.enabled')?.globalValue === false) {
+    raw['ai.enabled'] = false;
+  }
+  return parseAiSettings(raw);
 }
 
 /** One glob for the `exclude` argument of `findFiles`; null excludes nothing. */

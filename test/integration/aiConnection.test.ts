@@ -116,6 +116,24 @@ suite('AI connection', () => {
     }
   });
 
+  // The consent names eduI18n.ai.enabled as the way to turn the AI off: a repository must not turn it back on
+  // (audit S-12). A workspace may still turn it off.
+  test('keeps the AI off when the user turned it off, whatever the workspace says', async () => {
+    try {
+      await config().update('ai.enabled', false, vscode.ConfigurationTarget.Global);
+      await config().update('ai.enabled', true, vscode.ConfigurationTarget.Workspace);
+      const status = await settled(
+        () => api.ai.service.status(),
+        (current) => current.reason === 'disabled',
+      );
+      assert.equal(status.reason, 'disabled');
+      assert.equal(await api.ai.service.client(), undefined);
+    } finally {
+      await config().update('ai.enabled', undefined, vscode.ConfigurationTarget.Workspace);
+      await config().update('ai.enabled', undefined, vscode.ConfigurationTarget.Global);
+    }
+  });
+
   test('takes the address, the provider, the model and the efforts from the user settings only', async () => {
     // As in a cloned repository; the timeout, which a workspace may set, shows when VS Code has read the file. The
     // fresh test workspace has the file, empty (.vscode-test.mjs).

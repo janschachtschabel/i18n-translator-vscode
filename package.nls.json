@@ -42,7 +42,7 @@
   "config.backup.intervalMinutes": "Minutes after which the next change backs up the translation files again. `0` turns this off; the backups before the first change of a session and before changes of several bundles still happen.",
   "config.backup.keep": "Number of backups to keep. Backups lie in the extension's storage for this workspace, never in the repository.",
   "config.ai.title": "AI (b-api)",
-  "config.ai.enabled": "Turns the AI functions on or off: suggestions for a text, filling and the AI check. The key is set with [Set API Key…](command:eduI18n.setApiKey). In Restricted Mode the AI is always off.",
+  "config.ai.enabled": "Turns the AI functions on or off: suggestions for a text, filling and the AI check. Turned off in the user settings, it stays off in every workspace. The key is set with [Set API Key…](command:eduI18n.setApiKey). In Restricted Mode the AI is always off.",
   "config.ai.baseUrl": "Address of the b-api, e.g. `https://b-api.prod.openeduhub.net` for production. Only `https:` (`http:` only on this machine), and only in the user settings, so that no workspace can send the key elsewhere.",
   "config.ai.provider": "Provider behind the b-api: `openai` or `academiccloud`. Only in the user settings, as the model and the efforts: whoever owns the key decides what it is spent on.",
   "config.ai.model": "Model id, as the b-api lists them. `gpt-5*`, `gpt-6*` and `o3`-like models get `max_completion_tokens` and `reasoning_effort`, others `max_tokens` and `temperature: 0`.",

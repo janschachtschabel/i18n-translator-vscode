@@ -359,7 +359,8 @@ Schl체ssel setzt und die Verbindung testet, steht im [README](../README.md#ki-f�
 ### `eduI18n.ai.enabled`
 
 Standard: `true`. `false` schaltet Vorschl채ge, F체llen und KI-Pr체fung ab; die Extension baut dann keine Verbindung auf.
-Im eingeschr채nkten Modus ist die KI immer aus.
+Im eingeschr채nkten Modus ist die KI immer aus. Ein `false` in den Benutzereinstellungen gilt in jedem Arbeitsbereich:
+Ein Repository kann die KI mit seiner `.vscode/settings.json` ausschalten, aber nicht wieder einschalten.
 
 ### `eduI18n.ai.baseUrl`
 
