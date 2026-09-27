@@ -4,6 +4,7 @@ import type { Settings } from '../../core/config/settings';
 import type { AreaId } from '../../core/model/types';
 import { analyzeRoot, type RootAnalysis } from '../../core/pipeline/analyze';
 import { analysisOptions, BACKUP_SETTING_KEYS, SETTING_KEYS } from '../../core/config/settings';
+import { revisionOf } from '../../core/util/hash';
 import { excludeGlob, readBackupSettings, readSettings } from '../config';
 import { messageOf } from './errors';
 import { IndexWatchers, type WatchedPattern } from './indexWatchers';
@@ -18,6 +19,7 @@ import {
   type RootLimits,
 } from './rootFiles';
 import { SerialRunner } from './serialRunner';
+import { relativeUriPath } from './uriPaths';
 
 export interface IndexedRoot {
   /** The workspace folder that the root and every path of the analysis are relative to. */
@@ -84,6 +86,8 @@ export class WorkspaceIndex implements vscode.Disposable {
   private readonly watchers = new IndexWatchers();
   private readonly subscriptions: vscode.Disposable[] = [this.changed, this.watchers];
   private readonly timers = new Map<string, ReturnType<typeof setTimeout>>();
+  /** The files the watcher of a root reported while its run waited, by {@link keyOf}. */
+  private readonly reported = new Map<string, vscode.Uri[]>();
   private snapshot: IndexSnapshot | undefined;
   private disposed = false;
 
@@ -155,18 +159,64 @@ export class WorkspaceIndex implements vscode.Disposable {
     vscode.Disposable.from(...this.subscriptions).dispose();
   }
 
-  /** A full run, or one of a root, after `DEBOUNCE_MS` without further calls for it. */
-  private schedule(ref?: RootRef): void {
+  /**
+   * A full run, or one of a root, after `DEBOUNCE_MS` without further calls for it. A root's run gets the files the
+   * watcher reported meanwhile.
+   */
+  private schedule(ref?: RootRef, uri?: vscode.Uri): void {
     const key = ref ? keyOf(ref) : '';
+    if (uri) {
+      const reported = this.reported.get(key);
+      if (reported) {
+        reported.push(uri);
+      } else {
+        this.reported.set(key, [uri]);
+      }
+    }
     clearTimeout(this.timers.get(key));
     this.timers.set(
       key,
       setTimeout(() => {
         this.timers.delete(key);
-        const run = ref ? this.refreshRoot(ref) : this.refresh();
+        const reported = this.reported.get(key) ?? [];
+        this.reported.delete(key);
+        const run = ref ? this.refreshReported(ref, reported) : this.refresh();
         run.catch((error: unknown) => this.log.error('Indexing failed.', error));
       }, DEBOUNCE_MS),
     );
+  }
+
+  /**
+   * Indexes the root again, unless the files the watcher reported hold what the last run read: e.g. those a write
+   * indexed right away, whose watcher's run listed and read the whole root only to find that, while a save waited
+   * for it (audit P-06).
+   */
+  private async refreshReported(ref: RootRef, reported: readonly vscode.Uri[]): Promise<IndexSnapshot> {
+    return (await this.exclusive(() => this.asIndexed(ref, reported))) ?? this.refreshRoot(ref);
+  }
+
+  /**
+   * The last snapshot, if the root was indexed without errors and each file holds what it read then; undefined if a
+   * file differs, is new, has gone, cannot be read or would not be (a link, too large).
+   */
+  private async asIndexed(ref: RootRef, uris: readonly vscode.Uri[]): Promise<IndexSnapshot | undefined> {
+    const key = keyOf(ref);
+    const revisions = this.revisions.get(key);
+    const indexed = this.snapshot?.roots.find((candidate) => keyOf(rootRef(candidate)) === key);
+    if (!indexed || !revisions || uris.length === 0 || (this.rootErrors.get(key)?.length ?? 0) > 0) {
+      return undefined;
+    }
+    const paths = [...new Set(uris.map((uri) => relativeUriPath(ref.folder.path, uri.path)))];
+    if (!paths.every((path): path is string => path !== undefined && revisions.has(path))) {
+      return undefined;
+    }
+    let unreadable = false;
+    const files = await readFiles(indexed.folder, paths, () => (unreadable = true), this.limits);
+    const same =
+      !unreadable &&
+      files.length === paths.length &&
+      files.every((file) => revisions.get(file.relPath) === revisionOf(file.bytes));
+    return same ? this.snapshot : undefined;
   }
 
   private exclusive<T>(task: () => Promise<T>): Promise<T> {
@@ -234,7 +284,7 @@ export class WorkspaceIndex implements vscode.Disposable {
           const key = keyOf(ref);
           watched.set(`${key}|root`, {
             pattern: new vscode.RelativePattern(base, '**/*'),
-            onChange: () => this.schedule(ref),
+            onChange: (uri) => this.schedule(ref, uri),
             contents: true,
           });
           const errors: string[] = [];

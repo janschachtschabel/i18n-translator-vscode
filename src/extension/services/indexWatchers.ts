@@ -3,7 +3,8 @@ import * as vscode from 'vscode';
 /** A pattern the index follows, and what a change of a matching file sets off. */
 export interface WatchedPattern {
   pattern: vscode.RelativePattern;
-  onChange: () => void;
+  /** Gets the file that was created, changed or deleted. */
+  onChange: (uri: vscode.Uri) => void;
   /**
    * Whether a change of a file's content counts, or only files that come and go: a marker file (e.g.
    * `common/de.json`) tells where a root is, which its texts do not change.
