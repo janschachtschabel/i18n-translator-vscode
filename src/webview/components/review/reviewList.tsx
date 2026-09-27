@@ -128,13 +128,14 @@ export function ReviewList({ store, list, locales }: ReviewListProps) {
               {l10n.t('Cancel')}
             </button>
           )}
-          <button type="button" onClick={() => review.discard()}>
+          <button type="button" aria-disabled={list.applying !== undefined} onClick={() => review.discard()}>
             {list.items.length === 0 && !running ? l10n.t('Close') : l10n.t('Discard')}
           </button>
         </div>
       </div>
       {list.items.length > 0 && (
-        <ol class="review-items">
+        // While the write is on its way, nothing changes what it writes (inert).
+        <ol class="review-items" inert={list.applying !== undefined}>
           {list.items.slice(0, count).map((item) => (
             <ReviewEntry
               key={item.entryId}

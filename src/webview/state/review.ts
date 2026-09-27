@@ -155,6 +155,10 @@ export class Review {
 
   /** Closes the list without writing, and cancels its job if it still runs. */
   discard(): void {
+    // Not while its write is on its way: the result says what was written.
+    if (this.list.peek()?.applying !== undefined) {
+      return;
+    }
     this.cancel();
     this.list.value = undefined;
   }

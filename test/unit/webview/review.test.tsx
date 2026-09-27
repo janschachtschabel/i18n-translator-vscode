@@ -294,6 +294,22 @@ describe('filling with AI', () => {
     expect(size()).toBe('');
   });
 
+  it('holds the list still while its write is on its way: what was sent is what is written', () => {
+    const { send, posted: messages, store } = filling();
+    act(() => void fireEvent.click(inReview().getByRole('button', { name: 'Ausgewählte übernehmen (1)' })));
+    const items = () => screen.getByRole('region', { name: /^KI-Vorschläge/ }).querySelector('ol')!;
+    const discard = () => inReview().getByRole('button', { name: 'Verwerfen' });
+    expect(items().inert).toBe(true);
+    expect(discard().getAttribute('aria-disabled')).toBe('true');
+    act(() => void fireEvent.click(discard()));
+    expect(screen.queryByRole('region', { name: /^KI-Vorschläge/ })).not.toBeNull();
+    const [apply] = posted(messages, 'aiApply') as Extract<WebviewToHost, { type: 'aiApply' }>[];
+    send({ type: 'aiApplyResult', requestId: apply!.requestId, written: [id('CANCEL')], skipped: [] });
+    expect(store.announcement.value.text).toBe('Texte gespeichert: 1.');
+    expect(items().inert).toBe(false);
+    expect(discard().getAttribute('aria-disabled')).toBe('false');
+  });
+
   it('keeps the list while its job runs, and says which texts were not saved', () => {
     const { send, posted: messages, store } = filling();
     act(() => void fireEvent.click(inReview().getByRole('button', { name: 'Ausgewählte übernehmen (1)' })));
