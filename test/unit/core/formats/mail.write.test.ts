@@ -249,6 +249,23 @@ describe('mailAdapter: encoding and new files', () => {
     expect(valueOf(written.text, 't', 'message')).toBe('5 €');
   });
 
+  // VS Code offers to remove these two line terminators when it opens a file, and the JSON and .properties writers
+  // escape them for that reason; the mail writer wrote them as they are (audit L-27).
+  it('writes the line and paragraph separators as references, in any encoding', () => {
+    const separators = String.fromCharCode(0x2028) + String.fromCharCode(0x2029);
+    const text = one('<template name="t"><subject>S</subject><message>M</message></template>');
+    const written = apply(
+      text,
+      { kind: 'set', key: key('t', 'subject'), value: `a${separators}b` },
+      { kind: 'set', key: key('t', 'message'), value: `c${separators}d` },
+    );
+    expect([...written].filter((char) => separators.includes(char))).toEqual([]);
+    expect(written).toContain('<subject>a&#x2028;&#x2029;b</subject>');
+    expect(written).toContain('<message><![CDATA[c]]>&#x2028;&#x2029;<![CDATA[d]]></message>');
+    expect(valueOf(written, 't', 'subject')).toBe(`a${separators}b`);
+    expect(valueOf(written, 't', 'message')).toBe(`c${separators}d`);
+  });
+
   it('follows an encoding the XML declaration names, as Java does', () => {
     const latin1 =
       '<?xml version="1.0" encoding="ISO-8859-1"?>\n<templates><template name="t"><subject>S</subject></template></templates>\n';

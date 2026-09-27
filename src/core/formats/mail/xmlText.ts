@@ -83,8 +83,8 @@ function escapeText(text: string, writer: Writer): string {
 type Part = { text: string } | { reference: string };
 
 /**
- * A message in parts: `]]>` never stands in one section (`]]` ends one, `>` starts the next), and in ISO-8859-1 a
- * character the file cannot hold follows as a reference between two sections, since CDATA knows no references.
+ * A message in parts: `]]>` never stands in one section (`]]` ends one, `>` starts the next), and a character written
+ * as a reference ({@link asReference}) follows between two sections, since CDATA knows no references.
  */
 function cdataParts(text: string, writer: Writer): Part[] {
   const parts: Part[] = [];
@@ -94,7 +94,7 @@ function cdataParts(text: string, writer: Writer): Part[] {
     let run = '';
     for (const char of section) {
       const code = char.codePointAt(0)!;
-      if (writer.latin1 && code > 0xff) {
+      if (asReference(code, writer)) {
         parts.push({ text: run }, { reference: `&#x${code.toString(16)};` });
         run = '';
       } else {
@@ -119,17 +119,23 @@ function cdata(text: string, writer: Writer): string {
     .join('');
 }
 
-/** In ISO-8859-1, the characters the file cannot hold as references. */
+/** The characters written as references ({@link asReference}). */
 function references(text: string, writer: Writer): string {
-  if (!writer.latin1) {
-    return text;
-  }
   let result = '';
   for (const char of text) {
     const code = char.codePointAt(0)!;
-    result += code > 0xff ? `&#x${code.toString(16)};` : char;
+    result += asReference(code, writer) ? `&#x${code.toString(16)};` : char;
   }
   return result;
+}
+
+/**
+ * Whether a character is written as a reference: in ISO-8859-1 one the file cannot hold, and in any file the line and
+ * paragraph separators, which VS Code offers to remove when it opens the file (as the JSON and .properties writers
+ * escape them, audit L-27).
+ */
+function asReference(code: number, writer: Writer): boolean {
+  return (writer.latin1 && code > 0xff) || code === 0x2028 || code === 0x2029;
 }
 
 /** XML reads every line break as a line feed; the file keeps its own. */
