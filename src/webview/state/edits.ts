@@ -183,7 +183,14 @@ export class Edits {
     const conflict = open?.conflict;
     if (open && conflict) {
       batch(() => {
-        this.open.value = { ...open, before: conflict.text, error: undefined, conflict: undefined };
+        // A suggestion ends with it: Esc would bring back the draft typed against the old text (audit L-21).
+        this.open.value = {
+          ...open,
+          before: conflict.text,
+          error: undefined,
+          conflict: undefined,
+          suggestion: undefined,
+        };
         this.draft.value = toTyped(conflict.text ?? '');
       });
     }
@@ -195,7 +202,8 @@ export class Edits {
    */
   suggest(cell: CellRef, text: string): boolean {
     const open = this.open.value;
-    if (!open || !sameCell(open, cell)) {
+    // Not while the text changed outside the editor: the user chooses first.
+    if (!open || !sameCell(open, cell) || open.conflict) {
       return false;
     }
     const typed = toTyped(text);

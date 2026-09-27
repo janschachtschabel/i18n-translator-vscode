@@ -261,6 +261,38 @@ describe('the AI suggestion in the cell editor', () => {
     expect(requests(posted)).toEqual([]);
   });
 
+  // A request already on its way put its suggestion over the draft once the text had changed outside the editor, and
+  // after "Take the New Text" Esc brought back the draft typed against the old text, which Enter then wrote over the
+  // change (audit L-21).
+  it('cancels a suggestion on its way when the text changes outside the editor', () => {
+    const { send, posted } = open();
+    send({ type: 'aiState', available: true, model: 'gpt-6-luna' });
+    act(() => void fireEvent.click(cellOf('SAVE', 2)));
+    act(() => void fireEvent.input(field(), { target: { value: 'Sauver' } }));
+    press('i', { ctrlKey: true });
+    const requestId = requests(posted)[0]!.requestId;
+    send(saveInFrench('Sauvegarder'));
+    expect(posted.at(-1)).toEqual({ type: 'aiCancel', requestId });
+    send({ type: 'aiSuggestion', requestId, text: 'Texte IA' });
+    expect(field().value).toBe('Sauver');
+  });
+
+  it('ends a suggestion when the user takes the new text of a change outside the editor', () => {
+    const { send, posted } = open();
+    send({ type: 'aiState', available: true, model: 'gpt-6-luna' });
+    act(() => void fireEvent.click(cellOf('SAVE', 2)));
+    act(() => void fireEvent.input(field(), { target: { value: 'Sauver' } }));
+    press('i', { ctrlKey: true });
+    send({ type: 'aiSuggestion', requestId: requests(posted)[0]!.requestId, text: 'Texte IA' });
+    send(saveInFrench('Sauvegarder'));
+    act(() => void fireEvent.click(screen.getByRole('button', { name: 'Neuen Text übernehmen' })));
+    expect(field().value).toBe('Sauvegarder');
+    // No suggestion is left to take back: Esc closes the editor, and nothing is written.
+    press('Escape');
+    expect(screen.queryByRole('textbox')).toBeNull();
+    expect(posted.filter((message) => message.type === 'edit')).toEqual([]);
+  });
+
   it('takes a suggestion of several lines back with Enter saving again', () => {
     const { send, posted } = open();
     send({ type: 'aiState', available: true, model: 'gpt-6-luna' });

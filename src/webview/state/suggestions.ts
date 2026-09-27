@@ -34,10 +34,12 @@ export class Suggestions {
     private readonly post: (message: WebviewToHost) => void,
     private readonly edits: Edits,
   ) {
+    // The editor closed or went to another cell, or its text changed outside it: a suggestion would go over a draft
+    // typed against the old text (audit L-21).
     effect(() => {
       const open = this.edits.open.value;
       const state = this.state.peek();
-      if (state.kind === 'idle' || (open && sameCell(open, state.cell))) {
+      if (state.kind === 'idle' || (open && sameCell(open, state.cell) && !open.conflict)) {
         return;
       }
       if (state.kind === 'loading') {
