@@ -1,5 +1,4 @@
 import * as vscode from 'vscode';
-import type { ClientOptions } from '../../core/ai/bapiClient';
 import { chatCompletion } from '../../core/ai/bapiClient';
 import { describeLanguage } from '../../core/ai/languages';
 import { completionBody, tokenBudget } from '../../core/ai/modelProfiles';
@@ -11,33 +10,20 @@ import {
 } from '../../core/ai/prompts';
 import { contextTexts, fillEntries, sourceLocale, type FillScope } from '../../core/ai/sources';
 import { runAiJob, type JobResult } from '../../core/ai/aiJob';
-import { planTexts } from '../../core/edit/planTexts';
 import type { Bundle } from '../../core/model/bundle';
 import { displayKey, keyFromId } from '../../core/model/keys';
-import type { AiApplyItem, AiJobItem } from '../../shared/aiProtocol';
-import { localize } from '../localize';
 import type { AiStatus } from '../services/aiService';
-import type { FileStore } from '../services/fileStore';
-import { rootRef, type IndexedRoot } from '../services/workspaceIndex';
-import { describeWriteFailure, showWriteFailure } from '../services/writeFeedback';
-import { inBundle } from './findBundle';
+import type { IndexedRoot } from '../services/workspaceIndex';
+import type { JobChoice, JobKind, JobRun } from './aiJobs';
 
 /** Characters of source and context per request, at most (K9): long mail messages go in chunks of their own. */
 const MAX_CHARACTERS = 8000;
-
-/** A language of a bundle with texts to fill, and where they are translated from. */
-export interface FillChoice {
-  locale: string;
-  source: string;
-  /** In the order of the bundle's keys, with the text each has now (null: none). */
-  entries: { entryId: string; before: string | null }[];
-}
 
 /**
  * The languages of the bundle with texts to fill: a translation's missing and empty texts, a variant's texts the
  * variant needs (its missing ones fall back to its base, which is right).
  */
-export function fillChoices(bundle: Bundle, root: IndexedRoot): FillChoice[] {
+export function fillChoices(bundle: Bundle, root: IndexedRoot): JobChoice[] {
   const { variants } = root.settings;
   return bundle.locales.flatMap((locale) => {
     const source = sourceLocale(bundle, locale, variants);
@@ -50,17 +36,6 @@ export function fillChoices(bundle: Bundle, root: IndexedRoot): FillChoice[] {
   });
 }
 
-export interface FillRun {
-  client: ClientOptions;
-  status: AiStatus;
-  bundle: Bundle;
-  root: IndexedRoot;
-  choice: FillChoice;
-  signal: AbortSignal;
-  /** Suggestions as they come, with how many texts are done. */
-  onItems: (items: AiJobItem[], done: number, total: number) => void;
-}
-
 /** Translates the texts of a choice in chunks, as `runAiJob` does; the result names the texts without one. */
 export function runFill({
   client,
@@ -70,7 +45,7 @@ export function runFill({
   choice,
   signal,
   onItems,
-}: FillRun): Promise<JobResult> {
+}: JobRun): Promise<JobResult> {
   const { settings } = status;
   const { variants, baseFileLanguage } = root.settings;
   const describe = (code: string) => ({
@@ -130,52 +105,8 @@ export function runFill({
   });
 }
 
-/** How a write of reviewed texts went, for the webview. */
-export interface ApplyOutcome {
-  written: string[];
-  skipped: { entryId: string; message: string }[];
-  message?: string;
-}
-
-/**
- * Writes reviewed texts of a language as one change of its file (planTexts), always backed up first, and one step
- * of undo. Texts that changed meanwhile or that the file cannot hold are skipped with their reason; a failure of the
- * whole write (Restricted Mode, a file with unsaved changes) says why, and offers the step that solves it.
- */
-export async function applyFill(
-  fileStore: FileStore,
-  found: { root: IndexedRoot; bundle: Bundle },
-  locale: string,
-  items: readonly AiApplyItem[],
-): Promise<ApplyOutcome> {
-  const describe = (skipped: ReturnType<typeof planTexts>['skipped']) =>
-    skipped.map(({ entryId, problem }) => ({ entryId, message: localize(problem.message) }));
-  // Nothing to write: say what was skipped, without a backup of nothing.
-  const preview = planTexts(found.bundle, locale, items);
-  if (preview.changes.length === 0) {
-    return { written: [], skipped: describe(preview.skipped) };
-  }
-  let plan = preview;
-  const result = await fileStore.write(
-    rootRef(found.root),
-    inBundle(found.bundle.id, (bundle) => {
-      // Planned again on the files as they are when written (B5).
-      plan = planTexts(bundle, locale, items);
-      return { ok: true, changes: plan.changes };
-    }),
-    { bulk: true },
-  );
-  if (!result.ok) {
-    if (result.reason !== 'problem') {
-      void showWriteFailure(result);
-    }
-    return { written: [], skipped: [], message: describeWriteFailure(result) };
-  }
-  return { written: plan.planned, skipped: describe(plan.skipped) };
-}
-
 /** The question before a fill of many texts: what it fills, and how many requests go where. */
-export function fillQuestion(bundle: Bundle, choice: FillChoice, status: AiStatus, requests: number): string {
+export function fillQuestion(bundle: Bundle, choice: JobChoice, status: AiStatus, requests: number): string {
   return vscode.l10n.t(
     'Fill {count} texts of {bundle} in {locale}? That takes about {requests} requests to {model} at {host}.',
     {
@@ -188,3 +119,15 @@ export function fillQuestion(bundle: Bundle, choice: FillChoice, status: AiStatu
     },
   );
 }
+
+/** "Fill with AI…": the missing and empty texts of a language (a variant's needed ones), translated. */
+export const FILL: JobKind = {
+  kind: 'fill',
+  choices: fillChoices,
+  nothing: (bundle) =>
+    vscode.l10n.t('{bundle} has no missing or empty texts to fill.', { bundle: bundle.name }),
+  pickTitle: () => vscode.l10n.t('The language to fill with AI'),
+  question: fillQuestion,
+  start: () => vscode.l10n.t('Fill'),
+  run: runFill,
+};

@@ -148,7 +148,7 @@ suite('Fill with AI', () => {
       assert.match(answer.skipped[0]!.message, /changed in the meantime/);
       const stale = waitFor(editorPanel.onDidPost, (message) => message.type === 'aiApplyResult');
       await editorPanel.receive({ type: 'aiApply', requestId: 'apply-3', jobId: 'fill-0', items: [] });
-      assert.match(((await stale) as { message?: string }).message ?? '', /older fill/);
+      assert.match(((await stale) as { message?: string }).message ?? '', /older job/);
       assert.equal(await read(), before);
       assert.ok(posts.length > 0);
     } finally {

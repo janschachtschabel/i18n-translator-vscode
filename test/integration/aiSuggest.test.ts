@@ -118,7 +118,7 @@ suite('AI suggestion for a cell', () => {
     const { server, host } = await serve(translator());
     await api.ai.consent.ensure(host, answering(true));
     const answer = await suggest('PERSON', 'de-no-binnen-i', 's2');
-    assert.equal(answer.text, 'de-no-binnen-i:Autor{{GENDER_SEPARATOR}}in');
+    assert.equal(answer.text, 'de-no-binnen-i:Autor{{GENDER_SEPARATOR}}in', JSON.stringify(answer));
     const body = server.requests.at(-1)!.body as { messages: { content: string }[] };
     assert.match(body.messages[0]!.content, /Adapt the texts to .*\[de-no-binnen-i\]/);
   });
