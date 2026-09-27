@@ -133,9 +133,14 @@ export function parseTranslations(
     };
     if (typeof key !== 'string' || !asked.has(key)) {
       unknown++;
-    } else if (typeof text === 'string' && !texts.has(key)) {
+    } else if (typeof text === 'string' && isWellFormed(text) && !texts.has(key)) {
       texts.set(key, text);
     }
   }
   return { texts, missing: keys.filter((key) => !texts.has(key)), unknown };
+}
+
+/** Whether a text of the model is valid Unicode: half of a pair (a cut-off emoji) is none, and no file takes it. */
+export function isWellFormed(text: string): boolean {
+  return !/\p{Cs}/u.test(text);
 }

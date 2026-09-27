@@ -147,6 +147,19 @@ describe('parseTranslations', () => {
     expect(unknown).toBe(1);
   });
 
+  it('counts a text that is no valid Unicode as no text: the file could not take it', () => {
+    const halfEmoji = String.fromCharCode(0xd83d);
+    const answer = JSON.stringify({
+      items: [
+        { key: 'A', text: `Ay ${halfEmoji}` },
+        { key: 'B', text: `Bee ${String.fromCodePoint(0x1f600)}` },
+      ],
+    });
+    const { texts, missing } = parseTranslations(answer, ['A', 'B']);
+    expect([...texts.keys()]).toEqual(['B']);
+    expect(missing).toEqual(['A']);
+  });
+
   it('fails on an answer that is no JSON of the schema', () => {
     expect(() => parseTranslations('Voilà', ['A'])).toThrow(
       expect.objectContaining({ code: 'invalid-response' }),

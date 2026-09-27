@@ -1,7 +1,7 @@
 import type { PlaceholderSyntax } from '../area/areaDefinition';
 import { AiError } from './aiErrors';
 import type { AnswerFormat, ChatMessage } from './modelProfiles';
-import { GENDER_MARKER_RULE, type PromptItem, type PromptLanguage } from './prompts';
+import { GENDER_MARKER_RULE, isWellFormed, type PromptItem, type PromptLanguage } from './prompts';
 
 /** A translation to check: its key, the text it was translated from, the translation, and other languages. */
 export interface CheckItem extends PromptItem {
@@ -156,6 +156,9 @@ function verdictOf(fields: Record<string, unknown>): CheckVerdict | undefined {
   const severity = SEVERITIES.includes(fields['severity'] as CheckSeverity)
     ? (fields['severity'] as CheckSeverity)
     : 'warning';
-  const suggestion = typeof fields['suggestion'] === 'string' ? fields['suggestion'] : '';
+  const suggestion =
+    typeof fields['suggestion'] === 'string' && isWellFormed(fields['suggestion'])
+      ? fields['suggestion']
+      : '';
   return { ok: false, severity, problem, ...(suggestion.trim() ? { suggestion } : {}) };
 }

@@ -129,6 +129,22 @@ describe('parseCheck', () => {
     expect(result.missing).toEqual(['A', 'C']);
   });
 
+  it('keeps the problem but drops a correction that is no valid Unicode', () => {
+    const result = parseCheck(
+      answer([
+        {
+          key: 'A',
+          verdict: 'problem',
+          severity: 'warning',
+          problem: 'Holprig.',
+          suggestion: `Voir ${String.fromCharCode(0xdc00)}`,
+        },
+      ]),
+      ['A'],
+    );
+    expect(result.verdicts.get('A')).toEqual({ ok: false, severity: 'warning', problem: 'Holprig.' });
+  });
+
   it('refuses an answer that is no JSON of the schema', () => {
     expect(() => parseCheck('not json', ['A'])).toThrow(AiError);
     expect(() => parseCheck('{"verdicts": []}', ['A'])).toThrow(AiError);
