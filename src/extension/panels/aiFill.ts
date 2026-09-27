@@ -8,10 +8,9 @@ import {
   translationMessages,
   type PromptItem,
 } from '../../core/ai/prompts';
-import { contextTexts, fillEntries, sourceLocale, type FillScope } from '../../core/ai/sources';
+import { contextTexts, fillEntries, promptKeys, sourceLocale, type FillScope } from '../../core/ai/sources';
 import { runAiJob, type JobResult } from '../../core/ai/aiJob';
 import type { Bundle } from '../../core/model/bundle';
-import { displayKey, keyFromId } from '../../core/model/keys';
 import type { AiStatus } from '../services/aiService';
 import type { IndexedRoot } from '../services/workspaceIndex';
 import type { JobChoice, JobKind, JobRun } from './aiJobs';
@@ -54,8 +53,9 @@ export function runFill({
   });
   const skip = [choice.source, choice.locale, ...Object.keys(variants)];
   const entries = new Map<string, { entryId: string; source: string; before: string | null }>();
-  const items: PromptItem[] = choice.entries.map(({ entryId, before }) => {
-    const key = displayKey(keyFromId(entryId));
+  const keys = promptKeys(choice.entries.map(({ entryId }) => entryId));
+  const items: PromptItem[] = choice.entries.map(({ entryId, before }, index) => {
+    const key = keys[index]!;
     const source = bundle.value(entryId, choice.source) ?? '';
     entries.set(key, { entryId, source, before });
     return { key, source, context: contextTexts(bundle, entryId, skip) };

@@ -1,5 +1,6 @@
 import type { Issue, RuleId } from '../checks/types';
 import type { Bundle } from '../model/bundle';
+import { displayKey, keyFromId } from '../model/keys';
 import type { LocaleCode } from '../model/types';
 
 /** Other languages that go along with a text as context, by default. */
@@ -89,4 +90,21 @@ export function checkEntries(
 
 function isEnglish(code: string): boolean {
   return code === 'en' || code.startsWith('en_') || code.startsWith('en-') || code === 'default';
+}
+
+/**
+ * The key of each entry as the model sees it: as the editor shows it, which relates it to the other texts, and unique
+ * within the job, as the answers come back by key (K2). Keys shown alike, such as ["A", "B"] and ["A.B"], get a number.
+ */
+export function promptKeys(entryIds: readonly string[]): string[] {
+  const used = new Set<string>();
+  return entryIds.map((entryId) => {
+    const shown = displayKey(keyFromId(entryId));
+    let key = shown;
+    for (let number = 2; used.has(key); number++) {
+      key = `${shown} (${number})`;
+    }
+    used.add(key);
+    return key;
+  });
 }

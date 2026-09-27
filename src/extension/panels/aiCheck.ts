@@ -10,9 +10,8 @@ import {
 } from '../../core/ai/checkPrompt';
 import { describeLanguage } from '../../core/ai/languages';
 import { completionBody, tokenBudget } from '../../core/ai/modelProfiles';
-import { checkEntries, contextTexts, sourceLocale } from '../../core/ai/sources';
+import { checkEntries, contextTexts, promptKeys, sourceLocale } from '../../core/ai/sources';
 import type { Bundle } from '../../core/model/bundle';
-import { displayKey, keyFromId } from '../../core/model/keys';
 import type { AiJobItem } from '../../shared/aiProtocol';
 import type { IndexedRoot } from '../services/workspaceIndex';
 import type { JobChoice, JobKind, JobRun } from './aiJobs';
@@ -53,8 +52,9 @@ export function runCheck({
   });
   const skip = [choice.source, choice.locale, ...Object.keys(variants)];
   const entries = new Map<string, { entryId: string; source: string; before: string }>();
-  const items: CheckItem[] = choice.entries.map(({ entryId, before }) => {
-    const key = displayKey(keyFromId(entryId));
+  const keys = promptKeys(choice.entries.map(({ entryId }) => entryId));
+  const items: CheckItem[] = choice.entries.map(({ entryId, before }, index) => {
+    const key = keys[index]!;
     const source = bundle.value(entryId, choice.source) ?? '';
     const text = before ?? '';
     entries.set(key, { entryId, source, before: text });

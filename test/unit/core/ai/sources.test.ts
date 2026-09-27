@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { checkEntries, contextTexts, fillEntries, sourceLocale } from '../../../../src/core/ai/sources';
+import {
+  checkEntries,
+  contextTexts,
+  fillEntries,
+  promptKeys,
+  sourceLocale,
+} from '../../../../src/core/ai/sources';
 import { keyFromId, keyFromSegments } from '../../../../src/core/model/keys';
 import { analyzeFixtureWorkspace } from '../../support/fixtureWorkspace';
 
@@ -75,5 +81,12 @@ describe('checkEntries', () => {
     expect(checkEntries(common, 'de-informal', 'de')).toEqual([
       { entryId: id('ASK'), before: 'Möchtest Du fortfahren?' },
     ]);
+  });
+});
+
+describe('promptKeys', () => {
+  it('shows each key as the editor does, and numbers keys shown alike, so that each answer finds its entry', () => {
+    const ids = [['A', 'B'], ['C'], ['A.B'], ['A.B (2)']].map((segments) => keyFromSegments(segments).id);
+    expect(promptKeys(ids)).toEqual(['A.B', 'C', 'A.B (2)', 'A.B (2) (2)']);
   });
 });
