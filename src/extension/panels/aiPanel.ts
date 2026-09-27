@@ -1,28 +1,14 @@
 import * as vscode from 'vscode';
 import type { AiApplyItem } from '../../shared/aiProtocol';
 import type { HostToWebview, PanelState } from '../../shared/protocol';
-import type { Prompts } from '../commands/prompts';
-import type { AiConsent } from '../services/aiConsent';
 import { unavailableMessage } from '../services/aiFeedback';
-import type { AiService } from '../services/aiService';
 import { showFailure } from '../notify';
 import { messageOf } from '../services/errors';
-import type { FileStore } from '../services/fileStore';
-import type { WorkspaceIndex } from '../services/workspaceIndex';
 import { CHECK } from './aiCheck';
 import { FILL } from './aiFill';
 import { AiJobs } from './aiJobs';
+import type { AiPanelServices } from './aiPanelServices';
 import { requestSuggestion, suggestionRequest } from './suggestCell';
-
-/** What the AI part of an editor needs from the extension. */
-export interface AiPanelServices {
-  ai: AiService;
-  consent: AiConsent;
-  index: WorkspaceIndex;
-  fileStore: FileStore;
-  prompts: Prompts;
-  log: vscode.LogOutputChannel;
-}
 
 /**
  * The AI part of one editor: tells the webview whether the AI can be used, answers its requests for suggestions,

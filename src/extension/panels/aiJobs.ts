@@ -10,7 +10,7 @@ import { aiFailureMessage, explainUnavailable } from '../services/aiFeedback';
 import type { AiStatus } from '../services/aiService';
 import { messageOf } from '../services/errors';
 import type { IndexedRoot } from '../services/workspaceIndex';
-import type { AiPanelServices } from './aiPanel';
+import type { AiPanelServices } from './aiPanelServices';
 import { applyAiChanges } from './applyAiChanges';
 import { findBundle } from './findBundle';
 
