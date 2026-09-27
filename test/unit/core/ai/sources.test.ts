@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { contextTexts, fillEntries, sourceLocale } from '../../../../src/core/ai/sources';
-import { keyFromSegments } from '../../../../src/core/model/keys';
+import { checkEntries, contextTexts, fillEntries, sourceLocale } from '../../../../src/core/ai/sources';
+import { keyFromId, keyFromSegments } from '../../../../src/core/model/keys';
 import { analyzeFixtureWorkspace } from '../../support/fixtureWorkspace';
 
 const { analysis } = analyzeFixtureWorkspace();
@@ -47,5 +47,33 @@ describe('fillEntries', () => {
   it('leaves out keys without a text to translate from', () => {
     const withoutSource = fillEntries(common, analysis.issues, 'fr', ['missing'], 'de-informal');
     expect(withoutSource.map((entry) => entry.entryId)).not.toContain(id('CANCEL'));
+  });
+});
+
+describe('checkEntries', () => {
+  const keysOf = (entries: { entryId: string }[]) =>
+    entries.map((entry) => keyFromId(entry.entryId).segments.join(' / '));
+
+  it('checks the texts a language has, where there is a text to check against, in the order of the keys', () => {
+    // Not SAVE (empty in fr), nor CANCEL and WORKSPACE.FILE.TITLE (missing).
+    expect(keysOf(checkEntries(common, 'fr', 'de'))).toEqual([
+      'ERROR_TITLE',
+      'PERSON',
+      'ASK',
+      'MINUTE',
+      'OK',
+      'BOLD_HINT',
+      'MIME / application/vnd.ms-excel',
+      'CCMAIL / mail.smtp.server',
+      'WORKSPACE / TITLE',
+    ]);
+    expect(checkEntries(common, 'fr', 'de')[0]).toEqual({
+      entryId: id('ERROR_TITLE'),
+      before: 'Erreur ({{data}})',
+    });
+    // A variant: its own texts, against its base.
+    expect(checkEntries(common, 'de-informal', 'de')).toEqual([
+      { entryId: id('ASK'), before: 'Möchtest Du fortfahren?' },
+    ]);
   });
 });

@@ -71,6 +71,22 @@ export function fillEntries(
     .map((key) => ({ entryId: key.id, before: bundle.value(key.id, locale) ?? null }));
 }
 
+/**
+ * The texts the AI check looks at in `locale`, in the order of the bundle's keys: those the language has (for a
+ * variant: its own), where `source` has a text to check against. Each with its text, which a correction is written
+ * against (B5).
+ */
+export function checkEntries(
+  bundle: Bundle,
+  locale: LocaleCode,
+  source: LocaleCode,
+): { entryId: string; before: string }[] {
+  return bundle.keys.flatMap((key) => {
+    const text = bundle.value(key.id, locale);
+    return text?.trim() && bundle.value(key.id, source)?.trim() ? [{ entryId: key.id, before: text }] : [];
+  });
+}
+
 function isEnglish(code: string): boolean {
   return code === 'en' || code.startsWith('en_') || code.startsWith('en-') || code === 'default';
 }

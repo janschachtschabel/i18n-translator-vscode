@@ -39,6 +39,18 @@ const prompt = (changes: Partial<TranslationPrompt> = {}): TranslationPrompt => 
 });
 
 describe('translationMessages', () => {
+  it('keeps its wording, which review diffs show: full, variant, metadatasets, mail', () => {
+    const cases: Partial<TranslationPrompt>[] = [
+      {},
+      { variant: true, target: { code: 'de-informal', description: "German informal: use 'du'" } },
+      { syntax: 'single-brace' },
+      { html: true },
+    ];
+    for (const changes of cases) {
+      expect(translationMessages(prompt(changes))[0]!.content).toMatchSnapshot();
+    }
+  });
+
   it('names both languages, the rules for placeholders and tags, and sends the texts as JSON', () => {
     const [system, user] = translationMessages(prompt());
     expect(system!.role).toBe('system');
