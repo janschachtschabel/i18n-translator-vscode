@@ -204,15 +204,16 @@ async function pause(
 
 function sleep(ms: number, signal?: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
-    const timer = setTimeout(resolve, ms);
-    signal?.addEventListener(
-      'abort',
-      () => {
-        clearTimeout(timer);
-        reject(new AiError('aborted'));
-      },
-      { once: true },
-    );
+    const cancel = () => {
+      clearTimeout(timer);
+      reject(new AiError('aborted'));
+    };
+    // A job shares its signal among its chunks: the listener goes with the wait.
+    const timer = setTimeout(() => {
+      signal?.removeEventListener('abort', cancel);
+      resolve();
+    }, ms);
+    signal?.addEventListener('abort', cancel, { once: true });
   });
 }
 

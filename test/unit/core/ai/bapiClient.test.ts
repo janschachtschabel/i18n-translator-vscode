@@ -93,6 +93,29 @@ async function failure(call: Promise<unknown>): Promise<AiError> {
 
 afterEach(() => vi.useRealTimers());
 
+/** The abort listeners on a signal, as they are added and removed. */
+function abortListeners(signal: AbortSignal): Set<unknown> {
+  type Listen = (type: string, listener: unknown, options?: unknown) => void;
+  const listening = new Set<unknown>();
+  const add = signal.addEventListener.bind(signal) as Listen;
+  const remove = signal.removeEventListener.bind(signal) as Listen;
+  const addTracked: Listen = (type, listener, options) => {
+    if (type === 'abort') {
+      listening.add(listener);
+    }
+    add(type, listener, options);
+  };
+  const removeTracked: Listen = (type, listener, options) => {
+    if (type === 'abort') {
+      listening.delete(listener);
+    }
+    remove(type, listener, options);
+  };
+  signal.addEventListener = addTracked as unknown as typeof signal.addEventListener;
+  signal.removeEventListener = removeTracked as unknown as typeof signal.removeEventListener;
+  return listening;
+}
+
 describe('chatCompletion', () => {
   it('posts the body to the chat endpoint with the key in X-API-KEY, and follows no redirect', async () => {
     const { fetch, calls } = fakeFetch(answer({ content: '{"items":[]}' }));
@@ -186,6 +209,20 @@ describe('chatCompletion', () => {
     );
     expect((await failure(chatCompletion(options(fetch), BODY))).code).toBe('redirect');
     expect(calls).toHaveLength(1);
+  });
+
+  // A job shares its signal among its chunks, and every wait before a repeat left a listener on it (audit L-29).
+  it("leaves no listener on the caller's signal after waiting to repeat", async () => {
+    vi.useFakeTimers();
+    const controller = new AbortController();
+    const listening = abortListeners(controller.signal);
+    const { fetch } = fakeFetch(json(429, {}), answer({ content: '{}' }));
+    const { sleep, ...withTheRealWait } = options(fetch);
+    expect(sleep).toBeDefined();
+    const call = chatCompletion(withTheRealWait, BODY, controller.signal);
+    await vi.advanceTimersByTimeAsync(2500);
+    expect((await call).content).toBe('{}');
+    expect(listening.size).toBe(0);
   });
 
   it('gives up a request that takes longer than the timeout, without repeating it', async () => {
