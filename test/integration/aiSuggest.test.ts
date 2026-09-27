@@ -139,12 +139,15 @@ suite('AI suggestion for a cell', function () {
   test('answers nothing to a request the editor cancelled, and sends none cancelled before it went', async () => {
     const { server, host } = await serve(translator(200, 3000));
     await api.ai.consent.ensure(host, answering(true));
-    const count = posts.filter((message) => message.type === 'aiSuggestion').length;
+    const before = posts.length;
     const done = panel.receive({ type: 'aiSuggest', requestId: 's5', entryId: id('CANCEL'), locale: 'fr' });
     // At once, while the host still reads the settings: the cancel must not get lost.
     await panel.receive({ type: 'aiCancel', requestId: 's5' });
     await done;
-    assert.equal(posts.filter((message) => message.type === 'aiSuggestion').length, count);
+    assert.deepEqual(
+      posts.slice(before).filter((message) => message.type === 'aiSuggestion'),
+      [],
+    );
     assert.equal(server.requests.filter((request) => request.path.endsWith('/chat/completions')).length, 0);
   });
 
@@ -185,14 +188,17 @@ suite('AI suggestion for a cell', function () {
   test('cancels the requests of a page that reloads', async () => {
     const { host } = await serve(translator(200, 3000));
     await api.ai.consent.ensure(host, answering(true));
-    const count = posts.filter((message) => message.type === 'aiSuggestion').length;
+    const before = posts.length;
     const started = Date.now();
     const done = panel.receive({ type: 'aiSuggest', requestId: 's6', entryId: id('CANCEL'), locale: 'fr' });
     // At once, while the host still reads the settings.
     await panel.receive({ type: 'ready' });
     await done;
     assert.ok(Date.now() - started < 2500, 'the request ended with its page');
-    assert.equal(posts.filter((message) => message.type === 'aiSuggestion').length, count);
+    assert.deepEqual(
+      posts.slice(before).filter((message) => message.type === 'aiSuggestion'),
+      [],
+    );
   });
 
   test('tells the editor whether the AI can be used, on every start', async () => {
