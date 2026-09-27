@@ -115,12 +115,12 @@ export function List({ store, rows, locales, reference, labelledBy }: ListProps)
   );
 }
 
-/** The text of a card's field in a language; undefined in the key, or for a language the card does not show. */
 /** Where the focus goes in a card, in order: the field of the language, else the heading. */
 function inCard(card: Element, locale: string | null): (HTMLElement | null | undefined)[] {
   return [fieldOf(card, locale), card.querySelector<HTMLElement>('h2')];
 }
 
+/** The text of a card's field in a language; undefined in the key, or for a language the card does not show. */
 function fieldOf(card: Element, locale: string | null): HTMLElement | undefined {
   return (
     [...card.querySelectorAll<HTMLElement>('dd[data-locale]')]
