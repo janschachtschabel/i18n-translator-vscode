@@ -60,12 +60,13 @@ export function ReviewList({ store, list, locales }: ReviewListProps) {
       root.style.removeProperty('--review-head-size');
     };
   }, []);
-  // A job that ends takes Cancel with it: a focus lost with it goes to the heading, not to the page.
+  // What had the focus may go while the list stays: Cancel when the job ends, a written entry, the choice buttons
+  // with the last entry. The focus goes to the heading then, not to the page.
   useLayoutEffect(() => {
-    if (!running && focusIsLost()) {
+    if (focusIsLost()) {
       heading.current?.focus();
     }
-  }, [running]);
+  }, [running, list.items.length]);
   // Closing with the focus in it, or lost, the list hands it back to the button that started its job.
   useLayoutEffect(
     () => () => {

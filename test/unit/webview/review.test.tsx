@@ -2,7 +2,7 @@
 import { act, cleanup, fireEvent, screen, within } from '@testing-library/preact';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { AiJobItem } from '../../../src/shared/aiProtocol';
-import type { WebviewToHost } from '../../../src/shared/protocol';
+import type { HostToWebview, WebviewToHost } from '../../../src/shared/protocol';
 import { axeProblems, openWith as open } from './support';
 
 const id = (key: string) => JSON.stringify(key.split('.'));
@@ -418,6 +418,30 @@ describe('filling with AI', () => {
     // A page loaded again has no list: the host cancelled the job of the page before.
     editor.open();
     expect(screen.queryByRole('region', { name: /^KI-Vorschläge/ })).toBeNull();
+  });
+
+  it('gives the heading a focus the write took away, while the list stays for its running job', () => {
+    const heading = () => inReview().getByRole('heading', { level: 2 });
+    const write = (send: (message: HostToWebview) => void, messages: WebviewToHost[], written: string[]) => {
+      const request = (posted(messages, 'aiApply') as Extract<WebviewToHost, { type: 'aiApply' }>[]).at(-1)!;
+      send({ type: 'aiApplyResult', requestId: request.requestId, written: written.map(id), skipped: [] });
+    };
+    // The focus in a text that is written: its entry goes.
+    const first = filling();
+    inReview().getByRole('textbox', { name: 'CANCEL in fr' }).focus();
+    act(() => void fireEvent.click(inReview().getByRole('button', { name: 'Ausgewählte übernehmen (1)' })));
+    write(first.send, first.posted, ['CANCEL']);
+    expect(document.activeElement).toBe(heading());
+    cleanup();
+
+    // The focus on "Keine auswählen" when the last texts are written: the buttons go with the entries.
+    const second = filling();
+    act(() => void fireEvent.click(inReview().getByRole('checkbox', { name: 'ERROR_TITLE übernehmen' })));
+    inReview().getByRole('button', { name: 'Keine auswählen' }).focus();
+    act(() => void fireEvent.click(inReview().getByRole('button', { name: 'Ausgewählte übernehmen (2)' })));
+    write(second.send, second.posted, ['CANCEL', 'ERROR_TITLE']);
+    expect(inReview().queryByRole('button', { name: 'Keine auswählen' })).toBeNull();
+    expect(document.activeElement).toBe(heading());
   });
 
   it('keeps the list while its job runs, and says which texts were not saved', () => {
