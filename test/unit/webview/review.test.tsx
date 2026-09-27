@@ -222,6 +222,15 @@ describe('filling with AI', () => {
       items: [item('CANCEL', 'Abbrechen', 'Autre')],
     });
     expect(inReview().getAllByRole('textbox', { name: 'CANCEL in fr' })).toHaveLength(1);
+    // Nor does a chunk that has a text twice.
+    send({
+      type: 'aiJobItems',
+      jobId: 'fill-1',
+      done: 3,
+      total: 3,
+      items: [item('ASK', 'Fragen', 'Demander'), item('ASK', 'Fragen', 'Interroger')],
+    });
+    expect(inReview().getAllByRole('textbox', { name: 'ASK in fr' })).toHaveLength(1);
   });
 
   it('writes the chosen texts as edited; the written ones go, a skipped one stays with its reason', () => {
@@ -339,6 +348,16 @@ describe('filling with AI', () => {
     );
     // A text chosen as it came gives its checkbox nothing to explain.
     expect(description(inReview().getByRole('checkbox', { name: 'CANCEL übernehmen' }))).toBe('');
+  });
+
+  it('takes no answer meant for a write of the page before, which counted its writes the same way', () => {
+    const { send, posted: messages } = filling();
+    act(() => void fireEvent.click(inReview().getByRole('button', { name: 'Ausgewählte übernehmen (1)' })));
+    const [apply] = posted(messages, 'aiApply') as Extract<WebviewToHost, { type: 'aiApply' }>[];
+    // The first write of the page before, answered after its reload.
+    send({ type: 'aiApplyResult', requestId: 'apply-1', written: [id('CANCEL')], skipped: [] });
+    expect(apply!.requestId).not.toBe('apply-1');
+    expect(inReview().getByRole('textbox', { name: 'CANCEL in fr' })).toBeTruthy();
   });
 
   it('keeps the list while its job runs, and says which texts were not saved', () => {

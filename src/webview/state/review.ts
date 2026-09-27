@@ -61,6 +61,8 @@ export type JobKind = Extract<AiHostToWebview, { type: 'aiJob' }>['kind'];
 export class Review {
   readonly list = signal<ReviewList | undefined>(undefined);
   private applies = 0;
+  /** In the ids of writes: a page after a reload counts them from 1 again. */
+  private readonly page = Math.random().toString(36).slice(2, 10);
   /** The kind of the job whose list closed with the focus in it: the button that started it takes the focus. */
   private focusBack: JobKind | undefined;
 
@@ -93,9 +95,14 @@ export class Review {
         if (list?.jobId !== message.jobId) {
           return;
         }
+        // A text comes once, even when chunks, or one chunk, repeat it.
         const known = new Set(list.items.map((item) => item.entryId));
         const items = message.items
-          .filter((item) => !known.has(item.entryId))
+          .filter((item) => {
+            const fresh = !known.has(item.entryId);
+            known.add(item.entryId);
+            return fresh;
+          })
           .map((item) => this.itemOf(item, list.kind));
         this.list.value = {
           ...list,
@@ -171,7 +178,7 @@ export class Review {
     if (!list || list.applying !== undefined || chosen.length === 0) {
       return;
     }
-    const requestId = `apply-${++this.applies}`;
+    const requestId = `apply-${this.page}-${++this.applies}`;
     this.list.value = { ...list, applying: requestId, message: undefined };
     this.post({
       type: 'aiApply',
