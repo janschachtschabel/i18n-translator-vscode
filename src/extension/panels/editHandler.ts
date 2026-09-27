@@ -1,5 +1,7 @@
 import * as vscode from 'vscode';
+import { editProblem } from '../../core/edit/editMessages';
 import { planEdit, type BundleEdit, type PlanResult } from '../../core/edit/planEdit';
+import type { Bundle } from '../../core/model/bundle';
 import { displayKey, keyFromId } from '../../core/model/keys';
 import type { PanelState, WebviewToHost } from '../../shared/protocol';
 import type { Prompts } from '../commands/prompts';
@@ -52,14 +54,34 @@ export async function applyEdit(
     return failed({ ok: false, reason: 'problem', problem: planned.problem });
   }
   // Clearing deletes the text, so that the fallback applies (B2): not what "empty" suggests, so ask first.
-  if (deletes(planned) && !(await confirmClear(services.prompts, request, found.bundle.reference))) {
+  const confirmed = deletes(planned);
+  if (confirmed && !(await confirmClear(services.prompts, request, found.bundle.reference))) {
     return { ok: false };
   }
   const result = await services.fileStore.write(
     rootRef(found.root),
-    inBundle(target.bundleId, (bundle) => planEdit(bundle, edit)),
+    inBundle(target.bundleId, planAgain(request, edit, confirmed)),
   );
   return result.ok ? { ok: true } : failed(result);
+}
+
+/**
+ * The edit, planned on the texts the store finds. They may have a text to clear that the handler's look at the index
+ * did not have: unless the user `confirmed` a delete, nobody was asked (B2), and the edit counts as a conflict.
+ */
+function planAgain(
+  request: EditRequest,
+  edit: BundleEdit,
+  confirmed: boolean,
+): (bundle: Bundle) => PlanResult {
+  return (bundle) => {
+    const planned = planEdit(bundle, edit);
+    if (!planned.ok || !deletes(planned) || confirmed) {
+      return planned;
+    }
+    const args = { key: displayKey(keyFromId(request.entryId)), locale: request.locale };
+    return { ok: false, problem: editProblem('changed', args) };
+  };
 }
 
 /** The answer to a failed edit; a failure that needs a step of the user is also shown with that step. */

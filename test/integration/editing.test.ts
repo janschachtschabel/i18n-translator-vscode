@@ -5,6 +5,7 @@ import type { ExtensionApi } from '../../src/extension/extension';
 import { applyEdit } from '../../src/extension/panels/editHandler';
 import { FileStore } from '../../src/extension/services/fileStore';
 import { sameBytes } from '../../src/extension/services/files';
+import { rootRef, type WorkspaceIndex } from '../../src/extension/services/workspaceIndex';
 import { activateExtension, answering, keepTranslationFiles, nextPost } from './helpers';
 
 const ERROR_TITLE = keyFromSegments(['ERROR_TITLE']).id;
@@ -156,6 +157,35 @@ suite('editing', () => {
     assert.match(reference.answer.message ?? '', /cannot be empty/);
     const stale = await send('', 'Erreur (ancien)', 'fr');
     assert.deepStrictEqual([stale.answer.ok, stale.answer.conflict, stale.prompts.asked], [false, true, []]);
+  });
+
+  // The store plans on the texts it finds, which may be newer than those the handler looked at: e.g. when that look
+  // was at a run of the index that read fr.json while another program wrote it, there was no text to clear (B2).
+  test('writes no delete that nobody was asked about, and reports a conflict instead', async () => {
+    const root = (await api.index.refresh()).roots[0]!;
+    const common = root.analysis.bundles.find((bundle) => bundle.name === 'common')!;
+    const fr = vscode.Uri.joinPath(root.folder.uri, common.file('fr')!.relPath);
+    const bytes = await vscode.workspace.fs.readFile(fr);
+    await vscode.workspace.fs.writeFile(fr, new Uint8Array());
+    const halfWritten = await api.index.refreshRoot(rootRef(root));
+    await vscode.workspace.fs.writeFile(fr, bytes);
+    await api.index.refreshRoot(rootRef(root));
+    const index: Pick<WorkspaceIndex, 'latest'> = { latest: async () => halfWritten };
+    const prompts = answering(true);
+    const answer = await applyEdit(
+      {
+        type: 'edit',
+        requestId: 'r',
+        entryId: ERROR_TITLE,
+        locale: 'fr',
+        value: '',
+        before: 'Erreur ({{data}})',
+      },
+      { folder: root.folder.uri.toString(), bundleId: common.id },
+      { index: index as WorkspaceIndex, fileStore: api.fileStore, prompts },
+    );
+    assert.deepStrictEqual([answer.ok, answer.conflict, prompts.asked], [false, true, []], answer.message);
+    assert.ok(sameBytes(await vscode.workspace.fs.readFile(fr), bytes));
   });
 
   test('answers an edit whose handling fails, so that its cell does not wait', async () => {
