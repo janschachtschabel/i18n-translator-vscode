@@ -1,7 +1,7 @@
 import { l10n } from '../l10n';
 import type { OpenEditor } from '../state/edits';
 import type { EditorStore } from '../state/store';
-import { SEVERITY_SYMBOLS, severityWord } from './cellStatus';
+import { StatusNote } from './statusNote';
 
 /** The id of the line that says what the AI does, which describes the editor's field. */
 export const SUGGESTION_ID = 'editor-suggestion';
@@ -53,13 +53,7 @@ export function SuggestionBar({ store, editor, hasSource, onSuggest }: Suggestio
         {loading ? (
           l10n.t('Fetching a suggestion from {model} … Esc cancels.', { model: ai.model })
         ) : mine && state.kind === 'failed' ? (
-          <>
-            <span aria-hidden="true" class="status-symbol error">
-              {SEVERITY_SYMBOLS.error}
-            </span>{' '}
-            <span class="visually-hidden">{severityWord('error')}: </span>
-            {state.message}
-          </>
+          <StatusNote severity="error" text={state.message} />
         ) : editor.suggestion ? (
           l10n.t('AI suggestion – please check it. Esc brings back your text.')
         ) : null}

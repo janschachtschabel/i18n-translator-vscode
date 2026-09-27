@@ -4,7 +4,8 @@ import type { EditorPlace, OpenEditor } from '../state/edits';
 import type { ShownCell, ShownRow } from '../state/shownRows';
 import type { EditorStore, LocaleColumn } from '../state/store';
 import { CellEditor } from './cellEditor';
-import { cellMark, SEVERITY_SYMBOLS, severityWord } from './cellStatus';
+import { cellMark } from './cellStatus';
+import { StatusNote, StatusSymbol } from './statusNote';
 import { EmptyValue } from './emptyValue';
 import './field.css';
 import { hintFor } from './findingHints';
@@ -90,10 +91,7 @@ export function Field({ store, row, locale, cell, editor, referenceText, place }
           <div id={notesId}>
             {cell.notSaved !== undefined && (
               <p class="card-finding">
-                <span aria-hidden="true" class="status-symbol error">
-                  {SEVERITY_SYMBOLS.error}
-                </span>{' '}
-                {l10n.t('Not saved: {message}', { message: cell.notSaved })}
+                <StatusSymbol severity="error" /> {l10n.t('Not saved: {message}', { message: cell.notSaved })}
               </p>
             )}
             {cell.issues.map((issue, index) => {
@@ -101,11 +99,7 @@ export function Field({ store, row, locale, cell, editor, referenceText, place }
               return (
                 <div key={index}>
                   <p class="card-finding">
-                    <span aria-hidden="true" class={`status-symbol ${issue.severity}`}>
-                      {SEVERITY_SYMBOLS[issue.severity]}
-                    </span>{' '}
-                    <span class="visually-hidden">{severityWord(issue.severity)}: </span>
-                    {issue.message}
+                    <StatusNote severity={issue.severity} text={issue.message} />
                   </p>
                   {hint !== undefined && <p class="card-hint">{hint}</p>}
                 </div>

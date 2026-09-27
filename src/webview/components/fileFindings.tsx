@@ -1,6 +1,6 @@
 import type { BundleViewModel } from '../../shared/viewModel';
 import { l10n } from '../l10n';
-import { SEVERITY_SYMBOLS, severityWord } from './cellStatus';
+import { StatusNote } from './statusNote';
 
 /**
  * Findings no cell can show: about a whole file (missing, unreadable) and about keys without a row (an object
@@ -15,11 +15,7 @@ export function FileFindings({ model }: { model: BundleViewModel }) {
     <ul class="file-findings" aria-label={l10n.t('Other findings')}>
       {issues.map((issue, index) => (
         <li key={index}>
-          <span aria-hidden="true" class={`status-symbol ${issue.severity}`}>
-            {SEVERITY_SYMBOLS[issue.severity]}
-          </span>{' '}
-          <span class="visually-hidden">{severityWord(issue.severity)}: </span>
-          {issue.message}
+          <StatusNote severity={issue.severity} text={issue.message} />
         </li>
       ))}
     </ul>

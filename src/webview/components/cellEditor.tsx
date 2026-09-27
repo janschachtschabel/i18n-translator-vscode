@@ -2,11 +2,11 @@ import { useEffect, useLayoutEffect, useMemo, useRef } from 'preact/hooks';
 import { l10n } from '../l10n';
 import type { OpenEditor } from '../state/edits';
 import type { EditorStore, LocaleColumn } from '../state/store';
-import { SEVERITY_SYMBOLS, severityWord } from './cellStatus';
+import { StatusNote, StatusSymbol } from './statusNote';
 import './cellEditor.css';
 import { focusIsLost } from './focus';
 import { grow } from './grow';
-import { inlineCheck, type CheckLine } from '../inlineCheck';
+import { inlineCheck } from '../inlineCheck';
 import { isCommand } from '../shortcuts';
 import { localeName } from './localeName';
 import { trackPointer, whenPointerUp } from './pointer';
@@ -204,9 +204,7 @@ export function CellEditor({ store, editor, locale, keyText, referenceText }: Ce
       {editor.conflict && (
         <div class="editor-conflict">
           <p id={CONFLICT_ID} class="editor-note">
-            <span aria-hidden="true" class="status-symbol warning">
-              {SEVERITY_SYMBOLS.warning}
-            </span>{' '}
+            <StatusSymbol severity="warning" />{' '}
             {editor.conflict.text === undefined ? (
               l10n.t('Deleted outside the editor.')
             ) : (
@@ -230,20 +228,13 @@ export function CellEditor({ store, editor, locale, keyText, referenceText }: Ce
       )}
       {editor.error !== undefined && (
         <p id={ERROR_ID} class="editor-note">
-          <span aria-hidden="true" class="status-symbol error">
-            {SEVERITY_SYMBOLS.error}
-          </span>{' '}
-          {l10n.t('Not saved: {message}', { message: editor.error })}
+          <StatusSymbol severity="error" /> {l10n.t('Not saved: {message}', { message: editor.error })}
         </p>
       )}
       <div id={CHECK_ID} role="status" class="editor-check">
         {check.map((line) => (
           <p key={line.text} class="editor-note">
-            <span aria-hidden="true" class={`status-symbol ${line.severity}`}>
-              {symbolOf(line)}
-            </span>{' '}
-            {line.severity !== 'ok' && <span class="visually-hidden">{severityWord(line.severity)}: </span>}
-            {line.text}
+            <StatusNote severity={line.severity} text={line.text} />
           </p>
         ))}
       </div>
@@ -257,10 +248,6 @@ export function CellEditor({ store, editor, locale, keyText, referenceText }: Ce
       </p>
     </div>
   );
-}
-
-function symbolOf(line: CheckLine): string {
-  return line.severity === 'ok' ? '✓' : SEVERITY_SYMBOLS[line.severity];
 }
 
 /** The key is the editor's: the grid and VS Code must not act on it as well. */

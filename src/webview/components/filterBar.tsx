@@ -5,6 +5,7 @@ import { formatNumber, l10n } from '../l10n';
 import type { EditorStore } from '../state/store';
 import './filterBar.css';
 import { localeName } from './localeName';
+import { StatusSymbol } from './statusNote';
 
 /** Ctrl+F puts the cursor here (shortcuts.ts). */
 export const SEARCH_FIELD_ID = 'filter-query';
@@ -107,10 +108,8 @@ export function FilterBar({ store, model }: { store: EditorStore; model: BundleV
       <p id={RESULT_ID} class="filter-result" tabIndex={-1}>
         {invalid !== undefined ? (
           <>
-            <span aria-hidden="true" class="status-symbol error">
-              ✖
-            </span>{' '}
-            {l10n.t('The regular expression is invalid:')} <span lang="en">{invalid}</span>
+            <StatusSymbol severity="error" /> {l10n.t('The regular expression is invalid:')}{' '}
+            <span lang="en">{invalid}</span>
           </>
         ) : (
           counted

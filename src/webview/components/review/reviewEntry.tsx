@@ -3,7 +3,7 @@ import { isText } from '../../../shared/messageChecks';
 import { inlineCheck, type CheckLine } from '../../inlineCheck';
 import { l10n } from '../../l10n';
 import { writable, type Review, type ReviewItem } from '../../state/review';
-import { SEVERITY_SYMBOLS, severityWord } from '../cellStatus';
+import { StatusNote } from '../statusNote';
 import { EmptyValue } from '../emptyValue';
 import { memo } from '../memo';
 
@@ -54,7 +54,7 @@ export const ReviewEntry = memo(
         </label>
         {item.problem && (
           <p id={problemId} class="review-problem">
-            <Note severity={item.problem.severity} text={item.problem.message} />
+            <StatusNote severity={item.problem.severity} text={item.problem.message} />
           </p>
         )}
         <p id={sourceId} class="review-source">
@@ -89,7 +89,7 @@ export const ReviewEntry = memo(
         <div id={notesId} role="status">
           {notes.map((note) => (
             <p key={note.text} class="editor-note">
-              <Note severity={note.severity} text={note.text} />
+              <StatusNote severity={note.severity} text={note.text} />
             </p>
           ))}
         </div>
@@ -97,19 +97,6 @@ export const ReviewEntry = memo(
     );
   },
 );
-
-/** A symbol and a text; screen readers get the severity in words instead of the symbol. */
-function Note({ severity, text }: CheckLine) {
-  return (
-    <>
-      <span aria-hidden="true" class={`status-symbol ${severity}`}>
-        {severity === 'ok' ? '✓' : SEVERITY_SYMBOLS[severity]}
-      </span>{' '}
-      {severity !== 'ok' && <span class="visually-hidden">{severityWord(severity)}: </span>}
-      {text}
-    </>
-  );
-}
 
 /**
  * Why the last write left the text out, why it cannot be chosen, and what the check of typed text finds in the

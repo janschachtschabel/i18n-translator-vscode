@@ -4,7 +4,7 @@ import { formatNumber, l10n } from '../../l10n';
 import { writable, type ReviewList as ReviewListData } from '../../state/review';
 import type { EditorStore } from '../../state/store';
 import '../cellEditor.css';
-import { SEVERITY_SYMBOLS, severityWord } from '../cellStatus';
+import { StatusNote } from '../statusNote';
 import { focusIsLost } from '../focus';
 import { localeName } from '../localeName';
 import { useIncrementalCount } from '../useIncrementalCount';
@@ -98,11 +98,7 @@ export function ReviewList({ store, list, locales }: ReviewListProps) {
         )}
         {list.message !== undefined && (
           <p role="alert" class="review-message">
-            <span aria-hidden="true" class="status-symbol error">
-              {SEVERITY_SYMBOLS.error}
-            </span>{' '}
-            <span class="visually-hidden">{severityWord('error')}: </span>
-            {list.message}
+            <StatusNote severity="error" text={list.message} />
           </p>
         )}
         <div class="review-actions">

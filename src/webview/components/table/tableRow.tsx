@@ -4,7 +4,8 @@ import type { OpenEditor } from '../../state/edits';
 import { NO_TEXT, referenceTextOf, type ShownCell, type ShownRow } from '../../state/shownRows';
 import type { EditorStore, LocaleColumn } from '../../state/store';
 import { CellEditor } from '../cellEditor';
-import { cellMark, SEVERITY_SYMBOLS, severityWord, statusWord } from '../cellStatus';
+import { cellMark, severityWord, statusWord } from '../cellStatus';
+import { StatusSymbol } from '../statusNote';
 import { EmptyValue } from '../emptyValue';
 import { keyContext } from '../keyContext';
 import { LocaleLabel } from '../localeLabel';
@@ -177,10 +178,7 @@ function Cell({ cell, locale, row, column, activeColumn, suggestable, children }
           {statuses.map((status, index) => (
             <span key={index} class="cell-status">
               {(index > 0 || (cell.value ?? '') !== '') && ' '}
-              <span aria-hidden="true" class={`status-symbol ${status.severity}`}>
-                {SEVERITY_SYMBOLS[status.severity]}
-              </span>{' '}
-              {status.word}
+              <StatusSymbol severity={status.severity} /> {status.word}
             </span>
           ))}
         </>
