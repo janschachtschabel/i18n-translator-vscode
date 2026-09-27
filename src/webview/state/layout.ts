@@ -18,14 +18,15 @@ export function layoutFor(choice: UiState['layout'], width: number): Layout {
 /**
  * The reference and the one language the compact list shows beside it: the chosen one, else the first visible
  * full language (a variant leaves most texts to its base), else the first visible one. A hidden language is not
- * shown, even if it was chosen: hiding it is the later word. Without a reference, that language alone.
+ * shown, even if it was chosen: hiding it is the later word, also for the reference (audit F-07). Without a
+ * reference, that language alone.
  */
 export function compactLocales(
   locales: readonly LocaleView[],
   hidden: readonly string[],
   chosen: string | null,
 ): LocaleView[] {
-  const reference = locales.find((locale) => locale.reference);
+  const reference = locales.find((locale) => locale.reference && !hidden.includes(locale.code));
   const candidates = compactCandidates(locales, hidden);
   const second =
     candidates.find((locale) => locale.code === chosen) ??

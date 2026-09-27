@@ -41,6 +41,12 @@ describe('compactLocales', () => {
     expect(codes(['de-informal', 'fr', 'it'], 'it')).toEqual(['de']);
   });
 
+  // The reference was shown whatever its chip said: unchecked, with its texts on screen (audit F-07).
+  it('leaves out a hidden reference, as if there were none', () => {
+    expect(codes(['de'], 'it')).toEqual(['it']);
+    expect(codes(['de'], null)).toEqual(['fr']);
+  });
+
   it('shows the chosen language alone without a reference', () => {
     const unreferenced = locales.map((shown) => ({ ...shown, reference: false }));
     expect(codes([], null, unreferenced)).toEqual(['de']);
