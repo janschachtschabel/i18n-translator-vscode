@@ -53,8 +53,11 @@ export class WorkspaceIndex implements vscode.Disposable {
   private readonly watchers = new IndexWatchers();
   private readonly subscriptions: vscode.Disposable[] = [this.changed, this.watchers];
   private readonly timers = new Map<string, ReturnType<typeof setTimeout>>();
-  /** The files the watcher of a root reported while its run waited, by {@link keyOf}. */
-  private readonly reported = new Map<string, vscode.Uri[]>();
+  /**
+   * The files the watcher of a root reported while its run waited, by {@link keyOf}, each once: a tool that writes a
+   * file more often than the delay would otherwise grow the list until it pauses.
+   */
+  private readonly reported = new Map<string, Map<string, vscode.Uri>>();
   private snapshot: IndexSnapshot | undefined;
   private disposed = false;
   /** What a run needs from the index. */
@@ -131,6 +134,7 @@ export class WorkspaceIndex implements vscode.Disposable {
     for (const timer of this.timers.values()) {
       clearTimeout(timer);
     }
+    this.reported.clear();
     vscode.Disposable.from(...this.subscriptions).dispose();
   }
 
@@ -141,19 +145,16 @@ export class WorkspaceIndex implements vscode.Disposable {
   private schedule(ref?: RootRef, uri?: vscode.Uri): void {
     const key = ref ? keyOf(ref) : '';
     if (uri) {
-      const reported = this.reported.get(key);
-      if (reported) {
-        reported.push(uri);
-      } else {
-        this.reported.set(key, [uri]);
-      }
+      const reported = this.reported.get(key) ?? new Map<string, vscode.Uri>();
+      reported.set(uri.toString(), uri);
+      this.reported.set(key, reported);
     }
     clearTimeout(this.timers.get(key));
     this.timers.set(
       key,
       setTimeout(() => {
         this.timers.delete(key);
-        const reported = this.reported.get(key) ?? [];
+        const reported = [...(this.reported.get(key)?.values() ?? [])];
         this.reported.delete(key);
         const run = ref ? this.refreshReported(ref, reported) : this.refresh();
         run.catch((error: unknown) => this.log.error('Indexing failed.', error));
