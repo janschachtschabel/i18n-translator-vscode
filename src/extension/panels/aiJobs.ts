@@ -35,6 +35,13 @@ export interface JobRun {
   onItems: (items: AiJobItem[], done: number, total: number) => void;
 }
 
+/** What a job needs once its questions are answered. */
+interface JobStart {
+  client: { options: ClientOptions; status: AiStatus };
+  found: { bundle: Bundle; root: IndexedRoot };
+  choice: JobChoice;
+}
+
 /** What makes a job a fill or a check: which texts it offers, how it asks, and how it runs. */
 export interface JobKind {
   kind: Extract<HostToWebview, { type: 'aiJob' }>['kind'];
@@ -54,7 +61,8 @@ export interface JobKind {
  * come; the texts of the last job may be written until the next one begins.
  */
 export class AiJobs {
-  private running: { id: string; controller: AbortController } | undefined;
+  /** The job asking its questions, or running once `started`. */
+  private running: { id: string; controller: AbortController; started: boolean } | undefined;
   private last: { id: string; locale: string; entries: ReadonlySet<string> } | undefined;
   private count = 0;
 
@@ -69,24 +77,45 @@ export class AiJobs {
    * items to the review list as they come.
    */
   async run(kind: JobKind): Promise<void> {
-    const { ai, consent, index, prompts, log } = this.services;
-    if (this.running) {
+    if (this.running?.started) {
       void showInfo(vscode.l10n.t('An AI job of this bundle is running; cancel it or wait until it ends.'));
       return;
     }
+    // A job still asking gives way to the new start: VS Code shows one choice at a time anyway.
+    this.running?.controller.abort();
+    // Registered before the first question, so that a cancel, a reload of the page or closing the editor stops a job
+    // that is still starting, as for suggestions.
+    const job = { id: `${kind.kind}-${++this.count}`, controller: new AbortController(), started: false };
+    this.running = job;
+    try {
+      const start = await this.ask(kind, job.controller.signal);
+      if (start) {
+        job.started = true;
+        await this.execute(kind, job.id, job.controller.signal, start);
+      }
+    } finally {
+      if (this.running === job) {
+        this.running = undefined;
+      }
+    }
+  }
+
+  /** The questions before a job; undefined when one is declined, there is nothing to do, or the job was stopped. */
+  private async ask(kind: JobKind, signal: AbortSignal): Promise<JobStart | undefined> {
+    const { ai, consent, index, prompts } = this.services;
     const client = await ai.client();
     if (!client) {
       void explainUnavailable((await ai.status()).reason ?? 'no-key');
-      return;
+      return undefined;
     }
     const found = findBundle(await index.latest(), this.target);
-    if (!found) {
-      return;
+    if (!found || signal.aborted) {
+      return undefined;
     }
     const choices = kind.choices(found.bundle, found.root);
     if (choices.length === 0) {
       void showInfo(kind.nothing(found.bundle));
-      return;
+      return undefined;
     }
     const choice = await prompts.pick(
       choices.map((candidate) => ({
@@ -96,8 +125,8 @@ export class AiJobs {
       })),
       kind.pickTitle(),
     );
-    if (!choice) {
-      return;
+    if (!choice || signal.aborted) {
+      return undefined;
     }
     const { status } = client;
     const requests = Math.ceil(choice.entries.length / status.settings.batchSize);
@@ -105,55 +134,58 @@ export class AiJobs {
       requests >= CONFIRM_REQUESTS &&
       !(await prompts.confirm(kind.question(found.bundle, choice, status, requests), kind.start()))
     ) {
-      return;
+      return undefined;
     }
-    if (!(await consent.ensure(status.host, prompts))) {
-      return;
+    if (signal.aborted || !(await consent.ensure(status.host, prompts)) || signal.aborted) {
+      return undefined;
     }
-    const jobId = `${kind.kind}-${++this.count}`;
-    const controller = new AbortController();
-    this.running = { id: jobId, controller };
+    return { client, found, choice };
+  }
+
+  /** Runs a job whose questions are answered: its items go to the review list as they come. */
+  private async execute(
+    kind: JobKind,
+    jobId: string,
+    signal: AbortSignal,
+    { client, found, choice }: JobStart,
+  ) {
+    const { status } = client;
     this.last = {
       id: jobId,
       locale: choice.locale,
       entries: new Set(choice.entries.map((entry) => entry.entryId)),
     };
     const started = Date.now();
-    try {
-      await this.post({
-        type: 'aiJob',
-        jobId,
-        kind: kind.kind,
-        locale: choice.locale,
-        source: choice.source,
-        total: choice.entries.length,
-      });
-      const result = await kind.run({
-        client: client.options,
-        status,
-        bundle: found.bundle,
-        root: found.root,
-        choice,
-        signal: controller.signal,
-        onItems: (items, done, total) => void this.post({ type: 'aiJobItems', jobId, items, done, total }),
-      });
-      const message = result.status === 'failed' ? aiFailureMessage(result.error, status) : undefined;
-      const answered = choice.entries.length - result.missing.length;
-      log.info(
-        `AI ${kind.kind} of ${found.bundle.name} in ${choice.locale}: ${result.status}, ${answered} of ${choice.entries.length} texts in ${Date.now() - started} ms.`,
-      );
-      await this.post({
-        type: 'aiJobEnd',
-        jobId,
-        status: result.status,
-        missing: result.missing.length,
-        ...(message ? { message } : {}),
-      });
-    } finally {
-      if (this.running?.id === jobId) {
-        this.running = undefined;
-      }
-    }
+    await this.post({
+      type: 'aiJob',
+      jobId,
+      kind: kind.kind,
+      locale: choice.locale,
+      source: choice.source,
+      total: choice.entries.length,
+    });
+    // A job cancelled meanwhile still ends, so that its list stops waiting: runAiJob sends nothing then.
+    const result = await kind.run({
+      client: client.options,
+      status,
+      bundle: found.bundle,
+      root: found.root,
+      choice,
+      signal,
+      onItems: (items, done, total) => void this.post({ type: 'aiJobItems', jobId, items, done, total }),
+    });
+    const message = result.status === 'failed' ? aiFailureMessage(result.error, status) : undefined;
+    const answered = choice.entries.length - result.missing.length;
+    this.services.log.info(
+      `AI ${kind.kind} of ${found.bundle.name} in ${choice.locale}: ${result.status}, ${answered} of ${choice.entries.length} texts in ${Date.now() - started} ms.`,
+    );
+    await this.post({
+      type: 'aiJobEnd',
+      jobId,
+      status: result.status,
+      missing: result.missing.length,
+      ...(message ? { message } : {}),
+    });
   }
 
   /** Writes reviewed texts of the last job as one change; the editor always gets an answer. */

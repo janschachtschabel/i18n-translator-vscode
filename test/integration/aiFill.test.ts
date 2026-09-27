@@ -1,6 +1,7 @@
 import * as assert from 'node:assert/strict';
 import * as vscode from 'vscode';
 import { keyFromSegments } from '../../src/core/model/keys';
+import type { PickItem } from '../../src/extension/commands/prompts';
 import type { ExtensionApi } from '../../src/extension/extension';
 import type { AiJobItem } from '../../src/shared/aiProtocol';
 import type { HostToWebview } from '../../src/shared/protocol';
@@ -175,6 +176,83 @@ suite('Fill with AI', function () {
       assert.ok(posts.length > 0);
     } finally {
       close();
+    }
+  });
+
+  test('sends nothing for a job the editor cancels as its list appears', async () => {
+    const { editorPanel, posts, prompts, close } = await editor('fr');
+    const sent = bapi.requests.length;
+    try {
+      // The event comes before the message is on its way: the cancel reaches the job before its first request.
+      editorPanel.onDidPost((message) => {
+        if (message.type === 'aiJob') {
+          void editorPanel.receive({ type: 'aiCancel', requestId: message.jobId });
+        }
+      });
+      const ended = jobEnd({ editorPanel, posts }, prompts);
+      await editorPanel.receive({ type: 'aiFill' });
+      assert.deepEqual(await ended, { type: 'aiJobEnd', jobId: 'fill-1', status: 'cancelled', missing: 3 });
+      assert.equal(bapi.requests.length, sent, 'no request went out');
+    } finally {
+      close();
+    }
+  });
+
+  test('starts no job when its page reloads or its editor closes while the language is asked', async () => {
+    for (const interruption of ['reload', 'close'] as const) {
+      let interrupt = async (): Promise<void> => undefined;
+      const prompts = {
+        ...answering(),
+        pick: async <T>(items: readonly PickItem<T>[]) => {
+          await interrupt();
+          return items.find((item) => item.label === 'fr')?.value;
+        },
+      };
+      const opened = await editorWith(api, prompts);
+      interrupt = async () =>
+        interruption === 'reload' ? opened.editorPanel.receive({ type: 'ready' }) : opened.close();
+      const sent = bapi.requests.length;
+      try {
+        await opened.editorPanel.receive({ type: 'aiFill' });
+        assert.deepEqual(
+          opened.posts.filter((message) => message.type === 'aiJob' || message.type === 'aiJobEnd'),
+          [],
+          interruption,
+        );
+        assert.equal(bapi.requests.length, sent, `${interruption}: no request went out`);
+      } finally {
+        opened.close();
+      }
+    }
+  });
+
+  test('lets a job still asking for its language give way to a new start', async () => {
+    let startAgain: (() => Promise<void>) | undefined;
+    let second: Promise<void> | undefined;
+    const prompts = {
+      ...answering(),
+      pick: async <T>(items: readonly PickItem<T>[]) => {
+        // Started again while the choice is open (VS Code shows only the new one): the new start takes over.
+        if (startAgain) {
+          second = startAgain();
+          startAgain = undefined;
+        }
+        return items.find((item) => item.label === 'fr')?.value;
+      },
+    };
+    const opened = await editorWith(api, prompts);
+    startAgain = () => opened.editorPanel.receive({ type: 'aiFill' });
+    try {
+      const ended = jobEnd(opened, prompts);
+      await opened.editorPanel.receive({ type: 'aiFill' });
+      await second;
+      assert.deepEqual(await ended, { type: 'aiJobEnd', jobId: 'fill-2', status: 'done', missing: 0 });
+      assert.deepEqual(
+        opened.posts.flatMap((message) => (message.type === 'aiJob' ? [message.jobId] : [])),
+        ['fill-2'],
+      );
+    } finally {
+      opened.close();
     }
   });
 });

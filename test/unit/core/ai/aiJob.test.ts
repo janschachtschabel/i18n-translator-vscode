@@ -142,4 +142,20 @@ describe('runAiJob', () => {
     expect(result).toEqual({ status: 'cancelled', missing: ['K2', 'K3', 'K4', 'K5'] });
     expect(sent).toEqual(['K0', 'K2']);
   });
+
+  it('sends nothing when cancelled before it starts', async () => {
+    const cancel = new AbortController();
+    cancel.abort();
+    const sent: string[] = [];
+    const result = await runAiJob(items(4), {
+      batchSize: 2,
+      maxCharacters: 1000,
+      concurrency: 2,
+      signal: cancel.signal,
+      ask: async (chunk) => (sent.push(chunk[0]!.key), upper(chunk)),
+      onProgress: () => undefined,
+    });
+    expect(result).toEqual({ status: 'cancelled', missing: ['K0', 'K1', 'K2', 'K3'] });
+    expect(sent).toEqual([]);
+  });
 });

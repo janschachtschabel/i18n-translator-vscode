@@ -71,6 +71,10 @@ export async function runAiJob<I extends JobItem, T>(
   const job = new AbortController();
   const cancel = () => job.abort();
   options.signal?.addEventListener('abort', cancel, { once: true });
+  // The event comes only once: a job cancelled before it started sends nothing.
+  if (options.signal?.aborted) {
+    job.abort();
+  }
   const answered = new Set<string>();
   let done = 0;
   let failure: AiError | undefined;
