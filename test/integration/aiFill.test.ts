@@ -179,6 +179,30 @@ suite('Fill with AI', function () {
     }
   });
 
+  test('answers reviewed texts it cannot read, so that their list stops waiting', async () => {
+    const { editorPanel, close } = await editor();
+    const before = await read();
+    try {
+      const result = waitFor(editorPanel.onDidPost, (message) => message.type === 'aiApplyResult');
+      await editorPanel.receive({
+        type: 'aiApply',
+        requestId: 'apply-9',
+        jobId: 'fill-1',
+        items: [{ entryId: 7, value: 'Annuler', before: null }],
+      });
+      assert.deepEqual(await result, {
+        type: 'aiApplyResult',
+        requestId: 'apply-9',
+        written: [],
+        skipped: [],
+        message: 'The texts could not be read; nothing was written.',
+      });
+      assert.equal(await read(), before);
+    } finally {
+      close();
+    }
+  });
+
   test('sends nothing for a job the editor cancels as its list appears', async () => {
     const { editorPanel, posts, prompts, close } = await editor('fr');
     const sent = bapi.requests.length;

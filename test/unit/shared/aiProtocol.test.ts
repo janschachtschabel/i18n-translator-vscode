@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { keyFromSegments } from '../../../src/core/model/keys';
+import { MAX_APPLY_ITEMS, readableApplyRequestId } from '../../../src/shared/aiProtocol';
 import { isWebviewToHost } from '../../../src/shared/protocol';
 
 const entryId = keyFromSegments(['WORKSPACE', 'TITLE']).id;
@@ -38,6 +39,8 @@ describe('AI messages from the webview', () => {
       items: [item, { ...item, before: '' }],
     };
     expect(isWebviewToHost(apply)).toBe(true);
+    // A new language of a big bundle, all of it at once.
+    expect(isWebviewToHost({ ...apply, items: Array.from({ length: 3000 }, () => item) })).toBe(true);
     for (const invalid of [
       { ...apply, jobId: '' },
       { ...apply, items: 'all' },
@@ -45,9 +48,23 @@ describe('AI messages from the webview', () => {
       { ...apply, items: [{ ...item, value: 7 }] },
       { ...apply, items: [{ ...item, value: 'x'.repeat(100_001) }] },
       { ...apply, items: [{ ...item, before: 3 }] },
-      { ...apply, items: Array.from({ length: 2001 }, () => item) },
+      { ...apply, items: Array.from({ length: MAX_APPLY_ITEMS + 1 }, () => item) },
     ]) {
       expect(isWebviewToHost(invalid)).toBe(false);
+    }
+  });
+
+  it('reads the request id of reviewed texts it refuses, for an answer to their list', () => {
+    expect(
+      readableApplyRequestId({ type: 'aiApply', requestId: 'apply-1', jobId: 'fill-1', items: 'all' }),
+    ).toBe('apply-1');
+    for (const other of [
+      { type: 'aiApply', requestId: '', items: [] },
+      { type: 'edit', requestId: 'e1' },
+      'aiApply',
+      null,
+    ]) {
+      expect(readableApplyRequestId(other)).toBeUndefined();
     }
   });
 });

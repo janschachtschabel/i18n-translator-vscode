@@ -66,8 +66,11 @@ export type AiHostToWebview =
       message?: string;
     };
 
-/** Reviewed texts in one write, at most: far more than a language of a bundle holds, but bounded. */
-export const MAX_APPLY_ITEMS = 2000;
+/**
+ * Reviewed texts in one write, at most: a write takes a whole language (K7), and one of the largest bundle known
+ * holds about 1,600 texts.
+ */
+export const MAX_APPLY_ITEMS = 10_000;
 
 /** Whether an AI message of the webview has valid fields; `value` is a record with one of those types. */
 export function isAiWebviewToHost(value: Readonly<Record<string, unknown>>): boolean {
@@ -92,6 +95,13 @@ export function isAiWebviewToHost(value: Readonly<Record<string, unknown>>): boo
     default:
       return false;
   }
+}
+
+/** The request id of reviewed texts the checks refuse, if it can be read: their list still gets an answer. */
+export function readableApplyRequestId(value: unknown): string | undefined {
+  return isRecord(value) && value['type'] === 'aiApply' && isId(value['requestId'])
+    ? value['requestId']
+    : undefined;
 }
 
 function isApplyItem(value: unknown): value is AiApplyItem {

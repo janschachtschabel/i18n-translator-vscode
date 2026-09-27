@@ -15,6 +15,7 @@ import {
   type UiState,
   type UnsavedText,
 } from '../../shared/protocol';
+import { readableApplyRequestId } from '../../shared/aiProtocol';
 import { diffModels } from '../../shared/patch';
 import { buildBundleViewModel, type BundleViewModel } from '../../shared/viewModel';
 import type { Prompts } from '../commands/prompts';
@@ -130,14 +131,27 @@ export class EditorPanel implements vscode.Disposable {
       },
       this.services.log,
     );
-    // The router dropped an edit it could not read; its cell still gets an answer, so that it does not wait.
-    const requestId = isWebviewToHost(message) ? undefined : readableEditRequestId(message);
-    if (requestId !== undefined) {
+    // The router dropped a message it could not read; a cell or a list waiting for its answer still gets one.
+    if (isWebviewToHost(message)) {
+      return;
+    }
+    const edit = readableEditRequestId(message);
+    if (edit !== undefined) {
       await this.post({
         type: 'writeResult',
-        requestId,
+        requestId: edit,
         ok: false,
         message: vscode.l10n.t('The change could not be read; nothing was written.'),
+      });
+    }
+    const apply = readableApplyRequestId(message);
+    if (apply !== undefined) {
+      await this.post({
+        type: 'aiApplyResult',
+        requestId: apply,
+        written: [],
+        skipped: [],
+        message: vscode.l10n.t('The texts could not be read; nothing was written.'),
       });
     }
   }
