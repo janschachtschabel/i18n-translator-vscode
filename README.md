@@ -10,8 +10,9 @@ Das geht in einem edu-sharing-Checkout ebenso wie in einem Datenordner mit Kopie
 i18n-App (`data/1.0.0/` mit `json/`, `metadatasets/i18n/` und `mailtemplates/`).
 
 > **Status:** in Entwicklung. Prüfen und Bearbeiten sind fertig, für alle drei Bereiche (Phasen 2, 5 und der Kern von
-> 6 der [Taskliste](docs/plans/2026-09-24-edu-sharing-i18n-vscode-tasks.md)). Noch nicht für den produktiven Einsatz
-> gedacht: bitte auf einer Kopie oder in einem Git-Arbeitsstand testen, dessen Änderungen sich zurücknehmen lassen.
+> 6 der [Taskliste](docs/plans/2026-09-24-edu-sharing-i18n-vscode-tasks.md)), dazu Vorschläge, Füllen und Prüfen mit KI
+> über die b-api (Phase 3). Noch nicht für den produktiven Einsatz gedacht: bitte auf einer Kopie oder in einem
+> Git-Arbeitsstand testen, dessen Änderungen sich zurücknehmen lassen.
 
 ## Was die Extension kann
 
@@ -57,8 +58,8 @@ beides mit einer Prüfliste (siehe [KI-Füllen und b-api-Schlüssel](#ki-füllen
 - **Rückgängig:** Strg+Z im Editor oder der Befehl „Letzte Änderung an Übersetzungsdateien rückgängig machen“.
   Betrifft die letzte Änderung eine andere Einheit, fragt der Editor vorher nach.
 - **Sicherungen:**
-  - Wann: vor der ersten Änderung einer Sitzung, vor Änderungen mehrerer Einheiten und alle 10 Minuten während der
-    Arbeit.
+  - Wann: vor der ersten Änderung einer Sitzung, vor Änderungen mehrerer Einheiten, vor dem Übernehmen von Texten der
+    Prüfliste, vor dem Wiederherstellen und alle 10 Minuten während der Arbeit.
   - Wo: im Speicher der Extension für diesen Arbeitsbereich, nie im Repository; die letzten 10 bleiben.
   - Zurückholen: „Übersetzungsdateien aus einer Sicherung wiederherstellen…“.
 - **Eingeschränkter Modus:** In einem nicht vertrauenswürdigen Arbeitsbereich lässt sich nur prüfen und ansehen,
@@ -231,7 +232,7 @@ Gut zu wissen:
    - Ein geleerter Text wird nach Rückfrage in dieser Sprache gelöscht; dann erscheint der Text der Referenz.
 6. **Keys und Sprachen:**
    - Kontextmenü der Key-Spalte: Key hinzufügen, umbenennen oder löschen, Sprache hinzufügen.
-   - Schaltflächen in der Titelleiste des Editors: Key oder Sprache hinzufügen.
+   - Knöpfe in der Werkzeugleiste des Editors, dazu im „…“-Menü seiner Titelleiste: Key oder Sprache hinzufügen.
    - Kontextmenü einer Einheit in der Seitenleiste: Key oder Sprache hinzufügen, dazu „Im Explorer zeigen“.
    - Die Eingabefelder dieser Befehle schließen ohne Änderung mit Esc, dem X in ihrer Titelzeile oder einem Klick
      daneben.
@@ -254,7 +255,7 @@ In der Befehlspalette unter „edu-sharing i18n“:
 | API-Schlüssel setzen… · API-Schlüssel entfernen | den b-api-Schlüssel im Schlüsselspeicher von VS Code ablegen oder löschen |
 | b-api-Adresse festlegen… | eine andere Adresse der b-api als Staging, etwa die Produktion |
 | KI-Verbindung testen | prüfen, ob die b-api mit Schlüssel und Modell antwortet |
-| KI-Modell wählen… | ein Chat-Modell der b-api für Vorschläge wählen |
+| KI-Modell wählen… | ein Chat-Modell der b-api für Vorschläge, Füllen und Prüfen wählen |
 | Letzte Änderung an Übersetzungsdateien rückgängig machen | das letzte Schreiben dieser Sitzung zurücknehmen |
 | Übersetzungsdateien jetzt sichern | eine Sicherung von Hand |
 | Übersetzungsdateien aus einer Sicherung wiederherstellen… | eine Sicherung wählen und zurückholen; der aktuelle Stand wird vorher gesichert |
@@ -384,9 +385,10 @@ Adresse; ein Wechsel etwa zur Produktion fragt erneut). Im eingeschränkten Modu
 ist die KI aus.
 
 **Einstellungen** (Kategorie „KI (b-api)“, Einzelheiten in [docs/einstellungen.md](docs/einstellungen.md#ki-b-api)):
-`eduI18n.ai.enabled`, `ai.baseUrl`, `ai.provider`, `ai.model`, `ai.reasoningEffort`, `ai.reviewReasoningEffort`
-(diese fünf nur in den Benutzereinstellungen, damit kein Repository den Schlüssel umlenkt), `ai.batchSize`,
-`ai.maxConcurrency`, `ai.timeoutSeconds`, `ai.languageDescriptions`.
+`eduI18n.ai.enabled` (in den Benutzereinstellungen ausgeschaltet, bleibt die KI in jedem Arbeitsbereich aus);
+`ai.baseUrl`, `ai.provider`, `ai.model`, `ai.reasoningEffort`, `ai.reviewReasoningEffort` (nur in den
+Benutzereinstellungen, damit kein Repository den Schlüssel umlenkt); `ai.batchSize`, `ai.maxConcurrency`,
+`ai.timeoutSeconds`, `ai.languageDescriptions`.
 
 ## Protokoll
 
@@ -447,7 +449,8 @@ and mail templates (XML), in a checkout or in a data folder with copies of them.
 panel and offers a translation editor with a column per language, with a preview of each mail template in every
 language. Writes change only the edited line and keep each file's encoding and layout, with undo and backups.
 
-- **Status:** work in progress: checking and editing are done for all three areas.
+- **Status:** work in progress: checking and editing are done for all three areas, and so are suggestions, filling
+  and checks with AI via the b-api.
 - **Install:** on Windows, run
   `powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://github.com/janschachtschabel/i18n-translator-vscode/releases/latest/download/install.ps1 | iex"`;
   on Linux and macOS,

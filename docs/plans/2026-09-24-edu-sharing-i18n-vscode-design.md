@@ -603,10 +603,12 @@ Texte beim Start vom Host. Die Anzeigesprache folgt VS Code.
 
 ## 9. Einstellungen (`contributes.configuration`)
 
-> **Stand 26.09.2026 (nach Phase 2):** Die Tabelle beschreibt den geplanten Endausbau. Umgesetzt sind
-> `referenceLanguage`, `baseFileLanguage`, `areas`, `roots`, `exclude`, `variants`, `checks.severity`,
-> `checks.ignoreSameAsReference` (neu gegenüber der Tabelle), `diagnostics.missing` und `backup.*`; die gültige
-> Liste steht im Manifest, im README und mit Beispielen in [`docs/einstellungen.md`](../einstellungen.md). Entfallen sind `presets.enabled` (Presets gelten immer, eigene Bereiche und
+> **Stand 27.09.2026 (Version 0.4.0: Phasen 2, 3, 5 und der Kern von 6):** Die Tabelle beschreibt den geplanten
+> Endausbau. Umgesetzt sind `referenceLanguage`, `baseFileLanguage`, `areas`, `roots`, `exclude`, `variants`,
+> `checks.severity`, `checks.ignoreSameAsReference` (neu gegenüber der Tabelle), `diagnostics.missing`, `backup.*` und
+> `ai.*`. Die Beschreibungen der Sprachen für die KI stehen in `ai.languageDescriptions` statt in `eduI18n.languages`
+> (K6), und die Varianten haben kein `aiInstruction`: Die Beschreibung einer Variante nennt, was sie anders macht. Die
+> gültige Liste steht im Manifest, im README und mit Beispielen in [`docs/einstellungen.md`](../einstellungen.md). Entfallen sind `presets.enabled` (Presets gelten immer, eigene Bereiche und
 > Ersatz über `areas`), `editor.defaultView` (die Ansicht gilt je Einheit, B7) und `log.level` (VS Codes
 > „Developer: Set Log Level" für den Kanal). Die übrigen folgen mit ihren Phasen.
 
@@ -640,11 +642,16 @@ Texte beim Start vom Host. Die Anzeigesprache folgt VS Code.
 
 ## 10. Befehle und Menüs (Kategorie „edu-sharing i18n")
 
-> **Stand 26.09.2026 (nach Phase 2):** Umgesetzt sind `openEditor`, `check`, `configureRoots`, die Key- und
-> Sprachbefehle, `backupNow`, `restoreBackup` und `undoLastChange`, dazu `openBundle` (Einheit aus der Seitenleiste)
-> und `revealInExplorer`. Menüs: Kontextmenü der Seitenleiste (Öffnen, Prüfen, Im Explorer zeigen, Key und Sprache
-> hinzufügen), Titelleiste und Kontextmenü des Editors (Key- und Sprachbefehle). Die übrigen Befehle folgen mit ihren
-> Phasen.
+> **Stand 27.09.2026 (Version 0.4.0):** Umgesetzt sind `openEditor`, `check`, `configureRoots`, die Key- und
+> Sprachbefehle, `backupNow`, `restoreBackup` und `undoLastChange`, dazu `openBundle` (Einheit aus der Seitenleiste),
+> `revealInExplorer`, `previewMail` und die KI-Einrichtung: `setupAi`, `setApiKey`, `clearApiKey`, `setBaseUrl`,
+> `selectModel`, `testAiConnection`. `fill` und `aiReview` sind keine Befehle, sondern die Knöpfe „Mit KI füllen…“ und
+> „Mit KI prüfen…“ in der Werkzeugleiste des Editors, weil ihre Prüfliste im Editor liegt. Menüs:
+> - Kontextmenü der Seitenleiste: Öffnen, Im Explorer zeigen, Key und Sprache hinzufügen;
+> - Titel der Seitenleiste: Prüfen und die KI-Einrichtung;
+> - „…“-Menü und Kontextmenü des Editors: Key- und Sprachbefehle, im Kontextmenü auch die Mail-Vorschau.
+>
+> Die übrigen Befehle folgen mit ihren Phasen.
 
 | Befehl | Zweck |
 |---|---|

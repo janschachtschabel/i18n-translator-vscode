@@ -39,7 +39,7 @@
   "config.diagnostics.missing.aggregate": "Ein Problem je Datei mit der Anzahl fehlender Keys",
   "config.diagnostics.missing.individual": "Ein Problem je fehlendem Key",
   "config.diagnostics.missing.off": "Nicht in der Ansicht „Probleme“ anzeigen",
-  "config.backup.intervalMinutes": "Minuten, nach denen die nächste Änderung die Übersetzungsdateien erneut sichert. `0` schaltet das ab; die Sicherungen vor der ersten Änderung einer Sitzung und vor Änderungen mehrerer Einheiten finden weiterhin statt.",
+  "config.backup.intervalMinutes": "Minuten, nach denen die nächste Änderung die Übersetzungsdateien erneut sichert. `0` schaltet das ab; die Sicherungen vor der ersten Änderung einer Sitzung, vor Änderungen mehrerer Einheiten, vor dem Übernehmen von Texten der Prüfliste und vor dem Wiederherstellen finden weiterhin statt.",
   "config.backup.keep": "Anzahl der aufbewahrten Sicherungen. Sicherungen liegen im Speicher der Erweiterung für diesen Arbeitsbereich, nie im Repository.",
   "config.ai.title": "KI (b-api)",
   "config.ai.enabled": "Schaltet die KI-Funktionen an oder aus: Vorschläge für einen Text, Füllen und die KI-Prüfung. In den Benutzereinstellungen ausgeschaltet, bleibt sie in jedem Arbeitsbereich aus. Den Schlüssel setzt [API-Schlüssel setzen…](command:eduI18n.setApiKey). Im eingeschränkten Modus ist die KI immer aus.",

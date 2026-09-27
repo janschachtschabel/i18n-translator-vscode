@@ -339,6 +339,8 @@ Seitenleiste, Statusleiste und Editor zeigen fehlende Keys in jedem Fall.
 Standard: `10`. Die Extension sichert die Übersetzungsdateien:
 - vor der ersten Änderung einer Sitzung;
 - vor Änderungen mehrerer Einheiten, etwa „Sprache hinzufügen“;
+- vor dem Übernehmen von Texten der Prüfliste (KI), auch gleich nach einer anderen Sicherung;
+- vor dem Wiederherstellen aus einer Sicherung, mit dem Stand davor;
 - während der Arbeit erneut, sobald seit der letzten Sicherung so viele Minuten vergangen sind.
 
 `0` schaltet nur die zeitgesteuerten Sicherungen ab.
@@ -372,7 +374,7 @@ einrichten…“), das sie beim Tippen prüft.
 "eduI18n.ai.baseUrl": "https://b-api.prod.openeduhub.net"
 ```
 
-- Nur `https:`, und `http:` nur auf diesem Rechner (`127.0.0.1`, `localhost`), etwa für einen lokalen Proxy; ohne
+- Nur `https:`, und `http:` nur auf diesem Rechner (`127.0.0.1`, `localhost`, `[::1]`), etwa für einen lokalen Proxy; ohne
   Benutzerangabe, Query oder Fragment.
 - Nur in den Benutzereinstellungen (Geltungsbereich `machine`): Ein Arbeitsbereich, etwa ein geklontes Repository mit
   `.vscode/settings.json`, kann den Schlüssel so nicht an eine andere Adresse schicken.
