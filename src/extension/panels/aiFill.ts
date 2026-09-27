@@ -2,21 +2,14 @@ import * as vscode from 'vscode';
 import { chatCompletion } from '../../core/ai/bapiClient';
 import { describeLanguage } from '../../core/ai/languages';
 import { completionBody, tokenBudget } from '../../core/ai/modelProfiles';
-import {
-  parseTranslations,
-  TRANSLATIONS_FORMAT,
-  translationMessages,
-  type PromptItem,
-} from '../../core/ai/prompts';
-import { contextTexts, fillEntries, promptKeys, sourceLocale, type FillScope } from '../../core/ai/sources';
+import { parseTranslations, TRANSLATIONS_FORMAT, translationMessages } from '../../core/ai/prompts';
+import { fillEntries, sourceLocale, type FillScope } from '../../core/ai/sources';
 import { runAiJob, type JobResult } from '../../core/ai/aiJob';
+import { fillItems, MAX_CHARACTERS, requestCount } from '../../core/ai/jobItems';
 import type { Bundle } from '../../core/model/bundle';
 import type { AiStatus } from '../services/aiService';
 import type { IndexedRoot } from '../services/workspaceIndex';
 import type { JobChoice, JobKind, JobRun } from './aiJobs';
-
-/** Characters of source and context per request, at most (K9): long mail messages go in chunks of their own. */
-const MAX_CHARACTERS = 8000;
 
 /**
  * The languages of the bundle with texts to fill: a translation's missing and empty texts, a variant's texts the
@@ -51,15 +44,7 @@ export function runFill({
     code,
     description: describeLanguage(code, settings.languageDescriptions, baseFileLanguage),
   });
-  const skip = [choice.source, choice.locale, ...Object.keys(variants)];
-  const entries = new Map<string, { entryId: string; source: string; before: string | null }>();
-  const keys = promptKeys(choice.entries.map(({ entryId }) => entryId));
-  const items: PromptItem[] = choice.entries.map(({ entryId, before }, index) => {
-    const key = keys[index]!;
-    const source = bundle.value(entryId, choice.source) ?? '';
-    entries.set(key, { entryId, source, before });
-    return { key, source, context: contextTexts(bundle, entryId, skip) };
-  });
+  const { items, entries } = fillItems(bundle, choice, Object.keys(variants));
   const prompt = {
     source: describe(choice.source),
     target: describe(choice.locale),
@@ -127,6 +112,8 @@ export const FILL: JobKind = {
   nothing: (bundle) =>
     vscode.l10n.t('{bundle} has no missing or empty texts to fill.', { bundle: bundle.name }),
   pickTitle: () => vscode.l10n.t('The language to fill with AI'),
+  requests: (bundle, root, choice, settings) =>
+    requestCount(fillItems(bundle, choice, Object.keys(root.settings.variants)).items, settings.batchSize),
   question: fillQuestion,
   start: () => vscode.l10n.t('Fill'),
   run: runFill,

@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import type { JobResult } from '../../core/ai/aiJob';
 import type { ClientOptions } from '../../core/ai/bapiClient';
+import type { AiSettings } from '../../core/config/aiSettings';
 import type { Bundle } from '../../core/model/bundle';
 import type { AiApplyItem, AiJobItem } from '../../shared/aiProtocol';
 import type { HostToWebview, PanelState } from '../../shared/protocol';
@@ -50,6 +51,8 @@ export interface JobKind {
   nothing: (bundle: Bundle) => string;
   /** The placeholder of the choice of the language. */
   pickTitle: () => string;
+  /** The requests a job of the choice makes, as it cuts its texts: by number and by characters (audit L-17). */
+  requests: (bundle: Bundle, root: IndexedRoot, choice: JobChoice, settings: AiSettings) => number;
   /** The question before a job of many requests, and the button that starts it. */
   question: (bundle: Bundle, choice: JobChoice, status: AiStatus, requests: number) => string;
   start: () => string;
@@ -133,7 +136,7 @@ export class AiJobs {
       return undefined;
     }
     const { status } = client;
-    const requests = Math.ceil(choice.entries.length / status.settings.batchSize);
+    const requests = kind.requests(found.bundle, found.root, choice, status.settings);
     if (
       requests >= CONFIRM_REQUESTS &&
       !(await prompts.confirm(kind.question(found.bundle, choice, status, requests), kind.start()))

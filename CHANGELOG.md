@@ -65,6 +65,8 @@ Klick daneben.
   - Präparierte, riesige Übersetzungsdateien legen VS Code nicht mehr für viele Sekunden lahm: Eine Wurzel wird mit
     höchstens 10 MB und 100.000 Texten gelesen; eine Datei darüber hinaus meldet die Prüfung als unlesbar
     („TooManyEntries“). Vorschläge für verschobene Keys gibt es je Sprache für höchstens 100.000 Paare.
+  - Die Rückfrage vor „Mit KI füllen…“ und „Mit KI prüfen…“ zählt die Anfragen, wie der Auftrag die Texte schneidet:
+    nach Anzahl und nach Zeichen. Bisher nannte sie bei langen Mail-Texten einen Bruchteil und fragte oft gar nicht.
 - Ein Dialog von VS Code (etwa diese Rückfrage) schließt das offene Textfeld nicht mehr; danach bekommt das Textfeld
   den Fokus zurück.
 - Eine Änderung der KI-Einstellungen liest den Arbeitsbereich nicht mehr neu ein. Ungültige Sicherungseinstellungen

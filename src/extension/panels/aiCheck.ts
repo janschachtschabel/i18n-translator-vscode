@@ -10,14 +10,12 @@ import {
 } from '../../core/ai/checkPrompt';
 import { describeLanguage } from '../../core/ai/languages';
 import { completionBody, tokenBudget } from '../../core/ai/modelProfiles';
-import { checkEntries, contextTexts, promptKeys, sourceLocale } from '../../core/ai/sources';
+import { checkItems, MAX_CHARACTERS, requestCount } from '../../core/ai/jobItems';
+import { checkEntries, sourceLocale } from '../../core/ai/sources';
 import type { Bundle } from '../../core/model/bundle';
 import type { AiJobItem } from '../../shared/aiProtocol';
 import type { IndexedRoot } from '../services/workspaceIndex';
 import type { JobChoice, JobKind, JobRun } from './aiJobs';
-
-/** Characters of texts and context per request, at most, as for the fill (K9). */
-const MAX_CHARACTERS = 8000;
 
 /** The languages of the bundle with translations to check (a variant: its own texts, against its base). */
 export function checkChoices(bundle: Bundle, root: IndexedRoot): JobChoice[] {
@@ -50,16 +48,7 @@ export function runCheck({
     code,
     description: describeLanguage(code, settings.languageDescriptions, baseFileLanguage),
   });
-  const skip = [choice.source, choice.locale, ...Object.keys(variants)];
-  const entries = new Map<string, { entryId: string; source: string; before: string }>();
-  const keys = promptKeys(choice.entries.map(({ entryId }) => entryId));
-  const items: CheckItem[] = choice.entries.map(({ entryId, before }, index) => {
-    const key = keys[index]!;
-    const source = bundle.value(entryId, choice.source) ?? '';
-    const text = before ?? '';
-    entries.set(key, { entryId, source, before: text });
-    return { key, source, text, context: contextTexts(bundle, entryId, skip) };
-  });
+  const { items, entries } = checkItems(bundle, choice, Object.keys(variants));
   const prompt = {
     source: describe(choice.source),
     target: describe(choice.locale),
@@ -132,6 +121,8 @@ export const CHECK: JobKind = {
   choices: checkChoices,
   nothing: (bundle) => vscode.l10n.t('{bundle} has no translations to check.', { bundle: bundle.name }),
   pickTitle: () => vscode.l10n.t('The language to check with AI'),
+  requests: (bundle, root, choice, settings) =>
+    requestCount(checkItems(bundle, choice, Object.keys(root.settings.variants)).items, settings.batchSize),
   question: (bundle, choice, status, requests) =>
     vscode.l10n.t(
       'Check {count} texts of {bundle} in {locale}? That takes about {requests} requests to {model} at {host}.',
