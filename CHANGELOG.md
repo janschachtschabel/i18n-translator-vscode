@@ -14,6 +14,13 @@ Phasen 5 und 6 vorgezogen sind, zählt sie weiter, ohne die Phase zu nennen. Die
   - **KI-Vorschlag für eine Zelle** (Knopf unter dem Textfeld, Strg+I): übersetzt aus der Referenz oder, bei einer
     Variante, aus ihrer Basis, markiert „bitte prüfen“ und geprüft wie ein getippter Text; Esc holt den vorigen Text
     zurück. Vor dem ersten Senden an eine Adresse fragt die Extension einmal nach.
+  - **Mit KI füllen…** in der Werkzeugleiste des Editors: übersetzt die fehlenden und leeren Texte einer Sprache (bei
+    einer Variante die Texte, die sie braucht) in Paketen und zeigt sie in einer Prüfliste an Stelle der Tabelle, mit
+    Quelle, bisherigem Text, bearbeitbarem Vorschlag und Prüfung. Vorschläge mit abweichenden Platzhaltern bleiben
+    abgewählt. „Ausgewählte übernehmen“ schreibt die gewählten auf einmal, nach einer Sicherung und als ein Schritt
+    „Letzte Änderung rückgängig“.
+  - Die Werkzeugleiste zeigt in der Gruppe „KI“, ob die KI bereit ist und mit welchem Modell, ohne Schlüssel den Weg,
+    ihn zu setzen.
 - Ein Dialog von VS Code (etwa diese Rückfrage) schließt das offene Textfeld nicht mehr.
 - Eine Änderung der KI- oder Sicherungseinstellungen liest den Arbeitsbereich nicht mehr neu ein.
 - **Eingabefelder für Keys und Sprachen** („Key hinzufügen…“, „Key umbenennen…“, „Sprache hinzufügen…“) schließen

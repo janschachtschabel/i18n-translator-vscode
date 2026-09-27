@@ -36,8 +36,8 @@ export type AiHostToWebview =
   | { type: 'aiState'; available: boolean; reason?: AiUnavailableReason; model: string }
   /** The text for the cell, or why there is none, in the user's language. */
   | { type: 'aiSuggestion'; requestId: string; text?: string; message?: string }
-  /** A job began: the editor shows its review list. */
-  | { type: 'aiJob'; jobId: string; kind: 'fill'; locale: string; total: number }
+  /** A job began: the editor shows its review list; `source`: the language its texts are translated from. */
+  | { type: 'aiJob'; jobId: string; kind: 'fill'; locale: string; source: string; total: number }
   /** Suggestions of a job as they come, with how many texts are done. */
   | { type: 'aiJobItems'; jobId: string; items: AiJobItem[]; done: number; total: number }
   /** A job ended; `missing`: texts without an answer; `message`: why it failed, in the user's language. */

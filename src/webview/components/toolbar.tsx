@@ -1,11 +1,12 @@
+import { useLayoutEffect, useRef } from 'preact/hooks';
 import type { UiState } from '../../shared/protocol';
 import { l10n } from '../l10n';
 import type { EditorStore } from '../state/store';
 import './toolbar.css';
 
 /**
- * How the bundle is shown (layout, wrapping, the details of the table), new keys and languages, and the undo of
- * the last change.
+ * How the bundle is shown (layout, wrapping, the details of the table), new keys and languages, the undo of the
+ * last change, and the AI.
  */
 export function Toolbar({ store }: { store: EditorStore }) {
   const { layout, wrap, details } = store.uiState.value;
@@ -62,6 +63,42 @@ export function Toolbar({ store }: { store: EditorStore }) {
       <button type="button" aria-keyshortcuts="Control+Z Meta+Z" onClick={() => store.undo()}>
         {l10n.t('Undo last change')}
       </button>
+      <AiTools store={store} />
     </div>
+  );
+}
+
+/**
+ * Whether the AI is ready, with which model, and the fill; without a key, the way to set one. Nothing where the AI
+ * is off or in Restricted Mode.
+ */
+function AiTools({ store }: { store: EditorStore }) {
+  const ai = store.suggestions.ai.value;
+  const fill = useRef<HTMLButtonElement>(null);
+  // The review list of a fill closed with the focus in it: back to where the fill began.
+  useLayoutEffect(() => {
+    if (store.review.takeFocusBack()) {
+      fill.current?.focus();
+    }
+  }, [store]);
+  if (!ai.available && ai.reason !== 'no-key') {
+    return null;
+  }
+  return (
+    <fieldset class="group">
+      <legend>{l10n.t('AI')}</legend>
+      <span class="ai-status">
+        {ai.available ? l10n.t('ready · {model}', { model: ai.model }) : l10n.t('no API key')}
+      </span>
+      {ai.available ? (
+        <button ref={fill} type="button" onClick={() => store.review.fill()}>
+          {l10n.t('Fill with AI…')}
+        </button>
+      ) : (
+        <button type="button" onClick={() => store.suggestions.setup()}>
+          {l10n.t('Set API Key…')}
+        </button>
+      )}
+    </fieldset>
   );
 }

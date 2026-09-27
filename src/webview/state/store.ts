@@ -16,6 +16,7 @@ import { Edits, type CellRef, type EditorPlace } from './edits';
 import { KeptUnsaved } from './keptUnsaved';
 import { compactLocales, layoutFor } from './layout';
 import { nextCell } from './navigation';
+import { Review } from './review';
 import { showEdits, withRowsOf, type ShownRow } from './shownRows';
 import { Suggestions } from './suggestions';
 
@@ -106,6 +107,12 @@ export class EditorStore {
   );
   /** Suggestions of the AI for the open editor. */
   readonly suggestions = new Suggestions((message) => this.host.postMessage(message), this.edits);
+  /** The review list of a fill, shown in place of the rows. */
+  readonly review = new Review(
+    (message) => this.host.postMessage(message),
+    (text) => this.announce(text),
+    () => this.placeholderSyntax.peek(),
+  );
   /**
    * The keys whose texts were edited since the filter or the languages shown last changed. Their rows stay when the
    * filter no longer lets them through (e.g. "missing" once the text is there): a row that went would move the
@@ -161,6 +168,7 @@ export class EditorStore {
         this.keptRows.value = new Set();
         this.host.setState(message.panelState);
         this.edits.reset();
+        this.review.reset();
         this.unsaved.expect(message.unsaved ?? []);
         // The host follows up with the bundle, or with it once the first index run is done.
         this.view.value = { kind: 'loading' };
@@ -217,6 +225,12 @@ export class EditorStore {
       case 'aiState':
       case 'aiSuggestion':
         this.suggestions.receive(message);
+        break;
+      case 'aiJob':
+      case 'aiJobItems':
+      case 'aiJobEnd':
+      case 'aiApplyResult':
+        this.review.receive(message);
         break;
     }
   }

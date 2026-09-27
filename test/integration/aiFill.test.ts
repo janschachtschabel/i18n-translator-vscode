@@ -93,7 +93,14 @@ suite('Fill with AI', () => {
       // Picking the language is no question `asked` keeps; a few texts need no confirmation, the consent was given.
       assert.deepEqual(prompts.asked, []);
       const job = posts.find((message) => message.type === 'aiJob');
-      assert.deepEqual(job, { type: 'aiJob', jobId: 'fill-1', kind: 'fill', locale: 'fr', total: 3 });
+      assert.deepEqual(job, {
+        type: 'aiJob',
+        jobId: 'fill-1',
+        kind: 'fill',
+        locale: 'fr',
+        source: 'de',
+        total: 3,
+      });
       const items = posts.flatMap((message) => (message.type === 'aiJobItems' ? message.items : []));
       assert.deepEqual(
         items.sort((a, b) => a.entryId.localeCompare(b.entryId)),

@@ -163,6 +163,7 @@ export class AiPanel implements vscode.Disposable {
       jobId,
       kind: 'fill',
       locale: choice.locale,
+      source: choice.source,
       total: choice.entries.length,
     });
     const started = Date.now();

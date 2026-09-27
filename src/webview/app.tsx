@@ -7,6 +7,7 @@ import { Details } from './components/details';
 import { CompactChoice } from './components/list/compactChoice';
 import { List } from './components/list/list';
 import { LanguageChips } from './components/languageChips';
+import { ReviewList } from './components/review/reviewList';
 import { SkipLinks } from './components/skipLinks';
 import { Table } from './components/table/table';
 import { Toolbar } from './components/toolbar';
@@ -50,7 +51,31 @@ function Content({ store, view }: { store: EditorStore; view: View }) {
 const TITLE_ID = 'bundle-title';
 const GRID_HELP_ID = 'grid-help';
 
+/** The bundle with its rows, or with the review list of a fill in their place (K1). */
 function BundleView({ store, model }: { store: EditorStore; model: BundleViewModel }) {
+  const layout = store.layout.value;
+  const review = store.review.list.value;
+  return (
+    <div class={layout === 'table' && !review ? 'bundle fill' : 'bundle'}>
+      {!review && <SkipLinks layout={layout} />}
+      <h1 id={TITLE_ID}>{model.name}</h1>
+      <p>
+        {l10n.t('Keys: {keys} · Languages: {languages}', {
+          keys: formatNumber(model.rows.length),
+          languages: formatNumber(model.locales.length),
+        })}
+      </p>
+      {review ? (
+        <ReviewList store={store} list={review} locales={model.locales} />
+      ) : (
+        <BundleRows store={store} model={model} />
+      )}
+    </div>
+  );
+}
+
+/** How the rows are shown, which of them, and the rows: in the table or in the list. */
+function BundleRows({ store, model }: { store: EditorStore; model: BundleViewModel }) {
   const rows = store.rows.value;
   const layout = store.layout.value;
   const shown = store.shownLocales.value;
@@ -59,15 +84,7 @@ function BundleView({ store, model }: { store: EditorStore; model: BundleViewMod
   const candidates = compactCandidates(model.locales, store.uiState.value.hiddenLocales);
   const second = shown.find((locale) => !locale.reference);
   return (
-    <div class={layout === 'table' ? 'bundle fill' : 'bundle'}>
-      <SkipLinks layout={layout} />
-      <h1 id={TITLE_ID}>{model.name}</h1>
-      <p>
-        {l10n.t('Keys: {keys} · Languages: {languages}', {
-          keys: formatNumber(model.rows.length),
-          languages: formatNumber(model.locales.length),
-        })}
-      </p>
+    <>
       <Toolbar store={store} />
       <LanguageChips store={store} locales={model.locales} />
       <FileFindings model={model} />
@@ -112,7 +129,7 @@ function BundleView({ store, model }: { store: EditorStore; model: BundleViewMod
       ) : rows.length > 0 ? (
         <List store={store} rows={rows} locales={shown} reference={reference} labelledBy={TITLE_ID} />
       ) : null}
-    </div>
+    </>
   );
 }
 

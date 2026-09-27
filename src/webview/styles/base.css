@@ -70,8 +70,24 @@ button {
   cursor: pointer;
 }
 
-button:hover {
+button:not(:disabled):hover {
   background-color: var(--vscode-button-secondaryHoverBackground);
+}
+
+/* The one action a view is for (e.g. writing the chosen suggestions), as VS Code's primary buttons. */
+button.primary {
+  color: var(--vscode-button-foreground);
+  background-color: var(--vscode-button-background);
+}
+
+button.primary:not(:disabled):hover {
+  background-color: var(--vscode-button-hoverBackground);
+}
+
+/* As in VS Code; the contrast of disabled controls is exempt (WCAG 1.4.3). */
+button:disabled {
+  cursor: default;
+  opacity: 0.4;
 }
 
 /* Around buttons, as in VS Code: inside, the focus color does not reach 3:1 against the button's (WCAG 1.4.11). */
