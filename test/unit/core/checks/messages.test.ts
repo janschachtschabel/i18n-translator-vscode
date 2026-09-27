@@ -48,10 +48,10 @@ describe('issue arguments', () => {
     'common/de.json':
       '{"A":"Datei {{name}} <b>gespeichert</b>","MOVED":{"TITLE":"Titel"},"ASK":"Möchten Sie fortfahren?",' +
       '"PERSON":"Autor{{GENDER_SEPARATOR}}in","EMPTY":"Text","SAME":"Dokument","NUM":1,"DUP":"a","DUP":"b",' +
-      '"TOP":{"ONLY_COMMON":"x"},"OVER":"Text A","MISSING":"fehlt"}',
+      '"TOP":{"ONLY_COMMON":"x"},"OVER":"Text A","MISSING":"fehlt","COND":"{{if a}}A{{endif}}"}',
     'common/en.json':
       '{"A":"File {{nam}} {{{x}} saved","OLD":{"TITLE":"Title"},"ORPHAN":"o","ASK":"Continue?","PERSON":"Author",' +
-      '"EMPTY":"","SAME":"Dokument","TOP":{"ONLY_COMMON":"x"},"OVER":"Text"}',
+      '"EMPTY":"","SAME":"Dokument","TOP":{"ONLY_COMMON":"x"},"OVER":"Text","COND":"{{if a}}A"}',
     'common/de-informal.json': '{"ASK":"Möchten Sie?","EXTRA":"v"}',
     'common/de-no-binnen-i.json': '{}',
     'admin/de.json': '{"OVER":"Text B","TOP":{"OTHER":"y"},"LOST":"Gr?ße"}',

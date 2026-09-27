@@ -26,6 +26,17 @@ describe('inlineCheck', () => {
     ]);
   });
 
+  it('names the conditions of mail texts that differ from the reference or lack their pair', () => {
+    expect(inlineCheck('{{if a}}A{{endif}}{{if b}}B{{endif}}', '{{if a}}A{{if c}}C{{endif}}')).toEqual([
+      { severity: 'error', text: 'Fehlende Bedingungen: {{if b}}' },
+      { severity: 'error', text: 'Bedingungen, die die Referenz nicht hat: {{if c}}' },
+      { severity: 'error', text: 'Bedingungen ohne ihr Gegenstück: {{if a}}' },
+    ]);
+    expect(inlineCheck('{{if a}}A{{endif}}', '{{if a}}A{{endif}}')).toEqual([
+      { severity: 'ok', text: 'Platzhalter und HTML-Tags wie in der Referenz.' },
+    ]);
+  });
+
   it('says when they match, once the reference has any', () => {
     expect(inlineCheck('Am {{date}}', 'Le {{date}}')).toEqual([
       { severity: 'ok', text: 'Platzhalter und HTML-Tags wie in der Referenz.' },

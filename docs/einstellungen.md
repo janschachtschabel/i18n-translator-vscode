@@ -302,6 +302,7 @@ Standard: `{}`. Der Schweregrad je Prüfregel ist `error` (Fehler), `warning` (W
 | `misplaced-key` | Warnung | Ein verwaister Key, dessen letztes Segment zu einem fehlenden Key passt: vermutlich falsch einsortiert. |
 | `placeholder-malformed` | Fehler | Ein Platzhalter ist falsch geschrieben, z. B. `{{{x}}`. |
 | `placeholder-mismatch` | Fehler | Die Platzhalter weichen von der Referenz ab. |
+| `condition-unbalanced` | Fehler | Mail-Texte: Die Bedingungen (`{{if …}}` … `{{endif}}`) weichen von der Referenz ab, oder einem `{{if …}}` fehlt sein `{{endif}}` (oder umgekehrt). edu-sharing verschickt die Mail dann nicht. |
 | `html-mismatch` | Warnung | Die HTML-Tags weichen von der Referenz ab. |
 | `variant-needed` | Warnung | Der Basistext braucht in einer Variante einen eigenen Text. |
 | `variant-inconsistent` | Hinweis | Der Text einer Variante enthält, was er nicht enthalten soll. |

@@ -19,6 +19,7 @@ export const RULE_IDS = [
   'misplaced-key',
   'placeholder-malformed',
   'placeholder-mismatch',
+  'condition-unbalanced',
   'html-mismatch',
   'variant-needed',
   'variant-inconsistent',

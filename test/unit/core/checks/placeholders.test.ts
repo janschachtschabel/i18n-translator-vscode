@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   asPlaceholder,
+  compareConditions,
   compareParams,
   scanPlaceholders,
   withoutPlaceholders,
@@ -68,7 +69,7 @@ describe('scanPlaceholders', () => {
     expect(scanPlaceholders('Autor{{ GENDER_SEPARATOR }}in')).toEqual({
       params: [],
       conditions: [],
-      endifs: 0,
+      unpaired: [],
       genderSeparators: 0,
       malformed: [{ index: 5, text: '{{ GENDER_SEPARATOR }}' }],
     });
@@ -78,7 +79,28 @@ describe('scanPlaceholders', () => {
     expect(scanPlaceholders('{{if message}}Nachricht: {{message}}{{endif}}')).toMatchObject({
       params: ['message'],
       conditions: ['message'],
-      endifs: 1,
+      unpaired: [],
+    });
+  });
+
+  // edu-sharing (Mail.replaceString) splits a mail at "{{if ": each part needs its {{endif}}, or the mail is not sent;
+  // an {{endif}} before any condition stays in the mail as text, and conditions do not nest.
+  it('names the conditions and endifs without their pair, in text order', () => {
+    expect(scanPlaceholders('{{if a}}A{{endif}} {{if b}}B{{endif}}').unpaired).toEqual([]);
+    expect(scanPlaceholders('{{if a}}A').unpaired).toEqual(['{{if a}}']);
+    expect(scanPlaceholders('{{endif}}A {{if a}}B{{endif}}').unpaired).toEqual(['{{endif}}']);
+    expect(scanPlaceholders('{{if a}}{{if b}}B{{endif}}{{endif}}').unpaired).toEqual([
+      '{{if a}}',
+      '{{endif}}',
+    ]);
+  });
+
+  // edu-sharing takes a condition only as written: "{{if " and the name up to "}}", and "{{endif}}".
+  it('takes conditions and endifs only as edu-sharing does', () => {
+    expect(scanPlaceholders('{{if !link }}L{{endif}}').conditions).toEqual(['!link ']);
+    expect(scanPlaceholders('{{if a}}A{{ endif }}')).toMatchObject({
+      params: ['endif'],
+      unpaired: ['{{if a}}'],
     });
   });
 
@@ -93,9 +115,19 @@ describe('scanPlaceholders', () => {
     expect(scanPlaceholders('Speichern')).toEqual({
       params: [],
       conditions: [],
-      endifs: 0,
+      unpaired: [],
       genderSeparators: 0,
       malformed: [],
+    });
+  });
+});
+
+describe('compareConditions', () => {
+  it('lists the conditions missing from and added to the translation', () => {
+    const reference = scanPlaceholders('{{if a}}A{{endif}} {{if b}}B{{endif}}');
+    expect(compareConditions(reference, scanPlaceholders('{{if b}}B{{endif}} {{if c}}C{{endif}}'))).toEqual({
+      missing: ['a'],
+      extra: ['c'],
     });
   });
 });

@@ -84,6 +84,7 @@
   "config.rule.misplaced-key": "Ein verwaister Key, dessen letztes Segment zu einem fehlenden Key passt: vermutlich falsch einsortiert.",
   "config.rule.placeholder-malformed": "Ein Platzhalter ist falsch geschrieben, z. B. `{{{x}}`.",
   "config.rule.placeholder-mismatch": "Die Platzhalter weichen von der Referenz ab.",
+  "config.rule.condition-unbalanced": "Mail-Texte: Die Bedingungen ({{if …}} … {{endif}}) weichen von der Referenz ab, oder einer fehlt das Gegenstück; edu-sharing verschickt die Mail dann nicht.",
   "config.rule.html-mismatch": "Die HTML-Tags weichen von der Referenz ab.",
   "config.rule.variant-needed": "Der Basistext braucht in einer Variante einen eigenen Text, z. B. die Sie-Form für `de-informal`.",
   "config.rule.variant-inconsistent": "Der Text einer Variante enthält, was er nicht enthalten soll, z. B. die Sie-Form in `de-informal`.",

@@ -26,6 +26,8 @@ export function statusWord(rule: string): string {
     case 'placeholder-malformed':
     case 'placeholder-mismatch':
       return l10n.t('placeholders');
+    case 'condition-unbalanced':
+      return l10n.t('conditions');
     case 'html-mismatch':
       return l10n.t('HTML');
     case 'variant-needed':

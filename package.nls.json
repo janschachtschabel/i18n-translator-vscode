@@ -84,6 +84,7 @@
   "config.rule.misplaced-key": "An orphan key whose last segment matches a missing key: probably in the wrong place.",
   "config.rule.placeholder-malformed": "A placeholder is written wrongly, e.g. `{{{x}}`.",
   "config.rule.placeholder-mismatch": "The placeholders differ from the reference.",
+  "config.rule.condition-unbalanced": "Mail texts: the conditions ({{if …}} … {{endif}}) differ from the reference, or one lacks its pair; edu-sharing then sends no mail.",
   "config.rule.html-mismatch": "The HTML tags differ from the reference.",
   "config.rule.variant-needed": "The base text needs a text of its own in a variant, e.g. the formal address for `de-informal`.",
   "config.rule.variant-inconsistent": "A variant's text contains what it should not, e.g. the formal address in `de-informal`.",

@@ -58,6 +58,10 @@ Klick daneben.
 - **`.properties`: Ein neuer Key verändert den Text davor nicht mehr**, wenn die letzte Zeile auf einen Backslash und
   ein einzelnes CR endet (Datei mit gemischten Zeilenenden): Bisher setzte sich der Backslash in die neue Zeile fort,
   der Wert davor bekam die neue Zeile angehängt, und der neue Key fehlte.
+- **Nach dem zweiten Audit:**
+  - Neue Prüfung `condition-unbalanced` (Fehler): Mail-Texte, deren Bedingungen (`{{if …}}` … `{{endif}}`) von der
+    Referenz abweichen oder denen ein `{{endif}}` fehlt. edu-sharing verschickt solche Mails nicht. Auch die Prüfung
+    beim Tippen und die Vorauswahl der Prüfliste kennen sie.
 - Ein Dialog von VS Code (etwa diese Rückfrage) schließt das offene Textfeld nicht mehr; danach bekommt das Textfeld
   den Fokus zurück.
 - Eine Änderung der KI-Einstellungen liest den Arbeitsbereich nicht mehr neu ein. Ungültige Sicherungseinstellungen
