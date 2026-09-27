@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ANGULAR_PRESET, MAIL_PRESET, MDS_PRESET } from '../../../../src/core/area/presets';
+import { CHECK_FORMAT } from '../../../../src/core/ai/checkPrompt';
 import { askChunk, itemCharacters, promptFrame } from '../../../../src/core/ai/jobPrompt';
 import { tokenBudget } from '../../../../src/core/ai/modelProfiles';
 import { TRANSLATIONS_FORMAT } from '../../../../src/core/ai/prompts';
@@ -53,7 +54,9 @@ describe('itemCharacters', () => {
 });
 
 describe('askChunk', () => {
-  it('sends the messages with the model, the answer format and a budget from the characters', async () => {
+  // The request a job sends depends on it: the model, the answer format the prompt asks for, the effort of the
+  // job, and a budget of tokens from the characters of the chunk (review of M-08).
+  it('sends the messages with the model, the answer format, the effort and a budget from the characters', async () => {
     let body: Record<string, unknown> = {};
     const fetch = (async (_url: string, init: RequestInit) => {
       body = JSON.parse(String(init.body)) as Record<string, unknown>;
@@ -78,18 +81,25 @@ describe('askChunk', () => {
       characters: 100,
     });
     expect(low.content).toBe('{"texts":[]}');
-    expect(body).toMatchObject({ model: 'gpt-6-luna', messages });
-    const budget = (answer: Record<string, unknown>) =>
-      answer['max_completion_tokens'] ?? answer['max_tokens'];
-    expect(budget(body)).toBe(tokenBudget(100, 'low'));
+    expect(body).toMatchObject({
+      model: 'gpt-6-luna',
+      messages,
+      response_format: { json_schema: { name: TRANSLATIONS_FORMAT.name } },
+      reasoning_effort: 'low',
+      max_completion_tokens: tokenBudget(100, 'low'),
+    });
     await askChunk(client, {
       model: 'gpt-6-luna',
-      effort: 'low',
+      effort: 'high',
       messages,
-      format: TRANSLATIONS_FORMAT,
+      format: CHECK_FORMAT,
       characters: 10_000,
     });
-    expect(budget(body)).toBe(tokenBudget(10_000, 'low'));
-    expect(tokenBudget(10_000, 'low')).toBeGreaterThan(tokenBudget(100, 'low'));
+    expect(body).toMatchObject({
+      response_format: { json_schema: { name: CHECK_FORMAT.name } },
+      reasoning_effort: 'high',
+      max_completion_tokens: tokenBudget(10_000, 'high'),
+    });
+    expect(tokenBudget(10_000, 'high')).toBeGreaterThan(tokenBudget(100, 'low'));
   });
 });
