@@ -2,6 +2,7 @@ import * as assert from 'node:assert/strict';
 import * as vscode from 'vscode';
 import { selectModel, testAiConnection } from '../../src/extension/commands/aiConnection';
 import type { ExtensionApi } from '../../src/extension/extension';
+import { AiService } from '../../src/extension/services/aiService';
 import { activateExtension, answering, settled, workspaceUri } from './helpers';
 import { startMockBapi, type MockAnswer, type MockRequest } from './mockBapi';
 
@@ -97,6 +98,22 @@ suite('AI connection', () => {
     );
     assert.equal(await api.ai.service.client(), undefined);
     assert.equal(await testAiConnection(api.ai.service, log), 'unavailable');
+  });
+
+  // @vscode/test-electron starts VS Code with workspace trust turned off, which trusts every workspace: the service
+  // takes the trust as an option, so that Restricted Mode can be tested (audit T-14).
+  test('sends nothing in Restricted Mode: no client, no connection test, no model list', async () => {
+    const server = await serve(() => MODELS);
+    const untrusted = new AiService(api.ai.keys, log, globalThis.fetch, { trusted: () => false });
+    try {
+      assert.equal((await untrusted.status()).reason, 'untrusted');
+      assert.equal(await untrusted.client(), undefined);
+      assert.equal(await testAiConnection(untrusted, log), 'unavailable');
+      assert.equal(await selectModel(untrusted, answering('gpt-4.1'), log), undefined);
+      assert.deepEqual(server.requests, []);
+    } finally {
+      untrusted.dispose();
+    }
   });
 
   test('takes the address, the provider, the model and the efforts from the user settings only', async () => {

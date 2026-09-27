@@ -24,12 +24,16 @@ export class AiService implements vscode.Disposable {
   readonly onDidChange = this.changed.event;
   private readonly subscriptions: vscode.Disposable[];
   private reported = '';
+  private readonly trusted: () => boolean;
 
+  /** `trusted`: whether the workspace is trusted; the tests give it, since VS Code under test trusts every workspace. */
   constructor(
     private readonly keys: ApiKeyStore,
     private readonly log: vscode.LogOutputChannel,
     private readonly fetch: typeof globalThis.fetch = globalThis.fetch,
+    options: { trusted?: () => boolean } = {},
   ) {
+    this.trusted = options.trusted ?? (() => vscode.workspace.isTrusted);
     this.subscriptions = [
       this.changed,
       keys.onDidChange(() => this.changed.fire()),
@@ -58,7 +62,7 @@ export class AiService implements vscode.Disposable {
     const keySource = await this.keys.source();
     const availability = aiAvailability({
       enabled: settings.enabled,
-      trusted: vscode.workspace.isTrusted,
+      trusted: this.trusted(),
       baseUrl: settings.baseUrl,
       keySource,
     });
