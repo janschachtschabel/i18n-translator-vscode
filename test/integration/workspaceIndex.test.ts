@@ -183,43 +183,47 @@ suite('workspace index', () => {
   // After a write, the watcher's run listed and read the whole root again only to find its files as indexed, and a save
   // in the meantime waited for it (audit P-06). The watcher now compares the files it reported first. A run of the root
   // fails here and says so: its listing finds more than one file.
-  for (const change of ['the same bytes', 'other bytes'] as const) {
-    test(`runs the root after a reported file got ${change} only if they differ from those indexed`, async () => {
-      const log = vscode.window.createOutputChannel('edu-sharing i18n (index tests)', { log: true });
-      const limits = { ...ROOT_LIMITS };
-      const index = new WorkspaceIndex(log, limits);
-      const root = (await index.refresh()).roots[0]!;
-      const file = vscode.Uri.joinPath(
-        root.folder.uri,
-        root.analysis.bundles.find((bundle) => bundle.name === 'common')!.file('fr')!.relPath,
-      );
-      const bytes = await vscode.workspace.fs.readFile(file);
-      const watcher = vscode.workspace.createFileSystemWatcher(
-        new vscode.RelativePattern(vscode.Uri.joinPath(file, '..'), 'fr.json'),
-      );
+  test('runs the root after a reported file only if it differs from what was indexed, or the root had errors', async () => {
+    const log = vscode.window.createOutputChannel('edu-sharing i18n (index tests)', { log: true });
+    const limits = { ...ROOT_LIMITS };
+    const index = new WorkspaceIndex(log, limits);
+    const root = (await index.refresh()).roots[0]!;
+    const file = vscode.Uri.joinPath(
+      root.folder.uri,
+      root.analysis.bundles.find((bundle) => bundle.name === 'common')!.file('fr')!.relPath,
+    );
+    const bytes = await vscode.workspace.fs.readFile(file);
+    const watcher = vscode.workspace.createFileSystemWatcher(
+      new vscode.RelativePattern(vscode.Uri.joinPath(file, '..'), 'fr.json'),
+    );
+    const failedRuns: boolean[] = [];
+    const listener = index.onDidChange((snapshot) =>
+      failedRuns.push(snapshot.errors.some((error) => /could not be checked/.test(error))),
+    );
+    /** Writes the file and waits until the watcher has seen it and the delay of the index (300 ms) has passed. */
+    const write = async (written: Uint8Array) => {
       const seen = waitFor(watcher.onDidChange, () => true).catch(() => undefined);
-      const snapshots: IndexSnapshot[] = [];
-      const listener = index.onDidChange((snapshot) => snapshots.push(snapshot));
-      limits.files = 1;
-      try {
-        const written = change === 'the same bytes' ? bytes : new Uint8Array([...bytes, 0x0a]);
-        await vscode.workspace.fs.writeFile(file, written);
-        await seen;
-        // Past the watcher's delay of 300 ms.
-        await new Promise((resolve) => setTimeout(resolve, 800));
-        assert.deepStrictEqual(
-          snapshots.map((snapshot) => snapshot.errors.some((error) => /could not be checked/.test(error))),
-          change === 'the same bytes' ? [] : [true],
-        );
-      } finally {
-        listener.dispose();
-        watcher.dispose();
-        index.dispose();
-        log.dispose();
-        await vscode.workspace.fs.writeFile(file, bytes);
-      }
-    });
-  }
+      await vscode.workspace.fs.writeFile(file, written);
+      await seen;
+      await new Promise((resolve) => setTimeout(resolve, 800));
+    };
+    limits.files = 1;
+    try {
+      await write(bytes);
+      assert.deepStrictEqual(failedRuns, [], 'the same bytes: no run');
+      await write(new Uint8Array([...bytes, 0x0a]));
+      assert.deepStrictEqual(failedRuns, [true], 'other bytes: a run, which fails');
+      // The bytes the index read, but its last run of the root failed: a run again.
+      await write(bytes);
+      assert.deepStrictEqual(failedRuns, [true, true], 'the root had errors: a run');
+    } finally {
+      listener.dispose();
+      watcher.dispose();
+      index.dispose();
+      log.dispose();
+      await vscode.workspace.fs.writeFile(file, bytes);
+    }
+  });
 
   test('re-indexes when a setting changes', async () => {
     const { index } = await activateExtension();
