@@ -1,4 +1,4 @@
-import { planTexts } from '../../core/edit/planTexts';
+import { planTexts, type BatchPlan } from '../../core/edit/planTexts';
 import type { Bundle } from '../../core/model/bundle';
 import type { AiApplyItem } from '../../shared/aiProtocol';
 import { localize } from '../localize';
@@ -26,18 +26,11 @@ export async function applyAiChanges(
   locale: string,
   items: readonly AiApplyItem[],
 ): Promise<ApplyOutcome> {
-  const describe = (skipped: ReturnType<typeof planTexts>['skipped']) =>
-    skipped.map(({ entryId, problem }) => ({ entryId, message: localize(problem.message) }));
-  // Nothing to write: say what was skipped, without a backup of nothing.
-  const preview = planTexts(found.bundle, locale, items);
-  if (preview.changes.length === 0) {
-    return { written: [], skipped: describe(preview.skipped) };
-  }
-  let plan = preview;
+  let plan: BatchPlan | undefined;
   const result = await fileStore.write(
     rootRef(found.root),
     inBundle(found.bundle.id, (bundle) => {
-      // Planned again on the files as they are when written (B5).
+      // Planned once, on the files as they are when written (B5); a plan of nothing writes and backs up nothing.
       plan = planTexts(bundle, locale, items);
       return { ok: true, changes: plan.changes };
     }),
@@ -49,5 +42,11 @@ export async function applyAiChanges(
     }
     return { written: [], skipped: [], message: describeWriteFailure(result) };
   }
-  return { written: plan.planned, skipped: describe(plan.skipped) };
+  return {
+    written: plan?.planned ?? [],
+    skipped: (plan?.skipped ?? []).map(({ entryId, problem }) => ({
+      entryId,
+      message: localize(problem.message),
+    })),
+  };
 }
