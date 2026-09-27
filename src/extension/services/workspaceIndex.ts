@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import type { Settings } from '../../core/config/settings';
 import type { AreaId } from '../../core/model/types';
 import { analyzeRoot, type RootAnalysis } from '../../core/pipeline/analyze';
-import { analysisOptions, SETTING_KEYS } from '../../core/config/settings';
+import { analysisOptions, BACKUP_SETTING_KEYS, SETTING_KEYS } from '../../core/config/settings';
 import { excludeGlob, readBackupSettings, readSettings } from '../config';
 import { messageOf } from './errors';
 import { IndexWatchers, type WatchedPattern } from './indexWatchers';
@@ -16,6 +16,9 @@ export interface IndexedRoot {
   settings: Settings;
   analysis: RootAnalysis;
 }
+
+/** The settings a run reads: a change of one of them starts a run. */
+const INDEXED_SETTING_KEYS = [...SETTING_KEYS, ...BACKUP_SETTING_KEYS];
 
 export interface IndexSnapshot {
   /** One entry per area root; two roots are two independent installations. */
@@ -77,8 +80,9 @@ export class WorkspaceIndex implements vscode.Disposable {
   constructor(private readonly log: vscode.LogOutputChannel) {
     this.subscriptions.push(
       vscode.workspace.onDidChangeConfiguration((event) => {
-        // Not the backup and AI settings, which no run reads: a change of the model would read the workspace anew.
-        if (SETTING_KEYS.some((key) => event.affectsConfiguration(`eduI18n.${key}`))) {
+        // Not the AI settings, which no run reads: a change of the model would read the workspace anew. The backup
+        // settings are read for their errors, which a run shows with the others; they rarely change.
+        if (INDEXED_SETTING_KEYS.some((key) => event.affectsConfiguration(`eduI18n.${key}`))) {
           this.schedule();
         }
       }),

@@ -176,7 +176,7 @@ suite('workspace index', () => {
   });
 
   // Every change of an AI setting read the whole workspace anew (2 s on the old app's data folder).
-  test('does not re-index when a setting it does not read changes: AI, backups', async () => {
+  test('does not re-index when an AI setting changes, which no run reads', async () => {
     const { index } = await activateExtension();
     await index.refresh();
     const config = vscode.workspace.getConfiguration('eduI18n');
@@ -184,13 +184,29 @@ suite('workspace index', () => {
     const subscription = index.onDidChange(() => runs++);
     try {
       await config.update('ai.timeoutSeconds', 60, vscode.ConfigurationTarget.Global);
-      await config.update('backup.keep', 5, vscode.ConfigurationTarget.Global);
       // Longer than the index waits before a run.
       await new Promise((resolve) => setTimeout(resolve, 1000));
       assert.strictEqual(runs, 0);
     } finally {
       subscription.dispose();
       await config.update('ai.timeoutSeconds', undefined, vscode.ConfigurationTarget.Global);
+    }
+  });
+
+  test('reports an invalid backup setting at once, and no longer once it is valid', async () => {
+    const { index } = await activateExtension();
+    await index.refresh();
+    const config = vscode.workspace.getConfiguration('eduI18n');
+    const reported = (snapshot: IndexSnapshot) =>
+      snapshot.errors.some((error) => error.includes('backup.keep'));
+    try {
+      const invalid = waitFor(index.onDidChange, reported);
+      await config.update('backup.keep', 0, vscode.ConfigurationTarget.Global);
+      await invalid;
+      const valid = waitFor(index.onDidChange, (snapshot) => !reported(snapshot));
+      await config.update('backup.keep', undefined, vscode.ConfigurationTarget.Global);
+      await valid;
+    } finally {
       await config.update('backup.keep', undefined, vscode.ConfigurationTarget.Global);
     }
   });
