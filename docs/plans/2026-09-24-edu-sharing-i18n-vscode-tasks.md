@@ -1904,6 +1904,47 @@ Editor eine KI-Gruppe in der Werkzeugleiste mit dem Status („KI: bereit · gpt
 - **Live gegen die b-api Staging:** „KI-Verbindung testen“ meldete `gpt-6-luna` nach 2,0 s; ein fehlender
   französischer Metadataset-Text bekam in 0,3 s „Format d'apprentissage“.
 
+### Umsetzung Block C und Review der Blöcke A und B (27.09.2026)
+
+- **3.9–3.11** wie geplant: `runTranslationJob` (Pakete nach Anzahl und Zeichen, Halbieren bei `length`, fehlende
+  Keys gemeldet, Abbruch, Parallelität), `fillEntries` mit denselben Befunden wie die Chips, `planTexts` (ein
+  Schreibvorgang, Anker mit den davor eingefügten Keys, geänderte Texte einzeln übersprungen), Sicherung mit Anlass
+  `bulk` vor jedem Stapelschreiben.
+- **3.12** „Mit KI füllen…“ steht in der neuen KI-Gruppe der Werkzeugleiste („bereit · Modell“, ohne Schlüssel „kein
+  API-Schlüssel“ mit „API-Schlüssel setzen…“), damit die KI im Editor zu finden ist. Die Prüfliste ersetzt Werkzeugleiste,
+  Filter und Zeilen; die Überschrift bekommt den Fokus, nach dem Schließen der Knopf, der das Füllen begann.
+  „Ausgewählte übernehmen (n)“ statt „n Änderungen übernehmen“: Die Extension hat keine Pluralformen, die Texte
+  nennen Zahlen deshalb nach einem Doppelpunkt oder in Klammern.
+- **K12 geändert:** Die Prüfliste übersteht das Neuladen der Webview nicht. Beim Wechsel des Tabs bleibt sie
+  (`retainContextWhenHidden`); lädt die Seite neu, bricht der Host ihre Anfragen und das Füllen ab, weil die neue Seite
+  dieselben Request-IDs wieder vergeben könnte und keine Seite das Füllen zeigt.
+- **Review Blöcke A und B** (zwei Reviewer mit frischem Kontext): Behoben sind
+  - die Einwilligung (erst nach den Prüfungen, mit einem Lesen der Einstellungen);
+  - Anfragen, die zum Editor gehören, der sie stellte;
+  - der Fokus nach einem Dialog;
+  - Strg+I ohne Quelltext und in einem Konflikt;
+  - eindeutige Request-IDs je Seite;
+  - Zeiger mit mehreren Tasten;
+  - Anbieter, Modell und Denkaufwand nur aus den Benutzereinstellungen (Geltungsbereich `machine`);
+  - Schlüssel nur aus sichtbarem ASCII;
+  - eine unbrauchbare Adresse schaltet die KI ab statt auf Staging zurückzufallen;
+  - 404 der Modellliste mit eigenem Code;
+  - abbrechbarer Verbindungstest;
+  - die Fehler der Sicherungseinstellungen sofort gemeldet.
+- **Abweichungen, bewusst:**
+  - `redirect: 'manual'` mit eigener Prüfung auf 3xx statt `redirect: 'error'`: Mit `error` wirft fetch einen
+    TypeError, den der Client als Netzfehler wiederholen würde.
+  - Die KI-Befehle bleiben überall sichtbar und erklären, warum sie nicht laufen; nur „API-Schlüssel entfernen“ hängt
+    am Kontext `eduI18n.aiKeyStored`.
+  - Nachrichten des Hosts an die Webview werden nicht geprüft (der Host ist vertrauenswürdig), wie in `protocol.ts`.
+- **Offen aus dem Review, als Folgeaufgaben:**
+  - Snapshots der Prompts (kommen mit dem Prompt der KI-Prüfung in 3.13).
+  - Ein ungeprüfter Vorschlag, der als „nicht gespeichert“ erhalten bleibt, verliert die Markierung „bitte prüfen“.
+  - Die Zahl im Filter zählt die bearbeiteten Zeilen nicht mit, die er weiter zeigt.
+  - Die Status-Zeile „wird geholt…“ entsteht mit dem Editor und wird deshalb von Screenreadern oft nicht vorgelesen.
+  - `store.ts`, `edits.ts` und `cellEditor.tsx` liegen über oder nahe 300 Zeilen; teilen, bevor 3.13 dort mehr Zustand
+    braucht.
+
 **Risiken:** Proxy (`fetch` und `http.proxy` in älteren VS-Code-Versionen, zu prüfen); langsames Stapelschreiben
 (messen in 3.10); Modell-IDs ändern sich (Verbindungstest, Modellwahl); Reasoning-Tokens zählen zum Budget; große
 Aufträge (`valuespaces_i18n` 1.232 Lücken: Rückfrage, Abbrechen behält Erhaltenes); Prompt-Injection über Texte im
