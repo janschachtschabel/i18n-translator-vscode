@@ -8,6 +8,22 @@
   background-color: var(--vscode-editor-background);
 }
 
+/* A focused field is never hidden behind the head (WCAG 2.4.11): the page scrolls it below, by the head's height. */
+html:has(.review) {
+  scroll-padding-block-start: calc(var(--review-head-size, 8em) + 8px);
+}
+
+/* In a low view (a small panel, a large zoom) the head would take most of it: it scrolls with the list. */
+@media (max-height: 30em) {
+  .review-head {
+    position: static;
+  }
+
+  html:has(.review) {
+    scroll-padding-block-start: 0;
+  }
+}
+
 .review-head > h2 {
   margin: 12px 0 4px;
   font-size: 1.2em;

@@ -257,6 +257,14 @@ describe('filling with AI', () => {
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Mit KI füllen…' }));
   });
 
+  it('keeps a focused field below the head of the list: the page leaves room for the head', () => {
+    filling();
+    const size = () => document.documentElement.style.getPropertyValue('--review-head-size');
+    expect(size()).toMatch(/^\d+px$/);
+    act(() => void fireEvent.click(inReview().getByRole('button', { name: 'Verwerfen' })));
+    expect(size()).toBe('');
+  });
+
   it('keeps the list while its job runs, and says which texts were not saved', () => {
     const { send, posted: messages, store } = filling();
     act(() => void fireEvent.click(inReview().getByRole('button', { name: 'Ausgewählte übernehmen (1)' })));

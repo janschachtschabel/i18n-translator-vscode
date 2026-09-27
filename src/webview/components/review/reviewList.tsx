@@ -26,6 +26,7 @@ interface ReviewListProps {
 export function ReviewList({ store, list, locales }: ReviewListProps) {
   const section = useRef<HTMLElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
+  const head = useRef<HTMLDivElement>(null);
   const { review } = store;
   const { progress } = list;
   const target = locales.find((locale) => locale.code === list.locale);
@@ -41,6 +42,22 @@ export function ReviewList({ store, list, locales }: ReviewListProps) {
   // The list of a new job takes the place of the rows: its heading takes the focus, so that screen readers say where
   // it is now.
   useLayoutEffect(() => heading.current?.focus(), [list.jobId]);
+  // The page keeps a focused field below the head (review.css), whose height varies: a message, buttons in two rows.
+  useLayoutEffect(() => {
+    const element = head.current;
+    if (!element) {
+      return undefined;
+    }
+    const root = document.documentElement;
+    const measure = () => root.style.setProperty('--review-head-size', `${element.offsetHeight}px`);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => {
+      observer.disconnect();
+      root.style.removeProperty('--review-head-size');
+    };
+  }, []);
   // Closing with the focus in it, or lost, the list hands it back to the button that started its job.
   useLayoutEffect(
     () => () => {
@@ -53,7 +70,7 @@ export function ReviewList({ store, list, locales }: ReviewListProps) {
 
   return (
     <section ref={section} class="review" aria-labelledby={REVIEW_HEADING_ID}>
-      <div class="review-head">
+      <div class="review-head" ref={head}>
         <h2 id={REVIEW_HEADING_ID} ref={heading} tabIndex={-1}>
           {list.kind === 'check'
             ? l10n.t('AI check of {locale}', { locale: name })
