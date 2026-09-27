@@ -165,7 +165,7 @@ function statusText(list: ReviewListData): string {
   switch (progress.kind) {
     case 'running':
       return l10n.t('Translated: {done} of {total} …', {
-        done: formatNumber(progress.done),
+        done: formatNumber(announced(progress)),
         total: formatNumber(progress.total),
       });
     case 'done':
@@ -188,7 +188,7 @@ function checkStatus({ progress, received, total }: ReviewListData): string {
   switch (progress.kind) {
     case 'running':
       return l10n.t('Checked: {done} of {total} …', {
-        done: formatNumber(progress.done),
+        done: formatNumber(announced(progress)),
         total: formatNumber(progress.total),
       });
     case 'done':
@@ -209,4 +209,13 @@ function checkStatus({ progress, received, total }: ReviewListData): string {
     case 'failed':
       return l10n.t('Failed: {message}', { message: progress.message });
   }
+}
+
+/**
+ * How many texts the status line says are done: of a long job in tenths, so that screen readers are not interrupted
+ * by every chunk (the bar shows each one); of a short one, every text.
+ */
+function announced({ done, total }: { done: number; total: number }): number {
+  const step = Math.max(1, Math.ceil(total / 10));
+  return done >= total ? done : Math.floor(done / step) * step;
 }

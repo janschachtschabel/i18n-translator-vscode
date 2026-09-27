@@ -360,6 +360,25 @@ describe('filling with AI', () => {
     expect(inReview().getByRole('textbox', { name: 'CANCEL in fr' })).toBeTruthy();
   });
 
+  it('says how far a long job is in tenths, so that screen readers are not interrupted by every chunk', () => {
+    const { send } = open();
+    send({ type: 'aiState', available: true, model: 'gpt-6-luna' });
+    send({ type: 'aiJob', jobId: 'fill-1', kind: 'fill', locale: 'fr', source: 'de', total: 100 });
+    const status = () => inReview().getByRole('status').textContent;
+    const progress = (done: number) =>
+      send({ type: 'aiJobItems', jobId: 'fill-1', done, total: 100, items: [] });
+    progress(5);
+    expect(status()).toBe('Übersetzt: 0 von 100 …');
+    progress(12);
+    expect(status()).toBe('Übersetzt: 10 von 100 …');
+    progress(19);
+    expect(status()).toBe('Übersetzt: 10 von 100 …');
+    // The bar shows each chunk.
+    expect(inReview().getByRole('progressbar').getAttribute('value')).toBe('19');
+    progress(100);
+    expect(status()).toBe('Übersetzt: 100 von 100 …');
+  });
+
   it('keeps the list while its job runs, and says which texts were not saved', () => {
     const { send, posted: messages, store } = filling();
     act(() => void fireEvent.click(inReview().getByRole('button', { name: 'Ausgewählte übernehmen (1)' })));
