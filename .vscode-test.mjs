@@ -1,14 +1,18 @@
 import { defineConfig } from '@vscode/test-cli';
-import { cpSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 
 /**
  * The tests write translation files (file store, added languages), so each profile gets a fresh copy of the
- * fixture workspace below out/: test/fixtures stays untouched even when a run breaks off.
+ * fixture workspace below out/: test/fixtures stays untouched even when a run breaks off. Its empty workspace
+ * settings are there for a test to change: VS Code watches a settings file that exists, whereas on CI 1.90 missed a
+ * .vscode folder created later for 5 s.
  */
 function freshWorkspace(label) {
   const folder = `out/test-workspace/${label}`;
   rmSync(folder, { recursive: true, force: true });
   cpSync('test/fixtures/workspace-basic', folder, { recursive: true });
+  mkdirSync(`${folder}/.vscode`);
+  writeFileSync(`${folder}/.vscode/settings.json`, '{}');
   return folder;
 }
 

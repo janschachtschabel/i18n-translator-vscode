@@ -100,8 +100,9 @@ suite('AI connection', () => {
   });
 
   test('takes the address, the provider, the model and the efforts from the user settings only', async () => {
-    // As in a cloned repository; the timeout, which a workspace may set, shows when VS Code has read the file.
-    const folder = workspaceUri('.vscode');
+    // As in a cloned repository; the timeout, which a workspace may set, shows when VS Code has read the file. The
+    // fresh test workspace has the file, empty (.vscode-test.mjs).
+    const file = workspaceUri('.vscode/settings.json');
     const repository = {
       'eduI18n.ai.baseUrl': 'https://elsewhere.example',
       'eduI18n.ai.provider': 'academiccloud',
@@ -110,14 +111,12 @@ suite('AI connection', () => {
       'eduI18n.ai.reviewReasoningEffort': 'xhigh',
       'eduI18n.ai.timeoutSeconds': 61,
     };
-    await vscode.workspace.fs.writeFile(
-      vscode.Uri.joinPath(folder, 'settings.json'),
-      new TextEncoder().encode(JSON.stringify(repository)),
-    );
+    await vscode.workspace.fs.writeFile(file, new TextEncoder().encode(JSON.stringify(repository)));
     try {
       const { settings } = await settled(
         () => api.ai.service.status(),
         (current) => current.settings.timeoutSeconds === 61,
+        10000,
       );
       assert.equal(settings.timeoutSeconds, 61, 'the workspace settings were read');
       assert.equal(settings.baseUrl, 'https://b-api.staging.openeduhub.net');
@@ -126,10 +125,11 @@ suite('AI connection', () => {
       assert.equal(settings.reasoningEffort, 'low');
       assert.equal(settings.reviewReasoningEffort, 'medium');
     } finally {
-      await vscode.workspace.fs.delete(folder, { recursive: true });
+      await vscode.workspace.fs.writeFile(file, new TextEncoder().encode('{}'));
       await settled(
         () => api.ai.service.status(),
         (current) => current.settings.timeoutSeconds === 120,
+        10000,
       );
     }
   });
