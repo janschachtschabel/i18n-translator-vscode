@@ -56,10 +56,11 @@ jobs:
       - name: Integration tests
         if: runner.os == 'Linux'
         run: xvfb-run -a npm run test:integration
-      # On Windows, where paths ignore letter case (e.g. in the guard for unsaved editors), against stable.
+      # On Windows, where paths ignore letter case (e.g. in the guard for unsaved editors), against stable, in a workspace
+      # of several folders, and in the data folder of all three formats (audit OPS-05).
       - name: Integration tests (Windows)
         if: runner.os == 'Windows'
-        run: npm run test:integration -- --label stable
+        run: npm run test:integration -- --label stable --label multi --label formats
       - name: Package VSIX
         if: runner.os == 'Linux'
         run: npm run package
