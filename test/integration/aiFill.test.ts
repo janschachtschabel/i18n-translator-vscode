@@ -135,7 +135,12 @@ suite('Fill with AI', function () {
         type: 'aiApplyResult',
         requestId: 'apply-1',
         written: [id('CANCEL'), id('WORKSPACE.FILE.TITLE')],
-        skipped: [],
+        skipped: [
+          {
+            entryId: id('ASK'),
+            message: 'This text does not belong to the job of the list; it was not written.',
+          },
+        ],
       });
       const after = await read();
       assert.match(after, /"CANCEL": "Annuler"/);

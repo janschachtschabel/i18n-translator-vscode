@@ -351,6 +351,7 @@
   "There is no change to undo.": "Es gibt keine Änderung, die sich rückgängig machen lässt.",
   "These suggestions belong to an older job; nothing was written.": "Diese Vorschläge gehören zu einem älteren Auftrag; es wurde nichts geschrieben.",
   "This bundle has no keys yet.": "Diese Einheit hat noch keine Keys.",
+  "This text does not belong to the job of the list; it was not written.": "Dieser Text gehört nicht zum Auftrag der Liste; er wurde nicht geschrieben.",
   "Translate the text, or delete it so that the fallback shows again.": "Übersetzen Sie den Text, oder löschen Sie ihn, damit wieder der Rückfalltext erscheint.",
   "Translate the text, unless it is meant to stay the same, e.g. a name.": "Übersetzen Sie den Text, außer er soll gleich bleiben, z. B. ein Name.",
   "Translated: {done} of {total} …": "Übersetzt: {done} von {total} …",

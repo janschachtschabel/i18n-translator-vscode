@@ -108,6 +108,23 @@ describe('planTexts', () => {
     expect(text.indexOf('B fr')).toBeLessThan(text.indexOf('MB fr'));
   });
 
+  it('counts a text the file already has as planned, with nothing to write', () => {
+    const analysis = analyzeTexts(
+      {
+        'templates_de_DE.xml':
+          '<templates><template name="a"><subject>A</subject><message>MA</message></template></templates>',
+        'templates_fr_FR.xml': '<templates><template name="a"><subject>A fr</subject></template></templates>',
+      },
+      MAIL_PRESET,
+    );
+    // Written meanwhile, e.g. by another editor, as the list suggests it.
+    const plan = planTexts(analysis.bundles[0]!, 'fr_FR', [
+      { entryId: id('a', 'subject'), value: 'A fr', before: null },
+    ]);
+    expect(plan.planned).toEqual([id('a', 'subject')]);
+    expect(plan.changes).toEqual([]);
+  });
+
   it('skips a text that changed meantime, one the file cannot hold, an empty one and an unknown key; plans the rest', () => {
     const analysis = analyzeTexts(
       {

@@ -218,7 +218,19 @@ export class AiJobs {
             skipped: [],
             message: vscode.l10n.t('The key or the language is no longer in this bundle.'),
           };
-      await this.post({ type: 'aiApplyResult', requestId, ...outcome });
+      // Its list shows why, instead of keeping it chosen.
+      const outside = items
+        .filter((item) => !job.entries.has(item.entryId))
+        .map(({ entryId }) => ({
+          entryId,
+          message: vscode.l10n.t('This text does not belong to the job of the list; it was not written.'),
+        }));
+      await this.post({
+        type: 'aiApplyResult',
+        requestId,
+        ...outcome,
+        skipped: [...outcome.skipped, ...outside],
+      });
     } catch (error) {
       this.services.log.error('Writing reviewed texts failed.', error);
       await this.post({

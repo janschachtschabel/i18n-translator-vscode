@@ -15,7 +15,10 @@ export interface TextItem {
 export interface BatchPlan {
   /** One change of the language's file, or none. */
   changes: FileChange[];
-  /** The entries whose texts the changes write, in the order of the bundle's keys. */
+  /**
+   * The entries that hold their texts once the changes are written, in the order of the bundle's keys: those the
+   * changes write, and those whose file has them already.
+   */
   planned: string[];
   /** Texts that cannot be written, with the reason; the others are planned all the same. */
   skipped: { entryId: string; problem: EditProblem }[];
@@ -58,9 +61,7 @@ export function planTexts(bundle: Bundle, locale: LocaleCode, items: readonly Te
         inserted.push(...change.ops.flatMap((op) => (op.kind === 'insert' ? [op.key] : [])));
       }
     }
-    if (result.changes.length > 0) {
-      planned.push(item.entryId);
-    }
+    planned.push(item.entryId);
   }
   return { changes: relPath === undefined ? [] : [{ kind: 'edit', relPath, ops }], planned, skipped };
 }
