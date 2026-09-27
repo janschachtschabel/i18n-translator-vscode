@@ -2,7 +2,7 @@ import type { PlaceholderSyntax } from '../area/areaDefinition';
 
 /** Placeholders as an area writes them: `{{…}}` (ngx-translate, mail templates) or `{…}` (metadatasets). */
 export interface PlaceholderScan {
-  /** Parameter names, trimmed, sorted and unique. */
+  /** Parameter names as the application reads them: trimmed, but as written in mails; sorted and unique. */
   params: string[];
   /** Conditions of `{{if …}}` blocks (mail templates) as edu-sharing reads them, sorted and unique. */
   conditions: string[];
@@ -26,12 +26,16 @@ export interface MalformedPlaceholder {
 // edu-sharing replaces exactly this token (translation-loader.ts, I18nAngular.java, MetadataReader.java), also in
 // texts with single-brace placeholders; other spellings stay visible.
 const GENDER_MARKER = '{{GENDER_SEPARATOR}}';
+const DOUBLE_BRACES = /\{\{([^{}]*)\}\}/g;
 const TOKENS: Readonly<Record<PlaceholderSyntax, RegExp>> = {
-  'double-brace': /\{\{([^{}]*)\}\}/g,
+  'double-brace': DOUBLE_BRACES,
+  'double-brace-exact': DOUBLE_BRACES,
   'single-brace': /\{\{GENDER_SEPARATOR\}\}|\{([^{}]*)\}/g,
 };
 
 export function scanPlaceholders(text: string, syntax: PlaceholderSyntax = 'double-brace'): PlaceholderScan {
+  // ngx-translate also fills "{{ name }}"; edu-sharing's mails replace only "{{name}}" (Mail.replaceString).
+  const exact = syntax === 'double-brace-exact';
   const params = new Set<string>();
   const conditions = new Set<string>();
   const malformed: MalformedPlaceholder[] = [];
@@ -65,6 +69,11 @@ export function scanPlaceholders(text: string, syntax: PlaceholderSyntax = 'doub
       }
       openCondition = match[0];
       conditions.add(inner.slice(3));
+    } else if (exact && inner !== name) {
+      // No parameter of a mail starts or ends with a space: this one stays in the mail unreplaced, even where the
+      // reference has it the same. It still counts, so that a comparison names it as written.
+      malformed.push({ index, text: match[0] });
+      params.add(inner);
     } else {
       params.add(name);
     }

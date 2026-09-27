@@ -26,6 +26,18 @@ describe('inlineCheck', () => {
     ]);
   });
 
+  // edu-sharing replaces exactly "{{link}}" in a mail; "{{ link }}" stays in it (audit L-31).
+  it('compares the placeholders of mail texts as written, and still their conditions', () => {
+    expect(inlineCheck('{{if link}}{{link}}{{endif}}', '{{ link }}', 'double-brace-exact')).toEqual([
+      { severity: 'error', text: 'Fehlende Platzhalter: {{link}}' },
+      { severity: 'error', text: 'Platzhalter, die die Referenz nicht hat: {{ link }}' },
+      { severity: 'error', text: 'Fehlende Bedingungen: {{if link}}' },
+    ]);
+    expect(
+      inlineCheck('{{if a}}{{link}}{{endif}}', '{{if a}}{{link}}{{endif}}', 'double-brace-exact'),
+    ).toEqual([{ severity: 'ok', text: 'Platzhalter und HTML-Tags wie in der Referenz.' }]);
+  });
+
   it('names the conditions of mail texts that differ from the reference or lack their pair', () => {
     expect(inlineCheck('{{if a}}A{{endif}}{{if b}}B{{endif}}', '{{if a}}A{{if c}}C{{endif}}')).toEqual([
       { severity: 'error', text: 'Fehlende Bedingungen: {{if b}}' },

@@ -430,6 +430,7 @@
                   "type": "string",
                   "enum": [
                     "double-brace",
+                    "double-brace-exact",
                     "single-brace"
                   ],
                   "description": "%config.areas.placeholderSyntax%"

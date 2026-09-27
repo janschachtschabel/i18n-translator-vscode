@@ -34,6 +34,31 @@ describe('scanPlaceholders with single braces (edu-sharing metadatasets)', () =>
   });
 });
 
+// edu-sharing replaces exactly "{{" + name + "}}" in a mail (Mail.replaceString): a "{{ link }}" stays in the mail as
+// it is (audit L-31).
+describe('scanPlaceholders with exact double braces (edu-sharing mail templates)', () => {
+  it('keeps the white space inside a parameter, so that it differs from the reference', () => {
+    const reference = scanPlaceholders('Hier: {{link}}', 'double-brace-exact');
+    const translation = scanPlaceholders('Ici : {{ link }}', 'double-brace-exact');
+    expect(translation.params).toEqual([' link ']);
+    expect(compareParams(reference, translation)).toEqual({ missing: ['link'], extra: [' link '] });
+    expect(asPlaceholder(' link ', 'double-brace-exact')).toBe('{{ link }}');
+  });
+
+  it('reports such a parameter as malformed, also where the reference has it the same', () => {
+    expect(scanPlaceholders('Ici : {{ link }} {{name }}', 'double-brace-exact').malformed).toEqual([
+      { index: 6, text: '{{ link }}' },
+      { index: 17, text: '{{name }}' },
+    ]);
+  });
+
+  it('reads conditions, the gender marker and stray braces as double braces do', () => {
+    const text = '{{if link}}{{link}}{{endif}} Autor{{GENDER_SEPARATOR}}in {{ }} {{ GENDER_SEPARATOR }} }';
+    expect(scanPlaceholders(text, 'double-brace-exact')).toEqual(scanPlaceholders(text));
+    expect(withoutPlaceholders(text, 'double-brace-exact')).toBe(withoutPlaceholders(text));
+  });
+});
+
 describe('scanPlaceholders', () => {
   it('finds parameters and normalizes inner whitespace', () => {
     expect(scanPlaceholders('Hallo {{ name }}, heute ist {{date}}.')).toMatchObject({

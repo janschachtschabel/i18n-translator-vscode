@@ -8,8 +8,11 @@ export type FormatId = (typeof FORMAT_IDS)[number];
 export const MERGE_SEMANTICS = ['shallow-toplevel', 'none'] as const;
 export type MergeSemantics = (typeof MERGE_SEMANTICS)[number];
 
-/** How the texts of an area write placeholders: `{{name}}` (ngx-translate, mail templates) or `{name}` (metadatasets). */
-export const PLACEHOLDER_SYNTAXES = ['double-brace', 'single-brace'] as const;
+/**
+ * How the texts of an area write placeholders: `{{name}}` (ngx-translate, which takes `{{ name }}` too), `{{name}}`
+ * exactly as written (edu-sharing's mail templates) or `{name}` (metadatasets).
+ */
+export const PLACEHOLDER_SYNTAXES = ['double-brace', 'double-brace-exact', 'single-brace'] as const;
 export type PlaceholderSyntax = (typeof PLACEHOLDER_SYNTAXES)[number];
 
 /** Declarative description of a translation area; presets and user settings share this shape. */

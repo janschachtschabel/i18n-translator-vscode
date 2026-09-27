@@ -384,6 +384,7 @@
   "Workspace folder of the translations": "Arbeitsbereichsordner der Übersetzungen",
   "Wrap long texts": "Lange Texte umbrechen",
   "Write a text of its own for this variant, without the words the finding names.": "Schreiben Sie für diese Variante einen eigenen Text ohne die Wörter, die der Befund nennt.",
+  "Write each placeholder as {{name}}, with two braces on each side and no space inside; otherwise edu-sharing sends it as it is.": "Schreiben Sie jeden Platzhalter als {{name}}, mit zwei geschweiften Klammern auf jeder Seite und ohne Leerzeichen darin; sonst verschickt edu-sharing ihn so, wie er ist.",
   "Write each placeholder as {{name}}, with two braces on each side.": "Schreiben Sie jeden Platzhalter als {{name}}, mit zwei geschweiften Klammern auf jeder Seite.",
   "Write each placeholder as {name}, with one brace on each side; only {{GENDER_SEPARATOR}} has two.": "Schreiben Sie jeden Platzhalter als {name}, mit einer geschweiften Klammer auf jeder Seite; nur {{GENDER_SEPARATOR}} hat zwei.",
   "You are asked once per address. eduI18n.ai.enabled turns the AI off.": "Sie werden einmal je Adresse gefragt. eduI18n.ai.enabled schaltet die KI ab."

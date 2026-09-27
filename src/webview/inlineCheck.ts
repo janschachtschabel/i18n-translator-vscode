@@ -35,7 +35,7 @@ export function inlineCheck(
   const textScan = scanPlaceholders(text, syntax);
   const params = compareParams(referenceScan, textScan);
   // Areas with single braces have no conditions.
-  const conditions = syntax === 'double-brace' ? compareConditions(referenceScan, textScan) : undefined;
+  const conditions = syntax !== 'single-brace' ? compareConditions(referenceScan, textScan) : undefined;
   const asName = (name: string) => asPlaceholder(name, syntax);
   const tags = compareTags(reference, text);
   const lines: CheckLine[] = [];

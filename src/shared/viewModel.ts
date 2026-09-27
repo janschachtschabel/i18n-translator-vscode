@@ -101,7 +101,9 @@ export function buildBundleViewModel(bundle: Bundle, options: ViewModelOptions):
   return {
     bundleId: bundle.id,
     name: bundle.name,
-    ...(options.placeholderSyntax === 'single-brace' ? { placeholderSyntax: options.placeholderSyntax } : {}),
+    ...(options.placeholderSyntax !== undefined && options.placeholderSyntax !== 'double-brace'
+      ? { placeholderSyntax: options.placeholderSyntax }
+      : {}),
     ...(bundle.format === 'mail-xml' ? { mailPreview: true as const } : {}),
     locales: codes.map((code) => {
       const inLocale = issues.filter((issue) => issue.locale === code);

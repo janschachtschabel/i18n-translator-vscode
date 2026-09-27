@@ -21,7 +21,11 @@ export function hintFor(rule: string, syntax: PlaceholderSyntax = 'double-brace'
         ? l10n.t(
             'Write each placeholder as {name}, with one brace on each side; only {{GENDER_SEPARATOR}} has two.',
           )
-        : l10n.t('Write each placeholder as {{name}}, with two braces on each side.');
+        : syntax === 'double-brace-exact'
+          ? l10n.t(
+              'Write each placeholder as {{name}}, with two braces on each side and no space inside; otherwise edu-sharing sends it as it is.',
+            )
+          : l10n.t('Write each placeholder as {{name}}, with two braces on each side.');
     case 'placeholder-mismatch':
       return l10n.t('Use the placeholders of the reference unchanged; the application fills them in.');
     case 'condition-unbalanced':

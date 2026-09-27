@@ -126,6 +126,7 @@ Mail-Templates, `edu-sharing.mail`:
   "files": "templates[_{locale}].xml",
   "localePattern": "[a-z]{2}_[A-Z]{2}",
   "bundleName": "templates",
+  "placeholderSyntax": "double-brace-exact",
   "detect": { "glob": "**/mailtemplates/templates.xml", "marker": "templates.xml" }
 }
 ```
@@ -162,7 +163,7 @@ eingebauten ersetzt diesen.
 | `bundleOrder` | | Reihenfolge, in der die Anwendung die Einheiten lädt |
 | `mergeSemantics` | | `shallow-toplevel` oder `none`, siehe unten |
 | `ignoredKeys` | | Keys, die keine Übersetzungen sind: Einheit, Prüfungen und Editor lassen sie aus, die Dateien behalten sie, und neue Keys kommen nie davor |
-| `placeholderSyntax` | | `double-brace` (Standard, `{{name}}`) oder `single-brace` (`{name}`); danach prüft die Extension Platzhalter. `{{GENDER_SEPARATOR}}` gilt in beiden |
+| `placeholderSyntax` | | `double-brace` (Standard, `{{name}}`, auch `{{ name }}` wie bei Angular), `double-brace-exact` (`{{name}}` genau so, ohne Leerzeichen darin, wie bei den Mail-Templates) oder `single-brace` (`{name}`); danach prüft die Extension Platzhalter. `{{GENDER_SEPARATOR}}` gilt in allen |
 | `overrideBundlePattern` | | regulärer Ausdruck für den ganzen Namen von Einheiten, die zur Laufzeit andere überschreiben, siehe unten |
 
 `mergeSemantics`:

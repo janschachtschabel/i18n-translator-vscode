@@ -92,6 +92,8 @@ Gut zu wissen:
   - Fehlt einer Sprache ein Feld oder das ganze Template, legt das Füllen der Zelle es dort an, an der Stelle der
     Referenz.
   - Ein neuer Key heißt `Template.subject` oder `Template.message`.
+  - edu-sharing ersetzt einen Platzhalter nur genau so, wie er geschrieben ist: `{{ link }}` mit Leerzeichen bleibt in
+    der Mail stehen. Die Prüfung meldet ihn deshalb als falsch geschrieben.
   - Templates ohne Betreff und Nachricht, etwa das Stylesheet, erscheinen nicht und bleiben unverändert.
   - **Mail-Vorschau:** „Mail-Vorschau“ in den Details einer Zeile, im Kontextmenü einer Zeile oder in der
     Befehlspalette zeigt neben dem Editor die Mail des Templates in jeder Sprache, die Referenz zuerst, so

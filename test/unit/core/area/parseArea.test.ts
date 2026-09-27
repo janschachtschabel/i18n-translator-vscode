@@ -55,11 +55,13 @@ describe('parseAreaDefinition', () => {
   });
 
   it('accepts the placeholder syntaxes it knows', () => {
-    const single = { ...customArea, placeholderSyntax: 'single-brace' };
-    expect(parseAreaDefinition(single)).toEqual({ ok: true, area: single });
+    for (const syntax of ['single-brace', 'double-brace-exact']) {
+      const area = { ...customArea, placeholderSyntax: syntax };
+      expect(parseAreaDefinition(area)).toEqual({ ok: true, area });
+    }
     const result = parseAreaDefinition({ ...customArea, placeholderSyntax: 'percent' });
     expect(result.ok ? [] : result.errors).toEqual([
-      '"placeholderSyntax" must be one of: double-brace, single-brace.',
+      '"placeholderSyntax" must be one of: double-brace, double-brace-exact, single-brace.',
     ]);
   });
 

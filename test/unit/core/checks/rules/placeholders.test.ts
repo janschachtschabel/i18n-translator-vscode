@@ -2,8 +2,35 @@ import { describe, expect, it } from 'vitest';
 import { htmlMismatchRule } from '../../../../../src/core/checks/rules/htmlMismatch';
 import { placeholderMalformedRule } from '../../../../../src/core/checks/rules/placeholderMalformed';
 import { placeholderMismatchRule } from '../../../../../src/core/checks/rules/placeholderMismatch';
-import { ANGULAR_PRESET } from '../../../../../src/core/area/presets';
+import { ANGULAR_PRESET, MAIL_PRESET } from '../../../../../src/core/area/presets';
 import { bundleOf, contextOf, run, summarize } from './helpers';
+
+// edu-sharing replaces exactly "{{link}}" in a mail (Mail.replaceString); "{{ link }}" stays in it (audit L-31).
+describe('placeholder rules of mail templates', () => {
+  const area = { ...ANGULAR_PRESET, placeholderSyntax: MAIL_PRESET.placeholderSyntax };
+  const bundle = bundleOf(
+    'templates',
+    {
+      de: '{"M":"Hier: {{link}}","S":"{{ name }} lädt ein"}',
+      fr: '{"M":"Ici : {{ link }}","S":"{{ name }} invite"}',
+    },
+    area,
+  );
+
+  it('compares the parameters as written, spaces inside included', () => {
+    expect(summarize(placeholderMismatchRule.run(contextOf([bundle], area)), 'missing', 'extra')).toEqual([
+      'placeholder-mismatch templates/fr M missing=["{{link}}"] extra=["{{ link }}"]',
+    ]);
+  });
+
+  it('reports a parameter with spaces inside as malformed, in the reference as well', () => {
+    expect(summarize(placeholderMalformedRule.run(contextOf([bundle], area)), 'text')).toEqual([
+      'placeholder-malformed templates/de S text="{{ name }}"',
+      'placeholder-malformed templates/fr M text="{{ link }}"',
+      'placeholder-malformed templates/fr S text="{{ name }}"',
+    ]);
+  });
+});
 
 describe('placeholder rules of an area with single braces', () => {
   const area = { ...ANGULAR_PRESET, placeholderSyntax: 'single-brace' as const };

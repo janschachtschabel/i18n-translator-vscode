@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import type { PlaceholderSyntax } from '../../../src/core/area/areaDefinition';
 import { MAIL_PRESET, MDS_PRESET } from '../../../src/core/area/presets';
 import { formatMessage } from '../../../src/core/checks/messages';
 import type { Issue } from '../../../src/core/checks/types';
@@ -84,6 +85,28 @@ describe('buildBundleViewModel', () => {
     };
     expect(buildBundleViewModel(mail.bundles[0]!, options).mailPreview).toBe(true);
     expect(common.mailPreview).toBeUndefined();
+  });
+
+  it('gives the check while typing the placeholder syntax of the area, unless it is the default', () => {
+    const mail = analyzeTexts(
+      { 'templates.xml': '<templates><template name="t"><subject>S</subject></template></templates>' },
+      MAIL_PRESET,
+    );
+    const options = {
+      issues: [],
+      variants: [],
+      baseFileLanguage: 'en',
+      localize: (message: { template: string }) => message.template,
+    };
+    const model = (placeholderSyntax?: PlaceholderSyntax) =>
+      buildBundleViewModel(mail.bundles[0]!, {
+        ...options,
+        ...(placeholderSyntax ? { placeholderSyntax } : {}),
+      });
+    expect(model('double-brace-exact').placeholderSyntax).toBe('double-brace-exact');
+    expect(model('single-brace').placeholderSyntax).toBe('single-brace');
+    expect(model('double-brace')).not.toHaveProperty('placeholderSyntax');
+    expect(model()).not.toHaveProperty('placeholderSyntax');
   });
 
   it('puts the texts and the findings into their cells', () => {

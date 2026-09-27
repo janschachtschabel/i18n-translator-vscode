@@ -289,4 +289,12 @@ suite('a data folder with all three areas', () => {
       ['group_title', 'group_hint'],
     );
   });
+
+  // edu-sharing replaces a mail's placeholders only as written: the check while typing must know (audit L-31).
+  test('opens the mail templates with placeholders that edu-sharing replaces as written only', async () => {
+    const mail = await rootOf('edu-sharing.mail');
+    const panel = api.editors.open(mail, bundleOf(mail, 'templates'));
+    const { model } = await nextPost(panel, 'bundle');
+    assert.equal(model.placeholderSyntax, 'double-brace-exact');
+  });
 });
