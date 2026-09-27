@@ -4,6 +4,7 @@
   "{bundle} has no file for {locale} yet; add the language first.": "{bundle} hat noch keine Datei für {locale}; fügen Sie zuerst die Sprache hinzu.",
   "{bundle} has no file in the reference language; add that language first.": "{bundle} hat keine Datei in der Referenzsprache; fügen Sie zuerst diese Sprache hinzu.",
   "{bundle} has no missing or empty texts to fill.": "{bundle} hat keine fehlenden oder leeren Texte zum Füllen.",
+  "{bundle} has no reference language to translate from.": "{bundle} hat keine Referenzsprache, aus der übersetzt werden könnte.",
   "{bundle} is no longer in the workspace; nothing was written.": "{bundle} ist nicht mehr im Arbeitsbereich; nichts wurde geschrieben.",
   "{count} keys are missing in {locale}.": "In {locale} fehlen {count} Keys.",
   "{count} texts": "{count} Texte",

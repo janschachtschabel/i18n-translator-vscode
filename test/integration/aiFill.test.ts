@@ -2,10 +2,9 @@ import * as assert from 'node:assert/strict';
 import * as vscode from 'vscode';
 import { keyFromSegments } from '../../src/core/model/keys';
 import type { ExtensionApi } from '../../src/extension/extension';
-import { EditorPanel } from '../../src/extension/panels/editorPanel';
 import type { AiJobItem } from '../../src/shared/aiProtocol';
 import type { HostToWebview } from '../../src/shared/protocol';
-import { activateExtension, answering, EXTENSION_ID, settled, waitFor, workspaceUri } from './helpers';
+import { activateExtension, answering, editorWith, settled, waitFor, workspaceUri } from './helpers';
 import { startMockBapi, type MockRequest } from './mockBapi';
 
 const id = (key: string) => keyFromSegments(key.split('.')).id;
@@ -49,39 +48,10 @@ suite('Fill with AI', () => {
     await bapi.close();
   });
 
-  /** An editor of `common` whose questions `prompts` answers, and the messages it sends to its webview. */
+  /** An editor of `common` whose questions the answers answer, and the messages it sends to its webview. */
   async function editor(...answers: (string | boolean)[]) {
-    const root = (await api.index.refresh()).roots[0]!;
-    const common = root.analysis.bundles.find((bundle) => bundle.name === 'common')!;
-    const panel = vscode.window.createWebviewPanel('eduI18n.editor', 'common', vscode.ViewColumn.One);
-    const log = vscode.window.createOutputChannel('edu-sharing i18n fill tests', { log: true });
     const prompts = answering(...answers);
-    const quiet = () => undefined;
-    const editorPanel = new EditorPanel(
-      panel,
-      { folder: root.folder.uri.toString(), bundleId: common.id },
-      {
-        extensionUri: vscode.extensions.getExtension(EXTENSION_ID)!.extensionUri,
-        workspaceState: { keys: () => [], get: quiet, update: async () => undefined } as vscode.Memento,
-        index: api.index,
-        fileStore: api.fileStore,
-        prompts,
-        log,
-        command: async () => undefined,
-        preview: quiet,
-        ai: api.ai.service,
-        consent: api.ai.consent,
-      },
-    );
-    const posts: HostToWebview[] = [];
-    editorPanel.onDidPost((message) => posts.push(message));
-    await editorPanel.receive({ type: 'ready' });
-    const close = () => {
-      panel.dispose();
-      editorPanel.dispose();
-      log.dispose();
-    };
-    return { editorPanel, posts, prompts, close };
+    return { ...(await editorWith(api, prompts)), prompts };
   }
 
   test('asks which language, and suggests its missing and empty texts, by key', async () => {

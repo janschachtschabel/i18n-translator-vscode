@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import type { ExtensionApi } from '../../src/extension/extension';
-import type { EditorPanel } from '../../src/extension/panels/editorPanel';
+import { EditorPanel } from '../../src/extension/panels/editorPanel';
 import type { Prompts } from '../../src/extension/commands/prompts';
 import { sameBytes } from '../../src/extension/services/files';
 import type { HostToWebview } from '../../src/shared/protocol';
@@ -106,6 +106,44 @@ export function nextPost<T extends HostToWebview['type']>(
   return waitFor(panel.onDidPost, (message) => message.type === type) as Promise<
     Extract<HostToWebview, { type: T }>
   >;
+}
+
+/**
+ * An editor of the bundle `common` of the first root whose questions `prompts` answers, and the messages it sends to
+ * its webview, once the page has loaded and shows the bundle.
+ */
+export async function editorWith(api: ExtensionApi, prompts: Prompts) {
+  const root = (await api.index.refresh()).roots[0]!;
+  const common = root.analysis.bundles.find((bundle) => bundle.name === 'common')!;
+  const panel = vscode.window.createWebviewPanel('eduI18n.editor', 'common', vscode.ViewColumn.One);
+  const log = vscode.window.createOutputChannel('edu-sharing i18n editor tests', { log: true });
+  const quiet = () => undefined;
+  const editorPanel = new EditorPanel(
+    panel,
+    { folder: root.folder.uri.toString(), bundleId: common.id },
+    {
+      extensionUri: vscode.extensions.getExtension(EXTENSION_ID)!.extensionUri,
+      workspaceState: { keys: () => [], get: quiet, update: async () => undefined } as vscode.Memento,
+      index: api.index,
+      fileStore: api.fileStore,
+      prompts,
+      log,
+      command: async () => undefined,
+      preview: quiet,
+      ai: api.ai.service,
+      consent: api.ai.consent,
+    },
+  );
+  const posts: HostToWebview[] = [];
+  editorPanel.onDidPost((message) => posts.push(message));
+  // The page loads and says it is ready, which cancels the requests of a page before: wait for it, not pretend it.
+  await waitFor(editorPanel.onDidPost, (message) => message.type === 'bundle');
+  const close = () => {
+    panel.dispose();
+    editorPanel.dispose();
+    log.dispose();
+  };
+  return { editorPanel, posts, close };
 }
 
 /**

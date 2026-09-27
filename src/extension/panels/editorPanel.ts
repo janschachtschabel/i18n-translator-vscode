@@ -168,6 +168,7 @@ export class EditorPanel implements vscode.Disposable {
   /** Answers `ready`, which the webview sends whenever it (re)loads. */
   private async start(): Promise<void> {
     this.started = true;
+    this.aiPanel.pageLoaded();
     this.sent = undefined;
     this.sentRoot = undefined;
     await this.post({

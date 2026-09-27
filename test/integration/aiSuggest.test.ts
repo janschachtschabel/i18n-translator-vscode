@@ -4,7 +4,15 @@ import { keyFromSegments } from '../../src/core/model/keys';
 import type { ExtensionApi } from '../../src/extension/extension';
 import type { EditorPanel } from '../../src/extension/panels/editorPanel';
 import type { HostToWebview } from '../../src/shared/protocol';
-import { activateExtension, answering, nextPost, settled, workspaceUri } from './helpers';
+import {
+  activateExtension,
+  answering,
+  editorWith,
+  nextPost,
+  settled,
+  waitFor,
+  workspaceUri,
+} from './helpers';
 import { startMockBapi, type MockRequest } from './mockBapi';
 
 const id = (key: string) => keyFromSegments(key.split('.')).id;
@@ -133,6 +141,53 @@ suite('AI suggestion for a cell', () => {
     await new Promise((resolve) => setTimeout(resolve, 200));
     await panel.receive({ type: 'aiCancel', requestId: 's5' });
     await done;
+    assert.equal(posts.filter((message) => message.type === 'aiSuggestion').length, count);
+  });
+
+  test('asks for the consent only when there is a text to send, and sends nothing without it', async () => {
+    const { server } = await serve(translator());
+    const declined = answering(false);
+    const first = await editorWith(api, declined);
+    const answerOf = async (editor: typeof first, key: string, requestId: string) => {
+      const answer = waitFor(editor.editorPanel.onDidPost, (message) => message.type === 'aiSuggestion');
+      await editor.editorPanel.receive({ type: 'aiSuggest', requestId, entryId: id(key), locale: 'fr' });
+      return (await answer) as Extract<HostToWebview, { type: 'aiSuggestion' }>;
+    };
+    try {
+      // Nothing to translate: no question.
+      assert.match((await answerOf(first, 'OLD_KEY', 'c1')).message ?? '', /OLD_KEY has no text in de/);
+      assert.deepEqual(declined.asked, []);
+      assert.match((await answerOf(first, 'CANCEL', 'c2')).message ?? '', /No texts were sent/);
+      assert.equal(declined.asked.length, 1);
+      assert.deepEqual(
+        server.requests.filter((request) => request.path.endsWith('/chat/completions')),
+        [],
+        'nothing went out without the consent',
+      );
+    } finally {
+      first.close();
+    }
+    const accepted = answering(true);
+    const second = await editorWith(api, accepted);
+    try {
+      assert.equal((await answerOf(second, 'CANCEL', 'c3')).text, 'fr:Abbrechen');
+      assert.equal((await answerOf(second, 'SAVE', 'c4')).text, 'fr:Speichern');
+      assert.equal(accepted.asked.length, 1, 'asked once for the address');
+    } finally {
+      second.close();
+    }
+  });
+
+  test('cancels the requests of a page that reloads', async () => {
+    const { host } = await serve(translator(200, 3000));
+    await api.ai.consent.ensure(host, answering(true));
+    const count = posts.filter((message) => message.type === 'aiSuggestion').length;
+    const started = Date.now();
+    const done = panel.receive({ type: 'aiSuggest', requestId: 's6', entryId: id('CANCEL'), locale: 'fr' });
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    await panel.receive({ type: 'ready' });
+    await done;
+    assert.ok(Date.now() - started < 2500, 'the request ended with its page');
     assert.equal(posts.filter((message) => message.type === 'aiSuggestion').length, count);
   });
 

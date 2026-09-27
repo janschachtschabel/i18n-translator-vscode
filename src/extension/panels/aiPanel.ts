@@ -4,14 +4,14 @@ import type { HostToWebview, PanelState } from '../../shared/protocol';
 import type { Prompts } from '../commands/prompts';
 import { showInfo } from '../notify';
 import type { AiConsent } from '../services/aiConsent';
-import { aiFailureMessage, explainUnavailable } from '../services/aiFeedback';
+import { aiFailureMessage, explainUnavailable, unavailableMessage } from '../services/aiFeedback';
 import type { AiService } from '../services/aiService';
 import { messageOf } from '../services/errors';
 import type { FileStore } from '../services/fileStore';
 import type { WorkspaceIndex } from '../services/workspaceIndex';
 import { applyFill, fillChoices, fillQuestion, runFill } from './aiFill';
 import { findBundle } from './findBundle';
-import { suggestCellText } from './suggestCell';
+import { requestSuggestion, suggestionRequest } from './suggestCell';
 
 /** A fill ask for a confirmation from this many requests on. */
 const CONFIRM_REQUESTS = 5;
@@ -45,9 +45,23 @@ export class AiPanel implements vscode.Disposable {
     this.subscription = services.ai.onDidChange(() => void this.sendState());
   }
 
+  /** Tells the webview whether the AI can be used; a failure to find out is logged, the editor works without it. */
   async sendState(): Promise<void> {
-    const { available, reason, settings } = await this.services.ai.status();
-    await this.post({ type: 'aiState', available, ...(reason ? { reason } : {}), model: settings.model });
+    try {
+      const { available, reason, settings } = await this.services.ai.status();
+      await this.post({ type: 'aiState', available, ...(reason ? { reason } : {}), model: settings.model });
+    } catch (error) {
+      this.services.log.error('Finding out whether the AI can be used failed.', error);
+    }
+  }
+
+  /**
+   * The webview (re)loaded: its requests went with the page before, whose ids the new page may use again, and no
+   * page shows the fill that runs. All are cancelled.
+   */
+  pageLoaded(): void {
+    this.pending.forEach((controller) => controller.abort());
+    this.pending.clear();
   }
 
   /** Answers a request for a suggestion; whatever happens, the editor gets an answer and waits no longer. */
@@ -74,8 +88,25 @@ export class AiPanel implements vscode.Disposable {
     locale: string;
   }) {
     const { ai, consent, index, prompts, log } = this.services;
-    const { available, host } = await ai.status();
-    if (available && !(await consent.ensure(host, prompts))) {
+    // One reading of the settings for the checks, the consent and the request: the texts go to the host asked about.
+    const client = await ai.client();
+    if (!client) {
+      const message = unavailableMessage((await ai.status()).reason ?? 'no-key');
+      await this.post({ type: 'aiSuggestion', requestId, message });
+      return;
+    }
+    const request = suggestionRequest(
+      await index.latest(),
+      this.target,
+      { entryId, locale },
+      client.status.settings,
+    );
+    // Nothing to send: no reason to ask for the consent.
+    if ('message' in request) {
+      await this.post({ type: 'aiSuggestion', requestId, message: request.message });
+      return;
+    }
+    if (!(await consent.ensure(client.status.host, prompts))) {
       await this.post({
         type: 'aiSuggestion',
         requestId,
@@ -84,21 +115,18 @@ export class AiPanel implements vscode.Disposable {
       return;
     }
     const controller = new AbortController();
+    this.pending.get(requestId)?.abort();
     this.pending.set(requestId, controller);
     try {
-      const result = await suggestCellText(
-        ai,
-        await index.latest(),
-        this.target,
-        { entryId, locale },
-        log,
-        controller.signal,
-      );
+      const result = await requestSuggestion(client, request, log, controller.signal);
       if (!controller.signal.aborted) {
         await this.post({ type: 'aiSuggestion', requestId, ...result });
       }
     } finally {
-      this.pending.delete(requestId);
+      // A request of a reloaded page may have taken the id meanwhile.
+      if (this.pending.get(requestId) === controller) {
+        this.pending.delete(requestId);
+      }
     }
   }
 
