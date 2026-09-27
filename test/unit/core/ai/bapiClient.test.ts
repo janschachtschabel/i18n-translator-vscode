@@ -39,16 +39,15 @@ function bodyThatWaits() {
   let started!: () => void;
   const reading = new Promise<void>((resolve) => (started = resolve));
   const fetch = (async (_url: string, init: RequestInit) => {
-    const response = new Response(null, { status: 200 });
-    Object.defineProperty(response, 'text', {
-      value: () => {
+    const body = new ReadableStream<Uint8Array>({
+      pull: () => {
         started();
-        return new Promise((_, reject) =>
+        return new Promise<void>((_, reject) =>
           init.signal?.addEventListener('abort', () => reject(new Error('aborted'))),
         );
       },
     });
-    return response;
+    return new Response(body, { status: 200 });
   }) as unknown as typeof globalThis.fetch;
   return { fetch, reading };
 }
@@ -201,6 +200,15 @@ describe('chatCompletion', () => {
     const { fetch, calls } = fakeFetch(lost(), lost(), lost(), lost());
     expect((await failure(chatCompletion(options(fetch), BODY))).code).toBe('network');
     expect(calls).toHaveLength(4);
+  });
+
+  // A compromised endpoint, or a proxy that intercepts TLS, could send gigabytes within the timeout, and the shared
+  // extension host would run out of memory (audit S-13).
+  it('refuses an answer beyond 4 MB, which no answer of a model needs', async () => {
+    // A valid answer, which the client would take without the limit.
+    const { fetch, calls } = fakeFetch(answer({ content: 'x'.repeat(4 * 1024 * 1024) }));
+    expect((await failure(chatCompletion(options(fetch), BODY))).code).toBe('invalid-response');
+    expect(calls).toHaveLength(1);
   });
 
   it('refuses a redirect, which would carry the key to another address', async () => {

@@ -39,6 +39,11 @@ export function isRetried(status: number): boolean {
   return RETRIED.has(status);
 }
 const MAX_REQUEST_ID_LENGTH = 200;
+/**
+ * Bytes of an answer, at most: a completion has at most 32,000 tokens. Beyond it, a compromised endpoint or a proxy that
+ * intercepts TLS could fill the memory of the shared extension host within the timeout (audit S-13).
+ */
+const MAX_ANSWER_BYTES = 4 * 1024 * 1024;
 
 /** Sends a chat completion and reads its answer; throws an {@link AiError}. */
 export async function chatCompletion(
@@ -165,7 +170,7 @@ async function exchange(
     // A browser answers a redirect with an opaque response of status 0; Node with the 3xx status.
     const redirected =
       response.type === 'opaqueredirect' || (response.status >= 300 && response.status < 400);
-    return { status: response.status, redirected, text: redirected ? '' : await response.text() };
+    return { status: response.status, redirected, text: redirected ? '' : await readText(response) };
   } catch (error) {
     if (timedOut) {
       throw new AiError('timeout');
@@ -178,6 +183,35 @@ async function exchange(
     clearTimeout(timer);
     signal?.removeEventListener('abort', cancel);
   }
+}
+
+/** The body of an answer as text, read up to {@link MAX_ANSWER_BYTES}; beyond, the answer counts as unreadable. */
+async function readText(response: Response): Promise<string> {
+  if (!response.body) {
+    return '';
+  }
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) {
+      break;
+    }
+    size += value.byteLength;
+    if (size > MAX_ANSWER_BYTES) {
+      await reader.cancel();
+      throw new AiError('invalid-response');
+    }
+    chunks.push(value);
+  }
+  const bytes = new Uint8Array(size);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return new TextDecoder().decode(bytes);
 }
 
 /**
