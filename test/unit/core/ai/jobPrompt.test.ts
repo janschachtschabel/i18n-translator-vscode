@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ANGULAR_PRESET, MAIL_PRESET, MDS_PRESET } from '../../../../src/core/area/presets';
 import { CHECK_FORMAT } from '../../../../src/core/ai/checkPrompt';
-import { askChunk, itemCharacters, promptFrame } from '../../../../src/core/ai/jobPrompt';
+import { askChunk, promptFrame } from '../../../../src/core/ai/jobPrompt';
 import { tokenBudget } from '../../../../src/core/ai/modelProfiles';
 import { TRANSLATIONS_FORMAT } from '../../../../src/core/ai/prompts';
 import { DEFAULT_SETTINGS } from '../../../../src/core/config/settings';
@@ -46,17 +46,10 @@ describe('promptFrame', () => {
   });
 });
 
-describe('itemCharacters', () => {
-  it('counts the source, the text to check and the context that go to the model', () => {
-    expect(itemCharacters({ key: 'k', source: 'Hallo', context: { en: 'Hello', fr: 'Salut' } })).toBe(15);
-    expect(itemCharacters({ key: 'k', source: 'Hallo', text: 'Bonjour' })).toBe(12);
-  });
-});
-
 describe('askChunk', () => {
   // The request a job sends depends on it: the model, the answer format the prompt asks for, the effort of the
-  // job, and a budget of tokens from the characters of the chunk (review of M-08).
-  it('sends the messages with the model, the answer format, the effort and a budget from the characters', async () => {
+  // job, and a budget of tokens from the characters of the items it sends, counted as the chunks are (review of M-08).
+  it('sends the messages with the model, the answer format, the effort and a budget from its items', async () => {
     let body: Record<string, unknown> = {};
     const fetch = (async (_url: string, init: RequestInit) => {
       body = JSON.parse(String(init.body)) as Record<string, unknown>;
@@ -78,7 +71,7 @@ describe('askChunk', () => {
       effort: 'low',
       messages,
       format: TRANSLATIONS_FORMAT,
-      characters: 100,
+      items: [{ key: 'a', source: 'x'.repeat(100) }],
     });
     expect(low.content).toBe('{"texts":[]}');
     expect(body).toMatchObject({
@@ -93,7 +86,10 @@ describe('askChunk', () => {
       effort: 'high',
       messages,
       format: CHECK_FORMAT,
-      characters: 10_000,
+      items: [
+        { key: 'b', source: 'y'.repeat(2_000), text: 'z'.repeat(3_000) },
+        { key: 'c', source: 'y'.repeat(2_000), context: { en: 'w'.repeat(3_000) } },
+      ],
     });
     expect(body).toMatchObject({
       response_format: { json_schema: { name: CHECK_FORMAT.name } },

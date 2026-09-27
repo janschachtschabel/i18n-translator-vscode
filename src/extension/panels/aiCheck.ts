@@ -8,7 +8,7 @@ import {
   type CheckVerdict,
 } from '../../core/ai/checkPrompt';
 import { checkItems, MAX_CHARACTERS, requestCount } from '../../core/ai/jobItems';
-import { askChunk, itemCharacters, promptFrame } from '../../core/ai/jobPrompt';
+import { askChunk, promptFrame } from '../../core/ai/jobPrompt';
 import { checkEntries, sourceLocale } from '../../core/ai/sources';
 import type { Bundle } from '../../core/model/bundle';
 import type { AiJobItem } from '../../shared/aiProtocol';
@@ -66,7 +66,7 @@ export function runCheck({
           effort: settings.reviewReasoningEffort,
           messages: checkMessages({ ...prompt, items: chunk }),
           format: CHECK_FORMAT,
-          characters: chunk.reduce((sum, item) => sum + itemCharacters(item), 0),
+          items: chunk,
         },
         chunkSignal,
       );

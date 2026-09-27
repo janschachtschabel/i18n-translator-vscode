@@ -1,9 +1,14 @@
 import * as vscode from 'vscode';
 import type { AiSettings } from '../../core/config/aiSettings';
 import type { ClientOptions } from '../../core/ai/bapiClient';
-import { askChunk, itemCharacters, promptFrame } from '../../core/ai/jobPrompt';
+import { askChunk, promptFrame } from '../../core/ai/jobPrompt';
 import type { ChatMessage } from '../../core/ai/modelProfiles';
-import { parseTranslations, TRANSLATIONS_FORMAT, translationMessages } from '../../core/ai/prompts';
+import {
+  parseTranslations,
+  TRANSLATIONS_FORMAT,
+  translationMessages,
+  type PromptItem,
+} from '../../core/ai/prompts';
 import { contextTexts, sourceLocale } from '../../core/ai/sources';
 import { displayKey } from '../../core/model/keys';
 import type { PanelState } from '../../shared/protocol';
@@ -21,8 +26,8 @@ export interface SuggestionRequest {
   /** The key as the answer names it. */
   key: string;
   messages: ChatMessage[];
-  /** Characters of the source and its context, for the token budget. */
-  characters: number;
+  /** The item the messages carry, for the budget of tokens. */
+  item: PromptItem;
 }
 
 /**
@@ -77,7 +82,7 @@ export function suggestionRequest(
     }),
     items: [item],
   });
-  return { bundleName: bundle.name, locale, key, messages, characters: itemCharacters(item) };
+  return { bundleName: bundle.name, locale, key, messages, item };
 }
 
 /** Sends a prepared request; the answer is the text for the key, or why there is none, in the user's language. */
@@ -89,7 +94,7 @@ export async function requestSuggestion(
 ): Promise<SuggestResult> {
   const { options, status } = client;
   const { settings } = status;
-  const { bundleName, locale, key, messages, characters } = request;
+  const { bundleName, locale, key, messages, item } = request;
   const started = Date.now();
   try {
     const { content, usage } = await askChunk(
@@ -99,7 +104,7 @@ export async function requestSuggestion(
         effort: settings.reasoningEffort,
         messages,
         format: TRANSLATIONS_FORMAT,
-        characters,
+        items: [item],
       },
       signal,
     );

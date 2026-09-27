@@ -123,6 +123,10 @@ export async function runAiJob<I extends JobItem, T>(
   return { status: options.signal?.aborted ? 'cancelled' : 'done', missing };
 }
 
-function charactersOf(item: JobItem): number {
+/**
+ * The characters of an item that go to the model: its source, the text to check if any, and its context. The chunks
+ * and the budget of tokens of a request count them alike.
+ */
+export function charactersOf(item: JobItem): number {
   return item.source.length + (item.text?.length ?? 0) + Object.values(item.context ?? {}).join('').length;
 }

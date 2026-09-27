@@ -2,10 +2,11 @@ import type { AreaDefinition, FormatId } from '../area/areaDefinition';
 import type { ReasoningEffort } from '../config/aiSettings';
 import type { Settings } from '../config/settings';
 import type { LocaleCode } from '../model/types';
+import { charactersOf, type JobItem } from './aiJob';
 import { chatCompletion, type ClientOptions, type Completion } from './bapiClient';
 import { describeLanguage } from './languages';
 import { completionBody, tokenBudget, type AnswerFormat, type ChatMessage } from './modelProfiles';
-import type { PromptItem, TranslationPrompt } from './prompts';
+import type { TranslationPrompt } from './prompts';
 
 /**
  * What the prompts of a fill, a check and a suggestion say besides their texts: the two languages, whether the
@@ -47,27 +48,23 @@ export function promptFrame({
   };
 }
 
-/** The characters of an item that go to the model: its source, the text to check if any, and its context. */
-export function itemCharacters(item: PromptItem & { text?: string }): number {
-  return item.source.length + (item.text?.length ?? 0) + Object.values(item.context ?? {}).join('').length;
-}
-
-/** One request of a job; `characters`: of the texts and context it sends (see {@link itemCharacters}). */
+/** One request of a job: its messages and the items they carry, for the budget of tokens. */
 export interface ChunkRequest {
   model: string;
   effort: ReasoningEffort;
   messages: readonly ChatMessage[];
   format: AnswerFormat;
-  characters: number;
+  items: readonly JobItem[];
 }
 
-/** Sends one request, with a budget of tokens for the answer from the characters it sends. */
+/** Sends one request, with a budget of tokens for the answer from the characters of its items. */
 export function askChunk(
   client: ClientOptions,
   request: ChunkRequest,
   signal?: AbortSignal,
 ): Promise<Completion> {
-  const { model, effort, messages, format, characters } = request;
+  const { model, effort, messages, format, items } = request;
+  const characters = items.reduce((sum, item) => sum + charactersOf(item), 0);
   return chatCompletion(
     client,
     completionBody({ model, messages, format, effort, maxTokens: tokenBudget(characters, effort) }),

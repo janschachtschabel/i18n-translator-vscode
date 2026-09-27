@@ -1,12 +1,20 @@
 import { describe, expect, it } from 'vitest';
 import { AiError } from '../../../../src/core/ai/aiErrors';
 import type { PromptItem } from '../../../../src/core/ai/prompts';
-import { chunkItems, runAiJob, type JobProgress } from '../../../../src/core/ai/aiJob';
+import { charactersOf, chunkItems, runAiJob, type JobProgress } from '../../../../src/core/ai/aiJob';
 
 const items = (count: number, source = 'text'): PromptItem[] =>
   Array.from({ length: count }, (_, index) => ({ key: `K${index}`, source: `${source} ${index}` }));
 const upper = (chunk: readonly PromptItem[]) =>
   new Map(chunk.map((item) => [item.key, item.source.toUpperCase()]));
+
+// The chunks and the budget of tokens of a request count the characters alike (review of M-08).
+describe('charactersOf', () => {
+  it('counts the source, the text to check and the context that go to the model', () => {
+    expect(charactersOf({ key: 'k', source: 'Hallo', context: { en: 'Hello', fr: 'Salut' } })).toBe(15);
+    expect(charactersOf({ key: 'k', source: 'Hallo', text: 'Bonjour' })).toBe(12);
+  });
+});
 
 describe('chunkItems', () => {
   it('cuts the items into chunks of at most the batch size and the character budget', () => {

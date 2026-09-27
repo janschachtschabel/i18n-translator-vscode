@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { askChunk, itemCharacters, promptFrame } from '../../core/ai/jobPrompt';
+import { askChunk, promptFrame } from '../../core/ai/jobPrompt';
 import { parseTranslations, TRANSLATIONS_FORMAT, translationMessages } from '../../core/ai/prompts';
 import { fillEntries, sourceLocale, type FillScope } from '../../core/ai/sources';
 import { runAiJob, type JobResult } from '../../core/ai/aiJob';
@@ -59,7 +59,7 @@ export function runFill({
           effort: settings.reasoningEffort,
           messages: translationMessages({ ...frame, items: chunk }),
           format: TRANSLATIONS_FORMAT,
-          characters: chunk.reduce((sum, item) => sum + itemCharacters(item), 0),
+          items: chunk,
         },
         chunkSignal,
       );
