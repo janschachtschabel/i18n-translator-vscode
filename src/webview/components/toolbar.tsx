@@ -3,6 +3,7 @@ import type { UiState } from '../../shared/protocol';
 import { l10n } from '../l10n';
 import type { EditorStore } from '../state/store';
 import './toolbar.css';
+import { focusIsLost } from './focus';
 
 /**
  * How the bundle is shown (layout, wrapping, the details of the table), new keys and languages, the undo of the
@@ -81,6 +82,16 @@ function AiTools({ store }: { store: EditorStore }) {
     const back = store.review.takeFocusBack();
     (back === 'check' ? check : back === 'fill' ? fill : undefined)?.current?.focus();
   }, [store]);
+  // "Set API Key…" goes once the key is set, and with it the focus it had when pressed: the fill takes it.
+  const setupPressed = useRef(false);
+  useLayoutEffect(() => {
+    if (ai.available && setupPressed.current) {
+      setupPressed.current = false;
+      if (focusIsLost()) {
+        fill.current?.focus();
+      }
+    }
+  }, [ai.available]);
   // Turned off, or in Restricted Mode: no AI at all. A missing key or an unusable address the setup can fix.
   if (!ai.available && ai.reason !== 'no-key' && ai.reason !== 'address') {
     return null;
@@ -106,7 +117,13 @@ function AiTools({ store }: { store: EditorStore }) {
         </>
       )}
       {ai.reason === 'no-key' && (
-        <button type="button" onClick={() => store.suggestions.setup()}>
+        <button
+          type="button"
+          onClick={() => {
+            setupPressed.current = true;
+            store.suggestions.setup();
+          }}
+        >
           {l10n.t('Set API Key…')}
         </button>
       )}

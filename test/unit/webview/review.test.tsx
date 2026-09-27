@@ -63,6 +63,25 @@ describe('filling with AI', () => {
     expect(ai()).toBeNull();
   });
 
+  it('gives the focus to the fill when the key is set from the button that had it, and leaves it elsewhere', () => {
+    const { send } = open();
+    const ai = () => screen.getByRole('group', { name: 'KI' });
+    send({ type: 'aiState', available: false, reason: 'no-key', model: 'gpt-6-luna' });
+    const setKey = within(ai()).getByRole('button', { name: 'API-Schlüssel setzen…' });
+    setKey.focus();
+    act(() => void fireEvent.click(setKey));
+    // The key is set: the button goes, and with it the focus it had.
+    send({ type: 'aiState', available: true, model: 'gpt-6-luna' });
+    expect(document.activeElement).toBe(within(ai()).getByRole('button', { name: 'Mit KI füllen…' }));
+
+    // A focus elsewhere stays where it is.
+    send({ type: 'aiState', available: false, reason: 'no-key', model: 'gpt-6-luna' });
+    const undo = screen.getByRole('button', { name: 'Letzte Änderung rückgängig machen' });
+    undo.focus();
+    send({ type: 'aiState', available: true, model: 'gpt-6-luna' });
+    expect(document.activeElement).toBe(undo);
+  });
+
   it('leads to the setup of the AI from the toolbar: the address of the b-api, the key, the model', () => {
     const { send, posted: messages } = open();
     const ai = () => screen.queryByRole('group', { name: 'KI' });
@@ -126,6 +145,16 @@ describe('filling with AI', () => {
     act(() => void fireEvent.click(all()));
     expect(['CANCEL', 'ERROR_TITLE', 'SAVE'].map((key) => box(key).checked)).toEqual([true, true, true]);
     expect(all().getAttribute('aria-disabled')).toBe('true');
+  });
+
+  it('keeps the focus in the list when its job ends and takes Cancel with it', () => {
+    const { send } = filling();
+    const cancel = inReview().getByRole('button', { name: 'Abbrechen' });
+    cancel.focus();
+    act(() => void fireEvent.click(cancel));
+    send({ type: 'aiJobEnd', jobId: 'fill-1', status: 'cancelled', missing: 1 });
+    expect(inReview().queryByRole('button', { name: 'Abbrechen' })).toBeNull();
+    expect(document.activeElement).toBe(inReview().getByRole('heading', { level: 2 }));
   });
 
   it('shows the suggestions in place of the table as they come, with progress, and cancels', () => {
