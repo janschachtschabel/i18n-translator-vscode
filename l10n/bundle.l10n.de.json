@@ -290,6 +290,7 @@
   "The AI functions are off: eduI18n.ai.baseUrl is no address they may use (https:, http: only on this machine).": "Die KI-Funktionen sind aus: eduI18n.ai.baseUrl ist keine Adresse, die sie nutzen dürfen (https:, http: nur auf diesem Rechner).",
   "The AI functions are turned off (eduI18n.ai.enabled).": "Die KI-Funktionen sind ausgeschaltet (eduI18n.ai.enabled).",
   "The AI functions now use the model {model}.": "Die KI-Funktionen nutzen jetzt das Modell {model}.",
+  "The AI job could not start: {error}": "Der KI-Auftrag konnte nicht starten: {error}",
   "The AI request failed: {error}": "Die KI-Anfrage ist fehlgeschlagen: {error}",
   "The AI sends its requests to {host} now; before texts go there the first time, you are asked.": "Die KI schickt ihre Anfragen jetzt an {host}; bevor zum ersten Mal Texte dorthin gehen, fragt die Extension nach.",
   "The AI sends texts of these translation files to {host}: the text to translate, its key and its texts in other languages. They hold no personal data. Send texts to {host}?": "Die KI sendet Texte dieser Übersetzungsdateien an {host}: den zu übersetzenden Text, seinen Key und seine Texte in anderen Sprachen. Sie enthalten keine personenbezogenen Daten. Texte an {host} senden?",

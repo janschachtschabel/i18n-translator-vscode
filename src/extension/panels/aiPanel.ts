@@ -5,6 +5,7 @@ import type { Prompts } from '../commands/prompts';
 import type { AiConsent } from '../services/aiConsent';
 import { unavailableMessage } from '../services/aiFeedback';
 import type { AiService } from '../services/aiService';
+import { showFailure } from '../notify';
 import { messageOf } from '../services/errors';
 import type { FileStore } from '../services/fileStore';
 import type { WorkspaceIndex } from '../services/workspaceIndex';
@@ -144,12 +145,12 @@ export class AiPanel implements vscode.Disposable {
   }
 
   setup(): void {
-    void vscode.commands.executeCommand('eduI18n.setApiKey');
+    vscode.commands.executeCommand('eduI18n.setApiKey').then(undefined, showFailure);
   }
 
   /** The setup of the AI in one place (setUpAi). */
   configure(): void {
-    void vscode.commands.executeCommand('eduI18n.setupAi');
+    vscode.commands.executeCommand('eduI18n.setupAi').then(undefined, showFailure);
   }
 
   dispose(): void {

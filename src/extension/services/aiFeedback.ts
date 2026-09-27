@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { AiError } from '../../core/ai/aiErrors';
 import { isRetried } from '../../core/ai/bapiClient';
 import type { AiUnavailable } from '../../core/ai/connection';
-import { showError, showWarning } from '../notify';
+import { showError, showFailure, showWarning } from '../notify';
 import { messageOf } from './errors';
 import type { AiStatus } from './aiService';
 
@@ -161,11 +161,20 @@ function failure(error: AiError, { host, settings }: AiStatus): [string, Step?] 
   }
 }
 
-async function offer(
+/**
+ * Shows a message with the steps that solve its problem and runs the one chosen. It never rejects: callers do not wait
+ * for a message, and a failing step, e.g. saving a key without a keyring, says so (audit API-03). Exported for the
+ * tests.
+ */
+export async function offer(
   show: (message: string, ...actions: string[]) => Thenable<string | undefined>,
   message: string,
   ...steps: Step[]
 ): Promise<void> {
   const chosen = await show(message, ...steps.map((step) => step.label));
-  await steps.find((step) => step.label === chosen)?.run();
+  try {
+    await steps.find((step) => step.label === chosen)?.run();
+  } catch (error) {
+    showFailure(error);
+  }
 }

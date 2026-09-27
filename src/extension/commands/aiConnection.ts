@@ -3,7 +3,7 @@ import type { AiErrorCode } from '../../core/ai/aiErrors';
 import { AiError } from '../../core/ai/aiErrors';
 import { listModels } from '../../core/ai/bapiClient';
 import { chatModels, testConnection } from '../../core/ai/connection';
-import { showInfo, showWarning } from '../notify';
+import { showFailure, showInfo, showWarning } from '../notify';
 import { explainUnavailable, showAiFailure } from '../services/aiFeedback';
 import type { AiService } from '../services/aiService';
 import type { Prompts } from './prompts';
@@ -39,7 +39,9 @@ export async function testAiConnection(
           model,
         }),
         choose,
-      ).then((chosen) => chosen === choose && vscode.commands.executeCommand('eduI18n.selectModel'));
+      )
+        .then((chosen) => chosen === choose && vscode.commands.executeCommand('eduI18n.selectModel'))
+        .then(undefined, showFailure);
       return 'model-missing';
     }
     log.info(`The b-api at ${status.host} works: ${model} answered in ${result.durationMs} ms.`);

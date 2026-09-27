@@ -5,7 +5,7 @@ import type { AiSettings } from '../../core/config/aiSettings';
 import type { Bundle } from '../../core/model/bundle';
 import type { AiApplyItem, AiJobItem } from '../../shared/aiProtocol';
 import type { HostToWebview, PanelState } from '../../shared/protocol';
-import { showInfo } from '../notify';
+import { showError, showInfo } from '../notify';
 import { aiFailureMessage, explainUnavailable } from '../services/aiFeedback';
 import type { AiStatus } from '../services/aiService';
 import { messageOf } from '../services/errors';
@@ -96,6 +96,11 @@ export class AiJobs {
         job.started = true;
         await this.execute(kind, job.id, job.controller.signal, start);
       }
+    } catch (error) {
+      // Reading the key or the settings failed, e.g. without a keyring on Linux: the user learns of it, rather than
+      // the log alone (audit API-03).
+      this.services.log.error('An AI job could not start.', error);
+      void showError(vscode.l10n.t('The AI job could not start: {error}', { error: messageOf(error) }));
     } finally {
       if (this.running === job) {
         this.running = undefined;

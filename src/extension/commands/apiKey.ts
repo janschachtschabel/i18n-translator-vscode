@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { showInfo } from '../notify';
+import { showFailure, showInfo } from '../notify';
 import { keyProblem } from '../../core/ai/apiKey';
 import type { ApiKeyStore } from '../services/apiKeyStore';
 import type { Prompts } from './prompts';
@@ -31,9 +31,9 @@ export async function setApiKey({ keys, prompts }: ApiKeyContext): Promise<boole
   }
   await keys.set(typed);
   const test = vscode.l10n.t('Test Connection');
-  void showInfo(vscode.l10n.t("The b-api key is saved in VS Code's secret storage."), test).then(
-    (chosen) => chosen === test && vscode.commands.executeCommand('eduI18n.testAiConnection'),
-  );
+  void showInfo(vscode.l10n.t("The b-api key is saved in VS Code's secret storage."), test)
+    .then((chosen) => chosen === test && vscode.commands.executeCommand('eduI18n.testAiConnection'))
+    .then(undefined, showFailure);
   return true;
 }
 
