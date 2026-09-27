@@ -4,7 +4,7 @@ import { l10n } from '../l10n';
 import type { EditorStore } from '../state/store';
 import './toolbar.css';
 import { RESULT_ID } from './filterBar';
-import { focusIsLost } from './focus';
+import { useFocusFallback } from './focus';
 
 /**
  * How the bundle is shown (layout, wrapping, the details of the table), new keys and languages, the undo of the
@@ -91,12 +91,14 @@ function AiTools({ store }: { store: EditorStore }) {
   }, [store]);
   // "Set API Key…" goes once the key is set, and with it the focus it had when pressed: the fill takes it.
   const setupPressed = useRef(false);
+  useFocusFallback(
+    () => [fill.current],
+    [ai.available],
+    () => ai.available && setupPressed.current,
+  );
   useLayoutEffect(() => {
-    if (ai.available && setupPressed.current) {
+    if (ai.available) {
       setupPressed.current = false;
-      if (focusIsLost()) {
-        fill.current?.focus();
-      }
     }
   }, [ai.available]);
   // Turned off, or in Restricted Mode: no AI at all. A missing key or an unusable address the setup can fix.
