@@ -139,9 +139,9 @@ function deleteField(text: string, key: EntryKey): string {
   if (!template || doomed.length === 0) {
     throw new EditError('missing-key', `${displayKey(key)} does not exist in this file.`, key);
   }
-  const rest = template.element.children.filter(
-    (child) => child.kind === 'element' && !doomed.some((info) => info.element === child),
-  );
+  // A set: each child looked through all repetitions, 64 million comparisons for a field repeated 8,000 times.
+  const gone = new Set(doomed.map((info) => info.element));
+  const rest = template.element.children.filter((child) => child.kind === 'element' && !gone.has(child));
   const hides = templates.filter((other) => other.id === id).length > 1;
   if (rest.length === 0 && !hides) {
     return applyEdits(text, [removal(text, template.element)]);
