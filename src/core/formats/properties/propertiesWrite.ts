@@ -133,7 +133,13 @@ function insertLine(
     );
   }
   // A backslash that ends the file continues nothing yet; a blank line keeps it from continuing into the new line.
-  const blank = endsInOddBackslashes(text, anchor.lineStart, anchor.valueRange[1]) ? eol : '';
+  // After a CR, the blank line breaks with a CR too: an LF would join the CR to one line break.
+  const afterCr = text[anchor.lineEnd - 1] === '\r' && eol === '\n';
+  const blank = endsInOddBackslashes(text, anchor.lineStart, anchor.valueRange[1])
+    ? afterCr
+      ? '\r'
+      : eol
+    : '';
   // The last line of a file without a final line break keeps it that way.
   const content = hasLineBreak(anchor) ? blank + line + eol : eol + blank + line;
   return edited(file, { offset: anchor.lineEnd, length: 0, content }, anchor.lineStart, anchor.lineEnd);

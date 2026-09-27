@@ -149,6 +149,15 @@ describe('propertiesAdapter.applyOps: insert', () => {
     }
   });
 
+  it('keeps that backslash from continuing also when it ends in a CR in a file of LF', () => {
+    const [backslash, cr, lf] = [92, 13, 10].map((code) => String.fromCharCode(code));
+    // The file breaks lines with LF: the LF of a blank line right after the CR would make one line break of both.
+    const text = `# h${lf}a=x ${backslash}${cr}`;
+    const written = apply(text, { kind: 'insert', key: key('b'), value: 'v', after: key('a') });
+    expect(valueOf(written, 'a')).toBe('x ');
+    expect(valueOf(written, 'b')).toBe('v');
+  });
+
   it('writes "=" for an empty key, where white space alone would make the value the key', () => {
     const written = apply('a 1\n', { kind: 'insert', key: key(''), value: 'v', after: key('a') });
     expect(written).toBe('a 1\n=v\n');
