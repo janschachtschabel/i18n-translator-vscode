@@ -96,13 +96,16 @@ describe('filling with AI', () => {
     const chosen = () =>
       (inReview().getAllByRole('checkbox') as HTMLInputElement[]).filter((box) => box.checked).length;
     expect(chosen()).toBe(1);
+    all().focus();
     act(() => void fireEvent.click(all()));
     // The empty suggestion has nothing to write.
     expect(chosen()).toBe(2);
-    expect(all().hasAttribute('disabled')).toBe(true);
+    // Unavailable now, but it keeps the focus it had: a disabled button would lose it.
+    expect([all().hasAttribute('disabled'), all().getAttribute('aria-disabled')]).toEqual([false, 'true']);
+    expect(document.activeElement).toBe(all());
     act(() => void fireEvent.click(none()));
     expect(chosen()).toBe(0);
-    expect(none().hasAttribute('disabled')).toBe(true);
+    expect(none().getAttribute('aria-disabled')).toBe('true');
   });
 
   it('keeps a text chosen by hand when choosing all, and offers all until every text to write is chosen', () => {
@@ -119,10 +122,10 @@ describe('filling with AI', () => {
       inReview().getByRole('checkbox', { name: `${key} übernehmen` }) as HTMLInputElement;
     // The empty text by hand: as many chosen as there are texts to write, yet ERROR_TITLE is not.
     act(() => void fireEvent.click(box('SAVE')));
-    expect(all().hasAttribute('disabled')).toBe(false);
+    expect(all().getAttribute('aria-disabled')).toBe('false');
     act(() => void fireEvent.click(all()));
     expect(['CANCEL', 'ERROR_TITLE', 'SAVE'].map((key) => box(key).checked)).toEqual([true, true, true]);
-    expect(all().hasAttribute('disabled')).toBe(true);
+    expect(all().getAttribute('aria-disabled')).toBe('true');
   });
 
   it('shows the suggestions in place of the table as they come, with progress, and cancels', () => {
@@ -231,14 +234,41 @@ describe('filling with AI', () => {
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Mit KI füllen…' }));
   });
 
+  it('hands the focus back to where the fill began when the list closes, also with the focus lost', () => {
+    const { send, posted: messages } = filling();
+    send({ type: 'aiJobEnd', jobId: 'fill-1', status: 'done', missing: 1 });
+    act(() => void fireEvent.click(inReview().getByRole('checkbox', { name: 'ERROR_TITLE übernehmen' })));
+    const apply = inReview().getByRole('button', { name: 'Ausgewählte übernehmen (2)' });
+    apply.focus();
+    act(() => void fireEvent.click(apply));
+    expect(document.activeElement).toBe(apply);
+    // Lost meanwhile, as when a focused button becomes disabled or the element that had it goes away.
+    const elsewhere = document.body.appendChild(document.createElement('button'));
+    elsewhere.focus();
+    elsewhere.remove();
+    expect(document.activeElement).toBe(document.body);
+    const [request] = posted(messages, 'aiApply') as Extract<WebviewToHost, { type: 'aiApply' }>[];
+    send({
+      type: 'aiApplyResult',
+      requestId: request!.requestId,
+      written: [id('CANCEL'), id('ERROR_TITLE')],
+      skipped: [],
+    });
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Mit KI füllen…' }));
+  });
+
   it('keeps the list while its job runs, and says which texts were not saved', () => {
     const { send, posted: messages, store } = filling();
     act(() => void fireEvent.click(inReview().getByRole('button', { name: 'Ausgewählte übernehmen (1)' })));
     const [apply] = posted(messages, 'aiApply') as Extract<WebviewToHost, { type: 'aiApply' }>[];
-    // While the write is on its way, it is not sent twice.
-    expect(
-      inReview().getByRole('button', { name: 'Ausgewählte übernehmen (1)' }).hasAttribute('disabled'),
-    ).toBe(true);
+    // While the write is on its way, it is not sent twice; the button keeps the focus (not disabled).
+    const applying = inReview().getByRole('button', { name: 'Ausgewählte übernehmen (1)' });
+    expect([applying.hasAttribute('disabled'), applying.getAttribute('aria-disabled')]).toEqual([
+      false,
+      'true',
+    ]);
+    act(() => void fireEvent.click(applying));
+    expect(posted(messages, 'aiApply')).toHaveLength(1);
     send({ type: 'aiApplyResult', requestId: apply!.requestId, written: [id('CANCEL')], skipped: [] });
     expect(store.announcement.value.text).toBe('Texte gespeichert: 1.');
     send({ type: 'aiJobEnd', jobId: 'fill-1', status: 'done', missing: 0 });

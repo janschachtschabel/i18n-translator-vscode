@@ -5,6 +5,7 @@ import { writable, type ReviewList as ReviewListData } from '../../state/review'
 import type { EditorStore } from '../../state/store';
 import '../cellEditor.css';
 import { SEVERITY_SYMBOLS, severityWord } from '../cellStatus';
+import { focusIsLost } from '../focus';
 import { localeName } from '../localeName';
 import { useIncrementalCount } from '../useIncrementalCount';
 import './review.css';
@@ -40,10 +41,10 @@ export function ReviewList({ store, list, locales }: ReviewListProps) {
   // The list of a new job takes the place of the rows: its heading takes the focus, so that screen readers say where
   // it is now.
   useLayoutEffect(() => heading.current?.focus(), [list.jobId]);
-  // Closing with the focus in it, the list hands it back to the button that started its job.
+  // Closing with the focus in it, or lost, the list hands it back to the button that started its job.
   useLayoutEffect(
     () => () => {
-      if (section.current?.contains(document.activeElement)) {
+      if (section.current?.contains(document.activeElement) || focusIsLost()) {
         review.handBackFocus(kind.current);
       }
     },
@@ -79,20 +80,22 @@ export function ReviewList({ store, list, locales }: ReviewListProps) {
           </p>
         )}
         <div class="review-actions">
+          {/* Unavailable buttons stay focusable (aria-disabled): a focused button that became disabled would lose
+              the focus, e.g. Apply while its write is on its way. */}
           <button
             type="button"
             class="primary"
-            disabled={chosen === 0 || list.applying !== undefined}
+            aria-disabled={chosen === 0 || list.applying !== undefined}
             onClick={() => review.apply()}
           >
             {l10n.t('Apply selected ({count})', { count: formatNumber(chosen) })}
           </button>
           {list.items.length > 0 && (
             <>
-              <button type="button" disabled={allChosen} onClick={() => review.chooseAll(true)}>
+              <button type="button" aria-disabled={allChosen} onClick={() => review.chooseAll(true)}>
                 {l10n.t('Select All')}
               </button>
-              <button type="button" disabled={chosen === 0} onClick={() => review.chooseAll(false)}>
+              <button type="button" aria-disabled={chosen === 0} onClick={() => review.chooseAll(false)}>
                 {l10n.t('Select None')}
               </button>
             </>

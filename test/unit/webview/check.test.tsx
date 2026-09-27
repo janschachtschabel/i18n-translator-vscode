@@ -73,8 +73,8 @@ describe('checking with AI', () => {
     );
     expect(box('SAVE').closest('li')!.textContent).toContain('Hinweis: Üblich ist hier „Sauvegarder“.');
     expect(
-      inList().getByRole('button', { name: 'Ausgewählte übernehmen (0)' }).hasAttribute('disabled'),
-    ).toBe(true);
+      inList().getByRole('button', { name: 'Ausgewählte übernehmen (0)' }).getAttribute('aria-disabled'),
+    ).toBe('true');
     expect(await axeProblems()).toEqual([]);
   });
 
