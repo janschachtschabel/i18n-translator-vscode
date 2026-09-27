@@ -62,7 +62,7 @@ describe('parseAiSettings', () => {
     );
   });
 
-  it('refuses addresses that would send the key in the clear or elsewhere, and falls back to the default', () => {
+  it('refuses addresses that would send the key in the clear or elsewhere: then there is none, not the default', () => {
     for (const url of [
       'http://b-api.staging.openeduhub.net',
       'ftp://example.org',
@@ -74,8 +74,11 @@ describe('parseAiSettings', () => {
       42,
     ]) {
       const { settings, errors } = parse({ 'ai.baseUrl': url });
-      expect(settings.baseUrl, String(url)).toBe(DEFAULT_AI_SETTINGS.baseUrl);
-      expect(errors, String(url)).toEqual(['eduI18n.ai.baseUrl has an invalid value; the default is used.']);
+      // Another address than the one set (e.g. staging for a mistyped production) would get the texts and the key.
+      expect(settings.baseUrl, String(url)).toBeUndefined();
+      expect(errors, String(url)).toEqual([
+        'eduI18n.ai.baseUrl is no address the AI may use (https:, http: only on this machine); the AI is off until it is.',
+      ]);
     }
   });
 

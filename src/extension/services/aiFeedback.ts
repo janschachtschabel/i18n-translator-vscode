@@ -31,6 +31,10 @@ export function unavailableMessage(reason: AiUnavailable): string {
       return vscode.l10n.t('The AI functions are turned off (eduI18n.ai.enabled).');
     case 'untrusted':
       return vscode.l10n.t('The AI functions are off in Restricted Mode. Trust the workspace to use them.');
+    case 'address':
+      return vscode.l10n.t(
+        'The AI functions are off: eduI18n.ai.baseUrl is no address they may use (https:, http: only on this machine).',
+      );
     case 'no-key':
       return vscode.l10n.t(
         'No b-api key is set. The AI functions need one; it is the key B_API_KEY of the old app.',
@@ -45,6 +49,10 @@ export async function explainUnavailable(reason: AiUnavailable): Promise<void> {
     untrusted: {
       label: vscode.l10n.t('Manage Workspace Trust'),
       run: () => vscode.commands.executeCommand('workbench.trust.manage'),
+    },
+    address: {
+      label: vscode.l10n.t('Open Settings'),
+      run: () => vscode.commands.executeCommand('workbench.action.openSettings', 'eduI18n.ai.baseUrl'),
     },
     'no-key': setKey(),
   };

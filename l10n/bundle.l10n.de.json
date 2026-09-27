@@ -256,6 +256,7 @@
   "The {locale} text of {key} still contains \"{match}\".": "Der {locale}-Text von {key} enthält noch „{match}“.",
   "The address of the b-api redirects elsewhere; requests with the key follow no redirect. Check eduI18n.ai.baseUrl.": "Die Adresse der b-api leitet anderswohin um; Anfragen mit dem Schlüssel folgen keiner Umleitung. Prüfen Sie eduI18n.ai.baseUrl.",
   "The AI functions are off in Restricted Mode. Trust the workspace to use them.": "Die KI-Funktionen sind im eingeschränkten Modus aus. Vertrauen Sie dem Arbeitsbereich, um sie zu nutzen.",
+  "The AI functions are off: eduI18n.ai.baseUrl is no address they may use (https:, http: only on this machine).": "Die KI-Funktionen sind aus: eduI18n.ai.baseUrl ist keine Adresse, die sie nutzen dürfen (https:, http: nur auf diesem Rechner).",
   "The AI functions are turned off (eduI18n.ai.enabled).": "Die KI-Funktionen sind ausgeschaltet (eduI18n.ai.enabled).",
   "The AI functions now use the model {model}.": "Die KI-Funktionen nutzen jetzt das Modell {model}.",
   "The AI request failed: {error}": "Die KI-Anfrage ist fehlgeschlagen: {error}",

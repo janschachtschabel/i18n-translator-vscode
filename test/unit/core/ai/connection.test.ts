@@ -26,23 +26,33 @@ function client(...responses: Response[]) {
 }
 
 describe('aiAvailability', () => {
-  it('is available when turned on, in a trusted workspace, with a key', () => {
-    expect(aiAvailability({ enabled: true, trusted: true, keySource: 'secret' })).toEqual({
+  const baseUrl = 'https://b-api.staging.openeduhub.net';
+
+  it('is available when turned on, in a trusted workspace, with an address and a key', () => {
+    expect(aiAvailability({ enabled: true, trusted: true, baseUrl, keySource: 'secret' })).toEqual({
       available: true,
     });
-    expect(aiAvailability({ enabled: true, trusted: true, keySource: 'env' })).toEqual({ available: true });
+    expect(aiAvailability({ enabled: true, trusted: true, baseUrl, keySource: 'env' })).toEqual({
+      available: true,
+    });
   });
 
-  it('says the first reason why not: turned off, Restricted Mode, no key', () => {
-    expect(aiAvailability({ enabled: false, trusted: false, keySource: 'none' })).toEqual({
-      available: false,
-      reason: 'disabled',
-    });
-    expect(aiAvailability({ enabled: true, trusted: false, keySource: 'secret' })).toEqual({
+  it('says the first reason why not: turned off, Restricted Mode, no address it may use, no key', () => {
+    expect(aiAvailability({ enabled: false, trusted: false, baseUrl: undefined, keySource: 'none' })).toEqual(
+      {
+        available: false,
+        reason: 'disabled',
+      },
+    );
+    expect(aiAvailability({ enabled: true, trusted: false, baseUrl, keySource: 'secret' })).toEqual({
       available: false,
       reason: 'untrusted',
     });
-    expect(aiAvailability({ enabled: true, trusted: true, keySource: 'none' })).toEqual({
+    expect(aiAvailability({ enabled: true, trusted: true, baseUrl: undefined, keySource: 'none' })).toEqual({
+      available: false,
+      reason: 'address',
+    });
+    expect(aiAvailability({ enabled: true, trusted: true, baseUrl, keySource: 'none' })).toEqual({
       available: false,
       reason: 'no-key',
     });

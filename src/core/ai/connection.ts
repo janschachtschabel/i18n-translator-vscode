@@ -3,12 +3,13 @@ import { AiError } from './aiErrors';
 import { chatCompletion, listModels, type ClientOptions } from './bapiClient';
 import { completionBody, tokenBudget, type AnswerFormat, type ChatMessage } from './modelProfiles';
 
-/** Why the AI cannot be used, in the order the user has to solve it. */
-export type AiUnavailable = 'disabled' | 'untrusted' | 'no-key';
+/** Why the AI cannot be used, in the order the user has to solve it; `address`: none it may use is set. */
+export type AiUnavailable = 'disabled' | 'untrusted' | 'address' | 'no-key';
 
 export function aiAvailability(state: {
   enabled: boolean;
   trusted: boolean;
+  baseUrl: string | undefined;
   keySource: 'secret' | 'env' | 'none';
 }): { available: true } | { available: false; reason: AiUnavailable } {
   if (!state.enabled) {
@@ -16,6 +17,9 @@ export function aiAvailability(state: {
   }
   if (!state.trusted) {
     return { available: false, reason: 'untrusted' };
+  }
+  if (state.baseUrl === undefined) {
+    return { available: false, reason: 'address' };
   }
   return state.keySource === 'none' ? { available: false, reason: 'no-key' } : { available: true };
 }

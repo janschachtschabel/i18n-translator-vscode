@@ -10,8 +10,11 @@ export type ReasoningEffort = (typeof REASONING_EFFORTS)[number];
 /** Validated `eduI18n.ai.*` settings; like the backup settings, they apply to the window. */
 export interface AiSettings {
   enabled: boolean;
-  /** Without a slash at the end; `https:`, or `http:` on this machine only. */
-  baseUrl: string;
+  /**
+   * Without a slash at the end; `https:`, or `http:` on this machine only. Undefined when the address set cannot be
+   * used: then the AI is off, rather than sending the texts and the key to another address (e.g. the default).
+   */
+  baseUrl: string | undefined;
   provider: AiProvider;
   model: string;
   /** For translations. */
@@ -70,7 +73,10 @@ export const DEFAULT_AI_SETTINGS: AiSettings = {
   },
 };
 
-/** Validates the AI settings; invalid values fall back to the default and are reported, never thrown. */
+/**
+ * Validates the AI settings; invalid values fall back to the default and are reported, never thrown. An address that
+ * cannot be used is none: the default would send the texts and the key elsewhere than the user meant.
+ */
 export function parseAiSettings(raw: RawSettings): { settings: AiSettings; errors: string[] } {
   const errors: string[] = [];
   const pick = picker(raw, errors);
@@ -79,14 +85,15 @@ export function parseAiSettings(raw: RawSettings): { settings: AiSettings; error
     (value as number) >= AI_LIMITS[key].minimum &&
     (value as number) <= AI_LIMITS[key].maximum;
   const effort = (value: unknown) => REASONING_EFFORTS.includes(value as ReasoningEffort);
-  const baseUrl = pick(
-    'ai.baseUrl',
-    (value) => allowedBaseUrl(value) !== undefined,
-    DEFAULT_AI_SETTINGS.baseUrl,
-  );
+  const baseUrl = allowedBaseUrl(raw['ai.baseUrl'] ?? DEFAULT_AI_SETTINGS.baseUrl);
+  if (baseUrl === undefined) {
+    errors.push(
+      'eduI18n.ai.baseUrl is no address the AI may use (https:, http: only on this machine); the AI is off until it is.',
+    );
+  }
   const settings: AiSettings = {
     enabled: pick('ai.enabled', (value) => typeof value === 'boolean', DEFAULT_AI_SETTINGS.enabled),
-    baseUrl: allowedBaseUrl(baseUrl) ?? DEFAULT_AI_SETTINGS.baseUrl,
+    baseUrl,
     provider: pick(
       'ai.provider',
       (value) => AI_PROVIDERS.includes(value as AiProvider),

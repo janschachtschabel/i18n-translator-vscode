@@ -81,6 +81,24 @@ suite('AI connection', () => {
     assert.equal((await api.ai.service.status()).settings.model, 'gpt-4.1');
   });
 
+  test('turns the AI off for an address it may not use, instead of sending to another one', async () => {
+    await config().update(
+      'ai.baseUrl',
+      'http://b-api.prod.openeduhub.net',
+      vscode.ConfigurationTarget.Global,
+    );
+    const status = await settled(
+      () => api.ai.service.status(),
+      (current) => current.reason === 'address',
+    );
+    assert.deepEqual(
+      [status.available, status.reason, status.settings.baseUrl],
+      [false, 'address', undefined],
+    );
+    assert.equal(await api.ai.service.client(), undefined);
+    assert.equal(await testAiConnection(api.ai.service, log), 'unavailable');
+  });
+
   test('takes the address, the provider, the model and the efforts from the user settings only', async () => {
     // As in a cloned repository; the timeout, which a workspace may set, shows when VS Code has read the file.
     const folder = workspaceUri('.vscode');

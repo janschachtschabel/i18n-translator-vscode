@@ -59,19 +59,21 @@ export class AiService implements vscode.Disposable {
     const availability = aiAvailability({
       enabled: settings.enabled,
       trusted: vscode.workspace.isTrusted,
+      baseUrl: settings.baseUrl,
       keySource,
     });
-    return { ...availability, settings, keySource, host: new URL(settings.baseUrl).host };
+    const host = settings.baseUrl === undefined ? '' : new URL(settings.baseUrl).host;
+    return { ...availability, settings, keySource, host };
   }
 
   /** What a request needs, the key included; undefined while the AI cannot be used. */
   async client(): Promise<{ options: ClientOptions; status: AiStatus } | undefined> {
     const status = await this.status();
     const key = await this.keys.key();
-    if (!status.available || !key) {
+    const { baseUrl, provider, timeoutSeconds } = status.settings;
+    if (!status.available || !key || baseUrl === undefined) {
       return undefined;
     }
-    const { baseUrl, provider, timeoutSeconds } = status.settings;
     return {
       status,
       options: { baseUrl, provider, key: key.value, timeoutMs: timeoutSeconds * 1000, fetch: this.fetch },

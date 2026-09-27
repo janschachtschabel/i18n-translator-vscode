@@ -1,7 +1,8 @@
+import type { AiUnavailable } from '../core/ai/connection';
 import { isBounded, isEntryId, isId, isRecord, isText } from './messageChecks';
 
 /** Why the AI cannot be used; the editor offers the setup for a missing key. */
-export type AiUnavailableReason = 'disabled' | 'untrusted' | 'no-key';
+export type AiUnavailableReason = AiUnavailable;
 
 /** A reviewed text to write; `before` is the text it was made for (null: none), which the host checks (B5). */
 export interface AiApplyItem {
