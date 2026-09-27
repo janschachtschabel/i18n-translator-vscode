@@ -1,95 +1,33 @@
 import * as vscode from 'vscode';
-import type { AreaDefinition } from '../../core/area/areaDefinition';
-import type { Settings } from '../../core/config/settings';
-import type { AreaId } from '../../core/model/types';
-import { analyzeRoot, type RootAnalysis, type SourceFile } from '../../core/pipeline/analyze';
 import { analysisOptions, BACKUP_SETTING_KEYS, SETTING_KEYS } from '../../core/config/settings';
+import { analyzeRoot, type RootAnalysis } from '../../core/pipeline/analyze';
 import { revisionOf } from '../../core/util/hash';
-import { excludeGlob, readBackupSettings, readSettings } from '../config';
-import { messageOf } from './errors';
-import { IndexWatchers, type WatchedPattern } from './indexWatchers';
+import { excludeGlob } from '../config';
 import {
-  detectRoots,
-  fixedRoots,
-  listRoot,
-  readFiles,
-  revisionsOf,
-  ROOT_LIMITS,
-  sameRevisions,
-  type RootLimits,
-} from './rootFiles';
+  keyOf,
+  logRun,
+  notIndexed,
+  readRoot,
+  rootRef,
+  runFull,
+  type IndexedRoot,
+  type IndexSnapshot,
+  type RootRef,
+  type RunContext,
+} from './indexRun';
+import { IndexWatchers } from './indexWatchers';
+import { readFiles, revisionsOf, ROOT_LIMITS, sameRevisions, type RootLimits } from './rootFiles';
 import { SerialRunner } from './serialRunner';
 import { relativeUriPath } from './uriPaths';
 
-export interface IndexedRoot {
-  /** The workspace folder that the root and every path of the analysis are relative to. */
-  folder: vscode.WorkspaceFolder;
-  /** The validated settings of that folder, as used for the analysis. */
-  settings: Settings;
-  analysis: RootAnalysis;
-}
+// The types of what the index publishes come from its runs; the modules of the extension take them from here.
+export { rootRef, type IndexedRoot, type IndexSnapshot, type RootRef } from './indexRun';
 
 /** The settings a run reads: a change of one of them starts a run. */
 const INDEXED_SETTING_KEYS = [...SETTING_KEYS, ...BACKUP_SETTING_KEYS];
 
-export interface IndexSnapshot {
-  /** One entry per area root; two roots are two independent installations. */
-  roots: IndexedRoot[];
-  /** Settings the index could not use and files it could not read; everything else was indexed. */
-  errors: string[];
-  durationMs: number;
-}
-
-/** One area root of a workspace folder: what the index reads again, and where an edit is planned and written. */
-export interface RootRef {
-  folder: vscode.Uri;
-  areaId: AreaId;
-  root: string;
-}
-
-export function rootRef(indexed: IndexedRoot): RootRef {
-  return { folder: indexed.folder.uri, areaId: indexed.analysis.area.id, root: indexed.analysis.root };
-}
-
 /** Saving several files in a row, or a branch switch, should cause one run. */
 const DEBOUNCE_MS = 300;
-
-/** Milliseconds per phase of one run, summed over all roots; logged to find slow steps. */
-interface Timings {
-  detect: number;
-  list: number;
-  read: number;
-  analyze: number;
-}
-
-/** Runs a step of a run and adds its milliseconds to its phase. */
-type Timed = <T>(phase: keyof Timings, work: () => T | Promise<T>) => Promise<T>;
-
-const untimed: Timed = async (_phase, work) => work();
-
-/** The timings of a run, and how its steps add to them. */
-function phaseTimer(): { timings: Timings; timed: Timed } {
-  const timings: Timings = { detect: 0, list: 0, read: 0, analyze: 0 };
-  const timed: Timed = async (phase, work) => {
-    const phaseStarted = Date.now();
-    try {
-      return await work();
-    } finally {
-      timings[phase] += Date.now() - phaseStarted;
-    }
-  };
-  return { timings, timed };
-}
-
-/** What a full run collects, folder by folder, before it replaces the state of the index. */
-interface FullRun {
-  roots: IndexedRoot[];
-  generalErrors: string[];
-  rootErrors: Map<string, string[]>;
-  revisions: Map<string, ReadonlyMap<string, string>>;
-  watched: Map<string, WatchedPattern>;
-  timed: Timed;
-}
 
 /**
  * Finds, reads and checks the translation files of every workspace folder and keeps the result current. A full
@@ -119,12 +57,20 @@ export class WorkspaceIndex implements vscode.Disposable {
   private readonly reported = new Map<string, vscode.Uri[]>();
   private snapshot: IndexSnapshot | undefined;
   private disposed = false;
+  /** What a run needs from the index. */
+  private readonly context: RunContext;
 
   /** `limits`: what a repository may hold (rootFiles.ts); the tests give smaller ones. */
   constructor(
     private readonly log: vscode.LogOutputChannel,
     private readonly limits: RootLimits = ROOT_LIMITS,
   ) {
+    this.context = {
+      log,
+      limits,
+      onMarker: () => this.schedule(),
+      onRootFile: (ref, uri) => this.schedule(ref, uri),
+    };
     this.subscriptions.push(
       vscode.workspace.onDidChangeConfiguration((event) => {
         // Not the AI settings, which no run reads: a change of the model would read the workspace anew. The backup
@@ -256,18 +202,7 @@ export class WorkspaceIndex implements vscode.Disposable {
 
   private async index(): Promise<IndexSnapshot> {
     const started = Date.now();
-    const { timings, timed } = phaseTimer();
-    const run: FullRun = {
-      roots: [],
-      generalErrors: [...readBackupSettings().errors],
-      rootErrors: new Map(),
-      revisions: new Map(),
-      watched: new Map(),
-      timed,
-    };
-    for (const folder of vscode.workspace.workspaceFolders ?? []) {
-      await this.indexFolder(folder, run);
-    }
+    const run = await runFull(this.context);
     if (this.disposed) {
       return { roots: run.roots, errors: [], durationMs: Date.now() - started };
     }
@@ -276,102 +211,8 @@ export class WorkspaceIndex implements vscode.Disposable {
     this.replace(this.revisions, run.revisions);
     this.watchers.update(run.watched);
     const snapshot = this.publish(run.roots, started);
-    logRun(this.log, snapshot, timings);
+    logRun(this.log, snapshot, run.timings);
     return snapshot;
-  }
-
-  /** Indexes the roots of each area of a workspace folder into `run`, with the watchers that keep them current. */
-  private async indexFolder(folder: vscode.WorkspaceFolder, run: FullRun): Promise<void> {
-    const { settings, errors: settingErrors } = readSettings(folder.uri);
-    const { options, errors: variantErrors } = analysisOptions(settings);
-    run.generalErrors.push(...[...settingErrors, ...variantErrors].map((error) => inFolder(folder, error)));
-    const exclude = excludeGlob(settings.exclude);
-
-    for (const area of settings.areas) {
-      const fixed = fixedRoots(area, settings);
-      if (!fixed && area.detect) {
-        // New roots appear with their marker file (e.g. a new checkout below the workspace folder).
-        run.watched.set(`${folder.uri}|detect|${area.id}`, {
-          pattern: new vscode.RelativePattern(folder, area.detect.glob),
-          onChange: () => this.schedule(),
-          contents: false,
-        });
-      }
-      for (const root of fixed ?? (await this.detect(folder, area, exclude, run))) {
-        const base = vscode.Uri.joinPath(folder.uri, root);
-        // In nested workspace folders, a root belongs to the innermost one; otherwise it would count twice.
-        if (vscode.workspace.getWorkspaceFolder(base)?.uri.toString() !== folder.uri.toString()) {
-          continue;
-        }
-        const ref: RootRef = { folder: folder.uri, areaId: area.id, root };
-        const key = keyOf(ref);
-        run.watched.set(`${key}|root`, {
-          pattern: new vscode.RelativePattern(base, '**/*'),
-          onChange: (uri) => this.schedule(ref, uri),
-          contents: true,
-        });
-        const errors: string[] = [];
-        run.rootErrors.set(key, errors);
-        try {
-          const files = await this.readRoot(folder, area, root, exclude, errors, run.timed);
-          const analysis = await run.timed('analyze', () => analyzeRoot(area, root, files, options));
-          run.roots.push({ folder, settings, analysis });
-          run.revisions.set(key, revisionsOf(files));
-        } catch (error) {
-          errors.push(this.notIndexed(folder, area, root, error));
-        }
-      }
-    }
-  }
-
-  /** The roots of an area by its marker files; none, with the reason among the general errors, if the search failed. */
-  private async detect(
-    folder: vscode.WorkspaceFolder,
-    area: AreaDefinition,
-    exclude: string | null,
-    run: FullRun,
-  ): Promise<readonly string[]> {
-    try {
-      return await run.timed('detect', () => detectRoots(folder, area, exclude, this.limits));
-    } catch (error) {
-      this.log.error(`Could not look for roots of ${area.id}.`, error);
-      run.generalErrors.push(
-        inFolder(
-          folder,
-          vscode.l10n.t('The roots of {area} could not be determined: {error}', {
-            area: area.label,
-            error: messageOf(error),
-          }),
-        ),
-      );
-      return [];
-    }
-  }
-
-  /** Lists and reads the files of a root; what cannot be read goes to `errors`. */
-  private async readRoot(
-    folder: vscode.WorkspaceFolder,
-    area: AreaDefinition,
-    root: string,
-    exclude: string | null,
-    errors: string[],
-    timed: Timed = untimed,
-  ): Promise<SourceFile[]> {
-    const paths = await timed('list', () => listRoot(folder, area, root, exclude, this.limits));
-    return timed('read', () =>
-      readFiles(folder, paths, (error) => errors.push(inFolder(folder, error)), this.limits),
-    );
-  }
-
-  /** Logs why a root could not be indexed; the message names it as not checked. */
-  private notIndexed(
-    folder: vscode.WorkspaceFolder,
-    area: AreaDefinition,
-    root: string,
-    error: unknown,
-  ): string {
-    this.log.error(`Could not index ${area.id} in ${root || '.'}.`, error);
-    return notChecked(folder, area, root, error);
   }
 
   private async indexRoot(ref: RootRef): Promise<IndexSnapshot> {
@@ -389,7 +230,8 @@ export class WorkspaceIndex implements vscode.Disposable {
     let revisions: ReadonlyMap<string, string>;
     let analysis: RootAnalysis;
     try {
-      const files = await this.readRoot(
+      const files = await readRoot(
+        this.context,
         folder,
         before.area,
         before.root,
@@ -408,7 +250,7 @@ export class WorkspaceIndex implements vscode.Disposable {
     } catch (error) {
       // As a full run does, the root is named as not checked; its last analysis stays, so that its editors keep their
       // model until a run succeeds (audit L-22).
-      this.rootErrors.set(key, [this.notIndexed(folder, before.area, before.root, error)]);
+      this.rootErrors.set(key, [notIndexed(this.context, folder, before.area, before.root, error)]);
       return this.publish(this.snapshot.roots, started);
     }
     this.rootErrors.set(key, errors);
@@ -436,49 +278,4 @@ export class WorkspaceIndex implements vscode.Disposable {
     target.clear();
     source.forEach((value, key) => target.set(key, value));
   }
-}
-
-/** Logs a full run: what it indexed and how long each phase took, the warnings of the analyses and the errors. */
-function logRun(log: vscode.LogOutputChannel, snapshot: IndexSnapshot, timings: Timings): void {
-  const { roots } = snapshot;
-  const phases = Object.entries(timings)
-    .map(([phase, ms]) => `${phase} ${ms} ms`)
-    .join(', ');
-  const bundles = roots.reduce((sum, root) => sum + root.analysis.bundles.length, 0);
-  const issues = roots.reduce((sum, root) => sum + root.analysis.issues.length, 0);
-  log.info(
-    `Indexed ${roots.length} roots, ${bundles} bundles, ${issues} findings in ${snapshot.durationMs} ms (${phases}).`,
-  );
-  for (const warning of roots.flatMap((root) => root.analysis.warnings)) {
-    log.warn(warning);
-  }
-  for (const error of snapshot.errors) {
-    log.warn(error);
-  }
-}
-
-/** The message about a root that a run could not index. */
-function notChecked(
-  folder: vscode.WorkspaceFolder,
-  area: AreaDefinition,
-  root: string,
-  error: unknown,
-): string {
-  return inFolder(
-    folder,
-    vscode.l10n.t('{area} in {root} could not be checked: {error}', {
-      area: area.label,
-      root: root || '.',
-      error: messageOf(error),
-    }),
-  );
-}
-
-/** A message about a folder, named when the workspace has several. */
-function inFolder(folder: vscode.WorkspaceFolder, message: string): string {
-  return (vscode.workspace.workspaceFolders?.length ?? 0) > 1 ? `${folder.name}: ${message}` : message;
-}
-
-function keyOf(ref: RootRef): string {
-  return JSON.stringify([ref.folder.toString(), ref.areaId, ref.root]);
 }
