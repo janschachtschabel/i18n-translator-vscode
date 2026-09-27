@@ -53,6 +53,11 @@ export function atLineStart(text: string, index: number): boolean {
   return index === 0 || text.charCodeAt(index - 1) === LF || text.charCodeAt(index - 1) === CR;
 }
 
+/** Whether a line ends at `index`: at a line break or the end of the text. */
+export function atLineEnd(text: string, index: number): boolean {
+  return index === text.length || text.charCodeAt(index) === LF || text.charCodeAt(index) === CR;
+}
+
 /** Maps text offsets to line/character positions; \n, \r\n and a lone \r end a line, as in VS Code. */
 export function createLineIndex(text: string): LineIndex {
   const lineStarts = [0];

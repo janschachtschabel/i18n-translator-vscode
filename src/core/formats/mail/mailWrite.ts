@@ -1,7 +1,7 @@
 import { displayKey, type EntryKey } from '../../model/keys';
 import type { DecodedText } from '../../text/decode';
 import { applyEdits, type TextEdit } from '../../text/edits';
-import { lineStartAt } from '../../text/lineIndex';
+import { atLineEnd, atLineStart, blanksAfter, blanksBefore, lineStartAt } from '../../text/lineIndex';
 import { detectStyle } from '../../text/style';
 import { EditError, setRun, type FileOp, type SetOp, type TextRange } from '../adapter';
 import {
@@ -241,18 +241,19 @@ function insertChild(
     : insertAt(text, lineStartAt(text, endTag), `${inner}${render(inner)}${eol}`);
 }
 
-/** The element, or its whole line with the line break when nothing else stands on it. */
+/**
+ * The element, or its whole line with the line break when nothing else stands on it. Only the blanks around it are
+ * looked at: in a file on one line, the ends of its line are those of the file (8,000 repetitions took 8 s).
+ */
 function removal(text: string, element: XmlElement): TextEdit {
   const [start, end] = element.range;
-  const from = lineStartAt(text, start);
-  const lineEnd = text.slice(end).search(/\r\n|\r|\n|$/);
-  const ownLine = !/\S/.test(text.slice(from, start)) && !/\S/.test(text.slice(end, end + lineEnd));
-  if (!ownLine) {
+  const from = blanksBefore(text, start);
+  const to = blanksAfter(text, end);
+  if (!atLineStart(text, from) || !atLineEnd(text, to)) {
     return { offset: start, length: end - start, content: '' };
   }
-  const at = end + lineEnd;
-  const breakLength = text.startsWith('\r\n', at) ? 2 : text[at] === '\n' || text[at] === '\r' ? 1 : 0;
-  return { offset: from, length: at + breakLength - from, content: '' };
+  const breakLength = text.startsWith('\r\n', to) ? 2 : to < text.length ? 1 : 0;
+  return { offset: from, length: to + breakLength - from, content: '' };
 }
 
 function fieldElement(field: MailField, value: string, writer: Writer): string {

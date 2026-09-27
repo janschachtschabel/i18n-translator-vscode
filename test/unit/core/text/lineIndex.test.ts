@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  atLineEnd,
   atLineStart,
   blanksAfter,
   blanksBefore,
@@ -63,6 +64,17 @@ describe('blanksBefore, blanksAfter and atLineStart', () => {
     expect(blanksBefore('  x', 2)).toBe(0);
     expect(blanksBefore('a x', 2)).toBe(1);
     expect(atLineStart('a x', 1)).toBe(false);
+  });
+
+  it('say where a line ends: at LF or CR, at the end of the text, and nowhere else', () => {
+    expect([0, 1, 2, 3, 4, 5].map((index) => atLineEnd('a\nb\rc', index))).toEqual([
+      false,
+      true,
+      false,
+      true,
+      false,
+      true,
+    ]);
   });
 });
 

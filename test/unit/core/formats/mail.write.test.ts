@@ -152,6 +152,28 @@ describe('mailAdapter.applyOps: insert', () => {
 });
 
 describe('mailAdapter.applyOps: delete and rename', () => {
+  // Each repetition looked for the ends of its line, which in a file on one line are the ends of the file: 8,000 took
+  // 8 s (review of audit S-14).
+  it('deletes and moves a field repeated thousands of times in well under a second, also on one line', () => {
+    const repeated = Array.from({ length: 8_000 }, (_, index) => `<subject>S ${index}</subject>`);
+    for (const text of [
+      one(`<template name="t">\n\t\t${repeated.join('\n\t\t')}\n\t\t<message>M</message>\n\t</template>`),
+      `<templates><template name="t">${repeated.join('')}<message>M</message></template></templates>`,
+    ]) {
+      for (const op of [
+        { kind: 'delete', key: key('t', 'subject') },
+        { kind: 'rename', from: key('t', 'subject'), to: key('u', 'subject') },
+      ] satisfies FileOp[]) {
+        const started = performance.now();
+        const written = apply(text, op);
+        const elapsed = performance.now() - started;
+        expect(valueOf(written, 't', 'subject')).toBeUndefined();
+        expect(valueOf(written, 't', 'message')).toBe('M');
+        expect(elapsed).toBeLessThan(1500);
+      }
+    }
+  });
+
   it('keeps a template that still has other elements, such as a style sheet', () => {
     const text = one('<template name="t"><style>s</style><subject>S</subject></template>');
     expect(apply(text, { kind: 'delete', key: key('t', 'subject') })).toBe(
