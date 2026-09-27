@@ -5,7 +5,12 @@ Bis 0.2 entsprach die Stufe der Phase der [Taskliste](docs/plans/2026-09-24-edu-
 Phasen 5 und 6 vorgezogen sind, zählt sie weiter, ohne die Phase zu nennen. Die Installation beschreibt das
 [README](README.md#installation).
 
-## Unveröffentlicht
+## 0.4.0 – 27.09.2026
+
+Die KI kommt hinzu: über die b-api (Staging), mit Schlüssel, Adresse und Modell an einem Ort, als Vorschlag für eine
+Zelle, zum Füllen einer Sprache und zum Prüfen ihrer Übersetzungen, jeweils mit einer Prüfliste vor dem Schreiben.
+Dazu die Rückmeldungen zu 0.3.0: Ein Klick öffnet eine Zelle, Befunde sind farbig, Eingabefelder schließen mit einem
+Klick daneben.
 
 - **KI über die b-api, erster Teil:**
   - „API-Schlüssel setzen…“ legt den Schlüssel im Schlüsselspeicher von VS Code ab; ohne ihn gilt `B_API_KEY`.
