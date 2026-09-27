@@ -1963,8 +1963,9 @@ ist in VS Code belegt (in der Capture-Phase abfangen, Knopf als zweiter Weg).
   `gpt-6-luna`, und Füllen für alle oder einzelne Felder. Neu sind „KI einrichten…“ (Werkzeugleiste, Seitenleiste,
   Befehlspalette: Schlüssel, Adresse, Modell mit dem, was gilt, und die Schritte dazu), „b-api-Adresse festlegen…“
   (prüft beim Tippen; Staging entfernt die Einstellung) und „Alle auswählen“/„Keine auswählen“ in der Prüfliste. Die
-  Werkzeugleiste zeigt eine unbrauchbare Adresse an, statt die KI-Gruppe auszublenden. Offen: ob „alle Felder“ auch
-  alle Sprachen einer Einheit auf einmal meint (Frage an den Nutzer).
+  Werkzeugleiste zeigt eine unbrauchbare Adresse an, statt die KI-Gruppe auszublenden. Ob „alle Felder“ auch alle
+  Sprachen einer Einheit auf einmal meint, hat der Nutzer am 27.09.2026 entschieden: nein, ein Auftrag füllt weiter eine
+  Sprache.
 - **CI rot (drei Ursachen):**
   - Eine abgebrochene Anfrage fragte noch nach der Einwilligung, und ein Fehler danach wurde beantwortet; unter
     Windows lehnte der Testhost den Dialog ab.
@@ -2005,7 +2006,8 @@ ist in VS Code belegt (in der Capture-Phase abfangen, Knopf als zweiter Weg).
     (Die zuerst notierte Begründung, `aria-disabled` ließe das Kästchen ohne Zustandsänderung umschalten, trifft
     nicht zu: `toggle` erzeugt stets einen neuen Eintrag, der das Kästchen zurücksetzt.)
   - „Alle auswählen“ wählt auch Texte mit abweichenden Platzhaltern, die die Vorauswahl bewusst auslässt (K4): wer
-    alle wählt, will alle; die Einträge zeigen ihren Fehler weiter. Frage an den Nutzer, ob es so bleiben soll.
+    alle wählt, will alle; die Einträge zeigen ihren Fehler weiter. Der Nutzer hat am 27.09.2026 entschieden: Es
+    bleibt so.
 - **Zweites Review** (dieselbe Aufteilung, frischer Kontext; beide: bereit zum Mergen). Behoben:
   - Webview: „Alle/Keine auswählen“ auch während des Schreibens gesperrt; ein verlorener Fokus geht auch bei
     offener Liste an die Überschrift (geschriebener Eintrag, letzte Einträge); nicht verfügbare Knöpfe über Farben
