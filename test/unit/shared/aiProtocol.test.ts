@@ -29,6 +29,7 @@ describe('AI messages from the webview', () => {
   it('accepts filling and the reviewed texts to write, within bounds', () => {
     expect(isWebviewToHost({ type: 'aiFill' })).toBe(true);
     expect(isWebviewToHost({ type: 'aiCheck' })).toBe(true);
+    expect(isWebviewToHost({ type: 'aiConfigure' })).toBe(true);
     const item = { entryId, value: 'Espace de travail', before: null };
     const apply = {
       type: 'aiApply',

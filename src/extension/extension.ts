@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { selectModel, testAiConnection } from './commands/aiConnection';
+import { setBaseUrl, setUpAi } from './commands/aiSetup';
 import { clearApiKey, setApiKey } from './commands/apiKey';
 import { backUpNow, restoreBackup } from './commands/backup';
 import { checkTranslations } from './commands/check';
@@ -98,6 +99,10 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi | undef
     ),
     vscode.commands.registerCommand('eduI18n.testAiConnection', () => testAiConnection(ai, log)),
     vscode.commands.registerCommand('eduI18n.selectModel', () => selectModel(ai, vscodePrompts, log)),
+    vscode.commands.registerCommand('eduI18n.setBaseUrl', () => setBaseUrl(vscodePrompts)),
+    vscode.commands.registerCommand('eduI18n.setupAi', () =>
+      setUpAi(ai, vscodePrompts, (command, ...args) => vscode.commands.executeCommand(command, ...args)),
+    ),
   );
   // Not awaited: activation stays fast, and the views update when the first run completes.
   index.refresh().catch((error: unknown) => log.error('Indexing failed.', error));

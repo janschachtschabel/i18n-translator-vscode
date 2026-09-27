@@ -20,6 +20,8 @@
   "cmd.clearApiKey": "API-Schlüssel entfernen",
   "cmd.testAiConnection": "KI-Verbindung testen",
   "cmd.selectModel": "KI-Modell wählen…",
+  "cmd.setBaseUrl": "b-api-Adresse festlegen…",
+  "cmd.setupAi": "KI einrichten…",
   "cmd.renameKey": "Key umbenennen…",
   "cmd.deleteKey": "Key löschen…",
   "cmd.addLanguage": "Sprache hinzufügen…",

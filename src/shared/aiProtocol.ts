@@ -31,6 +31,8 @@ export type AiWebviewToHost =
   | { type: 'aiCancel'; requestId: string }
   /** The editor offers to set the key when there is none. */
   | { type: 'aiSetup' }
+  /** The setup of the AI: the address of the b-api, its key, the model. */
+  | { type: 'aiConfigure' }
   /** Fills a language of the bundle; the host asks which. */
   | { type: 'aiFill' }
   /** Checks the translations of a language of the bundle; the host asks which. */
@@ -75,6 +77,7 @@ export function isAiWebviewToHost(value: Readonly<Record<string, unknown>>): boo
     case 'aiCancel':
       return isId(value['requestId']);
     case 'aiSetup':
+    case 'aiConfigure':
     case 'aiFill':
     case 'aiCheck':
       return true;

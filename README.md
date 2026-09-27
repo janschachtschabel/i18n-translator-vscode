@@ -250,7 +250,9 @@ In der Befehlspalette unter „edu-sharing i18n“:
 | Key hinzufügen… | einen Key in allen Sprachen einer Einheit anlegen, mit Rückfragen |
 | Sprache hinzufügen… | eine Sprachdatei je Einheit anlegen (leer, der Rückfall greift) |
 | Mail-Vorschau | die Mail eines Templates in jeder Sprache neben dem Editor zeigen, wie edu-sharing sie verschickt |
+| KI einrichten… | Schlüssel, Adresse der b-api und Modell auf einen Blick, mit den Schritten, sie zu ändern |
 | API-Schlüssel setzen… · API-Schlüssel entfernen | den b-api-Schlüssel im Schlüsselspeicher von VS Code ablegen oder löschen |
+| b-api-Adresse festlegen… | eine andere Adresse der b-api als Staging, etwa die Produktion |
 | KI-Verbindung testen | prüfen, ob die b-api mit Schlüssel und Modell antwortet |
 | KI-Modell wählen… | ein Chat-Modell der b-api für Vorschläge wählen |
 | Letzte Änderung an Übersetzungsdateien rückgängig machen | das letzte Schreiben dieser Sitzung zurücknehmen |
@@ -309,9 +311,10 @@ Die Extension schlägt auf Wunsch Übersetzungen per KI vor. Die Anfragen gehen 
 (Header `X-API-KEY`). Es ist derselbe Schlüssel, den die bisherige Standalone-App als `B_API_KEY` nutzt. Wer keinen
 hat, bekommt ihn bei den Betreibern der b-api.
 
-**Einrichten:**
-1. **Schlüssel setzen:** „edu-sharing i18n: API-Schlüssel setzen…“ in der Befehlspalette oder im Menü „…“ der
-   Seitenleiste „Bereiche“.
+**Einrichten:** „KI einrichten…“ fasst alles zusammen: in der Werkzeugleiste des Editors (Gruppe „KI“), im Menü „…“
+der Seitenleiste „Bereiche“ und in der Befehlspalette („edu-sharing i18n: KI einrichten…“). Es zeigt, was gerade gilt
+(Schlüssel, Adresse der b-api, Modell), und führt zu den einzelnen Schritten:
+1. **Schlüssel setzen:** „API-Schlüssel setzen…“.
    - Das Eingabefeld zeigt den Schlüssel nicht an und bleibt offen, während Sie ihn etwa aus einem Passwortmanager
      kopieren.
    - VS Code bewahrt ihn im Schlüsselspeicher auf (SecretStorage), den das Betriebssystem verschlüsselt.
@@ -323,11 +326,15 @@ hat, bekommt ihn bei den Betreibern der b-api.
      sicherer.
    - **Nie** in `settings.json`, im Repository oder in anderen Dateien des Arbeitsbereichs. Die Extension liest ihn dort
      nicht und schreibt ihn nie in Protokoll, Editor oder Meldungen.
-2. **Verbindung testen:** „KI-Verbindung testen“ fragt die Modelle der b-api ab und schickt dem eingestellten Modell
+2. **Adresse der b-api** (nur wenn nicht Staging): „b-api-Adresse festlegen…“ nimmt eine andere Adresse, etwa
+   `https://b-api.prod.openeduhub.net` für die Produktion, und prüft sie beim Tippen (nur `https:`, `http:` nur auf
+   diesem Rechner). Die Adresse von Staging entfernt die Einstellung wieder. Bevor zum ersten Mal Texte an eine neue
+   Adresse gehen, fragt die Extension nach.
+3. **Verbindung testen:** „KI-Verbindung testen“ fragt die Modelle der b-api ab und schickt dem eingestellten Modell
    einen festen Testtext (nichts aus dem Arbeitsbereich). Die Meldung nennt die Antwortzeit, oder die Ursache eines
    Fehlers mit dem Schritt, der ihn behebt.
-3. **Modell wählen** (optional): „KI-Modell wählen…“ bietet die Chat-Modelle des Anbieters an und speichert die Wahl in
-   den Benutzereinstellungen.
+4. **Modell wählen** (optional, Standard `gpt-6-luna`): „KI-Modell wählen…“ bietet die Chat-Modelle des Anbieters an
+   und speichert die Wahl in den Benutzereinstellungen.
 
 **Vorschlag für eine Zelle:**
 - Eine Zelle anklicken und „KI-Vorschlag“ unter dem Textfeld wählen, oder Strg+I drücken (auch auf einer gewählten
@@ -342,8 +349,8 @@ hat, bekommt ihn bei den Betreibern der b-api.
 
 **Eine Sprache füllen:**
 - Die Werkzeugleiste des Editors zeigt in der Gruppe „KI“, ob die KI bereit ist und mit welchem Modell („bereit ·
-  gpt-6-luna“), daneben „Mit KI füllen…“ und „Mit KI prüfen…“. Ohne Schlüssel steht dort „kein API-Schlüssel“ mit
-  „API-Schlüssel setzen…“.
+  gpt-6-luna“), daneben „Mit KI füllen…“, „Mit KI prüfen…“ und „KI einrichten…“. Ohne Schlüssel steht dort „kein
+  API-Schlüssel“ mit „API-Schlüssel setzen…“, bei einer unbrauchbaren Adresse „Adresse der b-api ungültig“.
 - „Mit KI füllen…“ fragt nach der Sprache, jeweils mit der Zahl der Texte: fehlende und leere, bei einer Variante die
   Texte, die sie selbst braucht. Ab fünf Anfragen fragt die Extension noch einmal nach, mit Modell und Adresse.
 - Die Vorschläge erscheinen Paket für Paket in einer Prüfliste an Stelle der Tabelle: je Text die Quelle, der bisherige

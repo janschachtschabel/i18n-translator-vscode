@@ -182,6 +182,16 @@
         "command": "eduI18n.selectModel",
         "title": "%cmd.selectModel%",
         "category": "edu-sharing i18n"
+      },
+      {
+        "command": "eduI18n.setBaseUrl",
+        "title": "%cmd.setBaseUrl%",
+        "category": "edu-sharing i18n"
+      },
+      {
+        "command": "eduI18n.setupAi",
+        "title": "%cmd.setupAi%",
+        "category": "edu-sharing i18n"
       }
     ],
     "menus": {
@@ -214,19 +224,29 @@
           "group": "navigation"
         },
         {
-          "command": "eduI18n.setApiKey",
+          "command": "eduI18n.setupAi",
           "when": "view == eduI18n.areas",
           "group": "2_ai@1"
         },
         {
-          "command": "eduI18n.testAiConnection",
+          "command": "eduI18n.setApiKey",
           "when": "view == eduI18n.areas",
           "group": "2_ai@2"
         },
         {
-          "command": "eduI18n.selectModel",
+          "command": "eduI18n.setBaseUrl",
           "when": "view == eduI18n.areas",
           "group": "2_ai@3"
+        },
+        {
+          "command": "eduI18n.selectModel",
+          "when": "view == eduI18n.areas",
+          "group": "2_ai@4"
+        },
+        {
+          "command": "eduI18n.testAiConnection",
+          "when": "view == eduI18n.areas",
+          "group": "2_ai@5"
         }
       ],
       "view/item/context": [

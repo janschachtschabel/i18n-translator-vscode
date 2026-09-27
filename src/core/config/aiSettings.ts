@@ -52,9 +52,12 @@ export const AI_LIMITS = {
 const MAX_DESCRIPTION_LENGTH = 500;
 const MAX_MODEL_LENGTH = 100;
 
+/** The b-api staging, where the requests go unless the user settings name another address. */
+export const DEFAULT_BASE_URL = 'https://b-api.staging.openeduhub.net';
+
 export const DEFAULT_AI_SETTINGS: AiSettings = {
   enabled: true,
-  baseUrl: 'https://b-api.staging.openeduhub.net',
+  baseUrl: DEFAULT_BASE_URL,
   provider: 'openai',
   model: 'gpt-6-luna',
   reasoningEffort: 'low',

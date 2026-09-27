@@ -156,6 +156,11 @@ export class AiPanel implements vscode.Disposable {
     void vscode.commands.executeCommand('eduI18n.setApiKey');
   }
 
+  /** The setup of the AI in one place (setUpAi). */
+  configure(): void {
+    void vscode.commands.executeCommand('eduI18n.setupAi');
+  }
+
   dispose(): void {
     this.pending.forEach((controller) => controller.abort());
     this.jobs.abort();

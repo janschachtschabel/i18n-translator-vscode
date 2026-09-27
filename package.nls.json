@@ -20,6 +20,8 @@
   "cmd.clearApiKey": "Remove API key",
   "cmd.testAiConnection": "Test AI connection",
   "cmd.selectModel": "Choose AI model…",
+  "cmd.setBaseUrl": "Set b-api address…",
+  "cmd.setupAi": "Set up AI…",
   "cmd.renameKey": "Rename key…",
   "cmd.deleteKey": "Delete key…",
   "cmd.addLanguage": "Add language…",

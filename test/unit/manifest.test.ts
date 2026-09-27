@@ -38,7 +38,7 @@ const manifest = JSON.parse(read('package.json')) as {
   contributes: {
     configuration: { title: string; properties: Record<string, SettingSchema> }[];
     viewsWelcome: { view: string; contents: string; when: string }[];
-    menus: Record<string, { command: string; when?: string }[]>;
+    menus: Record<string, { command: string; when?: string; group?: string }[]>;
   };
 };
 // Settings in categories of their own, each a section of the Settings editor.
@@ -61,6 +61,24 @@ describe('package.json menus', () => {
         command,
       ).toBeUndefined();
     }
+  });
+});
+
+describe('the menu of the areas view', () => {
+  it('offers the setup of the AI first, then its single steps', () => {
+    const title = manifest.contributes.menus['view/title'] ?? [];
+    expect(
+      title
+        .filter((entry) => entry.group?.startsWith('2_ai'))
+        .sort((a, b) => a.group!.localeCompare(b.group!))
+        .map((entry) => entry.command),
+    ).toEqual([
+      'eduI18n.setupAi',
+      'eduI18n.setApiKey',
+      'eduI18n.setBaseUrl',
+      'eduI18n.selectModel',
+      'eduI18n.testAiConnection',
+    ]);
   });
 });
 

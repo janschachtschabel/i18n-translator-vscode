@@ -105,6 +105,11 @@ export class Suggestions {
   setup(): void {
     this.post({ type: 'aiSetup' });
   }
+
+  /** The setup of the AI: the address of the b-api, its key, the model. */
+  configure(): void {
+    this.post({ type: 'aiConfigure' });
+  }
 }
 
 function sameCell(a: CellRef, b: CellRef): boolean {

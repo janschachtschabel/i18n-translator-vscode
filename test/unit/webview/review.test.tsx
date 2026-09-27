@@ -63,6 +63,25 @@ describe('filling with AI', () => {
     expect(ai()).toBeNull();
   });
 
+  it('leads to the setup of the AI from the toolbar: the address of the b-api, the key, the model', () => {
+    const { send, posted: messages } = open();
+    const ai = () => screen.queryByRole('group', { name: 'KI' });
+    for (const state of [
+      { available: true, model: 'gpt-6-luna' },
+      { available: false, reason: 'no-key' as const, model: 'gpt-6-luna' },
+    ]) {
+      send({ type: 'aiState', ...state });
+      act(() => void fireEvent.click(within(ai()!).getByRole('button', { name: 'KI einrichten…' })));
+    }
+    expect(posted(messages, 'aiConfigure')).toEqual([{ type: 'aiConfigure' }, { type: 'aiConfigure' }]);
+
+    // An address the AI may not use turns it off: the toolbar says so, and leads to the setup.
+    send({ type: 'aiState', available: false, reason: 'address', model: 'gpt-6-luna' });
+    expect(ai()!.textContent).toContain('Adresse der b-api ungültig');
+    expect(within(ai()!).queryByRole('button', { name: 'Mit KI füllen…' })).toBeNull();
+    expect(within(ai()!).getByRole('button', { name: 'KI einrichten…' })).toBeTruthy();
+  });
+
   it('shows the suggestions in place of the table as they come, with progress, and cancels', () => {
     const { send, posted: messages } = filling();
     expect(screen.queryByRole('grid')).toBeNull();

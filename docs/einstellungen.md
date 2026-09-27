@@ -363,7 +363,8 @@ Im eingeschränkten Modus ist die KI immer aus.
 ### `eduI18n.ai.baseUrl`
 
 Standard: `https://b-api.staging.openeduhub.net`. Die Adresse der b-api, ohne Pfad der Schnittstelle; die Extension
-hängt `/api/v1/llm/{provider}/…` an.
+hängt `/api/v1/llm/{provider}/…` an. Am einfachsten setzt sie „b-api-Adresse festlegen…“ (auch über „KI
+einrichten…“), das sie beim Tippen prüft.
 
 ```json
 "eduI18n.ai.baseUrl": "https://b-api.prod.openeduhub.net"

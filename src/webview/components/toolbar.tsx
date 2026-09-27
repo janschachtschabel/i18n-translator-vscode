@@ -81,16 +81,21 @@ function AiTools({ store }: { store: EditorStore }) {
     const back = store.review.takeFocusBack();
     (back === 'check' ? check : back === 'fill' ? fill : undefined)?.current?.focus();
   }, [store]);
-  if (!ai.available && ai.reason !== 'no-key') {
+  // Turned off, or in Restricted Mode: no AI at all. A missing key or an unusable address the setup can fix.
+  if (!ai.available && ai.reason !== 'no-key' && ai.reason !== 'address') {
     return null;
   }
   return (
     <fieldset class="group">
       <legend>{l10n.t('AI')}</legend>
       <span class="ai-status">
-        {ai.available ? l10n.t('ready · {model}', { model: ai.model }) : l10n.t('no API key')}
+        {ai.available
+          ? l10n.t('ready · {model}', { model: ai.model })
+          : ai.reason === 'no-key'
+            ? l10n.t('no API key')
+            : l10n.t('address of the b-api not valid')}
       </span>
-      {ai.available ? (
+      {ai.available && (
         <>
           <button ref={fill} type="button" onClick={() => store.review.fill()}>
             {l10n.t('Fill with AI…')}
@@ -99,11 +104,15 @@ function AiTools({ store }: { store: EditorStore }) {
             {l10n.t('Check with AI…')}
           </button>
         </>
-      ) : (
+      )}
+      {ai.reason === 'no-key' && (
         <button type="button" onClick={() => store.suggestions.setup()}>
           {l10n.t('Set API Key…')}
         </button>
       )}
+      <button type="button" onClick={() => store.suggestions.configure()}>
+        {l10n.t('Set Up AI…')}
+      </button>
     </fieldset>
   );
 }
