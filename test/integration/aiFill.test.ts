@@ -179,6 +179,39 @@ suite('Fill with AI', function () {
     }
   });
 
+  test('ends a job the b-api refuses as failed, and says why', async () => {
+    const refusing = await startMockBapi(() => ({ status: 401, body: { message: 'refused' } }));
+    await config().update('ai.baseUrl', refusing.url, vscode.ConfigurationTarget.Global);
+    try {
+      const status = await settled(
+        () => api.ai.service.status(),
+        (current) => current.settings.baseUrl === refusing.url,
+      );
+      await api.ai.consent.ensure(status.host, answering(true));
+      const { editorPanel, posts, prompts, close } = await editor('fr');
+      try {
+        const ended = jobEnd({ editorPanel, posts }, prompts);
+        await editorPanel.receive({ type: 'aiFill' });
+        const end = await ended;
+        assert.deepEqual([end.status, end.missing], ['failed', 3]);
+        assert.match(end.message ?? '', /refused the key \(HTTP 401\)/);
+        assert.deepEqual(
+          posts.filter((message) => message.type === 'aiJobItems'),
+          [],
+        );
+      } finally {
+        close();
+      }
+    } finally {
+      await config().update('ai.baseUrl', bapi.url, vscode.ConfigurationTarget.Global);
+      await settled(
+        () => api.ai.service.status(),
+        (current) => current.settings.baseUrl === bapi.url,
+      );
+      await refusing.close();
+    }
+  });
+
   test('answers reviewed texts it cannot read, so that their list stops waiting', async () => {
     const { editorPanel, close } = await editor();
     const before = await read();
