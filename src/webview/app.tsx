@@ -110,6 +110,8 @@ function BundleRows({ store, model }: { store: EditorStore; model: BundleViewMod
             {l10n.t(
               'A click, Enter or F2 edits a text; in the key column, F2 renames the key and Delete (on macOS Cmd+Backspace) deletes it.',
             )}
+            {store.suggestions.ai.value.available &&
+              ` ${l10n.t('Ctrl+I asks the AI for a suggestion for a text.')}`}
           </p>
           <div class="workspace">
             <Table

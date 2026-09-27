@@ -273,6 +273,21 @@ describe('the AI suggestion in the cell editor', () => {
     expect(hint()).toMatch(/^Enter speichert/);
   });
 
+  it('names Ctrl+I in the help of the grid and on the active cell while the AI can be used', () => {
+    const { send } = open();
+    const help = () => document.getElementById('grid-help')!.textContent;
+    const shortcuts = (key: string, column: number) => cellOf(key, column).getAttribute('aria-keyshortcuts');
+    act(() => cellOf('CANCEL', 2).focus());
+    expect(shortcuts('CANCEL', 2)).toBe('Enter F2');
+    expect(help()).not.toContain('Strg+I');
+    send({ type: 'aiState', available: true, model: 'gpt-6-luna' });
+    expect(shortcuts('CANCEL', 2)).toBe('Enter F2 Control+I Meta+I');
+    expect(help()).toContain('Strg+I holt einen KI-Vorschlag für einen Text.');
+    // The reference has nothing to translate from.
+    act(() => cellOf('CANCEL', 0).focus());
+    expect(shortcuts('CANCEL', 0)).toBe('Enter F2');
+  });
+
   it('asks with ids that a reloaded page does not use again', () => {
     const ids = [0, 1].map(() => {
       const { send, posted } = open();

@@ -102,6 +102,7 @@
   "Configure Folders": "Ordner festlegen",
   "Created by hand": "Von Hand erstellt",
   "Ctrl+Enter saves · Tab: save and go on · Esc: cancel": "Strg+Enter speichert · Tab: speichern und weiter · Esc: abbrechen",
+  "Ctrl+I asks the AI for a suggestion for a text.": "Strg+I holt einen KI-Vorschlag für einen Text.",
   "current": "aktuell",
   "Current text:": "Bisheriger Text:",
   "Delete {key} in {bundle}, in all its languages?": "{key} in {bundle} löschen, in allen Sprachen?",

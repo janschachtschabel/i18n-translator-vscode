@@ -42,6 +42,7 @@ export function Table({ store, rows, locales, reference, wrap, labelledBy, descr
   const open = store.edits.open.value;
   // An editor in the details is theirs.
   const editor = open?.place === 'rows' ? open : undefined;
+  const ai = store.suggestions.ai.value.available;
   const editorRow = editor ? rows.findIndex((row) => row.entryId === editor.entryId) + 1 : 0;
   const count = useIncrementalCount(rows.length, Math.max(position.row, editorRow));
   /** Whether the focus is in the grid; after a render it goes back to the active cell if it got lost. */
@@ -199,6 +200,7 @@ export function Table({ store, rows, locales, reference, wrap, labelledBy, descr
               store={store}
               reference={reference}
               editor={editor?.entryId === row.entryId ? editor : undefined}
+              ai={position.row === index + 1 && ai}
             />
           ))}
         </div>
