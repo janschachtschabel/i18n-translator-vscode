@@ -94,6 +94,34 @@ describe('checking with AI', () => {
     expect(box('SAVE').checked).toBe(false);
   });
 
+  it('offers no choice for a text with a broken character, which the host could not take', () => {
+    const { send } = checking();
+    const half = String.fromCharCode(0xd83d);
+    // The file's text has half of an emoji, and the finding no correction.
+    send({
+      type: 'aiJobItems',
+      jobId: 'check-1',
+      done: 9,
+      total: 9,
+      items: [
+        found(
+          'ASK',
+          'Fragen',
+          `Demander ${half}`,
+          `Demander ${half}`,
+          'warning',
+          'Das Zeichen am Ende fehlt.',
+        ),
+      ],
+    });
+    const field = inList().getByRole('textbox', { name: 'ASK in fr' });
+    act(() => void fireEvent.input(field, { target: { value: `Interroger ${half}` } }));
+    expect(box('ASK').disabled).toBe(true);
+    expect(box('ASK').closest('li')!.textContent).toContain('Der Text hat ein kaputtes Zeichen');
+    act(() => void fireEvent.input(field, { target: { value: 'Interroger' } }));
+    expect(box('ASK').disabled).toBe(false);
+  });
+
   it('writes the chosen corrections against the texts it checked, and sums up what it checked', () => {
     const { send, posted: messages, store } = checking();
     send({ type: 'aiJobEnd', jobId: 'check-1', status: 'done', missing: 0 });

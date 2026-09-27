@@ -2,6 +2,7 @@ import { signal } from '@preact/signals';
 import type { PlaceholderSyntax } from '../../core/area/areaDefinition';
 import { displayKey, keyFromId } from '../../core/model/keys';
 import type { AiHostToWebview, AiJobItem } from '../../shared/aiProtocol';
+import { isText } from '../../shared/messageChecks';
 import type { WebviewToHost } from '../../shared/protocol';
 import { inlineCheck } from '../inlineCheck';
 import { formatNumber, l10n } from '../l10n';
@@ -273,7 +274,10 @@ export class Review {
   }
 }
 
-/** Whether a text has something to write: not empty, and not the text the cell has. */
+/**
+ * Whether a text has something to write that the host takes: not empty, not the text the cell has, and valid Unicode
+ * within the bounds of a message (the host refuses a write with one such text as a whole).
+ */
 export function writable(item: Pick<ReviewItem, 'text' | 'before'>): boolean {
-  return item.text.trim() !== '' && item.text !== item.before;
+  return item.text.trim() !== '' && item.text !== item.before && isText(item.text);
 }

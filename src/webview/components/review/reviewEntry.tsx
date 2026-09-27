@@ -1,4 +1,5 @@
 import type { PlaceholderSyntax } from '../../../core/area/areaDefinition';
+import { isText } from '../../../shared/messageChecks';
 import { inlineCheck, type CheckLine } from '../../inlineCheck';
 import { l10n } from '../../l10n';
 import { writable, type Review, type ReviewItem } from '../../state/review';
@@ -122,6 +123,11 @@ function notesOf(item: ReviewItem, syntax: PlaceholderSyntax): CheckLine[] {
   }
   if (!item.text.trim()) {
     notes.push({ severity: 'error', text: l10n.t('The suggestion is empty; it is not written.') });
+  } else if (!isText(item.text)) {
+    notes.push({
+      severity: 'error',
+      text: l10n.t('The text has a broken character, e.g. half of an emoji; correct it to write the text.'),
+    });
   } else if (item.problem && item.text === item.before) {
     notes.push({ severity: 'info', text: l10n.t('No correction; edit the text to write one.') });
   }
