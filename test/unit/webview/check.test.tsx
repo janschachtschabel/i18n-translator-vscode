@@ -16,6 +16,8 @@ const found = (
 ): AiJobItem => ({ entryId: id(key), source, before, text, problem: { severity, message } });
 const list = () => screen.getByRole('region', { name: /^KI-Prüfung von fr/ });
 const inList = () => within(list());
+/** The progress and summary of the list, in its head; each text has a status of its own for its check. */
+const progress = () => within(list().querySelector<HTMLElement>('.review-head')!).getByRole('status');
 const box = (key: string) =>
   inList().getByRole('checkbox', { name: `${key} übernehmen` }) as HTMLInputElement;
 const posted = (messages: readonly WebviewToHost[], type: WebviewToHost['type']) =>
@@ -125,9 +127,7 @@ describe('checking with AI', () => {
   it('writes the chosen corrections against the texts it checked, and sums up what it checked', () => {
     const { send, posted: messages, store } = checking();
     send({ type: 'aiJobEnd', jobId: 'check-1', status: 'done', missing: 0 });
-    expect(inList().getByRole('status').textContent).toBe(
-      'Fertig. Geprüft: 9 · in Ordnung: 7 · Hinweise: 2.',
-    );
+    expect(progress().textContent).toBe('Fertig. Geprüft: 9 · in Ordnung: 7 · Hinweise: 2.');
     act(() => void fireEvent.click(box('ERROR_TITLE')));
     act(() => void fireEvent.click(inList().getByRole('button', { name: 'Ausgewählte übernehmen (1)' })));
     const [apply] = posted(messages, 'aiApply') as Extract<WebviewToHost, { type: 'aiApply' }>[];
@@ -149,19 +149,17 @@ describe('checking with AI', () => {
     const { send } = checking();
     // Of nine texts, seven were answered before the cancel: two with a note, five fine.
     send({ type: 'aiJobEnd', jobId: 'check-1', status: 'cancelled', missing: 2 });
-    expect(inList().getByRole('status').textContent).toBe(
-      'Abgebrochen. Geprüft: 7 · in Ordnung: 5 · Hinweise: 2.',
-    );
+    expect(progress().textContent).toBe('Abgebrochen. Geprüft: 7 · in Ordnung: 5 · Hinweise: 2.');
   });
 
   it('counts the texts without an answer, and says so when nothing is to be done', () => {
     const { send } = open();
     send({ type: 'aiState', available: true, model: 'gpt-6-luna' });
     send({ type: 'aiJob', jobId: 'check-2', kind: 'check', locale: 'fr', source: 'de', total: 9 });
-    expect(inList().getByRole('status').textContent).toBe('Geprüft: 0 von 9 …');
+    expect(progress().textContent).toBe('Geprüft: 0 von 9 …');
     send({ type: 'aiJobItems', jobId: 'check-2', done: 9, total: 9, items: [] });
     send({ type: 'aiJobEnd', jobId: 'check-2', status: 'done', missing: 2 });
-    expect(inList().getByRole('status').textContent).toBe(
+    expect(progress().textContent).toBe(
       'Fertig. Geprüft: 7 · in Ordnung: 7 · Hinweise: 0 · ohne Antwort: 2.',
     );
     expect(inList().getByRole('button', { name: 'Schließen' })).toBeTruthy();

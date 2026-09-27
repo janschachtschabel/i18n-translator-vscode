@@ -85,15 +85,14 @@ export const ReviewEntry = memo(
           aria-describedby={described}
           onInput={(event) => review.setText(item.entryId, event.currentTarget.value)}
         />
-        {notes.length > 0 && (
-          <div id={notesId}>
-            {notes.map((note) => (
-              <p key={note.text} class="editor-note">
-                <Note severity={note.severity} text={note.text} />
-              </p>
-            ))}
-          </div>
-        )}
+        {/* There before any typing, so that screen readers read out the check as it changes (WCAG 4.1.3, audit F-06). */}
+        <div id={notesId} role="status">
+          {notes.map((note) => (
+            <p key={note.text} class="editor-note">
+              <Note severity={note.severity} text={note.text} />
+            </p>
+          ))}
+        </div>
       </li>
     );
   },

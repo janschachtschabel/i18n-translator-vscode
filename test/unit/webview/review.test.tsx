@@ -14,6 +14,8 @@ const item = (key: string, source: string, text: string, before: string | null =
 });
 const review = () => screen.getByRole('region', { name: /^KI-Vorschläge für fr/ });
 const inReview = () => within(review());
+/** The progress and summary of the list, in its head; each text has a status of its own for its check. */
+const progress = () => within(review().querySelector<HTMLElement>('.review-head')!).getByRole('status');
 const posted = (messages: readonly WebviewToHost[], type: WebviewToHost['type']) =>
   messages.filter((message) => message.type === type);
 
@@ -179,7 +181,7 @@ describe('filling with AI', () => {
     const { send, posted: messages } = filling();
     expect(screen.queryByRole('grid')).toBeNull();
     expect(document.activeElement).toBe(inReview().getByRole('heading', { level: 2 }));
-    expect(inReview().getByRole('status').textContent).toBe('Übersetzt: 2 von 3 …');
+    expect(progress().textContent).toBe('Übersetzt: 2 von 3 …');
     expect(inReview().getByRole('progressbar').getAttribute('value')).toBe('2');
     const field = inReview().getByRole('textbox', { name: 'CANCEL in fr' }) as HTMLTextAreaElement;
     expect(field.value).toBe('Annuler');
@@ -189,7 +191,7 @@ describe('filling with AI', () => {
 
     // The suggestions that came stay; the job is over.
     send({ type: 'aiJobEnd', jobId: 'fill-1', status: 'cancelled', missing: 1 });
-    expect(inReview().getByRole('status').textContent).toBe('Abgebrochen. Vorschläge: 2.');
+    expect(progress().textContent).toBe('Abgebrochen. Vorschläge: 2.');
     expect(inReview().queryByRole('progressbar')).toBeNull();
     expect(inReview().queryByRole('button', { name: 'Abbrechen' })).toBeNull();
     expect(inReview().getAllByRole('textbox')).toHaveLength(2);
@@ -273,7 +275,7 @@ describe('filling with AI', () => {
   it('closes when everything is written, says so, and shows the table again', () => {
     const { send, posted: messages, store } = filling();
     send({ type: 'aiJobEnd', jobId: 'fill-1', status: 'done', missing: 1 });
-    expect(inReview().getByRole('status').textContent).toBe('Fertig. Vorschläge: 2, ohne Antwort: 1.');
+    expect(progress().textContent).toBe('Fertig. Vorschläge: 2, ohne Antwort: 1.');
     act(() => void fireEvent.click(inReview().getByRole('checkbox', { name: 'ERROR_TITLE übernehmen' })));
     act(() => void fireEvent.click(inReview().getByRole('button', { name: 'Ausgewählte übernehmen (2)' })));
     const [apply] = posted(messages, 'aiApply') as Extract<WebviewToHost, { type: 'aiApply' }>[];
@@ -308,6 +310,18 @@ describe('filling with AI', () => {
       );
       cleanup();
     }
+  });
+
+  // The check of a text typed in the list appeared in a plain element, which screen readers do not read out; the cell
+  // editor has a status region for it (WCAG 4.1.3, audit F-06).
+  it('reads out the check of a text as it is typed, in a status that is there before', () => {
+    filling();
+    const field = inReview().getByRole('textbox', { name: 'CANCEL in fr' });
+    const status = within(field.closest('li')!).getByRole('status');
+    expect(status.textContent).toBe('');
+    act(() => void fireEvent.input(field, { target: { value: 'Annuler {{x}}' } }));
+    expect(within(field.closest('li')!).getByRole('status')).toBe(status);
+    expect(status.textContent).toContain('Platzhalter, die die Referenz nicht hat: {{x}}');
   });
 
   it('hands the focus back to where the fill began when the list closes, also with the focus lost', () => {
@@ -395,18 +409,18 @@ describe('filling with AI', () => {
     const { send } = open();
     send({ type: 'aiState', available: true, model: 'gpt-6-luna' });
     send({ type: 'aiJob', jobId: 'fill-1', kind: 'fill', locale: 'fr', source: 'de', total: 100 });
-    const status = () => inReview().getByRole('status').textContent;
-    const progress = (done: number) =>
+    const status = () => progress().textContent;
+    const chunk = (done: number) =>
       send({ type: 'aiJobItems', jobId: 'fill-1', done, total: 100, items: [] });
-    progress(5);
+    chunk(5);
     expect(status()).toBe('Übersetzt: 0 von 100 …');
-    progress(12);
+    chunk(12);
     expect(status()).toBe('Übersetzt: 10 von 100 …');
-    progress(19);
+    chunk(19);
     expect(status()).toBe('Übersetzt: 10 von 100 …');
     // The bar shows each chunk.
     expect(inReview().getByRole('progressbar').getAttribute('value')).toBe('19');
-    progress(100);
+    chunk(100);
     expect(status()).toBe('Übersetzt: 100 von 100 …');
   });
 
@@ -526,9 +540,7 @@ describe('filling with AI', () => {
       missing: 3,
       message: 'Die b-api hat den Schlüssel abgelehnt (HTTP 401).',
     });
-    expect(inReview().getByRole('status').textContent).toBe(
-      'Fehlgeschlagen: Die b-api hat den Schlüssel abgelehnt (HTTP 401).',
-    );
+    expect(progress().textContent).toBe('Fehlgeschlagen: Die b-api hat den Schlüssel abgelehnt (HTTP 401).');
     // Without a suggestion, there is nothing to discard.
     expect(inReview().queryByRole('button', { name: 'Verwerfen' })).toBeNull();
     act(() => void fireEvent.click(inReview().getByRole('button', { name: 'Schließen' })));
