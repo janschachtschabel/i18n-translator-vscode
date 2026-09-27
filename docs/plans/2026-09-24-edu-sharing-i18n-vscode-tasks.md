@@ -1937,8 +1937,14 @@ Editor eine KI-Gruppe in der Werkzeugleiste mit dem Status („KI: bereit · gpt
   - Die KI-Befehle bleiben überall sichtbar und erklären, warum sie nicht laufen; nur „API-Schlüssel entfernen“ hängt
     am Kontext `eduI18n.aiKeyStored`.
   - Nachrichten des Hosts an die Webview werden nicht geprüft (der Host ist vertrauenswürdig), wie in `protocol.ts`.
+- **3.7 teilweise:** Vorgewählt wird nach der Prüfung beim Tippen (Platzhalter, HTML-Tags, leer). `{{if}}`, verbotene
+  Formen einer Variante und verlorene Zeichen findet erst die Prüfung nach dem Schreiben; die Prüfliste zeigt sie
+  nicht vorher.
+- **3.13 „Mit KI prüfen…“** als zweite Art von Auftrag (`AiJobs` mit einer Beschreibung je Art): dieselbe Auswahl der
+  Sprache, Rückfrage ab fünf Anfragen, Einwilligung, Pakete, Prüfliste und dasselbe Schreiben wie das Füllen. Die
+  Prüfliste zeigt nur die Befunde; nichts ist vorgewählt (K3), ein Befund ohne Korrektur wird wählbar, sobald man den
+  Text ändert. Die Prompts von Übersetzung und Prüfung sind mit Snapshots festgehalten.
 - **Offen aus dem Review, als Folgeaufgaben:**
-  - Snapshots der Prompts (kommen mit dem Prompt der KI-Prüfung in 3.13).
   - Ein ungeprüfter Vorschlag, der als „nicht gespeichert“ erhalten bleibt, verliert die Markierung „bitte prüfen“.
   - Die Zahl im Filter zählt die bearbeiteten Zeilen nicht mit, die er weiter zeigt.
   - Die Status-Zeile „wird geholt…“ entsteht mit dem Editor und wird deshalb von Screenreadern oft nicht vorgelesen.

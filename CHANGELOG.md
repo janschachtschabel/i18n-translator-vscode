@@ -19,10 +19,22 @@ Phasen 5 und 6 vorgezogen sind, zählt sie weiter, ohne die Phase zu nennen. Die
     Quelle, bisherigem Text, bearbeitbarem Vorschlag und Prüfung. Vorschläge mit abweichenden Platzhaltern bleiben
     abgewählt. „Ausgewählte übernehmen“ schreibt die gewählten auf einmal, nach einer Sicherung und als ein Schritt
     „Letzte Änderung rückgängig“.
+  - **Mit KI prüfen…** daneben: beurteilt alle Texte einer Sprache (bei einer Variante ihre eigenen) gegen ihre Quelle
+    und listet, was die KI findet, mit Schwere, dem Problem in der Sprache von VS Code und einer Korrektur; nichts ist
+    vorgewählt. Die Zusammenfassung nennt geprüfte, einwandfreie und bemängelte Texte und die ohne Antwort.
   - Die Werkzeugleiste zeigt in der Gruppe „KI“, ob die KI bereit ist und mit welchem Modell, ohne Schlüssel den Weg,
     ihn zu setzen.
-- Ein Dialog von VS Code (etwa diese Rückfrage) schließt das offene Textfeld nicht mehr.
-- Eine Änderung der KI- oder Sicherungseinstellungen liest den Arbeitsbereich nicht mehr neu ein.
+  - Anbieter, Modell und Denkaufwand gelten wie die Adresse nur aus den Benutzereinstellungen: Ein Repository kann den
+    Schlüssel nicht auf ein anderes Modell lenken. Eine Adresse, die die KI nicht nutzen darf (etwa `http:`), schaltet
+    sie ab, statt auf Staging zurückzufallen.
+  - Ein Schlüssel mit unsichtbaren Zeichen (etwa beim Kopieren aus einer Webseite) wird abgelehnt, statt jede Anfrage
+    als Netzfehler scheitern zu lassen. „API-Schlüssel entfernen“ erscheint nur, wenn einer gespeichert ist.
+  - „KI-Verbindung testen“ und „KI-Modell wählen…“ lassen sich abbrechen; eine fehlende Modellliste verweist auf
+    Adresse und Anbieter statt auf das Modell.
+- Ein Dialog von VS Code (etwa diese Rückfrage) schließt das offene Textfeld nicht mehr; danach bekommt das Textfeld
+  den Fokus zurück.
+- Eine Änderung der KI-Einstellungen liest den Arbeitsbereich nicht mehr neu ein. Ungültige Sicherungseinstellungen
+  meldet die Seitenleiste sofort.
 - **Eingabefelder für Keys und Sprachen** („Key hinzufügen…“, „Key umbenennen…“, „Sprache hinzufügen…“) schließen
   jetzt auch mit einem Klick daneben und haben ein X in der Titelzeile; bisher schloss sie nur Esc.
 - **Ein Klick auf eine Zelle öffnet ihren Text zum Bearbeiten**, wie in der alten App; bisher wählte er die Zelle nur,

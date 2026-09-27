@@ -39,8 +39,8 @@ Tabelle mit einer Spalte je Sprache oder, in schmalen Fenstern, als Liste:
 - Keys hinzufügen, umbenennen und löschen; Sprachen hinzufügen.
 
 **KI (b-api).** Ein Vorschlag für den Text einer Zelle, übersetzt aus der Referenz, geprüft wie ein getippter Text und
-erst auf Ihren Wunsch gespeichert; das Füllen aller fehlenden Texte einer Sprache mit einer Prüfliste (siehe
-[KI-Füllen und b-api-Schlüssel](#ki-füllen-und-b-api-schlüssel)).
+erst auf Ihren Wunsch gespeichert; das Füllen aller fehlenden Texte einer Sprache und die Prüfung aller vorhandenen,
+beides mit einer Prüfliste (siehe [KI-Füllen und b-api-Schlüssel](#ki-füllen-und-b-api-schlüssel)).
 
 **Daten sicher halten.**
 - **Nur das Nötige schreiben:** Eine Zelle ändert genau eine Zeile. Einrückung, Zeilenenden und Reihenfolge der
@@ -342,7 +342,8 @@ hat, bekommt ihn bei den Betreibern der b-api.
 
 **Eine Sprache füllen:**
 - Die Werkzeugleiste des Editors zeigt in der Gruppe „KI“, ob die KI bereit ist und mit welchem Modell („bereit ·
-  gpt-6-luna“), daneben „Mit KI füllen…“. Ohne Schlüssel steht dort „kein API-Schlüssel“ mit „API-Schlüssel setzen…“.
+  gpt-6-luna“), daneben „Mit KI füllen…“ und „Mit KI prüfen…“. Ohne Schlüssel steht dort „kein API-Schlüssel“ mit
+  „API-Schlüssel setzen…“.
 - „Mit KI füllen…“ fragt nach der Sprache, jeweils mit der Zahl der Texte: fehlende und leere, bei einer Variante die
   Texte, die sie selbst braucht. Ab fünf Anfragen fragt die Extension noch einmal nach, mit Modell und Adresse.
 - Die Vorschläge erscheinen Paket für Paket in einer Prüfliste an Stelle der Tabelle: je Text die Quelle, der bisherige
@@ -355,6 +356,19 @@ hat, bekommt ihn bei den Betreibern der b-api.
 - „Abbrechen“ beendet das Füllen, die erhaltenen Vorschläge bleiben. „Verwerfen“ schließt die Liste, ohne zu
   schreiben. Esc bricht nichts ab.
 
+**Eine Sprache prüfen:**
+- „Mit KI prüfen…“ fragt nach der Sprache, jeweils mit der Zahl der Texte, die sie hat und die sich mit ihrer Quelle
+  vergleichen lassen (bei einer Variante: ihre eigenen Texte gegen die Basis).
+- Die KI beurteilt jeden Text: Sagt er, was die Quelle sagt, mit denselben Platzhaltern und HTML-Tags, in der Anrede
+  und den Begriffen, die die Beschreibung der Sprache verlangt, ohne Fehler in Rechtschreibung und Grammatik? Sie nutzt
+  dafür `eduI18n.ai.reviewReasoningEffort` (Standard `medium`).
+- Die Prüfliste zeigt nur, was sie findet: je Text das Problem mit seiner Schwere (Fehler, Warnung, Hinweis) in der
+  Sprache von VS Code, die Quelle, den bisherigen Text und die Korrektur zum Bearbeiten. Nichts ist vorgewählt: Die
+  Prüfung ändert Texte, die jemand geschrieben hat. Ein Befund ohne Korrektur lässt sich wählen, sobald man den Text
+  selbst ändert.
+- Am Ende steht die Zusammenfassung „Geprüft · in Ordnung · Hinweise · ohne Antwort“. Übernehmen, Abbrechen und
+  Verwerfen wie beim Füllen.
+
 **Was die b-api bekommt:** den zu übersetzenden Text, seinen Key und seine Texte in anderen Sprachen, keine
 personenbezogenen Daten. Bevor zum ersten Mal Texte an eine Adresse gehen, fragt die Extension einmal nach (je
 Adresse; ein Wechsel etwa zur Produktion fragt erneut). Im eingeschränkten Modus und mit `eduI18n.ai.enabled: false`
@@ -365,8 +379,6 @@ ist die KI aus.
 (diese fünf nur in den Benutzereinstellungen, damit kein Repository den Schlüssel umlenkt), `ai.batchSize`,
 `ai.maxConcurrency`, `ai.timeoutSeconds`, `ai.languageDescriptions`.
 
-Die KI-Prüfung aller Texte einer Sprache folgt.
-
 ## Protokoll
 
 Ausgabe → „edu-sharing i18n“ zeigt, was die Extension einliest, prüft und schreibt, mit Dauer, aber ohne Texte der
@@ -375,7 +387,7 @@ Dateien. Mehr Einzelheiten: „Developer: Set Log Level…“ für diesen Kanal.
 ## Datenschutz
 
 - Keine Telemetrie.
-- Netzwerkzugriffe nur für die KI, nur nach einer Aktion (Vorschlag, Füllen, Verbindungstest, Modellwahl) und nur zur
+- Netzwerkzugriffe nur für die KI, nur nach einer Aktion (Vorschlag, Füllen, Prüfen, Verbindungstest, Modellwahl) und nur zur
   eingestellten b-api-Adresse; bevor Texte dorthin gehen, fragt die Extension einmal nach.
 - Sicherungen liegen im Speicher der Extension für diesen Arbeitsbereich, nie im Repository.
 - Die Ansicht je Einheit und die nicht gespeicherten Texte liegen im Arbeitsbereichsspeicher von VS Code.
@@ -405,7 +417,7 @@ erreichbare Adresse (Netzwerk, Proxy, `eduI18n.ai.baseUrl`). Im eingeschränkten
 ## Geplant
 
 Laut [Taskliste](docs/plans/2026-09-24-edu-sharing-i18n-vscode-tasks.md):
-- eine KI-Prüfung aller Texte einer Sprache (in Arbeit); ein Übersetzungsspeicher;
+- ein Übersetzungsspeicher;
 - Import und Export (CSV, JSON, `.properties`, Mail-XML);
 - Mail-Templates: hervorgehobener HTML-Code, die Vorschau schon beim Tippen und im Farbschema von VS Code;
 - Kontext, Review-Status und eine Übersicht;
@@ -437,7 +449,8 @@ language. Writes change only the edited line and keep each file's encoding and l
 - **AI (b-api):** "Set API key…" keeps the key of the b-api in VS Code's secret storage (fallback: the `B_API_KEY`
   environment variable); "Test AI connection" checks it. In the editor, "AI Suggestion" (Ctrl+I) puts a translation
   of the reference text into a cell's field, to check and save like a typed text; "Fill with AI…" in the toolbar
-  translates the missing texts of a language into a review list, whose chosen texts are written at once.
+  translates the missing texts of a language into a review list, whose chosen texts are written at once, and "Check
+  with AI…" lists the problems the AI finds in the translations of a language, with corrections to choose.
 - **Documentation:** the settings are described in German in [docs/einstellungen.md](docs/einstellungen.md), as are
   the design documents.
 
