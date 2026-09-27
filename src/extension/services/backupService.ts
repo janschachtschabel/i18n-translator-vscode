@@ -198,14 +198,16 @@ export class BackupService {
     if (kind === 'restore') {
       return 'restore';
     }
+    // Many texts at once, e.g. reviewed AI texts, are always backed up first (K7), and warned about if that fails, also
+    // while a failure pauses the backups of single texts (audit L-19).
+    if (kind === 'bulk') {
+      return 'bulk';
+    }
     // A backup that failed (full or unwritable storage) would fail again: the next try waits for the interval, at
     // least ten minutes, instead of reading every file and warning on every save.
     const { intervalMinutes } = this.settings();
     if (this.failedAt !== undefined && this.now() - this.failedAt < Math.max(intervalMinutes, 10) * 60_000) {
       return undefined;
-    }
-    if (kind === 'bulk') {
-      return 'bulk';
     }
     if (this.lastBackup === undefined) {
       return 'first-write';

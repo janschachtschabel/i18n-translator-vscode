@@ -314,4 +314,28 @@ suite('Backups', () => {
     assert.deepEqual(await failingStore.write(ref, setAsk('Continuons ?')), { ok: true });
     assert.equal(attempts, 2);
   });
+
+  // The pause after a failure let a write of many texts, such as reviewed AI texts, go without a backup and without a
+  // warning (audit L-19).
+  test('backs up a write of many texts even while a failed backup pauses the others', async () => {
+    const blocked = join(storage, 'blocked-bulk');
+    writeFileSync(blocked, 'not a folder');
+    const failing = new BackupService(vscode.Uri.file(blocked), api.index, log, {
+      settings: () => settings,
+      now: () => now,
+    });
+    let attempts = 0;
+    const create = failing.create.bind(failing);
+    failing.create = (reason) => {
+      attempts++;
+      return create(reason);
+    };
+    const failingStore = new FileStore(api.index, log, {
+      beforeWrite: (kind, files) => failing.beforeWrite(kind, files),
+    });
+    assert.deepEqual(await failingStore.write(ref, setAsk('Continuer ?')), { ok: true });
+    assert.equal(attempts, 1);
+    assert.deepEqual(await failingStore.write(ref, setAsk('Continuez ?'), { bulk: true }), { ok: true });
+    assert.equal(attempts, 2);
+  });
 });
