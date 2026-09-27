@@ -1,28 +1,46 @@
-import { parseTree, type Node, type ParseError } from 'jsonc-parser';
+import type { Node } from 'jsonc-parser';
 import { displayKey, keyFromSegments, type EntryKey } from '../../model/keys';
-import { applyEdits } from '../../text/edits';
-import { lineStartAt } from '../../text/lineIndex';
+import { applyEdits, type TextEdit } from '../../text/edits';
+import { atLineStart, blanksBefore, lineStartAt } from '../../text/lineIndex';
 import { detectStyle, type TextStyle } from '../../text/style';
 import { escapeUnits } from '../../text/unicodeEscape';
-import { EditError, type FileOp } from '../adapter';
-
-/** A property of a JSON object with its key and value nodes. */
-interface Property {
-  node: Node;
-  key: Node;
-  value: Node;
-}
+import { EditError, setRun, type FileOp, type SetOp } from '../adapter';
+import {
+  findProperty,
+  lastNamed,
+  objectAt,
+  parseObject,
+  propertiesOf,
+  propertyFinder,
+  samePath,
+  type Property,
+  type PropertyFinder,
+} from './jsonTree';
 
 /**
- * Applies the operations one after another and re-reads the text in between. Only the affected lines change:
- * new lines copy the indentation of their sibling, and nothing else is reformatted.
+ * Applies the operations one after another and re-reads the text in between, except within a run of texts set:
+ * those go on one parse (reading the file again for each of 1,600 texts took 1.9 s, audit P-07). Only the affected
+ * lines change: new lines copy the indentation of their sibling, and nothing else is reformatted.
  */
 export function applyJsonOps(text: string, ops: readonly FileOp[]): string {
   const style = detectStyle(text);
   let current = text;
-  for (const op of ops) {
+  for (let index = 0; index < ops.length;) {
     // An empty file has no entries (see the reader); one with only whitespace is a syntax error.
-    current = applyOp(current === '' ? emptyJsonObject(style) : current, op, style);
+    const base = current === '' ? emptyJsonObject(style) : current;
+    const op = ops[index]!;
+    if (op.kind === 'set') {
+      const run = setRun(ops, index);
+      const find = propertyFinder(parseObject(base));
+      current = applyEdits(
+        base,
+        run.map((set) => valueEdit(find, set.key, set.value)),
+      );
+      index += run.length;
+    } else {
+      current = applyOp(base, op, style);
+      index++;
+    }
   }
   return current;
 }
@@ -36,11 +54,9 @@ function jsonString(value: string): string {
   return escapeUnits(JSON.stringify(value), (unit) => unit === 0x2028 || unit === 0x2029);
 }
 
-function applyOp(text: string, op: FileOp, style: TextStyle): string {
+function applyOp(text: string, op: Exclude<FileOp, SetOp>, style: TextStyle): string {
   const root = parseObject(text);
   switch (op.kind) {
-    case 'set':
-      return setValue(text, root, op.key, op.value);
     case 'insert':
       return insertEntry(text, root, op.key, op.value, op.first ? 'first' : op.after, style);
     case 'delete':
@@ -50,35 +66,16 @@ function applyOp(text: string, op: FileOp, style: TextStyle): string {
   }
 }
 
-function parseObject(text: string): Node {
-  const errors: ParseError[] = [];
-  let root: Node | undefined;
-  try {
-    root = parseTree(text, errors, { disallowComments: true, allowTrailingComma: false });
-  } catch (error) {
-    if (!(error instanceof RangeError)) {
-      throw error;
-    }
-    // As in the reader: the call stack overflowed on nesting far deeper than any translation file.
-    throw new EditError('unparsable', 'The file is nested too deeply to be read.');
-  }
-  if (errors.length > 0 || root?.type !== 'object') {
-    throw new EditError('unparsable', 'The file is not a valid JSON object.');
-  }
-  return root;
-}
-
-function setValue(text: string, root: Node, key: EntryKey, value: string): string {
-  const property = findProperty(root, key.segments);
+/** The edit that gives the text of `key` a new value. */
+function valueEdit(find: PropertyFinder, key: EntryKey, value: string): TextEdit {
+  const property = find(key.segments);
   if (!property) {
     throw new EditError('missing-key', `${displayKey(key)} does not exist in this file.`, key);
   }
   if (property.value.type !== 'string') {
     throw new EditError('path-conflict', `${displayKey(key)} is not a text.`, key);
   }
-  return applyEdits(text, [
-    { offset: property.value.offset, length: property.value.length, content: jsonString(value) },
-  ]);
+  return { offset: property.value.offset, length: property.value.length, content: jsonString(value) };
 }
 
 function insertEntry(
@@ -204,45 +201,51 @@ function deleteEntry(text: string, root: Node, key: EntryKey): string {
   return removeEvery(text, root, key.segments.slice(0, level), key.segments[level]!);
 }
 
-/** Removes every definition of `name` from the object at `path`; `root` is the tree of `text`. */
+/**
+ * Removes every definition of `name` from the object at `path`; `root` is the tree of `text`. All go with one edit
+ * each run of neighbours, on this one tree: reading the text again after each took 35 s for a key defined 8,000
+ * times (audit S-14).
+ */
 function removeEvery(text: string, root: Node, path: readonly string[], name: string): string {
-  let current = text;
-  let object = objectAt(root, path)!;
-  for (;;) {
-    const named = propertiesOf(object).filter((property) => property.key.value === name);
-    const doomed = named.at(-1);
-    if (!doomed) {
-      return current;
-    }
-    current = removeProperty(current, object, doomed);
-    if (named.length === 1) {
-      return current;
-    }
-    // The offsets have changed: read the text again for the next definition.
-    object = objectAt(parseObject(current), path)!;
-  }
-}
-
-function removeProperty(text: string, object: Node, property: Property): string {
+  const object = objectAt(root, path)!;
   const properties = propertiesOf(object);
-  const index = properties.findIndex((candidate) => candidate.node === property.node);
-  if (properties.length === 1) {
+  const doomed = properties.map((property) => property.key.value === name);
+  if (!doomed.includes(true)) {
+    return text;
+  }
+  if (!doomed.includes(false)) {
     return applyEdits(text, [{ offset: object.offset + 1, length: object.length - 2, content: '' }]);
   }
-  const next = properties[index + 1];
-  if (next) {
-    // The whole line including its comma, or on one-line objects the property up to the next one.
-    const ownLines = onOwnLine(text, property.node) && onOwnLine(text, next.node);
-    const start = ownLines ? lineStartAt(text, property.node.offset) : property.node.offset;
-    const end = ownLines ? lineStartAt(text, next.node.offset) : next.node.offset;
-    return applyEdits(text, [{ offset: start, length: end - start, content: '' }]);
+  const edits: TextEdit[] = [];
+  for (let first = 0; first < properties.length; first++) {
+    if (doomed[first]) {
+      let last = first;
+      while (doomed[last + 1]) {
+        last++;
+      }
+      edits.push(removal(text, properties, first, last));
+      first = last;
+    }
   }
-  // The last property: from the end of the previous value, which takes the comma with it.
-  const previous = properties[index - 1]!;
-  const start = previous.value.offset + previous.value.length;
-  return applyEdits(text, [
-    { offset: start, length: property.node.offset + property.node.length - start, content: '' },
-  ]);
+  return applyEdits(text, edits);
+}
+
+/** The edit that removes the properties from `first` to `last` of an object that keeps others. */
+function removal(text: string, properties: readonly Property[], first: number, last: number): TextEdit {
+  const start = properties[first]!.node;
+  const next = properties[last + 1];
+  if (next) {
+    // Whole lines including their commas, or on one-line objects the properties up to the next one.
+    const ownLines = onOwnLine(text, start) && onOwnLine(text, next.node);
+    const from = ownLines ? lineStartAt(text, start.offset) : start.offset;
+    const to = ownLines ? lineStartAt(text, next.node.offset) : next.node.offset;
+    return { offset: from, length: to - from, content: '' };
+  }
+  // The last properties: from the end of the value before them, which takes the comma with it.
+  const previous = properties[first - 1]!.value;
+  const from = previous.offset + previous.length;
+  const end = properties[last]!.node;
+  return { offset: from, length: end.offset + end.length - from, content: '' };
 }
 
 function renameEntry(text: string, root: Node, from: EntryKey, to: EntryKey, style: TextStyle): string {
@@ -284,44 +287,13 @@ function existsError(key: EntryKey, existing: Property): EditError {
     : new EditError('key-exists', `${displayKey(key)} already exists in this file.`, key);
 }
 
-function propertiesOf(object: Node): Property[] {
-  return (object.children ?? []).flatMap((node) => {
-    const [key, value] = node.children ?? [];
-    return key && value ? [{ node, key, value }] : [];
-  });
-}
-
-/** The definition that applies: with duplicated keys, JSON.parse keeps the last one. */
-function lastNamed(object: Node, name: string): Property | undefined {
-  return propertiesOf(object)
-    .filter((property) => property.key.value === name)
-    .at(-1);
-}
-
-function objectAt(root: Node, path: readonly string[]): Node | undefined {
-  let object: Node | undefined = root;
-  for (const segment of path) {
-    const property: Property | undefined = object && lastNamed(object, segment);
-    object = property?.value.type === 'object' ? property.value : undefined;
-  }
-  return object;
-}
-
-function findProperty(root: Node, segments: readonly string[]): Property | undefined {
-  const parent = objectAt(root, segments.slice(0, -1));
-  return parent && lastNamed(parent, segments[segments.length - 1]!);
-}
-
-function samePath(a: readonly string[], b: readonly string[]): boolean {
-  return a.length === b.length && a.every((segment, index) => segment === b[index]);
-}
-
 function indentationOfLine(text: string, offset: number): string {
   return /^[ \t]*/.exec(text.slice(lineStartAt(text, offset)))![0];
 }
 
+/** Whether only blanks stand before the node on its line, found by walking back over them. */
 function onOwnLine(text: string, node: Node): boolean {
-  return !/\S/.test(text.slice(lineStartAt(text, node.offset), node.offset));
+  return atLineStart(text, blanksBefore(text, node.offset));
 }
 
 function nextNonSpace(text: string, offset: number): number {

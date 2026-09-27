@@ -31,6 +31,11 @@ export interface OpenEditor extends CellRef {
    * host refused the draft): then only the user's choice ends the conflict, not a text that changes back.
    */
   conflict?: { text: string | undefined; baseUnknown?: true } | undefined;
+  /**
+   * The field holds a suggestion of the AI: `replaced` is the text it replaced, which Esc brings back with the
+   * `multiline` the editor had before it.
+   */
+  suggestion?: { replaced: string; multiline: boolean } | undefined;
 }
 
 /** A text sent to the host. */
@@ -67,6 +72,11 @@ export class Edits {
   /** By {@link cellKey}. */
   readonly rejected = signal<ReadonlyMap<string, Rejection>>(new Map());
   private requests = 0;
+  /**
+   * Part of every request id: the host outlives a reload of the page and answers a write to the page then loaded, whose
+   * own requests count from 1 again (audit L-20).
+   */
+  private readonly page = Math.random().toString(36).slice(2, 10);
   /** The last model, for the texts the cells have now. */
   private model: BundleViewModel | undefined;
 
@@ -173,10 +183,53 @@ export class Edits {
     const conflict = open?.conflict;
     if (open && conflict) {
       batch(() => {
-        this.open.value = { ...open, before: conflict.text, error: undefined, conflict: undefined };
+        // A suggestion ends with it: Esc would bring back the draft typed against the old text (audit L-21).
+        this.open.value = {
+          ...open,
+          before: conflict.text,
+          error: undefined,
+          conflict: undefined,
+          suggestion: undefined,
+        };
         this.draft.value = toTyped(conflict.text ?? '');
       });
     }
+  }
+
+  /**
+   * Puts a suggestion into the field of the cell's editor, if it is open; saving it is up to the user, as for a
+   * typed text. A second suggestion keeps the text before the first, which Esc brings back.
+   */
+  suggest(cell: CellRef, text: string): boolean {
+    const open = this.open.value;
+    // Not while the text changed outside the editor: the user chooses first.
+    if (!open || !sameCell(open, cell) || open.conflict) {
+      return false;
+    }
+    const typed = toTyped(text);
+    batch(() => {
+      this.open.value = {
+        ...open,
+        multiline: open.multiline || typed.includes('\n'),
+        suggestion: open.suggestion ?? { replaced: this.draft.value, multiline: open.multiline },
+      };
+      this.draft.value = typed;
+    });
+    return true;
+  }
+
+  /** Brings back the text a suggestion replaced; false without a suggestion in the field. */
+  takeBackSuggestion(): boolean {
+    const open = this.open.value;
+    if (!open?.suggestion) {
+      return false;
+    }
+    const { replaced, multiline } = open.suggestion;
+    batch(() => {
+      this.open.value = { ...open, multiline, suggestion: undefined };
+      this.draft.value = replaced;
+    });
+    return true;
   }
 
   /** Keeps the draft, so that saving it replaces the text that changed outside the editor. */
@@ -196,16 +249,15 @@ export class Edits {
   answer({ requestId, ok, message, conflict }: WriteResult): void {
     const pending = this.pending.value;
     const edit = pending.find((candidate) => candidate.requestId === requestId);
-    if (ok) {
-      if (edit) {
-        this.pending.value = pending.map((candidate) =>
-          candidate === edit ? { ...candidate, written: true } : candidate,
-        );
-      }
-      this.announce(edit?.value === '' ? l10n.t('Text deleted.') : l10n.t('Saved.'));
+    // None: an answer to a request of the page before a reload, or of a text whose key or language went meanwhile.
+    if (!edit) {
       return;
     }
-    if (!edit) {
+    if (ok) {
+      this.pending.value = pending.map((candidate) =>
+        candidate === edit ? { ...candidate, written: true } : candidate,
+      );
+      this.announce(edit.value === '' ? l10n.t('Text deleted.') : l10n.t('Saved.'));
       return;
     }
     const later =
@@ -392,7 +444,7 @@ export class Edits {
   }
 
   private send(cell: CellRef, value: string, before: string | undefined): void {
-    const requestId = `edit-${++this.requests}`;
+    const requestId = `edit-${this.page}-${++this.requests}`;
     const { entryId, locale } = cell;
     batch(() => {
       this.forget(cell);

@@ -48,6 +48,17 @@ describe('list', () => {
     expect(within(definitionOf('SAVE', 1)).getByText('Enregistrer').getAttribute('lang')).toBe('fr');
   });
 
+  // With no key left to show, the list goes, and the focus in it fell to the page; the grid, which stays, gives it to
+  // its header (audit F-04).
+  it('gives the focus to the count of keys when no key is left to show', () => {
+    setWidth(600);
+    const { store } = open();
+    act(() => within(cardOf('SAVE')).getAllByRole('button')[0]!.focus());
+    act(() => store.updateFilter({ query: 'no key has this text' }));
+    expect(screen.queryByRole('list', { name: 'common' })).toBeNull();
+    expect(document.activeElement).toBe(document.getElementById('filter-result'));
+  });
+
   it('shows each finding with a symbol and its message', () => {
     setWidth(600);
     open();

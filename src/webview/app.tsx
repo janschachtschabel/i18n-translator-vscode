@@ -2,11 +2,13 @@ import { useEffect } from 'preact/hooks';
 import type { BundleViewModel } from '../shared/viewModel';
 import { LiveRegion } from './a11y/liveRegion';
 import { FileFindings } from './components/fileFindings';
-import { FilterBar } from './components/filterBar';
+import { FilterBar, RESULT_ID } from './components/filterBar';
+import { useFocusFallback } from './components/focus';
 import { Details } from './components/details';
 import { CompactChoice } from './components/list/compactChoice';
 import { List } from './components/list/list';
 import { LanguageChips } from './components/languageChips';
+import { ReviewList } from './components/review/reviewList';
 import { SkipLinks } from './components/skipLinks';
 import { Table } from './components/table/table';
 import { Toolbar } from './components/toolbar';
@@ -50,17 +52,13 @@ function Content({ store, view }: { store: EditorStore; view: View }) {
 const TITLE_ID = 'bundle-title';
 const GRID_HELP_ID = 'grid-help';
 
+/** The bundle with its rows, or with the review list of a fill in their place (K1). */
 function BundleView({ store, model }: { store: EditorStore; model: BundleViewModel }) {
-  const rows = store.rows.value;
   const layout = store.layout.value;
-  const shown = store.shownLocales.value;
-  const reference = model.locales.find((locale) => locale.reference)?.code;
-  // The compact list offers a choice once it has two languages to show beside the reference (or instead of one).
-  const candidates = compactCandidates(model.locales, store.uiState.value.hiddenLocales);
-  const second = shown.find((locale) => !locale.reference);
+  const review = store.review.list.value;
   return (
-    <div class={layout === 'table' ? 'bundle fill' : 'bundle'}>
-      <SkipLinks layout={layout} />
+    <div class={layout === 'table' && !review ? 'bundle fill' : 'bundle'}>
+      {!review && <SkipLinks layout={layout} />}
       <h1 id={TITLE_ID}>{model.name}</h1>
       <p>
         {l10n.t('Keys: {keys} · Languages: {languages}', {
@@ -68,6 +66,34 @@ function BundleView({ store, model }: { store: EditorStore; model: BundleViewMod
           languages: formatNumber(model.locales.length),
         })}
       </p>
+      {review ? (
+        <ReviewList store={store} list={review} locales={model.locales} />
+      ) : (
+        <BundleRows store={store} model={model} />
+      )}
+    </div>
+  );
+}
+
+/** How the rows are shown, which of them, and the rows: in the table or in the list. */
+function BundleRows({ store, model }: { store: EditorStore; model: BundleViewModel }) {
+  const rows = store.rows.value;
+  const layout = store.layout.value;
+  const shown = store.shownLocales.value;
+  const reference = model.locales.find((locale) => locale.reference)?.code;
+  // The compact list offers a choice once it has two languages to show beside the reference (or instead of one).
+  const candidates = compactCandidates(model.locales, store.uiState.value.hiddenLocales);
+  const second = shown.find((locale) => !locale.reference);
+  const empty = rows.length === 0;
+  // No key is left to show: the list goes with the focus in it (the grid stays, and gives it to its header). The count
+  // of keys takes it, not the page (audit F-04).
+  useFocusFallback(
+    () => [document.getElementById(RESULT_ID)],
+    [empty],
+    () => empty,
+  );
+  return (
+    <>
       <Toolbar store={store} />
       <LanguageChips store={store} locales={model.locales} />
       <FileFindings model={model} />
@@ -91,8 +117,10 @@ function BundleView({ store, model }: { store: EditorStore; model: BundleViewMod
         <>
           <p id={GRID_HELP_ID} class="grid-help">
             {l10n.t(
-              'Enter or F2 edits a text; in the key column, F2 renames the key and Delete (on macOS Cmd+Backspace) deletes it.',
+              'A click, Enter or F2 edits a text; in the key column, F2 renames the key and Delete (on macOS Cmd+Backspace) deletes it.',
             )}
+            {store.suggestions.ai.value.available &&
+              ` ${l10n.t('Ctrl+I (on macOS Cmd+I) asks the AI for a suggestion for a text.')}`}
           </p>
           <div class="workspace">
             <Table
@@ -112,7 +140,7 @@ function BundleView({ store, model }: { store: EditorStore; model: BundleViewMod
       ) : rows.length > 0 ? (
         <List store={store} rows={rows} locales={shown} reference={reference} labelledBy={TITLE_ID} />
       ) : null}
-    </div>
+    </>
   );
 }
 

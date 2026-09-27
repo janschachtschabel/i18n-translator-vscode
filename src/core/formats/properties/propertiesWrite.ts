@@ -1,38 +1,85 @@
 import { displayKey, type EntryKey } from '../../model/keys';
-import { applyEdits } from '../../text/edits';
+import { applyEdits, type TextEdit } from '../../text/edits';
 import { detectStyle, type TextStyle } from '../../text/style';
 import { EditError, type FileOp } from '../adapter';
 import { endsInOddBackslashes, readDefinitions, type Definition } from './propertiesRead';
 
+/** A text with its definitions, kept up to date through the operations of a batch. */
+interface File {
+  text: string;
+  definitions: Definition[];
+}
+
 /**
- * Applies the operations one after another and re-reads the text in between. Only the lines of the affected keys
- * change: a new line takes the separator of its neighbor and the line break of the file. In a file with a byte
+ * Applies the operations one after another, each on the text the ones before left. Only the lines of the affected
+ * keys change: a new line takes the separator of its neighbor and the line break of the file. In a file with a byte
  * order mark (`bom`), Java reads the first line as part of an unreadable key, so no new key goes there.
  */
 export function applyPropertiesOps(text: string, ops: readonly FileOp[], bom = false): string {
-  const style = detectStyle(text);
-  let current = text;
-  for (const op of ops) {
-    current = applyOp(current, op, style, bom);
+  if (ops.length === 0) {
+    return text;
   }
-  return current;
+  const style = detectStyle(text);
+  // Read once, then kept up to date: reading the whole text again after each of a fill's texts took seconds.
+  let file: File = { text, definitions: read(text) };
+  for (const op of ops) {
+    file = applyOp(file, op, style, bom);
+  }
+  return file.text;
 }
 
-function applyOp(text: string, op: FileOp, style: TextStyle, bom: boolean): string {
+function applyOp(file: File, op: FileOp, style: TextStyle, bom: boolean): File {
   switch (op.kind) {
     case 'set':
-      return setValue(text, op.key, op.value);
+      return setValue(file, op.key, op.value);
     case 'insert':
-      return insertLine(text, op.key, op.value, op.first ? 'first' : op.after, style, bom);
+      return insertLine(file, op.key, op.value, op.first ? 'first' : op.after, style, bom);
     case 'delete':
-      return removeEvery(text, op.key, true);
+      return readAgain(removeEvery(file.text, op.key, true, bom));
     case 'rename':
-      return renameKey(text, op.from, op.to);
+      return readAgain(renameKey(file.text, op.from, op.to, bom));
   }
 }
 
-function setValue(text: string, key: EntryKey, value: string): string {
-  const definition = lastDefinition(read(text), key);
+function readAgain(text: string): File {
+  return { text, definitions: read(text) };
+}
+
+/**
+ * The file after an edit within the lines from `start` to `end`, which begin and end logical lines: the definitions
+ * before them stay, those after them move, and the edited lines are read on their own.
+ */
+function edited(file: File, edit: TextEdit, start: number, end: number): File {
+  const text = applyEdits(file.text, [edit]);
+  const delta = edit.content.length - edit.length;
+  // A CR at the end and an LF after it are one line break, which the edit may have joined: read them together.
+  const until = text[end + delta - 1] === '\r' && text[end + delta] === '\n' ? end + delta + 1 : end + delta;
+  const lines = read(text.slice(start, until)).map((definition) => moved(definition, start));
+  return {
+    text,
+    definitions: [
+      ...file.definitions.filter((definition) => definition.lineStart < start),
+      ...lines,
+      ...file.definitions
+        .filter((definition) => definition.lineStart >= end)
+        .map((definition) => moved(definition, delta)),
+    ],
+  };
+}
+
+function moved(definition: Definition, delta: number): Definition {
+  return {
+    ...definition,
+    lineStart: definition.lineStart + delta,
+    keyRange: [definition.keyRange[0] + delta, definition.keyRange[1] + delta],
+    valueRange: [definition.valueRange[0] + delta, definition.valueRange[1] + delta],
+    lineEnd: definition.lineEnd + delta,
+  };
+}
+
+function setValue(file: File, key: EntryKey, value: string): File {
+  const { text } = file;
+  const definition = lastDefinition(file.definitions, key);
   if (!definition) {
     throw new EditError('missing-key', `${displayKey(key)} does not exist in this file.`, key);
   }
@@ -41,7 +88,12 @@ function setValue(text: string, key: EntryKey, value: string): string {
   // A key without separator and value would swallow the new value.
   const content =
     separator === '' ? `=${escapeValue(value, true)}` : escapeValue(value, /[=:]/.test(separator));
-  return applyEdits(text, [{ offset: start, length: end - start, content }]);
+  return edited(
+    file,
+    { offset: start, length: end - start, content },
+    definition.lineStart,
+    definition.lineEnd,
+  );
 }
 
 /**
@@ -49,14 +101,14 @@ function setValue(text: string, key: EntryKey, value: string): string {
  * when the anchor is missing; in a file without definitions at its end.
  */
 function insertLine(
-  text: string,
+  file: File,
   key: EntryKey,
   value: string,
   place: EntryKey | 'first' | undefined,
   style: TextStyle,
   bom: boolean,
-): string {
-  const definitions = read(text);
+): File {
+  const { text, definitions } = file;
   if (lastDefinition(definitions, key)) {
     throw new EditError('key-exists', `${displayKey(key)} already exists in this file.`, key);
   }
@@ -71,21 +123,34 @@ function insertLine(
   const line = escapeKey(name) + separator + escapeValue(value, /[=:]/.test(separator));
   const eol = style.eol;
   if (!anchor) {
-    const content = text === '' || /[\r\n]$/.test(text) ? line + eol : eol + line;
-    return applyEdits(text, [{ offset: text.length, length: 0, content }]);
+    // In an empty file with a byte order mark, the first line stays free: Java reads the mark as part of its key.
+    const content =
+      text === '' ? (bom ? eol : '') + line + eol : /[\r\n]$/.test(text) ? line + eol : eol + line;
+    return edited(file, { offset: text.length, length: 0, content }, text.length, text.length);
   }
   if (place === 'first' && !(bom && anchor.lineStart === 0)) {
-    return applyEdits(text, [{ offset: anchor.lineStart, length: 0, content: line + eol }]);
+    return edited(
+      file,
+      { offset: anchor.lineStart, length: 0, content: line + eol },
+      anchor.lineStart,
+      anchor.lineStart,
+    );
   }
   // A backslash that ends the file continues nothing yet; a blank line keeps it from continuing into the new line.
-  const blank = endsInOddBackslashes(text, anchor.lineStart, anchor.valueRange[1]) ? eol : '';
+  // After a CR, the blank line breaks with a CR too: an LF would join the CR to one line break.
+  const afterCr = text[anchor.lineEnd - 1] === '\r' && eol === '\n';
+  const blank = endsInOddBackslashes(text, anchor.lineStart, anchor.valueRange[1])
+    ? afterCr
+      ? '\r'
+      : eol
+    : '';
   // The last line of a file without a final line break keeps it that way.
   const content = hasLineBreak(anchor) ? blank + line + eol : eol + blank + line;
-  return applyEdits(text, [{ offset: anchor.lineEnd, length: 0, content }]);
+  return edited(file, { offset: anchor.lineEnd, length: 0, content }, anchor.lineStart, anchor.lineEnd);
 }
 
 /** Renames the definition that applies; earlier ones of the old name were hidden by it and must not come back. */
-function renameKey(text: string, from: EntryKey, to: EntryKey): string {
+function renameKey(text: string, from: EntryKey, to: EntryKey, bom: boolean): string {
   const definitions = read(text);
   const definition = lastDefinition(definitions, from);
   if (!definition) {
@@ -99,30 +164,56 @@ function renameKey(text: string, from: EntryKey, to: EntryKey): string {
   }
   const [start, end] = definition.keyRange;
   const renamed = applyEdits(text, [{ offset: start, length: end - start, content: escapeKey(nameOf(to)) }]);
-  return removeEvery(renamed, from, false);
+  return removeEvery(renamed, from, false, bom);
 }
 
 /** Removes every definition of the key with its lines; `required`: the key must be there. */
-function removeEvery(text: string, key: EntryKey, required: boolean): string {
-  let current = text;
-  let definition = lastDefinition(read(current), key);
-  if (!definition && required) {
+function removeEvery(text: string, key: EntryKey, required: boolean, bom: boolean): string {
+  const name = nameOf(key);
+  const definitions = read(text).filter((definition) => definition.key === name);
+  if (definitions.length === 0 && required) {
     throw new EditError('missing-key', `${displayKey(key)} does not exist in this file.`, key);
   }
-  while (definition) {
-    current = removeLines(current, definition);
-    definition = lastDefinition(read(current), key);
+  // On one reading and as one edit, from the last definition to the first: a removal changes nothing before it but
+  // the line break that the last line of the text, without one, takes from the line before; `end` follows where the
+  // text ends meanwhile. Reading the file again after each removal took quadratic time (audit S-14).
+  const edits: TextEdit[] = [];
+  let end = text.length;
+  for (const definition of [...definitions].reverse()) {
+    const edit = removal(text, definition, end, bom);
+    if (edit.offset + edit.length === end) {
+      end = edit.offset;
+    }
+    if (edit.length > 0) {
+      edits.push(edit);
+    }
   }
-  return current;
+  return applyEdits(text, edits);
 }
 
-/** The lines of a definition; for a last line without line break, the line break before it goes instead. */
-function removeLines(text: string, definition: Definition): string {
-  let start = definition.lineStart;
-  if (!hasLineBreak(definition) && start > 0) {
-    start -= text.slice(0, start).endsWith('\r\n') ? 2 : 1;
+/**
+ * The lines of a definition, in a text that ends at `end` meanwhile; for a last line without line break, the line
+ * break before it goes instead. In a file with a byte order mark, the first line stays, empty: the next key would
+ * take the mark (audit L-25).
+ */
+function removal(text: string, definition: Definition, end: number, bom: boolean): TextEdit {
+  const valueEnd = definition.valueRange[1];
+  const lineBreak =
+    valueEnd >= end
+      ? 0
+      : text.startsWith('\r\n', valueEnd)
+        ? 2
+        : text[valueEnd] === '\n' || text[valueEnd] === '\r'
+          ? 1
+          : 0;
+  if (bom && definition.lineStart === 0 && lineBreak > 0) {
+    return { offset: 0, length: valueEnd, content: '' };
   }
-  return applyEdits(text, [{ offset: start, length: definition.lineEnd - start, content: '' }]);
+  let start = definition.lineStart;
+  if (lineBreak === 0 && start > 0) {
+    start -= text.startsWith('\r\n', start - 2) ? 2 : 1;
+  }
+  return { offset: start, length: valueEnd + lineBreak - start, content: '' };
 }
 
 function read(text: string): Definition[] {

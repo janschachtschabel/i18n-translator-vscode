@@ -8,15 +8,17 @@ import { VALUE_FIELD } from '../model/types';
  * or before position `from` of `keys` that the file has inside the key's deepest parent object in that file.
  * The anchor is cut to the level where the new entry starts, so a text that follows `OBJ.X` goes after the
  * object `OBJ`, and a missing parent object goes after its predecessor. `first`: the file has no such key, so the
- * entry goes first in that parent object, but after the hidden entries that open the file.
+ * entry goes first in that parent object, but after the hidden entries that open the file. `inserted` are keys that
+ * earlier operations of the same change insert into the file: they count as present.
  */
 export function insertAnchor(
   keys: readonly EntryKey[],
   from: number,
   file: LoadedFile,
   key: EntryKey,
+  inserted: readonly EntryKey[] = [],
 ): EntryKey | 'first' {
-  const present = file.parsed.entries.map((entry) => entry.key);
+  const present = [...file.parsed.entries.map((entry) => entry.key), ...inserted];
   // The parent objects that the file has are those that contain one of its texts.
   let depth = key.segments.length - 1;
   while (depth > 0 && !present.some((other) => isKeyPrefix(key.segments.slice(0, depth), other.segments))) {

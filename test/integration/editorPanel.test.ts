@@ -8,7 +8,7 @@ import { rootRef } from '../../src/extension/services/workspaceIndex';
 import { sameBytes } from '../../src/extension/services/files';
 import { DEFAULT_FILTER } from '../../src/shared/filter';
 import { DEFAULT_UI_STATE, type UiState } from '../../src/shared/protocol';
-import { activateExtension, answering, EXTENSION_ID, nextPost } from './helpers';
+import { activateExtension, answering, EXTENSION_ID, keepTranslationFiles, nextPost } from './helpers';
 
 function editorTabs(): string[] {
   return vscode.window.tabGroups.all
@@ -20,7 +20,15 @@ function editorTabs(): string[] {
 }
 
 suite('editor panel', () => {
-  teardown(() => vscode.commands.executeCommand('workbench.action.closeAllEditors'));
+  // The bytes of every translation file back after each test, whatever it wrote and whether it passed (audit T-17).
+  let restoreFiles: () => Promise<void>;
+  suiteSetup(async () => {
+    restoreFiles = await keepTranslationFiles();
+  });
+  teardown(async () => {
+    await vscode.commands.executeCommand('workbench.action.closeAllEditors');
+    await restoreFiles();
+  });
 
   test('opens one editor per bundle from the areas view; its webview loads and gets the bundle', async () => {
     const { index, views, editors } = await activateExtension();
@@ -136,7 +144,7 @@ suite('editor panel', () => {
 
   // Setting the title of a closed panel throws: closing an editor while it loaded logged an error.
   test('closes while it loads without an error', async () => {
-    const { index, fileStore } = await activateExtension();
+    const { index, fileStore, ai } = await activateExtension();
     const root = (await index.refresh()).roots[0]!;
     const common = root.analysis.bundles.find((bundle) => bundle.name === 'common')!;
     const errors: unknown[] = [];
@@ -155,6 +163,8 @@ suite('editor panel', () => {
         log: log as unknown as vscode.LogOutputChannel,
         command: async () => undefined,
         preview: quiet,
+        ai: ai.service,
+        consent: ai.consent,
       },
     );
     panel.onDidDispose(() => editor.dispose());
@@ -207,12 +217,16 @@ suite('editor panel', () => {
     const first = editors.open(root, common);
     await first.receive({ type: 'unsaved', texts: texts.map((text) => ({ ...text, extra: 1 })) });
     first.panel.dispose();
-    const second = editors.open(root, common);
-    assert.deepStrictEqual((await nextPost(second, 'init')).unsaved, texts);
-    // None left: the workspace state, which outlives the test run, keeps nothing.
-    await second.receive({ type: 'unsaved', texts: [] });
-    second.panel.dispose();
-    assert.deepStrictEqual((await nextPost(editors.open(root, common), 'init')).unsaved, []);
+    try {
+      const second = editors.open(root, common);
+      assert.deepStrictEqual((await nextPost(second, 'init')).unsaved, texts);
+      await second.receive({ type: 'unsaved', texts: [] });
+      second.panel.dispose();
+      assert.deepStrictEqual((await nextPost(editors.open(root, common), 'init')).unsaved, []);
+    } finally {
+      // None left, also when the test fails: the workspace state outlives the test run.
+      await editors.open(root, common).receive({ type: 'unsaved', texts: [] });
+    }
   });
 
   test('undoes the last change from the editor', async () => {

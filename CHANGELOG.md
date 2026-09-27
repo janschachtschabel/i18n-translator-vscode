@@ -5,6 +5,123 @@ Bis 0.2 entsprach die Stufe der Phase der [Taskliste](docs/plans/2026-09-24-edu-
 Phasen 5 und 6 vorgezogen sind, zählt sie weiter, ohne die Phase zu nennen. Die Installation beschreibt das
 [README](README.md#installation).
 
+## 0.4.0 – 27.09.2026
+
+Die KI kommt hinzu: über die b-api (Staging), mit Schlüssel, Adresse und Modell an einem Ort, als Vorschlag für eine
+Zelle, zum Füllen einer Sprache und zum Prüfen ihrer Übersetzungen, jeweils mit einer Prüfliste vor dem Schreiben.
+Dazu die Rückmeldungen zu 0.3.0: Ein Klick öffnet eine Zelle, Befunde sind farbig, Eingabefelder schließen mit einem
+Klick daneben.
+
+- **KI über die b-api, erster Teil:**
+  - „API-Schlüssel setzen…“ legt den Schlüssel im Schlüsselspeicher von VS Code ab; ohne ihn gilt `B_API_KEY`.
+  - „KI-Verbindung testen“ und „KI-Modell wählen…“; die Einstellungen stehen in der Kategorie „KI (b-api)“, die Adresse
+    nur in den Benutzereinstellungen.
+  - **KI-Vorschlag für eine Zelle** (Knopf unter dem Textfeld, Strg+I): übersetzt aus der Referenz oder, bei einer
+    Variante, aus ihrer Basis, markiert „bitte prüfen“ und geprüft wie ein getippter Text; Esc holt den vorigen Text
+    zurück. Vor dem ersten Senden an eine Adresse fragt die Extension einmal nach.
+  - **Mit KI füllen…** in der Werkzeugleiste des Editors: übersetzt die fehlenden und leeren Texte einer Sprache (bei
+    einer Variante die Texte, die sie braucht) in Paketen und zeigt sie in einer Prüfliste an Stelle der Tabelle, mit
+    Quelle, bisherigem Text, bearbeitbarem Vorschlag und Prüfung. Vorschläge mit abweichenden Platzhaltern bleiben
+    abgewählt. „Ausgewählte übernehmen“ schreibt die gewählten auf einmal, nach einer Sicherung und als ein Schritt
+    „Letzte Änderung rückgängig“.
+  - **Mit KI prüfen…** daneben: beurteilt alle Texte einer Sprache (bei einer Variante ihre eigenen) gegen ihre Quelle
+    und listet, was die KI findet, mit Schwere, dem Problem in der Sprache von VS Code und einer Korrektur; nichts ist
+    vorgewählt. Die Zusammenfassung nennt geprüfte, einwandfreie und bemängelte Texte und die ohne Antwort.
+  - Die Werkzeugleiste zeigt in der Gruppe „KI“, ob die KI bereit ist und mit welchem Modell, ohne Schlüssel den Weg,
+    ihn zu setzen.
+  - **KI einrichten…** (Werkzeugleiste, Seitenleiste, Befehlspalette) zeigt Schlüssel, Adresse der b-api und Modell auf
+    einen Blick und führt zu den Schritten; neu ist „b-api-Adresse festlegen…“ für eine andere Adresse als Staging.
+  - Die Prüfliste hat „Alle auswählen“ und „Keine auswählen“; ein leerer Vorschlag lässt sich nicht wählen, da er
+    nichts schriebe.
+  - Anbieter, Modell und Denkaufwand gelten wie die Adresse nur aus den Benutzereinstellungen: Ein Repository kann den
+    Schlüssel nicht auf ein anderes Modell lenken. Eine Adresse, die die KI nicht nutzen darf (etwa `http:`), schaltet
+    sie ab, statt auf Staging zurückzufallen.
+  - Ein Schlüssel mit unsichtbaren Zeichen (etwa beim Kopieren aus einer Webseite) wird abgelehnt, statt jede Anfrage
+    als Netzfehler scheitern zu lassen. „API-Schlüssel entfernen“ erscheint nur, wenn einer gespeichert ist.
+  - „KI-Verbindung testen“ und „KI-Modell wählen…“ lassen sich abbrechen; eine fehlende Modellliste verweist auf
+    Adresse und Anbieter statt auf das Modell.
+  - **Nach dem Review:** Das Übernehmen vieler Texte in eine `.properties`-Datei geht schnell (eine Sprache von
+    `valuespaces_i18n` mit 1.232 Texten in 0,1 statt 4 s, in denen VS Code stand). Ein Auftrag, der beim Start
+    abgebrochen wird, etwa durch Schließen des Editors, sendet nichts mehr; ein abgebrochener Vorschlag fragt nicht
+    mehr nach der Einwilligung, und eine Zustimmung geht nicht verloren, wenn zwei Editoren zugleich fragen. Keys, die
+    gleich aussehen (`A.B` als ein Key und verschachtelt), bekommen je ihre eigene Übersetzung. Die Prüfliste hängt
+    nicht mehr, wenn ein Text schon in der Datei steht oder das Schreiben nicht gelesen werden kann; sie ist während
+    des Schreibens gesperrt.
+  - **Bedienung der Prüfliste mit Tastatur und Screenreader:** Der Fokus bleibt nach „Übernehmen“ und „Abbrechen“ in
+    der Liste und kehrt beim Schließen zum Knopf zurück, der den Auftrag begann; der feste Kopf verdeckt kein
+    fokussiertes Feld mehr. Das Kästchen eines abgewählten Textes nennt den Grund, das Textfeld Quelle und bisherigen
+    Text. Der Fortschritt wird in Zehnteln angesagt statt nach jedem Paket; eine abgebrochene Prüfung fasst zusammen,
+    was sie geprüft hat. Nach „Alle auswählen“ und „Keine auswählen“ wird die Zahl der gewählten Texte angesagt;
+    nicht verfügbare Knöpfe behalten einen deutlichen Fokusrahmen. Ein Text mit kaputtem Zeichen (etwa einem halben
+    Emoji) lässt sich nicht wählen, statt das ganze Schreiben scheitern zu lassen. „KI einrichten…“ nennt zuerst, wenn
+    die KI ausgeschaltet oder im eingeschränkten Modus ist.
+- **`.properties`: Ein neuer Key verändert den Text davor nicht mehr**, wenn die letzte Zeile auf einen Backslash und
+  ein einzelnes CR endet (Datei mit gemischten Zeilenenden): Bisher setzte sich der Backslash in die neue Zeile fort,
+  der Wert davor bekam die neue Zeile angehängt, und der neue Key fehlte.
+- **Nach dem zweiten Audit** ([Bericht](docs/audits/2026-09-27-audit.md)):
+  - **Sicherheit:** Hinweis und Prüfmeldung der Eingabefelder („Key hinzufügen…“, „Key umbenennen…“) zeigen Namen aus
+    dem Repository als Text; ein präparierter Key wie `[x](command:…)` wurde dort zu einem Link, der einen Befehl
+    ausführte. Antworten der b-api werden höchstens bis 4 MB gelesen; der Host nimmt je Editor eine Anfrage für einen
+    Vorschlag an.
+  - **Schreiben:** Der Vergleich mit den Dateien und die Prüfung auf ungespeicherte Editoren laufen direkt vor dem
+    Schreiben, nach dem Warten auf den Index; eine Änderung von außen in dieser Zeit wurde bisher überschrieben.
+    Wiederherstellen ohne Unterschied legt keine Sicherung mehr an.
+  - **`.properties`:** Ein Key, den eine Datei vielfach wiederholt, löscht oder benennt sich in Millisekunden um
+    (8.000 Wiederholungen: 76 ms statt 24 s). In einer Datei mit Byte-Order-Mark bleibt die erste Zeile frei von Keys,
+    auch beim Löschen des ersten und beim Einfügen in eine leere Datei; die Prüfung meldet auch einen Key nach
+    Leerzeichen in der ersten Zeile.
+  - **JSON und Mail-Vorlagen:** Ein doppelter Key und ein wiederholtes Feld löschen oder benennen sich in Millisekunden
+    um, auch in einer Datei auf einer Zeile (8.000 Wiederholungen in JSON: Löschen und Umbenennen zusammen 0,3 s, das Löschen allein brauchte 108 s). Viele Texte auf einmal,
+    etwa aus der Prüfliste, schreibt die Extension in einem Durchgang (1.600 Texte: unter 20 ms statt 1,6 s).
+  - **Speichern:** Ein Speichern kurz nach dem vorigen wartet nicht mehr auf den Lauf des Index, den der Watcher nach
+    dem vorigen startete; das zweite Speichern antwortet in 42–57 ms statt bis zu 165 ms.
+  - **Mail-Vorlagen:** Zeilen- und Absatztrenner (U+2028, U+2029) werden als Zeichenreferenzen geschrieben; `&constructor;`
+    und ähnliche Namen gelten nicht mehr als XML-Entity. Ein Platzhalter mit Leerzeichen wie `{{ link }}` gilt als falsch
+    geschrieben und weicht von `{{link}}` ab: edu-sharing ersetzt nur genau `{{link}}` (Schreibweise
+    `double-brace-exact`, siehe [Einstellungen](docs/einstellungen.md#edui18nareas)).
+  - **Editor:** Ein KI-Vorschlag, der während einer Änderung von außen kommt, ersetzt den Entwurf nicht mehr, und „Neuen
+    Text übernehmen“ beendet ihn. Nach dem Neuladen der Seite gilt keine Antwort der alten Seite für einen Text der
+    neuen. Die kompakte Liste zeigt eine ausgeblendete Referenz nicht mehr.
+  - **Tastatur und Screenreader:** Bleibt kein Key übrig, geht der Fokus an die Trefferzahl statt verloren; schließt die
+    Prüfliste, nachdem die KI ausgeschaltet wurde, geht er an „KI einrichten…“; die Prüfung eines Texts der Prüfliste
+    wird beim Tippen angesagt.
+  - **Meldungen:** Scheitert ein Schritt, der aus einer Meldung heraus startet (etwa das Speichern des Schlüssels ohne
+    Schlüsselbund) oder der Start eines KI-Auftrags, sagt die Extension es; bisher geschah still nichts. Eine Wurzel,
+    deren Neueinlesen scheitert, wird als „konnte nicht geprüft werden“ gemeldet.
+  - Neue Prüfung `condition-unbalanced` (Fehler): Mail-Texte, deren Bedingungen (`{{if …}}` … `{{endif}}`) von der
+    Referenz abweichen oder denen ein `{{endif}}` fehlt. edu-sharing verschickt solche Mails nicht. Auch die Prüfung
+    beim Tippen und die Vorauswahl der Prüfliste kennen sie.
+  - Präparierte, riesige Übersetzungsdateien legen VS Code nicht mehr für viele Sekunden lahm: Eine Wurzel wird mit
+    höchstens 10 MB und 100.000 Texten gelesen; eine Datei darüber hinaus meldet die Prüfung als unlesbar
+    („TooManyEntries“). Vorschläge für verschobene Keys gibt es je Sprache für höchstens 100.000 Paare.
+  - Die Rückfrage vor „Mit KI füllen…“ und „Mit KI prüfen…“ zählt die Anfragen, wie der Auftrag die Texte schneidet:
+    nach Anzahl und nach Zeichen. Bisher nannte sie bei langen Mail-Texten einen Bruchteil und fragte oft gar nicht.
+  - Das Übernehmen vieler Texte der Prüfliste sichert immer zuerst, auch kurz nach einer gescheiterten Sicherung; bisher
+    schrieb es dann ohne Sicherung und ohne Warnung.
+  - `eduI18n.ai.enabled: false` in den Benutzereinstellungen gilt in jedem Arbeitsbereich; ein Repository kann die KI
+    nicht wieder einschalten.
+- Ein Dialog von VS Code (etwa diese Rückfrage) schließt das offene Textfeld nicht mehr; danach bekommt das Textfeld
+  den Fokus zurück.
+- Eine Änderung der KI-Einstellungen liest den Arbeitsbereich nicht mehr neu ein. Ungültige Sicherungseinstellungen
+  meldet die Seitenleiste sofort.
+- **Eingabefelder für Keys und Sprachen** („Key hinzufügen…“, „Key umbenennen…“, „Sprache hinzufügen…“) schließen
+  jetzt auch mit einem Klick daneben und haben ein X in der Titelzeile; bisher schloss sie nur Esc.
+- **Ein Klick auf eine Zelle öffnet ihren Text zum Bearbeiten**, wie in der alten App; bisher wählte er die Zelle nur,
+  und erst ein Doppelklick, Enter oder F2 öffnete sie. Ein Klick mit Umschalt, Strg, Alt oder Cmd, oder einer, der
+  eine Textauswahl beendet, wählt weiterhin nur.
+- **Ein Klick auf die nächste Zelle geht nicht mehr verloren.** Während ein Text bearbeitet wird, ist seine Zeile höher
+  (Feld und Hinweise, etwa 89 statt 26 Pixel). Ein Klick auf eine Zelle darunter speicherte schon beim Drücken der
+  Maustaste; die Zeile wurde wieder klein, die Zellen darunter rückten nach oben, und der Klick traf beim Loslassen
+  eine andere Stelle: Die angeklickte Zelle öffnete sich nicht, man musste ein zweites Mal klicken. Jetzt speichert
+  der Klick erst beim Loslassen.
+- **Bearbeitete Zeilen bleiben im Filter**, bis der Filter oder die sichtbaren Sprachen wechseln. Mit „fehlend“
+  (Alt+M) verschwand eine Zeile, sobald ihr Text gespeichert war, und die Zeilen darunter rückten nach.
+- **Befunde farbig:** Zellen mit Warnung (etwa „fehlt“, „leer“) sind gelb hinterlegt, Zellen mit Fehler (etwa
+  Platzhalter) rot, jeweils mit einem Balken am Anfang; ebenso die Texte in der Liste und in den Details. Symbol und
+  Wort bleiben, im hohen Kontrast bleiben Balken und Symbol. Die Symbole nutzen die Listenfarben des Themes, die auch
+  auf den Flächen mindestens 4,8:1 erreichen (gemessen in den zehn mitgelieferten Themes von VS Code 1.139). Eine
+  markierte Zelle mit dem Tastaturfokus zeigt den Hintergrund des Editors, damit der Fokusrahmen sichtbar bleibt.
+
 ## 0.3.0 – 26.09.2026
 
 Metadatasets und Mail-Templates kommen hinzu, vorgezogen vor Füllen und Import/Export. Ein edu-sharing-Checkout oder

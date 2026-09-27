@@ -149,6 +149,15 @@ describe('propertiesAdapter.applyOps: insert', () => {
     }
   });
 
+  it('keeps that backslash from continuing also when it ends in a CR in a file of LF', () => {
+    const [backslash, cr, lf] = [92, 13, 10].map((code) => String.fromCharCode(code));
+    // The file breaks lines with LF: the LF of a blank line right after the CR would make one line break of both.
+    const text = `# h${lf}a=x ${backslash}${cr}`;
+    const written = apply(text, { kind: 'insert', key: key('b'), value: 'v', after: key('a') });
+    expect(valueOf(written, 'a')).toBe('x ');
+    expect(valueOf(written, 'b')).toBe('v');
+  });
+
   it('writes "=" for an empty key, where white space alone would make the value the key', () => {
     const written = apply('a 1\n', { kind: 'insert', key: key(''), value: 'v', after: key('a') });
     expect(written).toBe('a 1\n=v\n');
@@ -167,6 +176,12 @@ describe('propertiesAdapter.applyOps: delete and rename', () => {
     expect(apply('a=1\nb=2\na=3\n', { kind: 'delete', key: key('a') })).toBe('b=2\n');
   });
 
+  // Only the lines of the definitions go: a removal one by one brought the CR of one line and the LF of a blank line
+  // together, read them as one line break and took the blank line along.
+  it('removes the lines of the definitions and no others', () => {
+    expect(apply('x=0\rx=1\n\nb=2\n', { kind: 'delete', key: key('x') })).toBe('\nb=2\n');
+  });
+
   it('removes all lines of a continued definition', () => {
     expect(apply('a=x\\\n  y\nb=2\n', { kind: 'delete', key: key('a') })).toBe('b=2\n');
   });
@@ -174,6 +189,9 @@ describe('propertiesAdapter.applyOps: delete and rename', () => {
   it('keeps a file without a final line break without one', () => {
     expect(apply('a=1\nb=2', { kind: 'delete', key: key('b') })).toBe('a=1');
     expect(apply('a=1', { kind: 'delete', key: key('a') })).toBe('');
+    // Also when a continued definition of the key ends on a blank line before its last definition; reading the file
+    // again after each removal (before S-14) added a line break here.
+    expect(apply('a=1\nk=ends \\\n\nk=v', { kind: 'delete', key: key('k') })).toBe('a=1');
   });
 
   it('renames the definition that applies and drops the earlier ones', () => {
@@ -222,6 +240,11 @@ describe('propertiesAdapter: encoding', () => {
     ]);
     // A comment in the first line takes the mark; the keys after it are found.
     expect(propertiesAdapter.parse(bom('# c\na=1\n')).problems).toEqual([]);
+    // Java skips white space only after the mark, which it reads as a key: the key after the spaces is lost as well
+    // (audit L-25).
+    expect(propertiesAdapter.parse(bom('  a=1\nb=2\n')).problems).toEqual([
+      { code: 'bom-first-key', range: [2, 3], key: key('a') },
+    ]);
   });
 
   it('never puts a new key into the first line of a file with a byte order mark', () => {
@@ -230,6 +253,19 @@ describe('propertiesAdapter: encoding', () => {
       { kind: 'insert', key: key('n'), value: '9', first: true },
     ]);
     expect(written.text).toBe('a=1\nn=9\n');
+  });
+
+  // Two more ways put a key into the first line, whose byte order mark Java reads as part of it (audit L-25).
+  it('keeps the first line of a file with a byte order mark free of keys, also when it has none yet', () => {
+    const bom = (text: string) => ({ text, encoding: 'utf-8' as const, bom: true });
+    const firstKey = (text: string) =>
+      propertiesAdapter.parse(bom(text)).problems.filter((problem) => problem.code === 'bom-first-key');
+    const inserted = propertiesAdapter.applyOps(bom(''), [{ kind: 'insert', key: key('n'), value: '9' }]);
+    expect(inserted.text).toBe('\nn=9\n');
+    expect(firstKey(inserted.text)).toEqual([]);
+    const deleted = propertiesAdapter.applyOps(bom('a=1\nb=2\n'), [{ kind: 'delete', key: key('a') }]);
+    expect(deleted.text).toBe('\nb=2\n');
+    expect(firstKey(deleted.text)).toEqual([]);
   });
 
   it('reads ISO-8859-1 without a finding: Java falls back to it on purpose', () => {

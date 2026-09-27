@@ -16,8 +16,12 @@ export const propertiesAdapter: FormatAdapter = {
   decode: decodeText,
   parse(doc) {
     const parsed = parseProperties(doc.text);
-    // Java's UTF-8 reader keeps a byte order mark, and Properties.load takes it for a character of the first key.
-    const first = parsed.entries.find((entry) => entry.fields[VALUE_FIELD]!.keyRange[0] === 0);
+    // Java's UTF-8 reader keeps a byte order mark, and Properties.load takes it for a character of the first line's
+    // key: a key there is lost, also after white space, which Java skips only after the mark (audit L-25).
+    const firstLineEnd = doc.text.search(/[\r\n]/);
+    const first = parsed.entries.find(
+      (entry) => firstLineEnd === -1 || entry.fields[VALUE_FIELD]!.keyRange[0] < firstLineEnd,
+    );
     return doc.bom && first
       ? {
           ...parsed,

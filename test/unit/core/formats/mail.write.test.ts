@@ -152,6 +152,28 @@ describe('mailAdapter.applyOps: insert', () => {
 });
 
 describe('mailAdapter.applyOps: delete and rename', () => {
+  // Each repetition looked for the ends of its line, which in a file on one line are the ends of the file: 8,000 took
+  // 8 s (review of audit S-14).
+  it('deletes and moves a field repeated thousands of times in well under a second, also on one line', () => {
+    const repeated = Array.from({ length: 8_000 }, (_, index) => `<subject>S ${index}</subject>`);
+    for (const text of [
+      one(`<template name="t">\n\t\t${repeated.join('\n\t\t')}\n\t\t<message>M</message>\n\t</template>`),
+      `<templates><template name="t">${repeated.join('')}<message>M</message></template></templates>`,
+    ]) {
+      for (const op of [
+        { kind: 'delete', key: key('t', 'subject') },
+        { kind: 'rename', from: key('t', 'subject'), to: key('u', 'subject') },
+      ] satisfies FileOp[]) {
+        const started = performance.now();
+        const written = apply(text, op);
+        const elapsed = performance.now() - started;
+        expect(valueOf(written, 't', 'subject')).toBeUndefined();
+        expect(valueOf(written, 't', 'message')).toBe('M');
+        expect(elapsed).toBeLessThan(1500);
+      }
+    }
+  });
+
   it('keeps a template that still has other elements, such as a style sheet', () => {
     const text = one('<template name="t"><style>s</style><subject>S</subject></template>');
     expect(apply(text, { kind: 'delete', key: key('t', 'subject') })).toBe(
@@ -247,6 +269,23 @@ describe('mailAdapter: encoding and new files', () => {
     expect(written.text).toContain('<message><![CDATA[5 ]]>&#x20ac;</message>');
     expect(Buffer.from(mailAdapter.encode(written)).toString('latin1')).toBe(written.text);
     expect(valueOf(written.text, 't', 'message')).toBe('5 €');
+  });
+
+  // VS Code offers to remove these two line terminators when it opens a file, and the JSON and .properties writers
+  // escape them for that reason; the mail writer wrote them as they are (audit L-27).
+  it('writes the line and paragraph separators as references, in any encoding', () => {
+    const separators = String.fromCharCode(0x2028) + String.fromCharCode(0x2029);
+    const text = one('<template name="t"><subject>S</subject><message>M</message></template>');
+    const written = apply(
+      text,
+      { kind: 'set', key: key('t', 'subject'), value: `a${separators}b` },
+      { kind: 'set', key: key('t', 'message'), value: `c${separators}d` },
+    );
+    expect([...written].filter((char) => separators.includes(char))).toEqual([]);
+    expect(written).toContain('<subject>a&#x2028;&#x2029;b</subject>');
+    expect(written).toContain('<message><![CDATA[c]]>&#x2028;&#x2029;<![CDATA[d]]></message>');
+    expect(valueOf(written, 't', 'subject')).toBe(`a${separators}b`);
+    expect(valueOf(written, 't', 'message')).toBe(`c${separators}d`);
   });
 
   it('follows an encoding the XML declaration names, as Java does', () => {

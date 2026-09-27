@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { moveInGrid, type GridPosition } from '../../a11y/gridKeys';
-import type { ShownRow } from '../../state/shownRows';
+import { isCommand } from '../../shortcuts';
+import { referenceTextOf, type ShownRow } from '../../state/shownRows';
 import type { EditorStore, LocaleColumn } from '../../state/store';
 import { EDITOR_CLASS } from '../cellEditor';
 import { focusIsLost, onFocusLeaving } from '../focus';
@@ -41,6 +42,7 @@ export function Table({ store, rows, locales, reference, wrap, labelledBy, descr
   const open = store.edits.open.value;
   // An editor in the details is theirs.
   const editor = open?.place === 'rows' ? open : undefined;
+  const ai = store.suggestions.ai.value.available;
   const editorRow = editor ? rows.findIndex((row) => row.entryId === editor.entryId) + 1 : 0;
   const count = useIncrementalCount(rows.length, Math.max(position.row, editorRow));
   /** Whether the focus is in the grid; after a render it goes back to the active cell if it got lost. */
@@ -108,6 +110,14 @@ export function Table({ store, rows, locales, reference, wrap, labelledBy, descr
       editAt(at);
       return;
     }
+    // Ctrl+I opens the editor of a text and asks the AI for a suggestion for it, if it has a text to translate from.
+    if (isCommand(event, 'i') && at.row > 0 && at.column > 0) {
+      event.preventDefault();
+      event.stopPropagation();
+      editAt(at);
+      store.suggestions.request(referenceTextOf(rows[at.row - 1]!, reference, locales[at.column - 1]!.code));
+      return;
+    }
     const openPoint = openPointDirection(event);
     const next =
       openPoint !== undefined
@@ -134,10 +144,13 @@ export function Table({ store, rows, locales, reference, wrap, labelledBy, descr
       store.edit(row.entryId, locale.code);
     }
   };
-  const onDblClick = (event: MouseEvent) => {
+  // A click opens the editor, as in the old app; one with a modifier, or one that ends a selection of text, selects.
+  const onClick = (event: MouseEvent) => {
     const target = event.target as HTMLElement;
     const cell = target.closest<HTMLElement>('[data-row]');
-    if (cell && !target.closest(`.${EDITOR_CLASS}`)) {
+    const modified = event.shiftKey || event.ctrlKey || event.altKey || event.metaKey;
+    const selecting = document.getSelection()?.isCollapsed === false;
+    if (cell && !target.closest(`.${EDITOR_CLASS}`) && !modified && !selecting) {
       editAt(cellPosition(cell));
     }
   };
@@ -171,7 +184,7 @@ export function Table({ store, rows, locales, reference, wrap, labelledBy, descr
         onKeyDown={onKeyDown}
         onFocusIn={onFocusIn}
         onFocusOut={onFocusOut}
-        onDblClick={onDblClick}
+        onClick={onClick}
       >
         <div role="rowgroup" class="grid-head">
           <HeaderRow locales={locales} activeColumn={position.row === 0 ? position.column : undefined} />
@@ -187,6 +200,7 @@ export function Table({ store, rows, locales, reference, wrap, labelledBy, descr
               store={store}
               reference={reference}
               editor={editor?.entryId === row.entryId ? editor : undefined}
+              ai={position.row === index + 1 && ai}
             />
           ))}
         </div>

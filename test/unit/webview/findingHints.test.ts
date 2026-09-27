@@ -20,6 +20,8 @@ describe('hintFor', () => {
     expect(hintFor('placeholder-malformed')).toContain('{{name}}');
     expect(hintFor('placeholder-malformed', 'single-brace')).toContain('{name}');
     expect(hintFor('placeholder-malformed', 'single-brace')).toContain('{{GENDER_SEPARATOR}}');
+    // In a mail, edu-sharing replaces {{name}} only without spaces inside (audit L-31).
+    expect(hintFor('placeholder-malformed', 'double-brace-exact')).toMatch(/\{\{name\}\}.*space/);
   });
 
   it('does not claim which of repeated definitions counts, which differs between formats', () => {

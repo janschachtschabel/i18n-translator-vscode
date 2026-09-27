@@ -24,6 +24,17 @@ select:focus-visible {
   outline-offset: 1px;
 }
 
+/*
+ * The colors of findings. Symbols and the bars of marked texts take the theme's list colors: measured in the ten
+ * built-in themes of VS Code 1.139, they reach 4.8:1 and more on the areas of marked texts (Light 2026) and 5.2:1 and
+ * more on the editor's background, where the editor's warning color does not (2.8:1 on the warning area of Light+).
+ * High contrast themes have no list colors; there the editor's colors reach 6.2:1 and more.
+ */
+:root {
+  --mark-error: var(--vscode-list-errorForeground, var(--vscode-editorError-foreground));
+  --mark-warning: var(--vscode-list-warningForeground, var(--vscode-editorWarning-foreground));
+}
+
 /* Read by screen readers, not shown. */
 .visually-hidden {
   position: absolute;
@@ -59,8 +70,46 @@ button {
   cursor: pointer;
 }
 
-button:hover {
+button:not(:disabled, [aria-disabled='true']):hover {
   background-color: var(--vscode-button-secondaryHoverBackground);
+}
+
+/* The one action a view is for (e.g. writing the chosen suggestions), as VS Code's primary buttons. */
+button.primary {
+  color: var(--vscode-button-foreground);
+  background-color: var(--vscode-button-background);
+}
+
+button.primary:not(:disabled, [aria-disabled='true']):hover {
+  background-color: var(--vscode-button-hoverBackground);
+}
+
+/* As in VS Code; the contrast of disabled controls is exempt (WCAG 1.4.3). */
+button:disabled {
+  cursor: default;
+  opacity: 0.4;
+}
+
+/*
+ * Unavailable but focusable (aria-disabled, e.g. Apply while its write is on its way): dimmed by its colors, as by
+ * opacity 0.4 over the editor, not by its opacity, which would fade its focus ring as well (WCAG 2.4.7). High
+ * contrast themes leave some button colors out.
+ */
+button[aria-disabled='true'] {
+  --dim-over: var(--vscode-editor-background, transparent);
+  border-color: color-mix(in srgb, var(--vscode-button-border, transparent) 40%, transparent);
+  color: color-mix(in srgb, var(--vscode-button-secondaryForeground, currentColor) 40%, var(--dim-over));
+  background-color: color-mix(
+    in srgb,
+    var(--vscode-button-secondaryBackground, transparent) 40%,
+    var(--dim-over)
+  );
+  cursor: default;
+}
+
+button.primary[aria-disabled='true'] {
+  color: color-mix(in srgb, var(--vscode-button-foreground, currentColor) 40%, var(--dim-over));
+  background-color: color-mix(in srgb, var(--vscode-button-background, transparent) 40%, var(--dim-over));
 }
 
 /* Around buttons, as in VS Code: inside, the focus color does not reach 3:1 against the button's (WCAG 1.4.11). */

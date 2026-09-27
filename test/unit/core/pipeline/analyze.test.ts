@@ -27,6 +27,49 @@ describe('analyzeRoot', () => {
     ]);
   });
 
+  // Files come from the repository: a crafted one of hundreds of thousands of keys stalled the extension host for
+  // seconds and held hundreds of megabytes (audit S-11). edu-sharing's largest root has 14,044 texts.
+  it('leaves out a file whose texts would pass the budget of its root, with a finding', () => {
+    const analysis = analyzeRoot(
+      ANGULAR_PRESET,
+      'i18n',
+      [
+        source('i18n/common/de.json', '{"A":"a","B":"b"}'),
+        source('i18n/common/fr.json', '{"A":"a","B":"b","C":"c","D":"d"}'),
+        source('i18n/common/it.json', '{"A":"a"}'),
+      ],
+      { ...options, maxEntries: 5 },
+    );
+    const common = analysis.bundles[0]!;
+    expect(common.file('fr')?.parsed).toEqual({
+      entries: [],
+      problems: [{ code: 'parse-error', range: [0, 0], detail: 'TooManyEntries' }],
+      topLevelKeys: [],
+    });
+    expect(common.file('it')?.parsed.entries).toHaveLength(1);
+    expect(
+      analysis.issues.filter((issue) => issue.rule === 'parse-error').map((issue) => issue.locale),
+    ).toEqual(['fr']);
+  });
+
+  // A hidden entry took every top-level name in ignoredKeys out of the file, also one of an object whose texts stay:
+  // the merge found no winner for them and threw, and the root could not be checked (audit L-24).
+  it('hides a top-level name only with its entry, not an object of that name', () => {
+    const area = { ...ANGULAR_PRESET, ignoredKeys: ['LEGACY', 'SENTINEL'] };
+    const analysis = analyzeRoot(
+      area,
+      'i18n',
+      [
+        source('i18n/common/de.json', '{"SENTINEL":"x","LEGACY":{"OLD":"alt"},"OK":"gut"}'),
+        source('i18n/admin/de.json', '{"ADMIN":"Verwaltung"}'),
+      ],
+      options,
+    );
+    const common = analysis.bundles.find((bundle) => bundle.name === 'common')!;
+    expect(common.file('de')?.parsed.topLevelKeys).toEqual(['LEGACY', 'OK']);
+    expect(common.value(common.keys.find((key) => key.segments[0] === 'LEGACY')!.id, 'de')).toBe('alt');
+  });
+
   it('selects only the files that belong to the area below the root', () => {
     expect(
       filesToRead(ANGULAR_PRESET, 'i18n', ['i18n/common/de.json', 'i18n/README.md', 'other/common/de.json']),

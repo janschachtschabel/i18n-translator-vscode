@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import type { Bundle } from '../../core/model/bundle';
-import type { EditorPanels } from '../panels/editorPanel';
+import type { EditorPanels } from '../panels/editorPanels';
 import { findBundle } from '../panels/findBundle';
 import type { FileStore, Planner } from '../services/fileStore';
 import {

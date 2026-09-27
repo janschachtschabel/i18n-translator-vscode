@@ -1684,9 +1684,471 @@ Seite); die Befehlspalette bietet nur Mail-Templates an (`bc9488e`); die Ansage 
 
 ---
 
+## Rückmeldungen zu 0.3.0 (26.09.2026)
+
+Der Nutzer hat 0.3.0 in seinem VS Code mit dem Datenordner der alten App ausprobiert:
+
+1. Das Eingabefeld von „Key hinzufügen…“ lässt sich nicht schließen: kein Klick daneben, kein X.
+2. Leere Felder und Fehler sind kaum markiert; gewünscht sind farbige Hinweise oder Warnschilder bei leeren Feldern
+   und rote Symbole bei Fehlern, wie in der alten App.
+3. Keine KI: kein Vorschlag für ein leeres Feld, keine Einstellung der LLM-Anbindung, keine Prüffunktion, die alle
+   Felder auf Plausibilität prüft. (Phase 3 war zugunsten der Phasen 5 und 6 zurückgestellt.)
+4. Das Plugin wirkt träge: Nach dem Klick auf ein Feld dauert es, bis man etwas eintragen kann.
+5. Abgleich mit der alten App: Sind alle wichtigen Funktionen umgesetzt?
+
+**Messung (VS Code 1.139.1, Kopie des Datenordners, `out/acceptance/interaction.mjs`, echte Maus- und
+Tastatureingaben):** `common` mit 1.215 Keys, 6 Sprachen, 20.285 Elementen. Klick bis Fokus 1–4 ms, bis zu den
+Details 4–15 ms; Doppelklick bis zum Textfeld 26–64 ms; Taste bis zur Eingabe 1–6 ms; keine Long Tasks. Ein Befehl
+aus dem Editor („Key hinzufügen…“) zeigt sein Eingabefeld nach 15–46 ms. Der Index braucht beim Start einmal 2,0 s.
+Die Trägheit liegt also nicht an der Rechenzeit, sondern am Bedienmodell: Ein Klick wählt nur die Zelle, Tippen
+bewirkt dann nichts; erst Doppelklick, Enter oder F2 öffnet das Textfeld. Die alte App öffnete es mit einem Klick.
+
+**Abgleich mit der alten App** (`i18nTranslator`: Backend, Frontend, README und `anforderungen.txt` gelesen, `data/`
+nicht):
+
+| Funktion der alten App | Im Plugin | Stand |
+|---|---|---|
+| Tabelle je Kategorie; Sprachen ein- und ausblenden; Suche; Filter „Missing“ und „Errors“ | Tabelle und Liste; Sprach-Chips; Suche mit Regex, Groß/klein und Spalte; Filter fehlend, Befunde, leer | erledigt, erweitert |
+| Fehlende Zelle rot, Platzhalterfehler gelb, „wie Referenz“ orange; Zeile rot getönt; Zähler im Spaltenkopf | Fehler rot, Warnungen gelb, mit Symbol und Wort; Zähler in den Sprach-Chips | erledigt (R3, `ea50510`) |
+| Ein Klick öffnet das Textfeld | ein Klick, Enter oder F2 | erledigt (R2, `b501798`) |
+| KI-Vorschlag je Zelle | „KI-Vorschlag“ im Textfeld, Strg+I | erledigt |
+| KI füllt die leeren Felder einer Sprache, mit Vorschau und Auswahl | „Mit KI füllen…“ mit Prüfliste, Auswahl und einem Rückgängig-Schritt | erledigt |
+| KI-Review (Plausibilität) mit Korrekturvorschlägen | „Mit KI prüfen…“ mit Befunden und Korrekturen zum Bearbeiten | erledigt |
+| API-Schlüssel in den Einstellungen (Status, speichern, löschen) | „KI einrichten…“ (Schlüssel, Adresse der b-api, Modell, Test); Schlüsselspeicher von VS Code, `B_API_KEY` | erledigt |
+| Sprachbeschreibungen für die KI (Sie, du, ohne Binnen-I …) | `eduI18n.ai.languageDescriptions` | erledigt |
+| Statistik (Keys, fehlend, Sprachen je Bereich) | Zähler in Seitenleiste, Statusleiste und Problems | teilweise; Übersicht in Phase 7 (7.7) |
+| Sortierung A–Z; Spaltenbreite ziehen | Dateireihenfolge; feste Breiten | offen (klein) |
+| Key nach einer Zeile einfügen, mit dem Präfix vorbelegt | nach der aktiven Zeile; ohne Präfix | teilweise (Präfix offen, klein) |
+| Key löschen, Sprache hinzufügen, Mail-Template anlegen und löschen | mit Rückfragen, Sicherung und Rücknahme | erledigt, sicherer |
+| Sicherung von Hand; ZIP-Download | Sicherung automatisch und von Hand, Wiederherstellen; die Dateien liegen im Repo | erledigt; Export in Phase 4 |
+| Mail-Ansicht mit Betreff und Nachricht je Sprache | eine Zeile je Feld; Mail-Vorschau | erledigt; Vorschau neu |
+| Variantenfilter (Regex je Sprache) | Regeln `variant-needed` u. a., `eduI18n.variants` | erledigt |
+| Eigene Bereiche; ausgeschlossene Dateien | `eduI18n.areas`, `eduI18n.exclude` | erledigt (in der alten App ohne Wirkung) |
+
+Nicht übernehmen (Fehler der alten App, im Code gefunden): Mail-Templates speichern scheitert (`ET.CDATA` gibt es in
+`xml.etree` nicht); jedes Speichern schreibt die ganze Datei und legt fehlende Keys als `""` an; „Fill Empty“ ordnet
+die Antworten nach Zeilenposition zu und füllt auch Varianten, die leer bleiben sollen; das Review prüft immer nur die
+ersten 30 Keys; `GET /api/config` gibt den gespeicherten Schlüssel im Klartext zurück.
+
+### Task R1: Eingabefelder schließen (erledigt, `b417df2`)
+
+`showInputBox` mit `ignoreFocusOut: true` wird zu `createInputBox` (`src/extension/commands/inputBox.ts`): Klick
+daneben und ein X in der Titelzeile schließen, Esc wie bisher; ein Text mit Fehler wird weiter nicht angenommen.
+Unit-Test mit einem nachgebauten Eingabefeld; in VS Code gemessen (19 Läufe: bleibt offen, Klick daneben und X
+schließen).
+
+### Task R2: Ein Klick öffnet das Textfeld
+
+- **Ziel:** Ein Klick auf eine Textzelle der Tabelle öffnet ihren Editor, wie Enter; Doppelklick ist nicht mehr nötig.
+  Key-Spalte und Kopfzeile öffnen keinen Editor; ein Klick im offenen Editor bleibt dort (Cursor, Wortauswahl).
+  Mit gedrückter Umschalt-, Strg- oder Alt-Taste wählt ein Klick nur (Text markieren und kopieren bleibt möglich).
+- **Tests zuerst:** Komponententest der Tabelle (Klick → Textfeld mit Fokus; Key-Spalte und Kopfzeile ohne Editor;
+  Klick mit Modifier ohne Editor; Klick im Editor öffnet nicht neu); die Tests zum Doppelklick werden angepasst.
+- **Abnahme:** Messung mit `interaction.mjs`: Klick bis Textfeld mit Fokus unter 100 ms; README und Tastaturhilfe
+  der Tabelle (`grid-help`) nennen den Klick.
+
+### Task R3: Befunde farbig markieren
+
+- **Ziel:** Eine Zelle mit Fehler bekommt eine rote Fläche und einen roten Balken am Anfang, eine mit Warnung (etwa
+  „fehlt“, „leer“) eine gelbe; Hinweise behalten nur ihr Symbol. Symbol und Wort bleiben (nie nur Farbe). Das
+  Statuswort steht in der Vordergrundfarbe statt grau. Die Liste zeigt die Felder mit Befund ebenso.
+- **Farben:** Theme-Tokens `--vscode-inputValidation-{error,warning}{Background,Border}` (Design §7.3); der Balken als
+  `box-shadow: inset`, damit sich nichts verschiebt. Im hohen Kontrast bleibt der Balken, die Fläche ist dort der
+  Hintergrund.
+- **Tests zuerst:** Komponententests (Klasse der Zelle je Schweregrad, auch „nicht gespeichert“; axe ohne Verstöße);
+  Kontrast der Texte auf den Flächen gemessen in Light Modern, Dark Modern, Light+, Dark+ und beiden hohen Kontrasten.
+- **Abnahme:** Bilder aus VS Code mit dem Datenordner (Metadatasets mit fehlenden Keys, `common` mit Platzhalterfehler)
+  in hell, dunkel und hohem Kontrast.
+
+### Task R4: Phase 3 (KI) vorziehen
+
+Der Nutzer braucht die KI jetzt: Anbindung einstellen, Vorschlag für ein leeres Feld, Füllen mit Prüfliste und eine
+Plausibilitätsprüfung aller Felder. Die Detailtasks stehen unten unter „Phase 3“, bevor sie beginnt.
+
+## Phase 3 – Füllen mit KI (Detailtasks, 26.09.2026)
+
+Vorgezogen nach den Rückmeldungen zu 0.3.0 (Task R4). Entwurf von einem Planungs-Agenten aus Design §6.6, §6.8,
+§6.12, §7, §9 und §10 und dem Code, geprüft und übernommen. Ersetzt die Gliederung 3.1–3.12 unten.
+
+**Ziel.** Mit gesetztem Schlüssel: „KI-Verbindung testen“ zeigt, ob die Anbindung steht; `Strg+I` (oder „KI-Vorschlag“
+im Zell-Editor) holt einen geprüften Vorschlag in das offene Textfeld; „Mit KI füllen…“ füllt die fehlenden Texte
+einer Einheit in einer Sprache über eine Prüfliste; „KI-Prüfung…“ prüft **alle** vorhandenen Texte einer Einheit in
+einer Sprache auf Plausibilität. Nichts wird ohne ausdrückliches Übernehmen geschrieben; übernommene Texte laufen durch
+die bestehende Schreibkette (Planung nach B5, Sicherung, ein Undo-Schritt, danach die Prüfung).
+
+**Schritt 0:** `/better-coding-workflow` und `/better-coding-frontend`. Review mit frischem Kontext nach Block B
+(3.0–3.8), Block C (3.9–3.12) und Block D (3.13).
+
+**Zurückgestellt (Phase 3b):** Übersetzungsspeicher und Speicher-Chip; Füllen über einen ganzen Bereich oder eine
+Auswahl; eigener Befehl „Varianten erzeugen“ (Varianten stecken im Füllen, K14); Diagnosen der KI-Prüfung im
+Problems-Panel (veralten beim nächsten Speichern); Review-Status „Prüfung erforderlich“ (braucht Phase 7); „Referenz
+kopieren“; Mail-eigene Prompts (6.5); Streaming, Nachbar-Keys und Glossar im Prompt.
+
+### Architektur
+
+- **Kern** (`src/core`, ohne vscode, mit vitest getestet): `config/aiSettings.ts` (Einstellungen prüfen),
+  `ai/modelProfiles.ts` (Body je Modell, Tokenbudget), `ai/bapiClient.ts` (`chatCompletion`, `listModels`; `fetch`,
+  `sleep` und Uhr übergeben; Retry, Timeout, Abbruch, `redirect: 'error'`), `ai/aiErrors.ts` (Fehler nur mit Code,
+  Status und `request_id`), `util/limiter.ts`, `ai/availability.ts`, `ai/languages.ts`, `ai/prompts.ts`,
+  `ai/schemas.ts` (Antworten per Key zugeordnet, nie per Position), `checks/textChecks.ts` (die Prüfungen eines Texts,
+  aus den Regeln gelöst; die Regeln rufen sie weiter), `ai/validate.ts`, `ai/chunks.ts`, `ai/runJob.ts`,
+  `ai/fillPlan.ts`, `ai/reviewPlan.ts`, `edit/planTexts.ts` (viele Texte einer Einheit als eine Änderung).
+- **Geteilt:** `shared/messageChecks.ts` (Prüfhelfer aus `protocol.ts`), `shared/aiProtocol.ts` (KI-Nachrichten, in
+  beiden Richtungen geprüft; kein Feld für einen Schlüssel).
+- **Host:** `services/apiKeyStore.ts` (SecretStorage `eduI18n.bApiKey`, Rückfall `B_API_KEY`, nur hier gelesen),
+  `services/aiService.ts`, `services/aiConsent.ts`, `services/aiFeedback.ts`, `commands/apiKey.ts`,
+  `commands/aiConnection.ts`, `commands/aiJobs.ts`, `panels/aiPanel.ts`, `panels/suggestCell.ts`,
+  `panels/applyAiChanges.ts`.
+- **Webview:** `state/aiState.ts`, `state/suggestion.ts`, `state/review.ts`, `components/aiTools.tsx`,
+  `components/suggestButton.tsx`, `components/review/*`.
+
+**Einstellungen** (neue Kategorie „KI (b-api)“): `ai.enabled` (`true`), `ai.baseUrl` (Staging; `scope: machine`, nur
+`https:` außer loopback), `ai.provider` (`openai` · `academiccloud`), `ai.model` (`gpt-6-luna`), `ai.reasoningEffort`
+(`low`), `ai.reviewReasoningEffort` (`medium`), `ai.batchSize` (25, 1–100), `ai.maxConcurrency` (2, 1–6),
+`ai.timeoutSeconds` (120, 10–600), `ai.languageDescriptions` (Standard: die Beschreibungen der alten App für `de`,
+`de_DE`, `de-informal`, `de-no-binnen-i`). Abweichung von Design §9: `ai.languageDescriptions` statt
+`eduI18n.languages`, weil nur die KI die Beschreibungen braucht.
+
+**Befehle:** `setApiKey` „API-Schlüssel setzen…“, `clearApiKey`, `testAiConnection`, `selectModel`, `fill` „Mit KI
+füllen…“, `aiReview` „KI-Prüfung…“; die KI-Befehle nur in einem vertrauenswürdigen Arbeitsbereich mit `ai.enabled`.
+Menüs: Seitenleiste (Einheit: Füllen, Prüfen), Titel der Seitenleiste (Schlüssel, Verbindung), `editor/title`, im
+Editor eine KI-Gruppe in der Werkzeugleiste mit dem Status („KI: bereit · gpt-6-luna“ oder „kein API-Schlüssel“ mit
+„API-Schlüssel setzen…“).
+
+### Tasks
+
+- **3.0 Platz schaffen** (Refactor ohne Verhaltensänderung): `editorPanel.ts`, `edits.ts` (Konflikte nach
+  `editConflicts.ts`, wie im Audit empfohlen), `store.ts` und `protocol.ts` (Prüfhelfer nach `messageChecks.ts`) unter
+  300 Zeilen. Bestehende Tests grün, Integration grün.
+- **Block A – Verbindung**
+  - **3.1 Einstellungen** `eduI18n.ai.*` geprüft gelesen (ungültige Adresse, Anbieter, Modell, `reasoningEffort:
+    minimal`, Grenzen), Manifest-Test deckt Kategorien, Standards und `scope` ab.
+  - **3.2 Schlüssel setzen und entfernen:** maskiertes Eingabefeld (bleibt beim Wechsel in den Passwortmanager
+    offen), Status `secret | env | none`, Kontext `eduI18n.aiKeySet`; der Schlüssel erscheint in keiner Einstellung,
+    Meldung, Nachricht oder Protokollzeile.
+  - **3.3 Modellprofile:** `gpt-5*`, `gpt-6*`, `o<Ziffer>*` mit `max_completion_tokens` und `reasoning_effort`, ohne
+    `temperature`; andere mit `max_tokens` und `temperature: 0`; `qwen3*` mit `enable_thinking: false`; immer
+    `response_format: json_schema` strict.
+  - **3.4 b-api-Client** mit übergebenem `fetch`: Aufbau, `content` mit Rückfall auf `reasoning`, `length`,
+    400/401/403/404 ohne Wiederholung, 429/502/503/504 und Netzfehler mit 2,5 s · 2ⁿ (höchstens 4 Versuche),
+    Timeout, Abbruch, Umleitung; der Testschlüssel steht in keinem Fehler und keiner Trace. Tests nie im Netz.
+  - **3.5 KI-Dienst, Verbindungstest, Modellwahl, Datenschutzhinweis:** Verbindungstest (`/models`, Modell vorhanden,
+    Mini-Anfrage) gegen einen Mock-Server auf 127.0.0.1; Einwilligung je Origin; im eingeschränkten Modus aus.
+- **Block B – Einzelvorschlag**
+  - **3.6 Prompts, Schemas, Sprachbeschreibungen:** Eingabe als JSON-Liste `{ key, source, context }`, Snapshots
+    (voll, Variante, MDS, Mail, Prüfung), Antworten per Key zugeordnet (Reihenfolge egal, unbekannte verworfen,
+    fehlende gemeldet).
+  - **3.7 Vorschläge prüfen** mit den Regeln der Prüfung (Platzhalter, HTML, `{{if}}`, leer, `invalidText`,
+    `forbidden` der Variante, verlorene Zeichen blockieren; Längenverhältnis und „wie Referenz“ sind Hinweise).
+  - **3.8 KI-Vorschlag für eine Zelle:** Knopf „KI-Vorschlag“ im Editor jeder Zelle außerhalb der Referenz und
+    `Strg+I`; „wird geholt…“ als Status, Esc bricht nur die Anfrage ab; der Vorschlag ersetzt den Entwurf, markiert
+    „KI-Vorschlag – bitte prüfen“, mit Befunden; gespeichert nur mit Enter, Strg+Enter, Tab oder „Übernehmen“, nie
+    beim Verlassen (K8).
+- **Block C – Füllen**
+  - **3.9 Aufträge in Paketen** (Größe, Zeichenbudget, Teilen bei `length`, fehlende Keys einmal nachfragen,
+    Fortschritt, Abbruch, Parallelität höchstens `maxConcurrency`).
+  - **3.10 Auswahl und Stapelplanung:** `fillPlan` (fehlend, leer, Variante nötig; dieselben Zahlen wie die Chips),
+    `planTexts` (Anker kennen die Keys, die derselbe Stapel davor einfügt; geänderte Texte einzeln übersprungen).
+  - **3.11 Übernehmen als ein Schreibvorgang:** genau diese Zeilen, eine Sicherung (Anlass `bulk`), ein Undo-Schritt;
+    Konflikte einzeln übersprungen und gemeldet.
+  - **3.12 „Mit KI füllen…“ und Prüfliste** im Editor (K1): Sprache und Umfang per QuickPick, Rückfrage ab 5
+    Anfragen, Einträge Paket für Paket, je Eintrag Quelle, bisheriger Text, bearbeitbarer Vorschlag mit Prüfung und
+    Checkbox (blockierende Befunde abgewählt mit Grund), „n Änderungen übernehmen“; Fortschritt mit `aria-live`.
+- **Block D – KI-Prüfung**
+  - **3.13 „KI-Prüfung…“:** alle Paare aus Referenz und Übersetzung einer Einheit in einer Sprache (Varianten gegen
+    ihre Basis), in Paketen; je Key Urteil, Schwere, Problem (in der Sprache der Oberfläche) und Korrekturvorschlag;
+    Vorschläge in derselben Prüfliste, abgewählt (K3); Zusammenfassung „geprüft · in Ordnung · Hinweise · ohne Antwort“.
+- **Block E – Abschluss**
+  - **3.14 Doku, l10n, Version 0.4.0** (README-Abschnitt „KI-Füllen und b-api-Schlüssel“ auf den echten Stand,
+    `docs/einstellungen.md` für jede `ai.*`-Einstellung, CHANGELOG, CONTRIBUTING: Mock-Server und Live-Test).
+  - **3.15 Live-Rauchtest und Abnahme:** `npm run smoke:ai` nur mit `EDU_I18N_AI_SMOKE=1` und gesetztem Schlüssel,
+    nie in der CI, gibt nur Status, Dauer, Tokens und Befundcodes aus; Abnahme in echtem VS Code mit der Kopie des
+    Datenordners; Suche nach dem Schlüssel in Protokollen und Einstellungen findet nichts.
+
+### Entscheidungen
+
+| # | Entscheidung | Grund |
+|---|---|---|
+| K1 | Prüfliste im Editor-Webview, als Modus anstelle der Zeilen | nutzt Modell, Patches, Stile, l10n; keine zweite CSP |
+| K2 | Antworten nennen den angezeigten Key; ein Paket hält ihn eindeutig | Zuordnung per Key; kurze IDs, falls das Modell Keys verändert |
+| K3 | Füllen: vorgewählt außer bei blockierenden Befunden; KI-Prüfung: nichts vorgewählt | die Prüfung ändert vorhandene Texte |
+| K4 | Blockierende Befunde abgewählt und begründet, aber wählbar | wie ein getippter Text; nur was die Datei nicht aufnehmen kann, wird abgelehnt |
+| K5 | `ai.baseUrl` mit `scope: machine`, `https:` außer loopback, `redirect: 'error'` | ein geklontes Repository soll den Schlüssel nicht umleiten können |
+| K6 | `ai.languageDescriptions` statt `eduI18n.languages` | nur die KI braucht sie |
+| K7 | Übernehmen: ein Schreibvorgang, ein Undo, immer eine Sicherung | Design §5: Sicherung vor Massenvorgängen |
+| K8 | Einzelvorschlag nur ausdrücklich gespeichert | ein Klick daneben schreibt keinen ungeprüften Text |
+| K9 | 25 Einträge, höchstens 8.000 Zeichen je Anfrage, 2 parallel, 120 s, 4 Versuche | konservativ, einstellbar |
+| K10 | Fortschritt und „Abbrechen“ in der Prüfliste; Esc bricht keinen Auftrag ab | Versehen vermeiden |
+| K12 | Die Prüfliste übersteht das Neuladen der Webview, nicht des Fensters | der Host hält den Auftrag |
+| K13 | Einwilligung je Origin | ein Wechsel zu Produktion fragt erneut |
+| K14 | Variantensprachen im Vorschlag und im Füllen (Quelle: Basistext, `forbidden` blockiert) | dünne Varianten haben keine „fehlenden“ Texte |
+
+### Umsetzung Blöcke A und B (27.09.2026)
+
+- **3.0** teilt nur, was sich ohne Umbau lösen ließ: die Prüfhelfer des Protokolls (`messageChecks.ts`) und
+  `EditorPanels` (`editorPanels.ts`). `store.ts` bleibt ungeteilt: Der KI-Zustand liegt in `state/suggestions.ts`, der
+  Store bekommt nur ein Feld. `edits.ts` bleibt ebenso: Die Konflikte hängen an denselben Zuständen (offener Editor,
+  Entwurf, gesendete und abgelehnte Texte); der Vorschlag braucht dort nur `suggest` und `takeBackSuggestion`.
+- **3.5** ohne Datenschutzhinweis: Der Verbindungstest schickt einen festen Text. Der Hinweis kam mit dem ersten
+  Senden von Texten (3.8, `AiConsent`).
+- **3.7** (Prüfung der Vorschläge) ist nach Block C verschoben: Den Einzelvorschlag prüft die Prüfung beim Tippen im
+  Textfeld; eine eigene Prüfung braucht erst das Füllen, bei dem niemand jeden Text im Editor sieht.
+- **K8 geändert:** Ein Vorschlag wird gespeichert wie ein getippter Text (Enter, Tab, Verlassen des Feldes). Esc holt
+  zuerst den vorigen Text zurück, ein zweites Esc schließt; Strg+Z nimmt einen gespeicherten Vorschlag zurück. Grund:
+  Im Editor speichert das Verlassen des Feldes getippten Text; ein Vorschlag, der sich anders verhielte, hinterließe
+  Markierungen „nicht gespeichert“.
+- **Gefunden in der Abnahme:** Ein modaler Dialog von VS Code (die Einwilligung) nimmt der ganzen Seite den Fokus; das
+  Textfeld schloss sich, und der Vorschlag fand keinen Editor mehr. Seitdem speichert das Verlassen nur, solange die
+  Seite den Fokus hat. Jede Änderung einer `eduI18n.*`-Einstellung las den Arbeitsbereich neu ein, auch der KI; seitdem
+  nur die Einstellungen, die der Index liest.
+- **Live gegen die b-api Staging:** „KI-Verbindung testen“ meldete `gpt-6-luna` nach 2,0 s; ein fehlender
+  französischer Metadataset-Text bekam in 0,3 s „Format d'apprentissage“.
+
+### Umsetzung Block C und Review der Blöcke A und B (27.09.2026)
+
+- **3.9–3.11** wie geplant: `runTranslationJob` (Pakete nach Anzahl und Zeichen, Halbieren bei `length`, fehlende
+  Keys gemeldet, Abbruch, Parallelität), `fillEntries` mit denselben Befunden wie die Chips, `planTexts` (ein
+  Schreibvorgang, Anker mit den davor eingefügten Keys, geänderte Texte einzeln übersprungen), Sicherung mit Anlass
+  `bulk` vor jedem Stapelschreiben.
+- **3.12** „Mit KI füllen…“ steht in der neuen KI-Gruppe der Werkzeugleiste („bereit · Modell“, ohne Schlüssel „kein
+  API-Schlüssel“ mit „API-Schlüssel setzen…“), damit die KI im Editor zu finden ist. Die Prüfliste ersetzt Werkzeugleiste,
+  Filter und Zeilen; die Überschrift bekommt den Fokus, nach dem Schließen der Knopf, der das Füllen begann.
+  „Ausgewählte übernehmen (n)“ statt „n Änderungen übernehmen“: Die Extension hat keine Pluralformen, die Texte
+  nennen Zahlen deshalb nach einem Doppelpunkt oder in Klammern.
+- **K12 geändert:** Die Prüfliste übersteht das Neuladen der Webview nicht. Beim Wechsel des Tabs bleibt sie
+  (`retainContextWhenHidden`); lädt die Seite neu, bricht der Host ihre Anfragen und das Füllen ab, weil die neue Seite
+  dieselben Request-IDs wieder vergeben könnte und keine Seite das Füllen zeigt.
+- **Review Blöcke A und B** (zwei Reviewer mit frischem Kontext): Behoben sind
+  - die Einwilligung (erst nach den Prüfungen, mit einem Lesen der Einstellungen);
+  - Anfragen, die zum Editor gehören, der sie stellte;
+  - der Fokus nach einem Dialog;
+  - Strg+I ohne Quelltext und in einem Konflikt;
+  - eindeutige Request-IDs je Seite;
+  - Zeiger mit mehreren Tasten;
+  - Anbieter, Modell und Denkaufwand nur aus den Benutzereinstellungen (Geltungsbereich `machine`);
+  - Schlüssel nur aus sichtbarem ASCII;
+  - eine unbrauchbare Adresse schaltet die KI ab statt auf Staging zurückzufallen;
+  - 404 der Modellliste mit eigenem Code;
+  - abbrechbarer Verbindungstest;
+  - die Fehler der Sicherungseinstellungen sofort gemeldet.
+- **Abweichungen, bewusst:**
+  - `redirect: 'manual'` mit eigener Prüfung auf 3xx statt `redirect: 'error'`: Mit `error` wirft fetch einen
+    TypeError, den der Client als Netzfehler wiederholen würde.
+  - Die KI-Befehle bleiben überall sichtbar und erklären, warum sie nicht laufen; nur „API-Schlüssel entfernen“ hängt
+    am Kontext `eduI18n.aiKeyStored`.
+  - Nachrichten des Hosts an die Webview werden nicht geprüft (der Host ist vertrauenswürdig), wie in `protocol.ts`.
+- **3.7 teilweise:** Vorgewählt wird nach der Prüfung beim Tippen (Platzhalter, HTML-Tags, leer). `{{if}}`, verbotene
+  Formen einer Variante und verlorene Zeichen findet erst die Prüfung nach dem Schreiben; die Prüfliste zeigt sie
+  nicht vorher.
+- **3.13 „Mit KI prüfen…“** als zweite Art von Auftrag (`AiJobs` mit einer Beschreibung je Art): dieselbe Auswahl der
+  Sprache, Rückfrage ab fünf Anfragen, Einwilligung, Pakete, Prüfliste und dasselbe Schreiben wie das Füllen. Die
+  Prüfliste zeigt nur die Befunde; nichts ist vorgewählt (K3), ein Befund ohne Korrektur wird wählbar, sobald man den
+  Text ändert. Die Prompts von Übersetzung und Prüfung sind mit Snapshots festgehalten.
+- **Offen aus dem Review, als Folgeaufgaben:**
+  - Ein ungeprüfter Vorschlag, der als „nicht gespeichert“ erhalten bleibt, verliert die Markierung „bitte prüfen“.
+  - Die Zahl im Filter zählt die bearbeiteten Zeilen nicht mit, die er weiter zeigt.
+  - Die Status-Zeile „wird geholt…“ entsteht mit dem Editor und wird deshalb von Screenreadern oft nicht vorgelesen.
+  - `store.ts`, `edits.ts` und `cellEditor.tsx` liegen über oder nahe 300 Zeilen; teilen, bevor 3.13 dort mehr Zustand
+    braucht.
+
+**Risiken:** Proxy (`fetch` und `http.proxy` in älteren VS-Code-Versionen, zu prüfen); langsames Stapelschreiben
+(messen in 3.10); Modell-IDs ändern sich (Verbindungstest, Modellwahl); Reasoning-Tokens zählen zum Budget; große
+Aufträge (`valuespaces_i18n` 1.232 Lücken: Rückfrage, Abbrechen behält Erhaltenes); Prompt-Injection über Texte im
+Repository (nur vertrauenswürdige Arbeitsbereiche, Ausgabe nur als Text, alles durch Prüfung und Prüfliste); `Strg+I`
+ist in VS Code belegt (in der Capture-Phase abfangen, Knopf als zweiter Weg).
+
+### Einrichtung und Review der Blöcke C und D (27.09.2026)
+
+- **Einrichtung (Rückmeldung):** Der Nutzer wollte die b-api (Staging) mit Adresse und Schlüssel einstellen, Standard
+  `gpt-6-luna`, und Füllen für alle oder einzelne Felder. Neu sind „KI einrichten…“ (Werkzeugleiste, Seitenleiste,
+  Befehlspalette: Schlüssel, Adresse, Modell mit dem, was gilt, und die Schritte dazu), „b-api-Adresse festlegen…“
+  (prüft beim Tippen; Staging entfernt die Einstellung) und „Alle auswählen“/„Keine auswählen“ in der Prüfliste. Die
+  Werkzeugleiste zeigt eine unbrauchbare Adresse an, statt die KI-Gruppe auszublenden. Ob „alle Felder“ auch alle
+  Sprachen einer Einheit auf einmal meint, hat der Nutzer am 27.09.2026 entschieden: nein, ein Auftrag füllt weiter eine
+  Sprache.
+- **CI rot (drei Ursachen):**
+  - Eine abgebrochene Anfrage fragte noch nach der Einwilligung, und ein Fehler danach wurde beantwortet; unter
+    Windows lehnte der Testhost den Dialog ab.
+  - Die Einwilligung las die Liste, fragte und schrieb die alte Liste mit dem neuen Host: Eine zweite Frage
+    dazwischen, oder ein anderes Fenster, verlor eine Zustimmung. Nun liest sie vor dem Schreiben neu und behält die
+    Zustimmungen der Sitzung. Das erklärt auch die Zeitüberschreitung des ersten Fülltests (7f7b884, e7e5572): Der
+    Test beantwortet keine zweite Frage, der Auftrag endete still. Wartet ein Test auf das Ende eines Auftrags,
+    nennt er nun, was gefragt und gesendet wurde.
+  - VS Code 1.90 las eine neu angelegte `.vscode/settings.json` nicht binnen 5 s; der frische Test-Arbeitsbereich
+    hat sie nun leer, der Test ändert sie.
+- **Review Blöcke C und D** (zwei Reviewer mit frischem Kontext, Host und Webview): Behoben sind
+  - ein Auftrag, der beim Start abgebrochen wird (Editor zu, Seite neu, Abbruch beim Erscheinen der Liste), sendet
+    nichts; ein Auftrag, der noch fragt, macht einem neuen Start Platz;
+  - ein unlesbares `aiApply` bekommt eine Antwort, die Grenze ist 10.000 Texte (eine Sprache der größten Einheit hat
+    etwa 1.600); Texte des Modells, die kein gültiges Unicode sind, zählen als ohne Antwort;
+  - gleich angezeigte Keys (`["A","B"]` und `["A.B"]`) bekommen für das Modell eine Nummer;
+  - ein Text, den die Datei schon hat, zählt als geschrieben, einer außerhalb des Auftrags als übersprungen;
+  - Fokus: „Übernehmen“, „Alle auswählen“, „Keine auswählen“ bleiben fokussierbar (`aria-disabled`); die Liste gibt
+    den Fokus auch zurück, wenn er verloren ging; nach „Abbrechen“ die Überschrift, nach dem Setzen des Schlüssels
+    „Mit KI füllen…“; der feste Kopf verdeckt kein fokussiertes Feld mehr (WCAG 2.4.11, in Chromium gemessen);
+  - während des Schreibens ist die Liste gesperrt; ein leerer Text ist nicht wählbar; das Kästchen nennt den Grund,
+    das Textfeld Quelle und bisherigen Text; Fokusring am Kästchen;
+  - kleinere: doppelte Einträge in einem Paket, Seiten-Token in den IDs der Schreibvorgänge, Zusammenfassung einer
+    abgebrochenen Prüfung, „Fehlgeschlagen“ statt „Abgebrochen“, Fortschritt in Zehnteln angesagt, Alt+M nicht bei
+    offener Liste, Zeiger einzeln losgelassen, Cmd+I in der Hilfe.
+- **Messung Stapelschreiben (3.10 nachgeholt):** Füllen von `valuespaces_i18n` fr (1.232 neue von 1.546 Keys,
+  `.properties`) brauchte 4,2 s auf dem Extension-Host, weil der Schreiber die Datei nach jedem Text neu las; jetzt
+  liest er einmal und hält die Positionen nach (0,12 s; Zufallstest mit 1.500 Dateien gegen das Schreiben Text für
+  Text). JSON: eine neue Sprache von `common` (1.440 Texte) 0,76 s, typische Füllungen weit darunter; kein
+  Handlungsbedarf. Die Vorab-Planung vor dem Schreiben entfällt.
+- **Abweichungen, bewusst:**
+  - 3.12 fragt nur die Sprache, nicht den Umfang: Gefüllt werden die fehlenden und leeren Texte, geprüft die
+    vorhandenen; ein zweiter Auswahlschritt brächte keine Wahl, die die Prüfliste nicht besser trifft.
+  - Die Befehle `fill` und `aiReview` mit Einträgen in Seitenleiste und Editor-Titel gibt es nicht: Füllen und Prüfen
+    brauchen den offenen Editor (die Prüfliste liegt dort) und stehen in seiner Werkzeugleiste.
+  - Das Kästchen eines Befunds ohne Korrektur, eines leeren Textes und eines mit kaputtem Zeichen bleibt `disabled`,
+    also außerhalb der Tab-Reihenfolge: Der Grund steht auch in der Beschreibung des Textfelds, das darin liegt.
+    (Die zuerst notierte Begründung, `aria-disabled` ließe das Kästchen ohne Zustandsänderung umschalten, trifft
+    nicht zu: `toggle` erzeugt stets einen neuen Eintrag, der das Kästchen zurücksetzt.)
+  - „Alle auswählen“ wählt auch Texte mit abweichenden Platzhaltern, die die Vorauswahl bewusst auslässt (K4): wer
+    alle wählt, will alle; die Einträge zeigen ihren Fehler weiter. Der Nutzer hat am 27.09.2026 entschieden: Es
+    bleibt so.
+- **Zweites Review** (dieselbe Aufteilung, frischer Kontext; beide: bereit zum Mergen). Behoben:
+  - Webview: „Alle/Keine auswählen“ auch während des Schreibens gesperrt; ein verlorener Fokus geht auch bei
+    offener Liste an die Überschrift (geschriebener Eintrag, letzte Einträge); nicht verfügbare Knöpfe über Farben
+    statt Deckkraft gedimmt, damit der Fokusring 3,64:1 behält (Dark Modern, in Chromium nachgerechnet); die Zahl der
+    gewählten Texte wird angesagt; ein Text mit kaputtem Zeichen ist nicht wählbar (der Host lehnt sonst das ganze
+    Schreiben ab); ein Test, der den Fokus-Schutz nicht prüfte (Mutation überlebte), prüft ihn jetzt.
+  - Host und Kern: „KI einrichten…“ nennt zuerst, wenn die KI ausgeschaltet oder im eingeschränkten Modus ist;
+    „b-api-Adresse festlegen…“ ändert für die geltende Adresse nichts; ein beim Lesen der Einstellungen gestoppter
+    Auftrag erklärt nichts mehr; der Stapel-Schreiber liest CR und folgendes LF zusammen (Zufallstest jetzt mit
+    gemischten Zeilenenden, 10.000 Fälle, fand den Fall).
+  - **Vorhandener Fehler, behoben:** Endete die letzte Zeile einer `.properties`-Datei mit LF-Zeilenenden auf einen
+    Backslash und ein einzelnes CR, verschmolz das LF der Leerzeile, die der Schreiber vor einen neuen Key setzt, mit
+    dem CR: Der Backslash setzte sich in die neue Zeile fort, der Wert davor änderte sich, der neue Key ging verloren.
+- **3.14 und 3.15 abgeschlossen:** CONTRIBUTING beschreibt die Mock-b-api und den Live-Test. `EDU_I18N_AI_SMOKE=1 npm
+  run smoke:ai` gegen Staging: 140 Modelle mit `gpt-6-luna`, Übersetzung 3 von 3 mit Platzhaltern, Prüfung 3 von 3,
+  der umbenannte Platzhalter als Fehler gefunden. Die Suche nach dem Wert von `B_API_KEY` in Profil, Protokollen,
+  Einstellungen, Test-Arbeitsbereichen und Quellen findet nichts. Abnahme in VS Code 1.139.1 mit der Kopie des
+  Datenordners (`out/acceptance/review-focus.mjs`, `review-focus2.mjs`, echte Maus und Tastatur): „KI einrichten…“ zeigt
+  Schlüssel aus `B_API_KEY`, Staging und `gpt-6-luna`; Füllen von de-informal (22 Texte); Prüfen von de-no-binnen-i
+  (23 geprüft, 18 Hinweise); Übernehmen behält den Fokus, „Verwerfen“ gibt ihn an den Knopf des Auftrags zurück;
+  Umschalt+Tab bringt das Feld unter dem festen Kopf hervor (107 px unter einem Kopf bis 102 px).
+- **Offen, als Folgeaufgaben:**
+  - Die Prüfliste vergleicht Texte mit `\r\n` nicht normalisiert und stellt sie beim Schreiben nicht wieder her (wie
+    `toTyped`/`withLineBreaksOf` im Zellen-Editor); im Datenordner gibt es solche Texte nicht.
+  - Vorhanden: Die memoisierte `TableRow` liest `store.mailPreview.value` (sicher nur, weil ein neues Modell neue
+    Zeilen bringt); Strg+I auf einer Zelle bei ausgeschalteter KI öffnet den Editor und schluckt die Taste.
+
+## Offene Befunde des zweiten Audits (27.09.2026)
+
+**Anlass:** Der Nutzer bittet, die offenen Befunde des zweiten Audits zu lösen
+([`docs/audits/2026-09-27-audit.md`](../audits/2026-09-27-audit.md), Abschnitt 10): `L-31`, die JSON-Hälfte von
+`S-14`, `P-07`, `P-06`, `M-10`, den Rest von `M-08`, `M-09` und `M-07`.
+
+**Schritt 0:** `/better-coding-workflow`, für A8 zusätzlich `/better-coding-frontend`. Erst das Verhalten (Korrektheit,
+dann Leistung), dann die Umbauten: Kein Umbau versteckt eine Änderung des Verhaltens. Ein Commit je Befund, vor
+jedem Commit das Gate. Nach A4 und nach A8 prüft je ein Reviewer mit frischem Kontext den Block.
+
+### Task A1: Platzhalter in Mails exakt (`L-31`)
+**Entscheidung:** Neue Schreibweise `double-brace-exact` für `placeholderSyntax`, gesetzt im Mail-Preset: edu-sharing
+ersetzt dort nur genau `{{name}}` (`Mail.replaceString`). Angular bleibt bei `double-brace`, weil ngx-translate auch
+`{{ name }}` ersetzt; im Clone steht das oft (`{{ element }}` 29-mal). Die Mails im Clone haben keine Platzhalter mit
+Leerzeichen. In der Umsetzung ergänzt: Ein Platzhalter mit Leerzeichen am Rand ist in Mails zudem
+`placeholder-malformed`, weil kein Parameter einer Mail eines hat; so fällt er auch auf, wo die Referenz ihn genauso hat.
+**Dateien:** Modify `src/core/area/areaDefinition.ts`, `presets.ts`, `src/core/checks/placeholders.ts`,
+`src/webview/inlineCheck.ts` (Bedingungen auch bei `double-brace-exact`), `src/shared/viewModel.ts` (Schreibweise
+übertragen, wenn sie nicht der Standard ist), `package.json` (Enum), `package.nls*.json`, `docs/einstellungen.md`;
+Test: `placeholders.test.ts`, `rules/placeholders.test.ts`, `inlineCheck.test.ts`, `viewModel.test.ts`,
+`presets.test.ts`
+**Testfälle:** Mail-Bereich: Referenz `{{link}}`, Übersetzung `{{ link }}` → `placeholder-mismatch` mit
+`missing={{link}}` und `extra={{ link }}`; in Angular kein Befund; `{{ }}` bleibt `placeholder-malformed`; Bedingungen
+und `{{GENDER_SEPARATOR}}` wie bisher; die Prüfung beim Tippen meldet im Mail-Editor dasselbe und weiter die
+Bedingungen.
+**Commit:** `fix(core): compare mail placeholders exactly, as edu-sharing replaces them`
+
+### Task A2: Doppelte JSON-Keys in einem Durchgang entfernen (`S-14`, JSON)
+**Dateien:** Modify `src/core/formats/json/jsonWrite.ts` (`removeEvery`); Test: `jsonNested.write.test.ts`
+**Vorgehen:** Alle Definitionen des Namens aus einem Lesen. Zusammenhängende Läufe gehen mit einer Änderung je Lauf:
+bis zur nächsten bleibenden Eigenschaft oder, am Ende des Objekts, ab dem Wert davor. Alle Änderungen gehen mit einem
+`applyEdits`. Eine Probe im Scratchpad vergleicht auf Zufallsdateien mit dem bisherigen Entfernen; Abweichungen werden
+mit Test festgehalten.
+**Testfälle:** 8.000 Wiederholungen löschen und umbenennen in deutlich unter 1 s; Läufe am Anfang, in der Mitte, am
+Ende, auf einer Zeile und gemischt, mit CRLF.
+**Commit:** `fix(core): remove every definition of a JSON key in one pass`
+
+### Task A3: Folgen von Setzungen auf einem Lesen (`P-07`)
+**Dateien:** Modify `src/core/formats/json/jsonWrite.ts` (`applyJsonOps`), `src/core/formats/mail/mailWrite.ts`
+(`applyMailOps`); Test: `jsonNested.batch.test.ts` (neu), `mail.write.test.ts`
+**Vorgehen:** Eine Folge von `set` mit verschiedenen Keys geht auf einem Lesen mit einem `applyEdits`; die Setzungen
+treffen getrennte Bereiche, das Ergebnis gleicht also dem Schreiben Text für Text. Neu gelesen wird vor einem
+Einfügen, Löschen oder Umbenennen und vor einem Key, den die Folge schon setzt.
+**Testfälle:** Stapel gleich Operation für Operation auf 10.000 Zufallsfällen (wie `properties.batch.test.ts`); ein
+Fehler mitten in der Folge ist derselbe; 1.600 Setzungen in 120 KiB in deutlich unter 1 s.
+**Commit:** `perf(core): write a run of JSON and mail texts on one parse`
+
+### Task A4: Nach dem Watcher nur die gemeldeten Dateien vergleichen (`P-06`)
+**Dateien:** Modify `src/extension/services/indexWatchers.ts` (die Datei geht an `onChange`), `workspaceIndex.ts`;
+Test: `test/integration/workspaceIndex.test.ts`
+**Vorgehen:** `schedule` sammelt je Wurzel die gemeldeten Dateien. Nach der Wartezeit liest der Index unter seiner
+Sperre nur diese und vergleicht sie mit den indexierten Revisionen. Einen Lauf der Wurzel gibt es nur, wenn eine
+Datei anders ist, neu, verschwunden, zu groß oder ein Link, oder wenn die Wurzel beim letzten Lauf Fehler hatte.
+**Testfälle:** Eigener Index mit `limits.files = 1`, sodass jeder Lauf der Wurzel scheitert und das meldet. Eine
+Datei bekommt dieselben Bytes: kein Lauf. Andere Bytes: Lauf. Hinzufügen und Löschen wie bisher. `npm run
+test:perf`: das zweite Speichern unter 150 ms, mehrmals gemessen.
+**Commit:** `perf(index): compare the reported files before a root run, so that a save need not wait for it`
+
+**Review nach A4:** Kern und Host, frischer Kontext.
+
+### Task A5: Typ-Zyklus der KI-Panels (`M-10`)
+**Dateien:** Create `src/extension/panels/aiPanelServices.ts` (`AiPanelServices`); Modify `aiPanel.ts`, `aiJobs.ts`
+**Prüfung:** madge (auch mit Typ-Importen) ohne Zyklus.
+**Commit:** `refactor(ai): give the services of the AI panel a module of their own`
+
+### Task A6: Prompt-Rahmen und Anfrage im Kern (`M-08`)
+**Dateien:** Create `src/core/ai/jobPrompt.ts` (Sprachen, Variante, Schreibweise, HTML; die Anfrage eines Pakets mit
+Token-Budget); Modify `src/extension/panels/aiFill.ts`, `aiCheck.ts`, `suggestCell.ts`; Test:
+`test/unit/core/ai/jobPrompt.test.ts`
+**Testfälle:** Beschreibung der Sprachen samt Basisdatei, Variante nur zu ihrer Basis, Schreibweise des Bereichs,
+HTML nur bei Mails; die Anfrage trägt Modell, Format, Aufwand und Budget aus den Zeichen des Pakets.
+**Commit:** `refactor(ai): build the prompt frame and ask for a chunk in the core`
+
+### Task A7: Lange Funktionen und Dateien (`M-09`)
+Nach Verantwortung geteilt, nicht nach Zeilen; jede Teilung verschiebt Code, ohne ihn zu ändern:
+- `workspaceIndex.ts`: der Schritt je Wurzel (auflisten, lesen, analysieren), den `index` und `indexRoot` teilen.
+- `fileStore.ts`: die Prüfungen vor dem Schreiben (`checkWrite` und die Helfer zu Einheiten und Wurzeln) in ein eigenes
+  Modul.
+- `edits.ts` (Webview): die Konflikte mit Änderungen von außen in ein eigenes Modul.
+- `store.ts`, `xmlTokens.ts`, `backupService.ts`, `jsonWrite.ts`: prüfen, ob sie mehr als eine Verantwortung tragen;
+  sonst bleiben sie.
+**Commit:** je Datei `refactor(…): …`
+
+### Task A8: Status-Markup und Fokusrückfall (`M-07`)
+**Dateien:** Create eine Komponente für Symbol und Text der Schwere (aus `Note` in `reviewEntry.tsx`) für alle elf
+Stellen; ein Hook für den Rückfall des Fokus mit geordneten Zielen, wo die Regeln dasselbe tun. Tests der Komponenten
+und axe bleiben grün; Fokus-Tests wie bisher.
+**Commit:** `refactor(webview): one component for a status symbol and its text`, `refactor(webview): …focus…`
+
+**Review nach A8:** Umbauten und Webview, frischer Kontext.
+
+### Task A9: Nachweise, Doku, Push
+`npm run test:integration` (alle Profile), `npm run test:perf`, Abschnitt 10 des Audits, CHANGELOG (sichtbar: `L-31`,
+Leistung), README und `docs/einstellungen.md` (`double-brace-exact`); Push auf `feat/extension-v1`, CI einmal prüfen,
+Beschreibung von PR #10 ergänzen.
+
+**Ergebnis (27.09.2026):** Alle acht Befunde umgesetzt, Einzelheiten in Abschnitt 10 des Audits.
+- **Abweichungen vom Plan:**
+  - `lineStartAt` bekam einen eigenen Commit: Es suchte in Texten ohne CR bis zum Anfang.
+  - Das Review fand `S-14` für JSON auf einer Zeile noch quadratisch und die Mails in derselben Klasse. Beides ist
+    behoben.
+  - `edits.ts` bleibt ungeteilt: Die Konflikte berühren jeden Übergang der Zustandsmaschine.
+  - `checkWrite` bleibt im `FileStore`: Die Prüfung liest die Platte und muss in der Sperre von `checkAndPut` laufen.
+    In `writeScope.ts` ging nur die reine Planung.
+  - Von den Fokusregeln bleibt nur die der Tabelle außerhalb des Hooks: Sie holt auch einen Fokus im Raster zurück,
+    der nicht verloren ist.
+- **Reviews mit frischem Kontext:**
+  - Nach dem Verhalten: 1 MAJOR, 3 MINOR, 2 NIT, alle behoben.
+  - Nach den Umbauten: 2 MINOR, 1 NIT und ein Einwand zur Werkzeugleiste, alle umgesetzt.
+
 ## Phasen 3–8 (Gliederung – Detailtasks folgen vor Phasenstart)
 
-**Phase 3 – Füllen (Übersetzungsspeicher und KI).**
+**Phase 3 – Füllen (Übersetzungsspeicher und KI).** Detailtasks: siehe „Phase 3 – Füllen mit KI“ oben; die
+Gliederung bleibt zum Vergleich.
 - Schritt 0: `/better-coding-workflow` und `/better-coding-frontend`.
 - 3.1 SecretService sowie Befehle Schlüssel setzen, löschen und testen (`/models`, Modellverfügbarkeit, Mini-Request).
 - 3.2 Modellprofile (GPT-5/6/o, AcademicCloud, Qwen3, Mistral).

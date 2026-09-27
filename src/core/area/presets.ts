@@ -71,6 +71,8 @@ export const MAIL_PRESET: AreaDefinition = {
   files: 'templates[_{locale}].xml',
   localePattern: '[a-z]{2}_[A-Z]{2}',
   bundleName: 'templates',
+  // Mail.replaceString replaces "{{" + name + "}}" as written: a space inside the braces stays in the mail.
+  placeholderSyntax: 'double-brace-exact',
   detect: { glob: '**/mailtemplates/templates.xml', marker: 'templates.xml' },
 };
 

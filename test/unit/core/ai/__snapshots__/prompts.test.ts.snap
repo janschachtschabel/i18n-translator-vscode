@@ -1,0 +1,68 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`translationMessages > keeps its wording, which review diffs show: full, variant, metadatasets, mail 1`] = `
+"You translate the user interface texts of edu-sharing, an open-source platform for educational content,
+from German (formal, use 'Sie') [de] to French [fr].
+
+Rules:
+- Keep every placeholder exactly as in the source, e.g. {{name}}: do not translate, add or remove any.
+- {{GENDER_SEPARATOR}} marks a gender form in German texts (it becomes *). In German keep it, unless the
+  description of the target language says otherwise; in other languages leave it out.
+- Keep HTML tags and entities as in the source; translate only the text between them.
+- Keep the meaning, the tone and about the length of the source: texts of buttons and labels stay short.
+- Use the typography of the target language (quotation marks, spaces, capitals).
+- The context holds the text in other languages; use it only to understand the meaning.
+
+Answer with a JSON object {"items": [{"key": …, "text": …}]}, with exactly one item per key of the input and the key unchanged."
+`;
+
+exports[`translationMessages > keeps its wording, which review diffs show: full, variant, metadatasets, mail 2`] = `
+"You adapt user interface texts of edu-sharing, an open-source platform for educational content.
+The texts are in German (formal, use 'Sie') [de]. Adapt the texts to German informal: use 'du' [de-informal].
+Change only what the variant needs; keep everything else word for word.
+
+Rules:
+- Keep every placeholder exactly as in the source, e.g. {{name}}: do not translate, add or remove any.
+- {{GENDER_SEPARATOR}} marks a gender form in German texts (it becomes *). In German keep it, unless the
+  description of the target language says otherwise; in other languages leave it out.
+- Keep HTML tags and entities as in the source; translate only the text between them.
+- Keep the meaning, the tone and about the length of the source: texts of buttons and labels stay short.
+- Use the typography of the target language (quotation marks, spaces, capitals).
+- The context holds the text in other languages; use it only to understand the meaning.
+
+Answer with a JSON object {"items": [{"key": …, "text": …}]}, with exactly one item per key of the input and the key unchanged."
+`;
+
+exports[`translationMessages > keeps its wording, which review diffs show: full, variant, metadatasets, mail 3`] = `
+"You translate the user interface texts of edu-sharing, an open-source platform for educational content,
+from German (formal, use 'Sie') [de] to French [fr].
+
+Rules:
+- Keep every placeholder exactly as in the source, e.g. {name}: do not translate, add or remove any.
+- {{GENDER_SEPARATOR}} marks a gender form in German texts (it becomes *). In German keep it, unless the
+  description of the target language says otherwise; in other languages leave it out.
+- Keep HTML tags and entities as in the source; translate only the text between them.
+- Keep the meaning, the tone and about the length of the source: texts of buttons and labels stay short.
+- Use the typography of the target language (quotation marks, spaces, capitals).
+- The context holds the text in other languages; use it only to understand the meaning.
+
+Answer with a JSON object {"items": [{"key": …, "text": …}]}, with exactly one item per key of the input and the key unchanged."
+`;
+
+exports[`translationMessages > keeps its wording, which review diffs show: full, variant, metadatasets, mail 4`] = `
+"You translate the user interface texts of edu-sharing, an open-source platform for educational content,
+from German (formal, use 'Sie') [de] to French [fr].
+
+Rules:
+- Keep every placeholder exactly as in the source, e.g. {{name}}: do not translate, add or remove any.
+- {{GENDER_SEPARATOR}} marks a gender form in German texts (it becomes *). In German keep it, unless the
+  description of the target language says otherwise; in other languages leave it out.
+- Keep HTML tags and entities as in the source; translate only the text between them.
+- The texts are subjects and HTML messages of e-mails. Keep the HTML structure, and keep conditions such
+  as {{if …}} … {{endif}} as they are.
+- Keep the meaning, the tone and about the length of the source: texts of buttons and labels stay short.
+- Use the typography of the target language (quotation marks, spaces, capitals).
+- The context holds the text in other languages; use it only to understand the meaning.
+
+Answer with a JSON object {"items": [{"key": …, "text": …}]}, with exactly one item per key of the input and the key unchanged."
+`;

@@ -105,6 +105,14 @@ describe('details', () => {
     });
   });
 
+  it('mark a text with an error or a warning as the table does', () => {
+    open();
+    act(() => cellOf('ERROR_TITLE', 0).focus());
+    expect(inDetails().getByRole('button', { name: /^fr: / }).className).toBe('field-value marked-error');
+    expect(inDetails().getByRole('button', { name: /^it: / }).className).toBe('field-value marked-warning');
+    expect(inDetails().getByRole('button', { name: /^de: / }).className).toBe('field-value');
+  });
+
   it('say so when no key is there to show', () => {
     const { store } = open();
     act(() => store.updateFilter({ query: 'xyz' }));

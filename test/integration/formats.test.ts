@@ -22,11 +22,13 @@ suite('a data folder with all three areas', () => {
   let restoreFiles: () => Promise<void>;
 
   suiteSetup(async function () {
-    api = await activateExtension();
-    const { roots } = await api.index.refresh();
-    if (!roots.some((root) => root.analysis.area.id === 'edu-sharing.mail')) {
+    // Only the profile formats opens the data folder of all three formats. The skip looks at the workspace, not at
+    // what the extension detects: a regression there must fail the suite, not skip it (audit T-16).
+    if (!vscode.workspace.workspaceFolders?.[0]?.uri.path.endsWith('/test-workspace/formats')) {
       this.skip();
     }
+    api = await activateExtension();
+    await api.index.refresh();
     restoreFiles = await keepTranslationFiles('data/**/*.{json,properties,xml}');
   });
   teardown(async () => {
@@ -286,5 +288,13 @@ suite('a data folder with all three areas', () => {
       model.rows.map((row) => row.key),
       ['group_title', 'group_hint'],
     );
+  });
+
+  // edu-sharing replaces a mail's placeholders only as written: the check while typing must know (audit L-31).
+  test('opens the mail templates with placeholders that edu-sharing replaces as written only', async () => {
+    const mail = await rootOf('edu-sharing.mail');
+    const panel = api.editors.open(mail, bundleOf(mail, 'templates'));
+    const { model } = await nextPost(panel, 'bundle');
+    assert.equal(model.placeholderSyntax, 'double-brace-exact');
   });
 });

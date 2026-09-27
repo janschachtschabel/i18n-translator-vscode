@@ -330,6 +330,78 @@ suite('FileStore', () => {
     });
   }
 
+  /**
+   * The index, except that a write first waits for the next of `meanwhile`, as it waits for the runs of the index
+   * queued before it (a few hundred milliseconds): another program or the user may change a file then.
+   */
+  const busy = (meanwhile: (() => Promise<unknown>)[]): WorkspaceIndex => {
+    const index: Pick<WorkspaceIndex, 'current' | 'latest' | 'refresh' | 'refreshRoot' | 'whileWriting'> = {
+      current: () => api.index.current(),
+      latest: () => api.index.latest(),
+      refresh: () => api.index.refresh(),
+      refreshRoot: (root) => api.index.refreshRoot(root),
+      whileWriting: async (task) => {
+        await meanwhile.shift()?.();
+        return api.index.whileWriting(task);
+      },
+    };
+    return index as WorkspaceIndex;
+  };
+  /** Types into the file in an editor, which then has unsaved changes. */
+  const typeInto = async (uri: vscode.Uri) => {
+    const editor = await vscode.window.showTextDocument(await vscode.workspace.openTextDocument(uri));
+    await editor.edit((builder) => builder.insert(new vscode.Position(0, 0), ' '));
+  };
+
+  // The files are checked once the runs of the index before the write are done, so that a change meanwhile is neither
+  // written over nor lost to an undo (audit L-16).
+  test('checks the files after waiting for the index, so that a change on disk meanwhile is kept', async () => {
+    const fr = uriOf('common', 'fr');
+    const store = new FileStore(
+      busy([() => changeOnDisk(fr, '"MINUTE": "Minute"', '"MINUTE": "Minuto"')]),
+      log,
+    );
+    assert.deepEqual(await store.write(ref, setAsk('Continuer ?', 'Voulez-vous continuer ?')), { ok: true });
+    const text = await read(fr);
+    assert.ok(text.includes('"MINUTE": "Minuto"') && text.includes('"ASK": "Continuer ?"'), text);
+  });
+
+  test('undoes nothing that changed on disk while it waited for the index', async () => {
+    const fr = uriOf('common', 'fr');
+    const meanwhile: (() => Promise<unknown>)[] = [];
+    const store = new FileStore(busy(meanwhile), log);
+    assert.deepEqual(await store.write(ref, setAsk('Continuer ?')), { ok: true });
+    meanwhile.push(() => changeOnDisk(fr, '"MINUTE": "Minute"', '"MINUTE": "Minuto"'));
+    const result = await store.undo();
+    assert.ok(result && !result.ok && result.reason === 'changed', JSON.stringify(result));
+    assert.ok((await read(fr)).includes('"MINUTE": "Minuto"'));
+  });
+
+  for (const kind of ['write', 'restore'] as const) {
+    test(`checks for unsaved changes after waiting for the index, before a ${kind}`, async () => {
+      const fr = uriOf('common', 'fr');
+      const before = await read(fr);
+      const store = new FileStore(busy([() => typeInto(fr)]), log);
+      const result =
+        kind === 'write'
+          ? await store.write(ref, setAsk('Continuer ?'))
+          : await store.restore([{ uri: fr, bytes: encoder.encode('{}\n') }]);
+      assert.ok(!result.ok && result.reason === 'dirty', JSON.stringify(result));
+      assert.equal(await read(fr), before);
+    });
+  }
+
+  // A restore of the bytes the files have backed up first, and the pruning of backups beyond `keep` then removed the
+  // oldest one for a change that did not happen (audit L-28).
+  test('backs up nothing before a restore that would change nothing', async () => {
+    const fr = uriOf('common', 'fr');
+    let backups = 0;
+    const store = new FileStore(api.index, log, { beforeWrite: async () => void backups++ });
+    const result = await store.restore([{ uri: fr, bytes: await vscode.workspace.fs.readFile(fr) }]);
+    assert.deepEqual(result, { ok: true });
+    assert.equal(backups, 0);
+  });
+
   test('runs exclusive tasks, such as a manual backup, between writes', async () => {
     const order: string[] = [];
     const write = api.fileStore.write(ref, (analysis) => {

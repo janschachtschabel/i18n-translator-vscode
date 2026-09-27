@@ -1,12 +1,16 @@
-import { useLayoutEffect, useMemo, useRef } from 'preact/hooks';
+import { useEffect, useLayoutEffect, useMemo, useRef } from 'preact/hooks';
 import { l10n } from '../l10n';
 import type { OpenEditor } from '../state/edits';
 import type { EditorStore, LocaleColumn } from '../state/store';
-import { SEVERITY_SYMBOLS, severityWord } from './cellStatus';
+import { StatusNote, StatusSymbol } from './statusNote';
 import './cellEditor.css';
-import { focusIsLost } from './focus';
-import { inlineCheck, type CheckLine } from './inlineCheck';
+import { focusIsLost, useFocusFallback } from './focus';
+import { grow } from './grow';
+import { inlineCheck } from '../inlineCheck';
+import { isCommand } from '../shortcuts';
 import { localeName } from './localeName';
+import { trackPointer, whenPointerUp } from './pointer';
+import { SUGGESTION_ID, SuggestionBar } from './suggestionBar';
 
 // One editor is open at a time, so these ids are unique.
 const ERROR_ID = 'cell-editor-error';
@@ -46,6 +50,8 @@ export function CellEditor({ store, editor, locale, keyText, referenceText }: Ce
   const syntax = store.placeholderSyntax.value;
   const check = useMemo(() => inlineCheck(referenceText, text, syntax), [referenceText, text, syntax]);
 
+  // From the first editor on, a click elsewhere saves when its button comes up (onFocusOut).
+  useLayoutEffect(trackPointer, []);
   useLayoutEffect(() => {
     const element = field.current!;
     // At its full height before it takes the focus, so that scrolling it into view shows the cursor at its end.
@@ -68,17 +74,44 @@ export function CellEditor({ store, editor, locale, keyText, referenceText }: Ce
     return () => observer.disconnect();
   }, []);
   useLayoutEffect(() => grow(field.current!), [text]);
-  // The choice went with the focus on one of its buttons (e.g. the text is back as it was): the field takes it,
-  // before the table or the list would give it to the cell or the card.
-  useLayoutEffect(() => {
-    if (!editor.conflict && focusIsLost()) {
-      field.current?.focus();
-    }
-  }, [editor.conflict]);
+  // The choice went with the focus on one of its buttons (e.g. the text is back as it was), or a suggestion came
+  // after a dialog of VS Code (the consent) took the focus from the page: the field takes it, before the table or the
+  // list would give it to the cell or the card. Not while VS Code has the focus: the user may be typing there.
+  useFocusFallback(
+    () => [field.current],
+    [editor.conflict, editor.suggestion],
+    () => !editor.conflict && document.hasFocus(),
+  );
+  // A dialog of VS Code took the focus from the page, which leaves it with nothing: when the page gets it back, the
+  // field takes it, also when nothing changed in the editor meanwhile (the request failed, or is still on its way).
+  useEffect(() => {
+    const onFocus = () => {
+      if (focusIsLost()) {
+        field.current?.focus();
+      }
+    };
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
+  }, []);
 
+  // A suggestion of the AI for the text; the field keeps the focus. The page knows no bases of variants: it offers
+  // one where the reference has a text, and the host translates a variant from its base.
+  const hasSource = Boolean(referenceText?.trim());
+  const suggest = () => {
+    store.suggestions.request(referenceText);
+    field.current?.focus();
+  };
   const onFieldKeyDown = (event: KeyboardEvent) => {
     // Enter picks a word while an input method composes it.
     if (event.isComposing) {
+      return;
+    }
+    // During a conflict there is no suggestion, but Ctrl+I is still the editor's: VS Code must not act on it.
+    if (isCommand(event, 'i')) {
+      handled(event);
+      if (!editor.conflict) {
+        suggest();
+      }
       return;
     }
     const command = event.ctrlKey || event.metaKey;
@@ -98,28 +131,37 @@ export function CellEditor({ store, editor, locale, keyText, referenceText }: Ce
       edits.commit();
     }
   };
-  // Esc cancels anywhere in the editor, also on the buttons of a conflict.
+  // Esc cancels anywhere in the editor, also on the buttons of a conflict: first a suggestion on its way, then the
+  // suggestion in the field (the text before it comes back), then the editor.
   const onEditorKeyDown = (event: KeyboardEvent) => {
     const plain = !event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey;
     if (event.key === 'Escape' && plain && !event.isComposing) {
       handled(event);
-      edits.cancel();
+      if (!store.suggestions.escape()) {
+        edits.cancel();
+      }
     }
   };
   // Leaving the editor saves it, e.g. with a click elsewhere. It does not when the focus is still in an editor:
   // this one, when VS Code took the focus from the page (the field gets it back later), or the one that took its
-  // place, when the list replaced the table. An editor that went (its row left the view) saves nothing.
+  // place, when the list replaced the table. An editor that went (its row left the view) saves nothing. A click moves
+  // the focus when its button goes down, and saving closes the editor, which makes its row smaller: it waits for the
+  // button to come up, so that the cells below stay under the pointer and the click lands where it was aimed.
   const onFocusOut = (event: FocusEvent) => {
     if (container.current?.contains(event.relatedTarget as Node | null)) {
       return;
     }
-    setTimeout(() => {
-      const open = edits.open.peek();
-      const same = open?.entryId === editor.entryId && open.locale === editor.locale;
-      if (container.current && same && !document.activeElement?.closest(`.${EDITOR_CLASS}`)) {
-        edits.commit();
-      }
-    }, 0);
+    whenPointerUp(() =>
+      setTimeout(() => {
+        const open = edits.open.peek();
+        const same = open?.entryId === editor.entryId && open.locale === editor.locale;
+        // Without the focus of the page, VS Code has it (a dialog, the palette): the user comes back to the editor.
+        const elsewhere = document.hasFocus() && !document.activeElement?.closest(`.${EDITOR_CLASS}`);
+        if (container.current && same && elsewhere) {
+          edits.commit();
+        }
+      }, 0),
+    );
   };
   const resolve = (resolution: 'takeTheirs' | 'keepMine') => {
     edits[resolution]();
@@ -129,6 +171,7 @@ export function CellEditor({ store, editor, locale, keyText, referenceText }: Ce
   const describedBy = [
     editor.conflict && CONFLICT_ID,
     editor.error !== undefined && ERROR_ID,
+    hasSource && store.suggestions.ai.value.available && SUGGESTION_ID,
     CHECK_ID,
     HINT_ID,
   ]
@@ -161,9 +204,7 @@ export function CellEditor({ store, editor, locale, keyText, referenceText }: Ce
       {editor.conflict && (
         <div class="editor-conflict">
           <p id={CONFLICT_ID} class="editor-note">
-            <span aria-hidden="true" class="status-symbol warning">
-              {SEVERITY_SYMBOLS.warning}
-            </span>{' '}
+            <StatusSymbol severity="warning" />{' '}
             {editor.conflict.text === undefined ? (
               l10n.t('Deleted outside the editor.')
             ) : (
@@ -187,23 +228,17 @@ export function CellEditor({ store, editor, locale, keyText, referenceText }: Ce
       )}
       {editor.error !== undefined && (
         <p id={ERROR_ID} class="editor-note">
-          <span aria-hidden="true" class="status-symbol error">
-            {SEVERITY_SYMBOLS.error}
-          </span>{' '}
-          {l10n.t('Not saved: {message}', { message: editor.error })}
+          <StatusSymbol severity="error" /> {l10n.t('Not saved: {message}', { message: editor.error })}
         </p>
       )}
       <div id={CHECK_ID} role="status" class="editor-check">
         {check.map((line) => (
           <p key={line.text} class="editor-note">
-            <span aria-hidden="true" class={`status-symbol ${line.severity}`}>
-              {symbolOf(line)}
-            </span>{' '}
-            {line.severity !== 'ok' && <span class="visually-hidden">{severityWord(line.severity)}: </span>}
-            {line.text}
+            <StatusNote severity={line.severity} text={line.text} />
           </p>
         ))}
       </div>
+      <SuggestionBar store={store} editor={editor} hasSource={hasSource} onSuggest={suggest} />
       <p id={HINT_ID} class="editor-note editor-hint">
         {editor.conflict
           ? l10n.t('Tab leads to the choice between the new text and yours; Esc discards yours.')
@@ -215,20 +250,8 @@ export function CellEditor({ store, editor, locale, keyText, referenceText }: Ce
   );
 }
 
-function symbolOf(line: CheckLine): string {
-  return line.severity === 'ok' ? '✓' : SEVERITY_SYMBOLS[line.severity];
-}
-
 /** The key is the editor's: the grid and VS Code must not act on it as well. */
 function handled(event: KeyboardEvent): void {
   event.preventDefault();
   event.stopPropagation();
-}
-
-/** Makes the field as high as its text (design §7.1: never scroll inside a cell); without a layout, it keeps one line. */
-function grow(field: HTMLTextAreaElement): void {
-  field.style.height = 'auto';
-  if (field.scrollHeight > 0) {
-    field.style.height = `${field.scrollHeight + field.offsetHeight - field.clientHeight}px`;
-  }
 }

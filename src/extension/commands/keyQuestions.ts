@@ -3,7 +3,7 @@ import type { KeyCheck } from '../../core/edit/keyCheck';
 import { displayKey, type EntryKey } from '../../core/model/keys';
 import { localize } from '../localize';
 import type { BundleTarget, KeyCommandContext } from './commandTarget';
-import type { InputCheck } from './prompts';
+import type { InputCheck } from './inputBox';
 
 /**
  * The bundles a rename or a delete changes. When other bundles of the root have the key too, the user chooses:

@@ -11,30 +11,7 @@ type Roots = Readonly<Record<string, readonly string[]>>;
  * choice in `eduI18n.roots` of the workspace folder. The index re-runs on the configuration change.
  */
 export async function configureRoots(): Promise<void> {
-  // A window without a folder has no folder to store the choice in: opening one is the way in.
-  if (!vscode.workspace.workspaceFolders?.length) {
-    const open = vscode.l10n.t('Open Folder…');
-    const choice = await showInfo(
-      vscode.l10n.t(
-        'Open a folder with edu-sharing translations first: an edu-sharing checkout, or its translation folder or a copy of it.',
-      ),
-      open,
-    );
-    if (choice === open) {
-      await vscode.commands.executeCommand('vscode.openFolder');
-    }
-    return;
-  }
-  if (!vscode.workspace.isTrusted) {
-    // eduI18n.roots is a restricted setting: workspace values are ignored until the workspace is trusted.
-    const manage = vscode.l10n.t('Manage Workspace Trust');
-    const choice = await showWarning(
-      vscode.l10n.t('Translation folders can only be configured in a trusted workspace.'),
-      manage,
-    );
-    if (choice === manage) {
-      await vscode.commands.executeCommand('workbench.trust.manage');
-    }
+  if (!(await canConfigure())) {
     return;
   }
   const folder = await pickWorkspaceFolder();
@@ -60,10 +37,49 @@ export async function configureRoots(): Promise<void> {
     );
     return;
   }
-  if (action !== choose) {
-    return;
+  if (action === choose) {
+    await chooseFolders(folder, area, config, current);
   }
+}
 
+/** Whether roots can be configured: in a trusted window with a folder; else it offers the way there. */
+async function canConfigure(): Promise<boolean> {
+  // A window without a folder has no folder to store the choice in: opening one is the way in.
+  if (!vscode.workspace.workspaceFolders?.length) {
+    const open = vscode.l10n.t('Open Folder…');
+    const choice = await showInfo(
+      vscode.l10n.t(
+        'Open a folder with edu-sharing translations first: an edu-sharing checkout, or its translation folder or a copy of it.',
+      ),
+      open,
+    );
+    if (choice === open) {
+      await vscode.commands.executeCommand('vscode.openFolder');
+    }
+    return false;
+  }
+  if (!vscode.workspace.isTrusted) {
+    // eduI18n.roots is a restricted setting: workspace values are ignored until the workspace is trusted.
+    const manage = vscode.l10n.t('Manage Workspace Trust');
+    const choice = await showWarning(
+      vscode.l10n.t('Translation folders can only be configured in a trusted workspace.'),
+      manage,
+    );
+    if (choice === manage) {
+      await vscode.commands.executeCommand('workbench.trust.manage');
+    }
+    return false;
+  }
+  return true;
+}
+
+/** Asks for the root folders of an area and stores them beside the roots of the other areas. */
+async function chooseFolders(
+  folder: vscode.WorkspaceFolder,
+  area: AreaDefinition,
+  config: vscode.WorkspaceConfiguration,
+  current: Roots,
+): Promise<void> {
   const uris = await vscode.window.showOpenDialog({
     canSelectFiles: false,
     canSelectFolders: true,

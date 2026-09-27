@@ -16,7 +16,9 @@ import { Edits, type CellRef, type EditorPlace } from './edits';
 import { KeptUnsaved } from './keptUnsaved';
 import { compactLocales, layoutFor } from './layout';
 import { nextCell } from './navigation';
-import { showEdits, withRowOf, type ShownRow } from './shownRows';
+import { Review } from './review';
+import { showEdits, withRowsOf, type ShownRow } from './shownRows';
+import { Suggestions } from './suggestions';
 
 export type { LocaleColumn } from './columns';
 
@@ -103,15 +105,30 @@ export class EditorStore {
     (message) => this.host.postMessage(message),
     (text) => this.announce(text),
   );
+  /** Suggestions of the AI for the open editor. */
+  readonly suggestions = new Suggestions((message) => this.host.postMessage(message), this.edits);
+  /** The review list of a fill, shown in place of the rows. */
+  readonly review = new Review(
+    (message) => this.host.postMessage(message),
+    (text) => this.announce(text),
+    () => this.placeholderSyntax.peek(),
+  );
+  /**
+   * The keys whose editor opened since the filter or the languages shown last changed. Their rows stay when the
+   * filter no longer lets them through (e.g. "missing" once the text is there): a row that went would move the
+   * rows below it, and a click on the next cell, which saves this one, would land beside it.
+   */
+  private readonly keptRows = signal<ReadonlySet<string>>(new Set());
   /**
    * The rows the filter lets through, as the editor shows them: with the texts on their way to the files, and
-   * with the row of the open editor while it is open, so that it stays while the user types.
+   * with the rows edited since the filter changed, that of the open editor included.
    */
   readonly rows = computed((): readonly ShownRow[] => {
     const view = this.view.value;
     const filtered = this.filtered.value?.rows ?? [];
     const open = this.edits.open.value;
-    const rows = view.kind === 'bundle' ? withRowOf(filtered, view.model.rows, open?.entryId) : filtered;
+    const kept = open ? new Set([...this.keptRows.value, open.entryId]) : this.keptRows.value;
+    const rows = view.kind === 'bundle' ? withRowsOf(filtered, view.model.rows, kept) : filtered;
     return showEdits(rows, this.edits.pending.value, this.edits.rejected.value);
   });
   /** The key of the table's active cell, whose details the table shows; null before it has one. */
@@ -148,8 +165,10 @@ export class EditorStore {
       case 'init':
         setTranslations(message.l10n);
         this.uiState.value = message.uiState;
+        this.keptRows.value = new Set();
         this.host.setState(message.panelState);
         this.edits.reset();
+        this.review.reset();
         this.unsaved.expect(message.unsaved ?? []);
         // The host follows up with the bundle, or with it once the first index run is done.
         this.view.value = { kind: 'loading' };
@@ -203,6 +222,16 @@ export class EditorStore {
       case 'writeResult':
         this.edits.answer(message);
         break;
+      case 'aiState':
+      case 'aiSuggestion':
+        this.suggestions.receive(message);
+        break;
+      case 'aiJob':
+      case 'aiJobItems':
+      case 'aiJobEnd':
+      case 'aiApplyResult':
+        this.review.receive(message);
+        break;
     }
   }
 
@@ -222,6 +251,9 @@ export class EditorStore {
     }
     // Its row may go with the change.
     this.edits.commit();
+    if (change.filter || change.hiddenLocales || change.compactLocale !== undefined) {
+      this.keptRows.value = new Set();
+    }
     this.uiState.value = { ...this.uiState.value, ...change };
     void this.filtered.value;
     this.host.postMessage({ type: 'uiState', state: this.uiState.value });
@@ -269,6 +301,9 @@ export class EditorStore {
   edit(entryId: string, locale: string, place: EditorPlace = 'rows'): void {
     // The open editor first: when it is the same cell's, the cell then shows the text just sent.
     this.edits.commit();
+    if (!this.keptRows.value.has(entryId)) {
+      this.keptRows.value = new Set([...this.keptRows.value, entryId]);
+    }
     this.edits.start({ entryId, locale }, this.shownText(entryId, locale), place);
   }
 

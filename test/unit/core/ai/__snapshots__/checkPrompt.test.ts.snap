@@ -1,0 +1,50 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`checkMessages > keeps its wording, which review diffs show 1`] = `
+"You check the translations of the user interface texts of edu-sharing, an open-source platform for
+educational content, from German (formal, use 'Sie') [de] to French [fr].
+
+Check:
+- the meaning: nothing missing, added or wrong;
+- every placeholder exactly as in the source, e.g. {{name}};
+- {{GENDER_SEPARATOR}} marks a gender form in German texts (it becomes *). In German keep it, unless the
+  description of the target language says otherwise; in other languages leave it out.
+- HTML tags and entities as in the source;
+- the form of address and the terms the description of the language asks for, the same in every text;
+- spelling, grammar and the typography of the target language;
+- the length: texts of buttons and labels stay short.
+
+Answer with a JSON object {"items": [{"key": …, "verdict": …, "severity": …, "problem": …, "suggestion": …}]},
+with exactly one item per key of the input and the key unchanged:
+- verdict "ok" if the translation is fine; then severity "info", problem and suggestion empty;
+- verdict "problem" otherwise, with severity "error" (wrong meaning, broken placeholders or markup), "warning"
+  (misleading, inconsistent, clumsy) or "info" (style), the problem in one sentence, and the corrected
+  translation as suggestion (empty if you have none).
+Write the problem in German. Report no problem for a translation that is merely not what you would write.
+The context holds the text in other languages; use it only to understand the meaning."
+`;
+
+exports[`checkMessages > keeps its wording, which review diffs show 2`] = `
+"You check user interface texts of edu-sharing, an open-source platform for educational content.
+German informal: use 'du' [de-informal] is a variant of German (formal, use 'Sie') [de]: its texts should differ from their source
+only where the variant needs it, and follow the description of the variant.
+
+Check:
+- the meaning: nothing missing, added or wrong;
+- every placeholder exactly as in the source, e.g. {{name}};
+- {{GENDER_SEPARATOR}} marks a gender form in German texts (it becomes *). In German keep it, unless the
+  description of the target language says otherwise; in other languages leave it out.
+- HTML tags and entities as in the source;
+- the form of address and the terms the description of the language asks for, the same in every text;
+- spelling, grammar and the typography of the target language;
+- the length: texts of buttons and labels stay short.
+
+Answer with a JSON object {"items": [{"key": …, "verdict": …, "severity": …, "problem": …, "suggestion": …}]},
+with exactly one item per key of the input and the key unchanged:
+- verdict "ok" if the translation is fine; then severity "info", problem and suggestion empty;
+- verdict "problem" otherwise, with severity "error" (wrong meaning, broken placeholders or markup), "warning"
+  (misleading, inconsistent, clumsy) or "info" (style), the problem in one sentence, and the corrected
+  translation as suggestion (empty if you have none).
+Write the problem in German. Report no problem for a translation that is merely not what you would write.
+The context holds the text in other languages; use it only to understand the meaning."
+`;

@@ -64,9 +64,10 @@ describe('presets', () => {
     expect(overrides(MAIL_PRESET, ['templates'])).toEqual([]);
   });
 
-  it('read {name} placeholders in metadatasets and {{name}} in Angular', () => {
+  it('read {name} placeholders in metadatasets, {{name}} in Angular and {{name}} as written in mails', () => {
     expect(MDS_PRESET.placeholderSyntax).toBe('single-brace');
     expect(ANGULAR_PRESET.placeholderSyntax).toBeUndefined();
+    expect(MAIL_PRESET.placeholderSyntax).toBe('double-brace-exact');
   });
 
   it('merge Angular categories in the order of edu-sharing TRANSLATION_LIST', () => {

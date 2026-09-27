@@ -96,6 +96,30 @@ describe('editing', () => {
     expect(store.edits.open.value).toBeNull();
   });
 
+  // The host answers a write to the page that is loaded, which may be one after a reload: its first write had the
+  // id of the old page's first, and the old answer marked it written or not saved (audit L-20).
+  it('takes no answer to a write of the page before a reload for one of its own', () => {
+    const before = open();
+    before.type('SAVE', 'fr', 'Sauvegarder');
+    const reloaded = open();
+    reloaded.type('CANCEL', 'fr', 'Abandonner');
+    expect(reloaded.lastRequest()).not.toBe(before.lastRequest());
+
+    const announced = reloaded.store.announcement.value;
+    reloaded.store.receive({ type: 'writeResult', requestId: before.lastRequest(), ok: true });
+    reloaded.store.receive({
+      type: 'writeResult',
+      requestId: before.lastRequest(),
+      ok: false,
+      message: 'Le disque est plein.',
+    });
+    expect(reloaded.store.announcement.value).toEqual(announced);
+    expect(reloaded.store.edits.pending.value).toEqual([
+      expect.objectContaining({ requestId: reloaded.lastRequest(), written: false }),
+    ]);
+    expect(reloaded.store.edits.rejected.value.size).toBe(0);
+  });
+
   it('shows a sent text at once, without the findings of the old one, until the model has it', () => {
     const { store, cell, type, lastRequest } = open();
     type('ERROR_TITLE', 'fr', 'Erreur ({{date}})');
@@ -388,6 +412,31 @@ describe('editing', () => {
     store.receive({ type: 'bundle', model: withTexts({ CANCEL: { fr: text('Annuler') } }) });
     expect(keys()).toEqual(['CANCEL', 'ERROR_TITLE']);
     store.edits.cancel();
+    // It stays after its editor closed, until the filter changes (see below).
+    expect(keys()).toEqual(['CANCEL', 'ERROR_TITLE']);
+    store.toggleMissing();
+    store.toggleMissing();
+    expect(keys()).toEqual(['ERROR_TITLE']);
+  });
+
+  // A click on the next missing cell saved the row with the filter "missing": the row left the filter before the
+  // mouse button came up, the rows below moved up, and the click opened nothing (review of R1-R3, P1).
+  it('keeps the rows edited under a filter until the filter or the languages shown change', () => {
+    const { store, lastRequest } = open();
+    const keys = () => store.rows.value.map((candidate) => candidate.key);
+    store.toggleMissing();
+    store.edit(id('CANCEL'), 'fr');
+    store.edits.draft.value = 'Annuler';
+    // The click on the next missing cell saves CANCEL and opens that cell.
+    store.edit(id('ERROR_TITLE'), 'it');
+    store.receive({ type: 'writeResult', requestId: lastRequest(), ok: true });
+    store.receive({ type: 'bundle', model: withTexts({ CANCEL: { fr: text('Annuler') } }) });
+    expect(keys()).toEqual(['CANCEL', 'ERROR_TITLE']);
+    expect(store.edits.open.value).toMatchObject({ entryId: id('ERROR_TITLE'), locale: 'it' });
+    store.edits.cancel();
+    expect(keys()).toEqual(['CANCEL', 'ERROR_TITLE']);
+    store.toggleLocale('it');
+    store.toggleLocale('it');
     expect(keys()).toEqual(['ERROR_TITLE']);
   });
 

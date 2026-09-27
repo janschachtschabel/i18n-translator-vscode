@@ -43,6 +43,17 @@ describe('missing-key', () => {
     const editorial = bundleOf('editorial', { de: '{"b":"B"}' });
     expect(run(missingKeyRule, [common, editorial])).toEqual([]);
   });
+
+  // Spreading every missing key as an argument overflowed the call stack from about 126,000 keys on, and the whole
+  // root could not be checked (audit L-23). The budget of a root (S-11) stays below that, V8's stack may not.
+  it('reports any number of missing keys', () => {
+    const keys = Array.from({ length: 130_000 }, (_, index) => `K${index}`);
+    const bundle = bundleOf('common', {
+      de: JSON.stringify(Object.fromEntries(keys.map((key) => [key, 'x']))),
+      fr: '{}',
+    });
+    expect(run(missingKeyRule, [bundle])).toHaveLength(130_000);
+  });
 });
 
 describe('missing-key with a file without locale (metadatasets, mail templates)', () => {
@@ -139,6 +150,24 @@ describe('orphan-key and misplaced-key', () => {
     expect(run(misplacedKeyRule, [bundle])).toEqual([]);
     expect(run(orphanKeyRule, [bundle])).toHaveLength(2_000);
     expect(performance.now() - started).toBeLessThan(2_000);
+  });
+
+  // Below the limit per ending, many endings together still paired millions of keys (audit S-11): beyond 100,000
+  // pairs of a language, the keys of the remaining endings get no suggestions.
+  it('suggests nothing for the endings beyond a budget of pairs, and reports their keys as orphans', () => {
+    const texts = (prefix: string) =>
+      JSON.stringify(
+        Object.fromEntries(
+          Array.from({ length: 100 }, (_, i) => [
+            `${prefix}${i}`,
+            Object.fromEntries(Array.from({ length: 20 }, (_, j) => [`E${j}`, 'x'])),
+          ]),
+        ),
+      );
+    // 20 endings of 100 keys each: 10,000 pairs per ending, 200,000 in all.
+    const bundle = bundleOf('common', { de: texts('A'), fr: texts('B') });
+    expect(run(misplacedKeyRule, [bundle])).toHaveLength(1_000);
+    expect(run(orphanKeyRule, [bundle])).toHaveLength(1_000);
   });
 
   it('points to the key in the translation', () => {

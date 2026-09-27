@@ -4,11 +4,12 @@ import type { EditorPlace, OpenEditor } from '../state/edits';
 import type { ShownCell, ShownRow } from '../state/shownRows';
 import type { EditorStore, LocaleColumn } from '../state/store';
 import { CellEditor } from './cellEditor';
-import { SEVERITY_SYMBOLS, severityWord } from './cellStatus';
+import { cellMark } from './cellStatus';
+import { StatusNote, StatusSymbol } from './statusNote';
 import { EmptyValue } from './emptyValue';
 import './field.css';
 import { hintFor } from './findingHints';
-import { focusIsLost, onFocusLeaving } from './focus';
+import { onFocusLeaving, useFocusFallback } from './focus';
 import { LocaleLabel } from './localeLabel';
 import { localeName } from './localeName';
 
@@ -36,16 +37,19 @@ export function Field({ store, row, locale, cell, editor, referenceText, place }
   /** The user took the focus out of the field, e.g. with a click beside its editor, which then saves. */
   const left = useRef(false);
   const notesId = `${useId()}-notes`;
+  // After Enter or Esc the text takes the focus back; after Tab, the next editor has it; after a click beside the
+  // editor, the focus stays where the click put it.
+  useFocusFallback(
+    () => [button.current],
+    undefined,
+    () => wasEditing.current && !editor && !left.current && !store.edits.open.peek(),
+  );
   useLayoutEffect(() => {
-    // After Enter or Esc the text takes the focus back; after Tab, the next editor has it; after a click beside
-    // the editor, the focus stays where the click put it.
-    if (wasEditing.current && !editor && !left.current && focusIsLost() && !store.edits.open.peek()) {
-      button.current?.focus();
-    }
     wasEditing.current = editor !== undefined;
   });
   const hasNotes = cell.notSaved !== undefined || cell.issues.length > 0;
   const deletable = cell.issues.some((issue) => issue.rule === 'empty-value');
+  const mark = cellMark(cell);
   return (
     <div class="card-field">
       <dt>
@@ -70,7 +74,7 @@ export function Field({ store, row, locale, cell, editor, referenceText, place }
           <button
             ref={button}
             type="button"
-            class="field-value"
+            class={mark ? `field-value marked-${mark}` : 'field-value'}
             aria-describedby={hasNotes ? notesId : undefined}
             onClick={() => store.edit(row.entryId, locale.code, place)}
           >
@@ -89,10 +93,7 @@ export function Field({ store, row, locale, cell, editor, referenceText, place }
           <div id={notesId}>
             {cell.notSaved !== undefined && (
               <p class="card-finding">
-                <span aria-hidden="true" class="status-symbol error">
-                  {SEVERITY_SYMBOLS.error}
-                </span>{' '}
-                {l10n.t('Not saved: {message}', { message: cell.notSaved })}
+                <StatusSymbol severity="error" /> {l10n.t('Not saved: {message}', { message: cell.notSaved })}
               </p>
             )}
             {cell.issues.map((issue, index) => {
@@ -100,11 +101,7 @@ export function Field({ store, row, locale, cell, editor, referenceText, place }
               return (
                 <div key={index}>
                   <p class="card-finding">
-                    <span aria-hidden="true" class={`status-symbol ${issue.severity}`}>
-                      {SEVERITY_SYMBOLS[issue.severity]}
-                    </span>{' '}
-                    <span class="visually-hidden">{severityWord(issue.severity)}: </span>
-                    {issue.message}
+                    <StatusNote severity={issue.severity} text={issue.message} />
                   </p>
                   {hint !== undefined && <p class="card-hint">{hint}</p>}
                 </div>

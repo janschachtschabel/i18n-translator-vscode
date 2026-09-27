@@ -21,8 +21,11 @@ export function useShortcuts(store: EditorStore): void {
           field.select();
         }
       } else if (event.altKey && !event.ctrlKey && !event.metaKey && event.key.toLowerCase() === 'm') {
-        handled(event);
-        store.toggleMissing();
+        // Not while the review list takes the place of the rows: the filter would change unseen.
+        if (store.review.list.peek() === undefined) {
+          handled(event);
+          store.toggleMissing();
+        }
       } else if (isCommand(event, 'z') && !isTextField(event.target)) {
         handled(event);
         store.undo();
@@ -42,7 +45,7 @@ function handled(event: KeyboardEvent): void {
  * Ctrl (Cmd on macOS) with `key` and nothing else. With a layout whose letters are not Latin (Cyrillic, Greek),
  * `key` is another letter, so the physical key decides. Alt+M keeps to `key`: Option+M types "µ" on macOS.
  */
-function isCommand(event: KeyboardEvent, key: string): boolean {
+export function isCommand(event: KeyboardEvent, key: string): boolean {
   const latin = /^[a-z]$/i.test(event.key);
   const pressed = latin ? event.key.toLowerCase() === key : event.code === `Key${key.toUpperCase()}`;
   return (event.ctrlKey || event.metaKey) && !event.shiftKey && !event.altKey && pressed;

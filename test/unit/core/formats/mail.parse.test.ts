@@ -116,6 +116,12 @@ describe('parseMail', () => {
       ['<templates><template name="t"><subject>A', 'UnclosedElement'],
       ['<templates><template name="t"><subject>A & B</subject></template></templates>', 'InvalidEntity'],
       ['<templates><template name="t"><subject>&nbsp;</subject></template></templates>', 'UnknownEntity'],
+      // Names of Object.prototype are no entities either (audit L-26).
+      [
+        '<templates><template name="t"><subject>&constructor;</subject></template></templates>',
+        'UnknownEntity',
+      ],
+      ['<templates><template name="t"><subject>&toString;</subject></template></templates>', 'UnknownEntity'],
       ['<templates><template name="t" name="u"/></templates>', 'DuplicateAttribute'],
       ['<?xml version="1.0"?><!DOCTYPE templates><templates/>', 'DoctypeNotSupported'],
       ['<templates/><templates/>', 'ContentAfterRoot'],

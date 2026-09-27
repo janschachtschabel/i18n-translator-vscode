@@ -3,7 +3,7 @@ import type { OpenEditor } from '../../state/edits';
 import { NO_TEXT, referenceTextOf, type ShownRow } from '../../state/shownRows';
 import type { EditorStore, LocaleColumn } from '../../state/store';
 import { Field } from '../field';
-import { focusIsLost, onFocusLeaving } from '../focus';
+import { onFocusLeaving, useFocusFallback } from '../focus';
 import { keyContext } from '../keyContext';
 import { memo } from '../memo';
 import { useIncrementalCount } from '../useIncrementalCount';
@@ -47,31 +47,29 @@ export function List({ store, rows, locales, reference, labelledBy }: ListProps)
 
   // The card of the key, in the field of the language, gets the focus the table had. An editor that came along
   // from the table has taken it already.
-  useLayoutEffect(() => {
-    if (handoff === undefined || !focusIsLost()) {
-      return;
+  useFocusFallback(() => {
+    if (handoff === undefined) {
+      return [];
     }
     const card =
       handoff.entryId !== null
         ? list.current?.querySelector(`[data-entry="${entryAttribute(handoff.entryId)}"]`)
         : list.current?.firstElementChild;
-    if (card) {
-      (fieldOf(card, handoff.locale) ?? card.querySelector<HTMLElement>('h2'))?.focus();
-    }
+    return card ? inCard(card, handoff.locale) : [];
   }, [handoff]);
 
   // When the card with the focus goes (e.g. once its missing text is there), the card that takes its place gets
   // the focus, in the field of the same language; a card that is still there keeps it.
-  useLayoutEffect(() => {
+  useFocusFallback(() => {
     const place = focusPlace.current;
     const cards = list.current?.children;
-    if (!place || !cards || cards.length === 0 || !focusIsLost()) {
-      return;
+    if (!place || !cards || cards.length === 0) {
+      return [];
     }
     const card =
       list.current!.querySelector(`[data-entry="${entryAttribute(place.entryId)}"]`) ??
       cards[Math.min(place.card, cards.length - 1)]!;
-    (fieldOf(card, place.locale) ?? card.querySelector<HTMLElement>('h2'))?.focus();
+    return inCard(card, place.locale);
   });
 
   // When the table takes the list's place with the focus in it, the table gives it to the key of the card.
@@ -115,6 +113,11 @@ export function List({ store, rows, locales, reference, labelledBy }: ListProps)
       ))}
     </ol>
   );
+}
+
+/** Where the focus goes in a card, in order: the field of the language, else the heading. */
+function inCard(card: Element, locale: string | null): (HTMLElement | null | undefined)[] {
+  return [fieldOf(card, locale), card.querySelector<HTMLElement>('h2')];
 }
 
 /** The text of a card's field in a language; undefined in the key, or for a language the card does not show. */

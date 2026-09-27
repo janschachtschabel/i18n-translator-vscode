@@ -67,7 +67,7 @@ export class BackupService {
    * For the file store, before it writes. A failed backup is reported but does not stop a change; before a
    * restore, it throws, and the restore does not happen.
    */
-  async beforeWrite(kind: 'write' | 'restore', bundles: number): Promise<void> {
+  async beforeWrite(kind: 'write' | 'bulk' | 'restore', bundles: number): Promise<void> {
     const reason = this.reasonFor(kind, bundles);
     if (!reason) {
       return;
@@ -194,9 +194,14 @@ export class BackupService {
     return { files, skipped: manifest.files.length - files.length };
   }
 
-  private reasonFor(kind: 'write' | 'restore', bundles: number): BackupReason | undefined {
+  private reasonFor(kind: 'write' | 'bulk' | 'restore', bundles: number): BackupReason | undefined {
     if (kind === 'restore') {
       return 'restore';
+    }
+    // Many texts at once, e.g. reviewed AI texts, are always backed up first (K7), and warned about if that fails, also
+    // while a failure pauses the backups of single texts (audit L-19).
+    if (kind === 'bulk') {
+      return 'bulk';
     }
     // A backup that failed (full or unwritable storage) would fail again: the next try waits for the interval, at
     // least ten minutes, instead of reading every file and warning on every save.

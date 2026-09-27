@@ -46,12 +46,17 @@ export function planEdit(bundle: Bundle, edit: BundleEdit): PlanResult {
   }
 }
 
-function planSetText(
+/**
+ * Plans a text of a cell; `inserted` are keys that earlier texts of the same change insert into the file (see
+ * `planTexts`), so that a new key goes after them where the reference has it so.
+ */
+export function planSetText(
   bundle: Bundle,
   entryId: string,
   locale: LocaleCode,
   value: string,
   before: string | null | undefined,
+  inserted: readonly EntryKey[] = [],
 ): PlanResult {
   const key = keyFromId(entryId);
   const file = bundle.file(locale);
@@ -101,7 +106,12 @@ function planSetText(
     return fail(editProblem('path-conflict', { key: displayKey(key), other: displayKey(blocker) }));
   }
   const position = bundle.keys.findIndex((candidate) => candidate.id === entryId);
-  return edit({ kind: 'insert', key, value, ...placed(insertAnchor(bundle.keys, position - 1, file, key)) });
+  return edit({
+    kind: 'insert',
+    key,
+    value,
+    ...placed(insertAnchor(bundle.keys, position - 1, file, key, inserted)),
+  });
 }
 
 function planAddKey(

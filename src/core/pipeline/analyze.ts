@@ -21,7 +21,16 @@ export interface AnalysisOptions extends BundleOptions {
   variants: ReadonlyMap<LocaleCode, CompiledVariant>;
   severityOverrides: SeverityOverrides;
   ignoreSameAsReference: readonly string[];
+  /** Texts a root may hold, {@link MAX_ENTRIES_PER_ROOT} unless given (the tests give a small number). */
+  maxEntries?: number;
 }
+
+/**
+ * Texts a root may hold in all its files; edu-sharing's largest root has 14,044. The files come from the repository,
+ * and crafted ones of hundreds of thousands of keys would stall the extension host for seconds and hold hundreds of
+ * megabytes (audit S-11): a file that would pass the budget is left out, with a parse error.
+ */
+export const MAX_ENTRIES_PER_ROOT = 100_000;
 
 export interface RootAnalysis {
   area: AreaDefinition;
@@ -52,6 +61,8 @@ export function analyzeRoot(
   const byPath = new Map(files.map((file) => [file.relPath.replace(/\\/g, '/'), file]));
   const groups = new Map<string, LoadedFile[]>();
   const warnings: string[] = [];
+  const maxEntries = options.maxEntries ?? MAX_ENTRIES_PER_ROOT;
+  let entries = 0;
   const found = classifyFiles([...byPath.keys()], [{ area, roots: [root] }]).sort((a, b) =>
     a.relPath < b.relPath ? -1 : a.relPath > b.relPath ? 1 : 0,
   );
@@ -65,7 +76,13 @@ export function analyzeRoot(
       continue;
     }
     const doc = adapter.decode(byPath.get(relPath)!.bytes);
-    group.push({ locale, relPath, doc, ...withoutHidden(adapter.parse(doc), area.ignoredKeys ?? []) });
+    const parsed = adapter.parse(doc);
+    if (entries + parsed.entries.length > maxEntries) {
+      group.push({ locale, relPath, doc, parsed: tooManyEntries() });
+    } else {
+      entries += parsed.entries.length;
+      group.push({ locale, relPath, doc, ...withoutHidden(parsed, area.ignoredKeys ?? []) });
+    }
     groups.set(bundle, group);
   }
 
@@ -78,6 +95,15 @@ export function analyzeRoot(
     options.severityOverrides,
   );
   return { area, root, bundles, issues, warnings };
+}
+
+/** A file left out for the budget of texts of its root: read like one with a syntax error. */
+function tooManyEntries(): ParsedFile {
+  return {
+    entries: [],
+    problems: [{ code: 'parse-error', range: [0, 0], detail: 'TooManyEntries' }],
+    topLevelKeys: [],
+  };
 }
 
 /** The parsed file without the entries the area hides, and those entries apart; checks never see them. */
@@ -94,7 +120,11 @@ function withoutHidden(
     parsed: {
       entries: parsed.entries.filter((entry) => !hides(entry.key)),
       problems: parsed.problems.filter((problem) => !hides(problem.key)),
-      topLevelKeys: parsed.topLevelKeys.filter((top) => !ignoredKeys.includes(top)),
+      // A top-level name goes with its hidden entry only: an object of that name keeps its texts, and the merge needs
+      // its name for them.
+      topLevelKeys: parsed.topLevelKeys.filter(
+        (top) => !hidden.some(({ key }) => key.segments.length === 1 && key.segments[0] === top),
+      ),
     },
     hidden,
   };

@@ -51,15 +51,16 @@ jobs:
         with:
           path: .vscode-test/vscode-*
           key: vscode-test-${{ runner.os }}-${{ steps.month.outputs.month }}
-      # Integration tests need a display on Linux; there they run against VS Code 1.90.0 and stable, and in a
-      # workspace of several folders.
+      # Integration tests need a display on Linux; there they run against VS Code 1.90.0 and stable, in a workspace of
+      # several folders, and in a data folder of all three formats.
       - name: Integration tests
         if: runner.os == 'Linux'
         run: xvfb-run -a npm run test:integration
-      # On Windows, where paths ignore letter case (e.g. in the guard for unsaved editors), against stable.
+      # On Windows, where paths ignore letter case (e.g. in the guard for unsaved editors), against stable, in a workspace
+      # of several folders, and in the data folder of all three formats (audit OPS-05).
       - name: Integration tests (Windows)
         if: runner.os == 'Windows'
-        run: npm run test:integration -- --label stable
+        run: npm run test:integration -- --label stable --label multi --label formats
       - name: Package VSIX
         if: runner.os == 'Linux'
         run: npm run package

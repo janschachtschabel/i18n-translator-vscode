@@ -4,7 +4,8 @@ import type { OpenEditor } from '../../state/edits';
 import { NO_TEXT, referenceTextOf, type ShownCell, type ShownRow } from '../../state/shownRows';
 import type { EditorStore, LocaleColumn } from '../../state/store';
 import { CellEditor } from '../cellEditor';
-import { SEVERITY_SYMBOLS, severityWord, statusWord } from '../cellStatus';
+import { cellMark, severityWord, statusWord } from '../cellStatus';
+import { StatusSymbol } from '../statusNote';
 import { EmptyValue } from '../emptyValue';
 import { keyContext } from '../keyContext';
 import { LocaleLabel } from '../localeLabel';
@@ -53,6 +54,11 @@ interface TableRowProps extends RowProps {
   reference: string | undefined;
   /** The open editor, if it is in this row. */
   editor: OpenEditor | undefined;
+  /**
+   * Whether the AI can be used, for the row with the active cell (false for the others): a memoized row does not
+   * follow the signal, and a change should render that row alone.
+   */
+  ai: boolean;
 }
 
 /**
@@ -60,7 +66,7 @@ interface TableRowProps extends RowProps {
  * the two rows it leaves and enters, not all 2,000.
  */
 export const TableRow = memo(
-  ({ row, index, locales, activeColumn, store, reference, editor }: TableRowProps) => {
+  ({ row, index, locales, activeColumn, store, reference, editor, ai }: TableRowProps) => {
     const cells = locales.map((locale) => row.cells[locale.code] ?? NO_TEXT);
     return (
       <div
@@ -82,6 +88,10 @@ export const TableRow = memo(
         </div>
         {cells.map((cell, position) => {
           const locale = locales[position]!;
+          const suggestable =
+            ai &&
+            activeColumn === position + 1 &&
+            Boolean(referenceTextOf(row, reference, locale.code)?.trim());
           return (
             <Cell
               key={locale.code}
@@ -90,6 +100,7 @@ export const TableRow = memo(
               row={index}
               column={position + 1}
               activeColumn={activeColumn}
+              suggestable={suggestable}
             >
               {editor?.locale === locale.code && (
                 <CellEditor
@@ -125,12 +136,15 @@ interface CellProps {
   row: number;
   column: number;
   activeColumn: number | undefined;
+  /** Whether Ctrl+I asks the AI for a suggestion for the text: the AI can be used, and there is a text to translate. */
+  suggestable: boolean;
   /** The editor, while the text is edited: it takes the place of the text in the same cell. */
   children: ComponentChildren;
 }
 
-function Cell({ cell, locale, row, column, activeColumn, children }: CellProps) {
+function Cell({ cell, locale, row, column, activeColumn, suggestable, children }: CellProps) {
   const editing = Boolean(children);
+  const mark = cellMark(cell);
   const statuses = [
     ...(cell.notSaved !== undefined ? [{ severity: 'error' as const, word: l10n.t('not saved') }] : []),
     ...cell.issues.map((issue) => ({ severity: issue.severity, word: statusWord(issue.rule) })),
@@ -139,9 +153,15 @@ function Cell({ cell, locale, row, column, activeColumn, children }: CellProps) 
     <div
       role="gridcell"
       aria-colindex={column + 1}
-      class={editing ? 'grid-cell editing' : 'grid-cell'}
+      class={editing ? 'grid-cell editing' : mark ? `grid-cell marked-${mark}` : 'grid-cell'}
       aria-describedby={description(cell) !== undefined ? describedBy(row, column) : undefined}
-      aria-keyshortcuts={activeColumn === column && !editing ? 'Enter F2' : undefined}
+      aria-keyshortcuts={
+        activeColumn === column && !editing
+          ? suggestable
+            ? 'Enter F2 Control+I Meta+I'
+            : 'Enter F2'
+          : undefined
+      }
       {...focusable(row, column, activeColumn)}
     >
       {editing ? (
@@ -158,10 +178,7 @@ function Cell({ cell, locale, row, column, activeColumn, children }: CellProps) 
           {statuses.map((status, index) => (
             <span key={index} class="cell-status">
               {(index > 0 || (cell.value ?? '') !== '') && ' '}
-              <span aria-hidden="true" class={`status-symbol ${status.severity}`}>
-                {SEVERITY_SYMBOLS[status.severity]}
-              </span>{' '}
-              {status.word}
+              <StatusSymbol severity={status.severity} /> {status.word}
             </span>
           ))}
         </>

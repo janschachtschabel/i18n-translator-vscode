@@ -1,4 +1,5 @@
 import type { Rule } from '../types';
+import { conditionUnbalancedRule } from './conditionUnbalanced';
 import { emptyValueRule } from './emptyValue';
 import { fileProblemRules } from './fileProblems';
 import { htmlMismatchRule } from './htmlMismatch';
@@ -21,6 +22,7 @@ export const ALL_RULES: readonly Rule[] = [
   misplacedKeyRule,
   placeholderMalformedRule,
   placeholderMismatchRule,
+  conditionUnbalancedRule,
   htmlMismatchRule,
   variantNeededRule,
   variantInconsistentRule,

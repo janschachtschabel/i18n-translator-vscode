@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { htmlMismatchRule } from '../../../src/core/checks/rules/htmlMismatch';
 import { placeholderMismatchRule } from '../../../src/core/checks/rules/placeholderMismatch';
-import { inlineCheck } from '../../../src/webview/components/inlineCheck';
+import { inlineCheck } from '../../../src/webview/inlineCheck';
 import { setTranslations } from '../../../src/webview/l10n';
 import german from '../../../l10n/bundle.l10n.de.json';
 
@@ -23,6 +23,29 @@ describe('inlineCheck', () => {
     expect(inlineCheck('{user} lädt ein', '{usr} invite', 'single-brace')).toEqual([
       { severity: 'error', text: 'Fehlende Platzhalter: {user}' },
       { severity: 'error', text: 'Platzhalter, die die Referenz nicht hat: {usr}' },
+    ]);
+  });
+
+  // edu-sharing replaces exactly "{{link}}" in a mail; "{{ link }}" stays in it (audit L-31).
+  it('compares the placeholders of mail texts as written, and still their conditions', () => {
+    expect(inlineCheck('{{if link}}{{link}}{{endif}}', '{{ link }}', 'double-brace-exact')).toEqual([
+      { severity: 'error', text: 'Fehlende Platzhalter: {{link}}' },
+      { severity: 'error', text: 'Platzhalter, die die Referenz nicht hat: {{ link }}' },
+      { severity: 'error', text: 'Fehlende Bedingungen: {{if link}}' },
+    ]);
+    expect(
+      inlineCheck('{{if a}}{{link}}{{endif}}', '{{if a}}{{link}}{{endif}}', 'double-brace-exact'),
+    ).toEqual([{ severity: 'ok', text: 'Platzhalter und HTML-Tags wie in der Referenz.' }]);
+  });
+
+  it('names the conditions of mail texts that differ from the reference or lack their pair', () => {
+    expect(inlineCheck('{{if a}}A{{endif}}{{if b}}B{{endif}}', '{{if a}}A{{if c}}C{{endif}}')).toEqual([
+      { severity: 'error', text: 'Fehlende Bedingungen: {{if b}}' },
+      { severity: 'error', text: 'Bedingungen, die die Referenz nicht hat: {{if c}}' },
+      { severity: 'error', text: 'Bedingungen ohne ihr Gegenstück: {{if a}}' },
+    ]);
+    expect(inlineCheck('{{if a}}A{{endif}}', '{{if a}}A{{endif}}')).toEqual([
+      { severity: 'ok', text: 'Platzhalter und HTML-Tags wie in der Referenz.' },
     ]);
   });
 

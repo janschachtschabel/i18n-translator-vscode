@@ -22,6 +22,8 @@ export const ISSUE_MESSAGES: Readonly<Record<RuleId, string>> = {
   'placeholder-malformed': 'Malformed placeholder syntax "{text}" in {key}.',
   'placeholder-mismatch':
     'The placeholders of {key} differ from the reference {reference}: missing {missing}, extra {extra}.',
+  'condition-unbalanced':
+    'The conditions of {key} differ from the reference {reference}: missing {missing}, extra {extra}, without their pair {unpaired}.',
   'html-mismatch':
     'The HTML tags of {key} differ from the reference {reference}: missing {missing}, extra {extra}.',
   'variant-needed': 'The {base} text of {key} contains "{match}"; {locale} needs its own text.',

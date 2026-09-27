@@ -2,11 +2,16 @@ import type { PlaceholderSyntax } from '../area/areaDefinition';
 
 /** Placeholders as an area writes them: `{{…}}` (ngx-translate, mail templates) or `{…}` (metadatasets). */
 export interface PlaceholderScan {
-  /** Parameter names, trimmed, sorted and unique. */
+  /** Parameter names as the application reads them: trimmed, but as written in mails; sorted and unique. */
   params: string[];
-  /** Conditions of `{{if …}}` blocks (mail templates), sorted and unique. */
+  /** Conditions of `{{if …}}` blocks (mail templates) as edu-sharing reads them, sorted and unique. */
   conditions: string[];
-  endifs: number;
+  /**
+   * `{{if …}}` and `{{endif}}` without their pair, as written, in text order. edu-sharing (Mail.replaceString) splits a
+   * mail at "{{if ": each part needs its {{endif}}, or the mail is not sent; an {{endif}} before any condition stays in
+   * the mail as text; conditions do not nest.
+   */
+  unpaired: string[];
   /** `{{GENDER_SEPARATOR}}` is a German gender marker replaced at runtime, not a parameter. */
   genderSeparators: number;
   /** Stray braces or empty placeholders, in text order. */
@@ -21,23 +26,29 @@ export interface MalformedPlaceholder {
 // edu-sharing replaces exactly this token (translation-loader.ts, I18nAngular.java, MetadataReader.java), also in
 // texts with single-brace placeholders; other spellings stay visible.
 const GENDER_MARKER = '{{GENDER_SEPARATOR}}';
+const DOUBLE_BRACES = /\{\{([^{}]*)\}\}/g;
 const TOKENS: Readonly<Record<PlaceholderSyntax, RegExp>> = {
-  'double-brace': /\{\{([^{}]*)\}\}/g,
+  'double-brace': DOUBLE_BRACES,
+  'double-brace-exact': DOUBLE_BRACES,
   'single-brace': /\{\{GENDER_SEPARATOR\}\}|\{([^{}]*)\}/g,
 };
 
 export function scanPlaceholders(text: string, syntax: PlaceholderSyntax = 'double-brace'): PlaceholderScan {
+  // ngx-translate also fills "{{ name }}"; edu-sharing's mails replace only "{{name}}" (Mail.replaceString).
+  const exact = syntax === 'double-brace-exact';
   const params = new Set<string>();
   const conditions = new Set<string>();
   const malformed: MalformedPlaceholder[] = [];
-  let endifs = 0;
+  const unpaired: string[] = [];
+  let openCondition: string | undefined;
   let genderSeparators = 0;
   let residual = '';
   let last = 0;
 
   for (const match of text.matchAll(TOKENS[syntax])) {
     const index = match.index;
-    const name = (match[1] ?? '').trim();
+    const inner = match[1] ?? '';
+    const name = inner.trim();
     // Blank out valid tokens so that the remaining braces can be reported at their original index.
     residual += text.slice(last, index) + ' '.repeat(match[0].length);
     last = index + match[0].length;
@@ -46,15 +57,31 @@ export function scanPlaceholders(text: string, syntax: PlaceholderSyntax = 'doub
       genderSeparators++;
     } else if (name === '' || name === 'GENDER_SEPARATOR') {
       malformed.push({ index, text: match[0] });
-    } else if (name === 'endif') {
-      endifs++;
-    } else if (name.startsWith('if ')) {
-      conditions.add(name.slice(3).trim());
+    } else if (inner === 'endif') {
+      // Only as edu-sharing finds them: "{{endif}}", and "{{if " with the name up to the braces.
+      if (openCondition === undefined) {
+        unpaired.push(match[0]);
+      }
+      openCondition = undefined;
+    } else if (inner.startsWith('if ')) {
+      if (openCondition !== undefined) {
+        unpaired.push(openCondition);
+      }
+      openCondition = match[0];
+      conditions.add(inner.slice(3));
+    } else if (exact && inner !== name) {
+      // No parameter of a mail starts or ends with a space: this one stays in the mail unreplaced, even where the
+      // reference has it the same. It still counts, so that a comparison names it as written.
+      malformed.push({ index, text: match[0] });
+      params.add(inner);
     } else {
       params.add(name);
     }
   }
   residual += text.slice(last);
+  if (openCondition !== undefined) {
+    unpaired.push(openCondition);
+  }
   for (const run of residual.matchAll(/[{}]+/g)) {
     malformed.push({ index: run.index, text: run[0] });
   }
@@ -62,7 +89,7 @@ export function scanPlaceholders(text: string, syntax: PlaceholderSyntax = 'doub
   return {
     params: [...params].sort(),
     conditions: [...conditions].sort(),
-    endifs,
+    unpaired,
     genderSeparators,
     malformed: malformed.sort((a, b) => a.index - b.index),
   };
@@ -78,13 +105,33 @@ export function asPlaceholder(name: string, syntax: PlaceholderSyntax = 'double-
   return syntax === 'single-brace' ? `{${name}}` : `{{${name}}}`;
 }
 
+/** A condition as it is written in a mail text: `link` → `{{if link}}`. */
+export function asCondition(name: string): string {
+  return `{{if ${name}}}`;
+}
+
 /** Parameters of the reference that the translation lacks, and parameters only the translation has. */
 export function compareParams(
   reference: PlaceholderScan,
   translation: PlaceholderScan,
 ): { missing: string[]; extra: string[] } {
+  return differences(reference.params, translation.params);
+}
+
+/** Conditions of the reference that the translation lacks, and conditions only the translation has. */
+export function compareConditions(
+  reference: PlaceholderScan,
+  translation: PlaceholderScan,
+): { missing: string[]; extra: string[] } {
+  return differences(reference.conditions, translation.conditions);
+}
+
+function differences(
+  reference: readonly string[],
+  translation: readonly string[],
+): { missing: string[]; extra: string[] } {
   return {
-    missing: reference.params.filter((param) => !translation.params.includes(param)),
-    extra: translation.params.filter((param) => !reference.params.includes(param)),
+    missing: reference.filter((name) => !translation.includes(name)),
+    extra: translation.filter((name) => !reference.includes(name)),
   };
 }

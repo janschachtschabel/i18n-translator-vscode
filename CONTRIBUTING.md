@@ -27,10 +27,11 @@ eingecheckten Fixtures bleiben so unberührt.
 | `npm run format` · `npm run format:check` | Prettier schreiben · prüfen |
 | `npm run test:unit` | Unit-Tests (vitest); einzelne Dateien mit `npm run test:unit -- <pfad>` |
 | `npm run test:coverage` | Unit-Tests mit Abdeckung und der Schwelle von 90 % (so läuft es in der CI) |
-| `npm run test:integration` | Integrationstests in VS Code 1.90.0 und stable, dazu ein Arbeitsbereich mit mehreren Ordnern (`-- --label min`, `stable` oder `multi` für nur ein Profil) |
+| `npm run test:integration` | Integrationstests in VS Code 1.90.0 und stable, dazu ein Arbeitsbereich mit mehreren Ordnern und ein Datenordner mit allen drei Formaten (`-- --label min`, `stable`, `multi` oder `formats` für nur ein Profil) |
 | `npm run test:perf` | Messung mit echten Dateien (Task 2.17); vorher einmal `node scripts/perf-workspace.mjs <edu-sharing-Checkout>` |
 | `npm run package` | erzeugt die VSIX |
 | `npm run check:repo -- <checkout>` | prüft einen edu-sharing-Checkout auf der Kommandozeile (nur lesend) |
+| `EDU_I18N_AI_SMOKE=1 npm run smoke:ai` | Live-Rauchtest der KI gegen die b-api (Staging, `B_API_KEY` nötig, kostet Tokens, nie in der CI): Modelle, eine Übersetzung und eine Prüfung dreier synthetischer Texte; zeigt Status, Dauer, Tokens und Befunde, nie Schlüssel oder Texte. `EDU_I18N_AI_BASE_URL` und `EDU_I18N_AI_MODEL` probieren eine andere Adresse oder ein anderes Modell |
 | `npm run notices` | schreibt `ThirdPartyNotices.txt` neu; nach jeder neuen oder aktualisierten Laufzeitabhängigkeit, ein Test prüft es |
 
 ## Architektur
@@ -41,17 +42,23 @@ eingecheckten Fixtures bleiben so unberührt.
 | `src/extension` | Anbindung an VS Code (Index, Schreiben mit Undo und Sicherungen, Editor-Panel, Befehle, Ansichten) | `src/core`, `src/shared`, `vscode`, Node |
 | `src/shared` | Protokoll zwischen Extension und Webview, ViewModel, Filter, Patch | `src/shared`, `src/core` |
 | `src/webview` | Oberfläche des Übersetzungseditors (Preact) | `src/shared`, `src/core` |
-| `scripts` | Kommandozeilen-Werkzeuge wie `check-repo` | `src/core`, Node |
+| `scripts` | Kommandozeilen-Werkzeuge wie `check-repo` und `smoke-ai` | `src/core`, Node |
 
 Die Regeln für `src/core`, `src/shared` und `src/webview` erzwingt ESLint (`no-restricted-imports`, keine DOM-Globals
-im Kern). Außerdem: Meldungen des Hosts gehen nur über `src/extension/notify.ts`, weil VS Code `[Text](command:…)` in
-Meldungen zu Links macht und Namen aus dem Arbeitsbereich darin stehen.
+im Kern). Außerdem gehen Meldungen des Hosts nur über `src/extension/notify.ts` und Eingabefelder nur über `askInput`
+(`src/extension/commands/prompts.ts`). Der Grund: VS Code macht `[Text](command:…)` in Meldungen sowie im Hinweis und in
+der Prüfmeldung eines Eingabefelds zu Links, und darin stehen Namen aus dem Arbeitsbereich.
 
 ## Tests
 
 - Unit-Tests liegen unter `test/unit` und spiegeln die Struktur von `src`.
 - Integrationstests liegen unter `test/integration` und laufen auf einer Kopie von `test/fixtures/workspace-basic`
-  je Profil unter `out/test-workspace`.
+  je Profil unter `out/test-workspace`; das Profil `formats` auf einer Kopie von `test/fixtures/workspace-formats`
+  (Angular-JSON, Metadatasets und Mail-Vorlagen in einem Datenordner).
+- **KI:** Die Unit-Tests geben dem b-api-Client ein nachgebautes `fetch`. Die Integrationstests starten eine b-api
+  auf diesem Rechner (`test/integration/mockBapi.ts`) und stellen `eduI18n.ai.baseUrl` auf sie; die Profile setzen
+  `B_API_KEY` auf einen Testwert (`.vscode-test.mjs`), kein Test sendet etwas ins Netz. Gegen die echte b-api prüft
+  `npm run smoke:ai` (oben); die Abnahme im echten VS Code mit einer Kopie des Datenordners beschreibt Task 3.15.
 - Die Fixtures sind **synthetisch** (edu-sharing steht unter GPL-3.0) und **byte-genau**: `.gitattributes`
   schließt sie von der Zeilenende-Konvertierung aus. Die erwarteten Befunde stehen in `test/fixtures/README.md`.
 - Jeder Laufzeittext geht durch `vscode.l10n.t(…)` mit einem String-Literal als erstem Argument (keine Variable,

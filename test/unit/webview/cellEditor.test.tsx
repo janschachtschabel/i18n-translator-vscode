@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { act, cleanup, fireEvent, screen, within } from '@testing-library/preact';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_FILTER } from '../../../src/shared/filter';
 import type { WebviewToHost } from '../../../src/shared/protocol';
 import { findingsModel as model, openWith as open, row, text, axeProblems } from './support';
@@ -43,10 +43,14 @@ beforeEach(() => {
   document.title = 'common';
   setWidth(1024);
 });
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  // A test that ended with a button down must not keep the next one waiting for it to come up.
+  window.dispatchEvent(new Event('blur'));
+});
 
 describe('cell editor in the table', () => {
-  it('opens with Enter, F2 or a double click, named by key and language, with the focus in it', () => {
+  it('opens with Enter, F2 or a click, named by key and language, with the focus in it', () => {
     open();
     act(() => cellOf('SAVE', 2).focus());
     press('Enter');
@@ -58,8 +62,42 @@ describe('cell editor in the table', () => {
     press('F2');
     expect(document.activeElement).toBe(field());
     press('Escape');
-    act(() => void fireEvent.dblClick(cellOf('CANCEL', 0)));
+    act(() => void fireEvent.click(cellOf('CANCEL', 0)));
     expect(field().value).toBe('Abbrechen');
+    expect(document.activeElement).toBe(field());
+    expect(description(grid())).toBe(
+      'Ein Klick, Enter oder F2 bearbeitet einen Text; in der Key-Spalte benennt F2 den Key um, Entf (auf dem Mac Cmd+Rücktaste) löscht ihn.',
+    );
+  });
+
+  it('leaves a click with Shift, Ctrl, Alt or Cmd, or one that ends a text selection, to select', () => {
+    open();
+    for (const modifier of ['shiftKey', 'ctrlKey', 'altKey', 'metaKey']) {
+      act(() => void fireEvent.click(cellOf('CANCEL', 0), { [modifier]: true }));
+    }
+    const range = document.createRange();
+    range.selectNodeContents(cellOf('CANCEL', 2));
+    document.getSelection()!.addRange(range);
+    act(() => void fireEvent.click(cellOf('CANCEL', 2)));
+    document.getSelection()!.removeAllRanges();
+    expect(screen.queryByRole('textbox')).toBeNull();
+  });
+
+  it('keeps a click in the open editor there, and saves it when another cell is clicked', () => {
+    const { posted } = open();
+    act(() => void fireEvent.click(cellOf('CANCEL', 2)));
+    const opened = field();
+    typeText('Annuler!');
+    act(() => void fireEvent.click(opened));
+    expect(field()).toBe(opened);
+    expect(field().value).toBe('Annuler!');
+    // A click to place the caret saves nothing in the middle of typing.
+    expect(edits(posted)).toEqual([]);
+    act(() => void fireEvent.click(cellOf('SAVE', 2)));
+    expect(field()).toBe(screen.getByRole('textbox', { name: 'SAVE in fr' }));
+    expect(edits(posted)).toEqual([
+      expect.objectContaining({ entryId: id('CANCEL'), locale: 'fr', value: 'Annuler!' }),
+    ]);
   });
 
   it('opens the cell the key was pressed in, even before the grid has caught up with the focus', () => {
@@ -175,6 +213,104 @@ describe('cell editor in the table', () => {
     await nextTask();
     expect(edits(posted)).toEqual([expect.objectContaining({ value: 'Sauver' })]);
     expect(screen.queryByRole('textbox')).toBeNull();
+  });
+
+  // Saving closes the editor and makes its row smaller: the cells below moved away from the pointer while the button
+  // was down, and the click landed beside the cell it was meant for.
+  it('saves on a click elsewhere when the button comes up, so that the click lands on the cell below', async () => {
+    const { posted } = open();
+    act(() => void fireEvent.click(cellOf('SAVE', 2)));
+    typeText('Sauver');
+    act(() => void fireEvent.pointerDown(cellOf('CANCEL', 2)));
+    act(() => cellOf('CANCEL', 2).focus());
+    await nextTask();
+    expect(edits(posted)).toEqual([]);
+    expect(screen.getByRole('textbox', { name: 'SAVE in fr' })).toBeTruthy();
+    act(() => void fireEvent.pointerUp(cellOf('CANCEL', 2)));
+    act(() => void fireEvent.click(cellOf('CANCEL', 2)));
+    await nextTask();
+    expect(edits(posted)).toEqual([
+      expect.objectContaining({ entryId: id('SAVE'), locale: 'fr', value: 'Sauver' }),
+    ]);
+    expect(field()).toBe(screen.getByRole('textbox', { name: 'CANCEL in fr' }));
+  });
+
+  // VS Code's modal dialogs (e.g. the consent before the first AI request) take the focus from the page, whose
+  // active element then is the body: the editor closed as if the user had clicked beside it.
+  it('stays open when VS Code takes the focus from the whole page, e.g. with a dialog', async () => {
+    const { posted } = open();
+    act(() => void fireEvent.click(cellOf('SAVE', 2)));
+    typeText('Sauver');
+    const hasFocus = vi.spyOn(document, 'hasFocus').mockReturnValue(false);
+    try {
+      act(() => field().blur());
+      await nextTask();
+      expect(edits(posted)).toEqual([]);
+      expect(screen.getByRole('textbox', { name: 'SAVE in fr' })).toBeTruthy();
+    } finally {
+      hasFocus.mockRestore();
+    }
+  });
+
+  it('saves when the button comes up after a press that became no click', async () => {
+    const { posted } = open();
+    act(() => void fireEvent.click(cellOf('SAVE', 2)));
+    typeText('Sauver');
+    act(() => void fireEvent.pointerDown(screen.getByRole('searchbox')));
+    act(() => screen.getByRole('searchbox').focus());
+    await nextTask();
+    expect(edits(posted)).toEqual([]);
+    act(() => void fireEvent.pointerUp(document.body));
+    await nextTask();
+    expect(edits(posted)).toEqual([expect.objectContaining({ value: 'Sauver' })]);
+    expect(screen.queryByRole('textbox')).toBeNull();
+  });
+
+  it('saves when the pointer moves with no button down, after the page missed the button coming up', async () => {
+    const { posted } = open();
+    act(() => void fireEvent.click(cellOf('SAVE', 2)));
+    typeText('Sauver');
+    act(() => void fireEvent.pointerDown(screen.getByRole('searchbox')));
+    act(() => screen.getByRole('searchbox').focus());
+    await nextTask();
+    expect(edits(posted)).toEqual([]);
+    // Still down while dragging: nothing yet.
+    act(() => void fireEvent.pointerMove(document.body, { buttons: 1 }));
+    await nextTask();
+    expect(edits(posted)).toEqual([]);
+    act(() => void fireEvent.pointerMove(document.body, { buttons: 0 }));
+    await nextTask();
+    expect(edits(posted)).toEqual([expect.objectContaining({ value: 'Sauver' })]);
+  });
+
+  it('keeps waiting for a finger still down while another pointer moves without a button, e.g. a pen', async () => {
+    const { posted } = open();
+    act(() => void fireEvent.click(cellOf('SAVE', 2)));
+    typeText('Sauver');
+    act(() => void fireEvent.pointerDown(screen.getByRole('searchbox'), { pointerId: 1 }));
+    act(() => screen.getByRole('searchbox').focus());
+    act(() => void fireEvent.pointerMove(document.body, { pointerId: 2, buttons: 0 }));
+    await nextTask();
+    expect(edits(posted)).toEqual([]);
+    // The finger's own move with no button down: its release was missed.
+    act(() => void fireEvent.pointerMove(document.body, { pointerId: 1, buttons: 0 }));
+    await nextTask();
+    expect(edits(posted)).toEqual([expect.objectContaining({ value: 'Sauver' })]);
+  });
+
+  it('waits for the last of several pointers, e.g. two fingers', async () => {
+    const { posted } = open();
+    act(() => void fireEvent.click(cellOf('SAVE', 2)));
+    typeText('Sauver');
+    act(() => void fireEvent.pointerDown(screen.getByRole('searchbox'), { pointerId: 1 }));
+    act(() => void fireEvent.pointerDown(screen.getByRole('searchbox'), { pointerId: 2 }));
+    act(() => screen.getByRole('searchbox').focus());
+    act(() => void fireEvent.pointerUp(document.body, { pointerId: 1 }));
+    await nextTask();
+    expect(edits(posted)).toEqual([]);
+    act(() => void fireEvent.pointerUp(document.body, { pointerId: 2 }));
+    await nextTask();
+    expect(edits(posted)).toEqual([expect.objectContaining({ value: 'Sauver' })]);
   });
 
   it('shows the old text again when saving fails, marks the cell and brings the typed text back', () => {
@@ -334,7 +470,8 @@ describe('cell editor in the table', () => {
     press('Enter');
     act(() => within(grid()).getByRole('columnheader', { name: 'fr' }).focus());
     press('F2');
-    act(() => void fireEvent.dblClick(within(grid()).getByRole('columnheader', { name: 'fr' })));
+    act(() => void fireEvent.click(within(grid()).getByRole('columnheader', { name: 'fr' })));
+    act(() => void fireEvent.click(within(rowOf('SAVE')).getByRole('rowheader')));
     expect(screen.queryByRole('textbox')).toBeNull();
   });
 
