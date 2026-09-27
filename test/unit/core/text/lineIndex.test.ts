@@ -28,11 +28,15 @@ describe('lineStartAt', () => {
   it('looks back only to the line break before, also in a text without carriage returns', () => {
     const line = `${'x'.repeat(49)}${String.fromCharCode(10)}`;
     const text = line.repeat(20_000);
+    // Only the calls are timed: 20,000 assertions in the loop took half a second in a full run of the suite.
+    const starts: number[] = [];
     const started = performance.now();
     for (let offset = line.length - 1; offset < text.length; offset += line.length) {
-      expect(lineStartAt(text, offset)).toBe(offset - line.length + 1);
+      starts.push(lineStartAt(text, offset));
     }
-    expect(performance.now() - started).toBeLessThan(500);
+    const elapsed = performance.now() - started;
+    expect(starts.every((start, index) => start === index * line.length)).toBe(true);
+    expect(elapsed).toBeLessThan(500);
   });
 
   it('takes the end of the text for an offset beyond it', () => {
