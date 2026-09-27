@@ -156,6 +156,21 @@ suite('AI suggestion for a cell', function () {
     assert.equal(server.requests.filter((request) => request.path.endsWith('/chat/completions')).length, 0);
   });
 
+  // The webview asks for one suggestion at a time, but the host took any number: a compromised page could send
+  // thousands of requests with the user's key (audit S-15). A new request cancels the one before.
+  test('keeps one suggestion on its way per editor: a new request cancels the one before', async () => {
+    const { host } = await serve(translator(200, 1000));
+    await api.ai.consent.ensure(host, answering(true));
+    const before = posts.length;
+    const first = panel.receive({ type: 'aiSuggest', requestId: 's7', entryId: id('CANCEL'), locale: 'fr' });
+    const second = panel.receive({ type: 'aiSuggest', requestId: 's8', entryId: id('ASK'), locale: 'fr' });
+    await Promise.all([first, second]);
+    assert.deepEqual(
+      posts.slice(before).flatMap((message) => (message.type === 'aiSuggestion' ? [message.requestId] : [])),
+      ['s8'],
+    );
+  });
+
   test('asks nothing and answers nothing for a request cancelled before its consent', async () => {
     // A new address: the consent is still to be asked.
     const { server } = await serve(translator());

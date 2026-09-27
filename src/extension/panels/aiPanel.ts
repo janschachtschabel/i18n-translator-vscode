@@ -71,7 +71,10 @@ export class AiPanel implements vscode.Disposable {
     // Cancellable from the start: a cancel may come while the settings are read or the consent is asked, before
     // anything is sent.
     const controller = new AbortController();
-    this.pending.get(requestId)?.abort();
+    // One suggestion on its way per editor: the webview asks for one at a time, and a page that asks for more must not
+    // spend the key on them (audit S-15). A new request cancels the one before.
+    this.pending.forEach((other) => other.abort());
+    this.pending.clear();
     this.pending.set(requestId, controller);
     const reply = async (answer: { text: string } | { message: string }) => {
       if (!controller.signal.aborted) {

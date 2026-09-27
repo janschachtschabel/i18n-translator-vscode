@@ -49,6 +49,9 @@ describe('AI messages from the webview', () => {
       { ...apply, items: [{ ...item, value: 'x'.repeat(100_001) }] },
       { ...apply, items: [{ ...item, before: 3 }] },
       { ...apply, items: Array.from({ length: MAX_APPLY_ITEMS + 1 }, () => item) },
+      // Each text within bounds, but all of them beyond what any write needs, as texts that are not saved are bounded
+      // in total (audit S-15).
+      { ...apply, items: Array.from({ length: 51 }, () => ({ ...item, value: 'x'.repeat(100_000) })) },
     ]) {
       expect(isWebviewToHost(invalid)).toBe(false);
     }

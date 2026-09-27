@@ -72,6 +72,12 @@ export type AiHostToWebview =
  */
 export const MAX_APPLY_ITEMS = 10_000;
 
+/**
+ * Characters of the reviewed texts in one write, and of the texts they replace, at most: each text is bounded, and as
+ * the texts that are not saved, all of them are too (audit S-15). A language of the largest bundle has well under 1 M.
+ */
+const MAX_APPLY_CHARACTERS = 5_000_000;
+
 /** Whether an AI message of the webview has valid fields; `value` is a record with one of those types. */
 export function isAiWebviewToHost(value: Readonly<Record<string, unknown>>): boolean {
   switch (value['type']) {
@@ -90,7 +96,9 @@ export function isAiWebviewToHost(value: Readonly<Record<string, unknown>>): boo
         isId(value['jobId']) &&
         Array.isArray(value['items']) &&
         value['items'].length <= MAX_APPLY_ITEMS &&
-        value['items'].every(isApplyItem)
+        value['items'].every(isApplyItem) &&
+        value['items'].reduce((sum, item) => sum + item.value.length + (item.before?.length ?? 0), 0) <=
+          MAX_APPLY_CHARACTERS
       );
     default:
       return false;
