@@ -1,17 +1,21 @@
-import { parseTree, type Node, type ParseError } from 'jsonc-parser';
+import type { Node } from 'jsonc-parser';
 import { displayKey, keyFromSegments, type EntryKey } from '../../model/keys';
 import { applyEdits, type TextEdit } from '../../text/edits';
 import { atLineStart, blanksBefore, lineStartAt } from '../../text/lineIndex';
 import { detectStyle, type TextStyle } from '../../text/style';
 import { escapeUnits } from '../../text/unicodeEscape';
 import { EditError, setRun, type FileOp, type SetOp } from '../adapter';
-
-/** A property of a JSON object with its key and value nodes. */
-interface Property {
-  node: Node;
-  key: Node;
-  value: Node;
-}
+import {
+  findProperty,
+  lastNamed,
+  objectAt,
+  parseObject,
+  propertiesOf,
+  propertyFinder,
+  samePath,
+  type Property,
+  type PropertyFinder,
+} from './jsonTree';
 
 /**
  * Applies the operations one after another and re-reads the text in between, except within a run of texts set:
@@ -60,24 +64,6 @@ function applyOp(text: string, op: Exclude<FileOp, SetOp>, style: TextStyle): st
     case 'rename':
       return renameEntry(text, root, op.from, op.to, style);
   }
-}
-
-function parseObject(text: string): Node {
-  const errors: ParseError[] = [];
-  let root: Node | undefined;
-  try {
-    root = parseTree(text, errors, { disallowComments: true, allowTrailingComma: false });
-  } catch (error) {
-    if (!(error instanceof RangeError)) {
-      throw error;
-    }
-    // As in the reader: the call stack overflowed on nesting far deeper than any translation file.
-    throw new EditError('unparsable', 'The file is nested too deeply to be read.');
-  }
-  if (errors.length > 0 || root?.type !== 'object') {
-    throw new EditError('unparsable', 'The file is not a valid JSON object.');
-  }
-  return root;
 }
 
 /** The edit that gives the text of `key` a new value. */
@@ -299,67 +285,6 @@ function existsError(key: EntryKey, existing: Property): EditError {
   return existing.value.type === 'object'
     ? new EditError('path-conflict', `${displayKey(key)} is an object in this file.`, key)
     : new EditError('key-exists', `${displayKey(key)} already exists in this file.`, key);
-}
-
-function propertiesOf(object: Node): Property[] {
-  return (object.children ?? []).flatMap((node) => {
-    const [key, value] = node.children ?? [];
-    return key && value ? [{ node, key, value }] : [];
-  });
-}
-
-/** Finds the property of a path, as {@link findProperty} does. */
-type PropertyFinder = (segments: readonly string[]) => Property | undefined;
-
-/**
- * Finds properties in the tree of `root` by name, each object read once: a run of texts in an object of many
- * properties then costs one pass over them, not one per text (10,000 texts of a flat object took 6.8 s, review of
- * audit P-07).
- */
-function propertyFinder(root: Node): PropertyFinder {
-  const byName = new Map<Node, Map<unknown, Property>>();
-  const named = (object: Node, name: string) => {
-    let properties = byName.get(object);
-    if (!properties) {
-      // The last definition of a name wins, as in lastNamed.
-      properties = new Map(propertiesOf(object).map((property) => [property.key.value, property]));
-      byName.set(object, properties);
-    }
-    return properties.get(name);
-  };
-  return (segments) => {
-    let object: Node | undefined = root;
-    for (const segment of segments.slice(0, -1)) {
-      const property: Property | undefined = object && named(object, segment);
-      object = property?.value.type === 'object' ? property.value : undefined;
-    }
-    return object && named(object, segments[segments.length - 1]!);
-  };
-}
-
-/** The definition that applies: with duplicated keys, JSON.parse keeps the last one. */
-function lastNamed(object: Node, name: string): Property | undefined {
-  return propertiesOf(object)
-    .filter((property) => property.key.value === name)
-    .at(-1);
-}
-
-function objectAt(root: Node, path: readonly string[]): Node | undefined {
-  let object: Node | undefined = root;
-  for (const segment of path) {
-    const property: Property | undefined = object && lastNamed(object, segment);
-    object = property?.value.type === 'object' ? property.value : undefined;
-  }
-  return object;
-}
-
-function findProperty(root: Node, segments: readonly string[]): Property | undefined {
-  const parent = objectAt(root, segments.slice(0, -1));
-  return parent && lastNamed(parent, segments[segments.length - 1]!);
-}
-
-function samePath(a: readonly string[], b: readonly string[]): boolean {
-  return a.length === b.length && a.every((segment, index) => segment === b[index]);
 }
 
 function indentationOfLine(text: string, offset: number): string {
