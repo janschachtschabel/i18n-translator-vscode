@@ -26,7 +26,8 @@ Phasen 5 und 6 vorgezogen sind, zählt sie weiter, ohne die Phase zu nennen. Die
     ihn zu setzen.
   - **KI einrichten…** (Werkzeugleiste, Seitenleiste, Befehlspalette) zeigt Schlüssel, Adresse der b-api und Modell auf
     einen Blick und führt zu den Schritten; neu ist „b-api-Adresse festlegen…“ für eine andere Adresse als Staging.
-  - Die Prüfliste hat „Alle auswählen“ und „Keine auswählen“.
+  - Die Prüfliste hat „Alle auswählen“ und „Keine auswählen“; ein leerer Vorschlag lässt sich nicht wählen, da er
+    nichts schriebe.
   - Anbieter, Modell und Denkaufwand gelten wie die Adresse nur aus den Benutzereinstellungen: Ein Repository kann den
     Schlüssel nicht auf ein anderes Modell lenken. Eine Adresse, die die KI nicht nutzen darf (etwa `http:`), schaltet
     sie ab, statt auf Staging zurückzufallen.
@@ -34,6 +35,18 @@ Phasen 5 und 6 vorgezogen sind, zählt sie weiter, ohne die Phase zu nennen. Die
     als Netzfehler scheitern zu lassen. „API-Schlüssel entfernen“ erscheint nur, wenn einer gespeichert ist.
   - „KI-Verbindung testen“ und „KI-Modell wählen…“ lassen sich abbrechen; eine fehlende Modellliste verweist auf
     Adresse und Anbieter statt auf das Modell.
+  - **Nach dem Review:** Das Übernehmen vieler Texte in eine `.properties`-Datei geht schnell (eine Sprache von
+    `valuespaces_i18n` mit 1.232 Texten in 0,1 statt 4 s, in denen VS Code stand). Ein Auftrag, der beim Start
+    abgebrochen wird, etwa durch Schließen des Editors, sendet nichts mehr; ein abgebrochener Vorschlag fragt nicht
+    mehr nach der Einwilligung, und eine Zustimmung geht nicht verloren, wenn zwei Editoren zugleich fragen. Keys, die
+    gleich aussehen (`A.B` als ein Key und verschachtelt), bekommen je ihre eigene Übersetzung. Die Prüfliste hängt
+    nicht mehr, wenn ein Text schon in der Datei steht oder das Schreiben nicht gelesen werden kann; sie ist während
+    des Schreibens gesperrt.
+  - **Bedienung der Prüfliste mit Tastatur und Screenreader:** Der Fokus bleibt nach „Übernehmen“ und „Abbrechen“ in
+    der Liste und kehrt beim Schließen zum Knopf zurück, der den Auftrag begann; der feste Kopf verdeckt kein
+    fokussiertes Feld mehr. Das Kästchen eines abgewählten Textes nennt den Grund, das Textfeld Quelle und bisherigen
+    Text. Der Fortschritt wird in Zehnteln angesagt statt nach jedem Paket; eine abgebrochene Prüfung fasst zusammen,
+    was sie geprüft hat.
 - Ein Dialog von VS Code (etwa diese Rückfrage) schließt das offene Textfeld nicht mehr; danach bekommt das Textfeld
   den Fokus zurück.
 - Eine Änderung der KI-Einstellungen liest den Arbeitsbereich nicht mehr neu ein. Ungültige Sicherungseinstellungen

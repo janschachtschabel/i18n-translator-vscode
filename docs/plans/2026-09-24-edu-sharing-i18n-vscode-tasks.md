@@ -1709,13 +1709,13 @@ nicht):
 | Funktion der alten App | Im Plugin | Stand |
 |---|---|---|
 | Tabelle je Kategorie; Sprachen ein- und ausblenden; Suche; Filter „Missing“ und „Errors“ | Tabelle und Liste; Sprach-Chips; Suche mit Regex, Groß/klein und Spalte; Filter fehlend, Befunde, leer | erledigt, erweitert |
-| Fehlende Zelle rot, Platzhalterfehler gelb, „wie Referenz“ orange; Zeile rot getönt; Zähler im Spaltenkopf | Symbol und Wort in der Zelle, grau; Zähler in den Sprach-Chips | **R3** |
-| Ein Klick öffnet das Textfeld | Doppelklick, Enter oder F2 | **R2** |
-| KI-Vorschlag je Zelle | – | Phase 3 |
-| KI füllt die leeren Felder einer Sprache, mit Vorschau und Auswahl | – | Phase 3 |
-| KI-Review (Plausibilität) mit Korrekturvorschlägen | – | Phase 3 |
-| API-Schlüssel in den Einstellungen (Status, speichern, löschen) | – | Phase 3 |
-| Sprachbeschreibungen für die KI (Sie, du, ohne Binnen-I …) | – | Phase 3 |
+| Fehlende Zelle rot, Platzhalterfehler gelb, „wie Referenz“ orange; Zeile rot getönt; Zähler im Spaltenkopf | Fehler rot, Warnungen gelb, mit Symbol und Wort; Zähler in den Sprach-Chips | erledigt (R3, `ea50510`) |
+| Ein Klick öffnet das Textfeld | ein Klick, Enter oder F2 | erledigt (R2, `b501798`) |
+| KI-Vorschlag je Zelle | „KI-Vorschlag“ im Textfeld, Strg+I | erledigt |
+| KI füllt die leeren Felder einer Sprache, mit Vorschau und Auswahl | „Mit KI füllen…“ mit Prüfliste, Auswahl und einem Rückgängig-Schritt | erledigt |
+| KI-Review (Plausibilität) mit Korrekturvorschlägen | „Mit KI prüfen…“ mit Befunden und Korrekturen zum Bearbeiten | erledigt |
+| API-Schlüssel in den Einstellungen (Status, speichern, löschen) | „KI einrichten…“ (Schlüssel, Adresse der b-api, Modell, Test); Schlüsselspeicher von VS Code, `B_API_KEY` | erledigt |
+| Sprachbeschreibungen für die KI (Sie, du, ohne Binnen-I …) | `eduI18n.ai.languageDescriptions` | erledigt |
 | Statistik (Keys, fehlend, Sprachen je Bereich) | Zähler in Seitenleiste, Statusleiste und Problems | teilweise; Übersicht in Phase 7 (7.7) |
 | Sortierung A–Z; Spaltenbreite ziehen | Dateireihenfolge; feste Breiten | offen (klein) |
 | Key nach einer Zeile einfügen, mit dem Präfix vorbelegt | nach der aktiven Zeile; ohne Präfix | teilweise (Präfix offen, klein) |
@@ -1956,6 +1956,57 @@ Editor eine KI-Gruppe in der Werkzeugleiste mit dem Status („KI: bereit · gpt
 Aufträge (`valuespaces_i18n` 1.232 Lücken: Rückfrage, Abbrechen behält Erhaltenes); Prompt-Injection über Texte im
 Repository (nur vertrauenswürdige Arbeitsbereiche, Ausgabe nur als Text, alles durch Prüfung und Prüfliste); `Strg+I`
 ist in VS Code belegt (in der Capture-Phase abfangen, Knopf als zweiter Weg).
+
+### Einrichtung und Review der Blöcke C und D (27.09.2026)
+
+- **Einrichtung (Rückmeldung):** Der Nutzer wollte die b-api (Staging) mit Adresse und Schlüssel einstellen, Standard
+  `gpt-6-luna`, und Füllen für alle oder einzelne Felder. Neu sind „KI einrichten…“ (Werkzeugleiste, Seitenleiste,
+  Befehlspalette: Schlüssel, Adresse, Modell mit dem, was gilt, und die Schritte dazu), „b-api-Adresse festlegen…“
+  (prüft beim Tippen; Staging entfernt die Einstellung) und „Alle auswählen“/„Keine auswählen“ in der Prüfliste. Die
+  Werkzeugleiste zeigt eine unbrauchbare Adresse an, statt die KI-Gruppe auszublenden. Offen: ob „alle Felder“ auch
+  alle Sprachen einer Einheit auf einmal meint (Frage an den Nutzer).
+- **CI rot (drei Ursachen):**
+  - Eine abgebrochene Anfrage fragte noch nach der Einwilligung, und ein Fehler danach wurde beantwortet; unter
+    Windows lehnte der Testhost den Dialog ab.
+  - Die Einwilligung las die Liste, fragte und schrieb die alte Liste mit dem neuen Host: Eine zweite Frage
+    dazwischen, oder ein anderes Fenster, verlor eine Zustimmung. Nun liest sie vor dem Schreiben neu und behält die
+    Zustimmungen der Sitzung. Das erklärt auch die Zeitüberschreitung des ersten Fülltests (7f7b884, e7e5572): Der
+    Test beantwortet keine zweite Frage, der Auftrag endete still. Wartet ein Test auf das Ende eines Auftrags,
+    nennt er nun, was gefragt und gesendet wurde.
+  - VS Code 1.90 las eine neu angelegte `.vscode/settings.json` nicht binnen 5 s; der frische Test-Arbeitsbereich
+    hat sie nun leer, der Test ändert sie.
+- **Review Blöcke C und D** (zwei Reviewer mit frischem Kontext, Host und Webview): Behoben sind
+  - ein Auftrag, der beim Start abgebrochen wird (Editor zu, Seite neu, Abbruch beim Erscheinen der Liste), sendet
+    nichts; ein Auftrag, der noch fragt, macht einem neuen Start Platz;
+  - ein unlesbares `aiApply` bekommt eine Antwort, die Grenze ist 10.000 Texte (eine Sprache der größten Einheit hat
+    etwa 1.600); Texte des Modells, die kein gültiges Unicode sind, zählen als ohne Antwort;
+  - gleich angezeigte Keys (`["A","B"]` und `["A.B"]`) bekommen für das Modell eine Nummer;
+  - ein Text, den die Datei schon hat, zählt als geschrieben, einer außerhalb des Auftrags als übersprungen;
+  - Fokus: „Übernehmen“, „Alle auswählen“, „Keine auswählen“ bleiben fokussierbar (`aria-disabled`); die Liste gibt
+    den Fokus auch zurück, wenn er verloren ging; nach „Abbrechen“ die Überschrift, nach dem Setzen des Schlüssels
+    „Mit KI füllen…“; der feste Kopf verdeckt kein fokussiertes Feld mehr (WCAG 2.4.11, in Chromium gemessen);
+  - während des Schreibens ist die Liste gesperrt; ein leerer Text ist nicht wählbar; das Kästchen nennt den Grund,
+    das Textfeld Quelle und bisherigen Text; Fokusring am Kästchen;
+  - kleinere: doppelte Einträge in einem Paket, Seiten-Token in den IDs der Schreibvorgänge, Zusammenfassung einer
+    abgebrochenen Prüfung, „Fehlgeschlagen“ statt „Abgebrochen“, Fortschritt in Zehnteln angesagt, Alt+M nicht bei
+    offener Liste, Zeiger einzeln losgelassen, Cmd+I in der Hilfe.
+- **Messung Stapelschreiben (3.10 nachgeholt):** Füllen von `valuespaces_i18n` fr (1.232 neue von 1.546 Keys,
+  `.properties`) brauchte 4,2 s auf dem Extension-Host, weil der Schreiber die Datei nach jedem Text neu las; jetzt
+  liest er einmal und hält die Positionen nach (0,12 s; Zufallstest mit 1.500 Dateien gegen das Schreiben Text für
+  Text). JSON: eine neue Sprache von `common` (1.440 Texte) 0,76 s, typische Füllungen weit darunter; kein
+  Handlungsbedarf. Die Vorab-Planung vor dem Schreiben entfällt.
+- **Abweichungen, bewusst:**
+  - 3.12 fragt nur die Sprache, nicht den Umfang: Gefüllt werden die fehlenden und leeren Texte, geprüft die
+    vorhandenen; ein zweiter Auswahlschritt brächte keine Wahl, die die Prüfliste nicht besser trifft.
+  - Die Befehle `fill` und `aiReview` mit Einträgen in Seitenleiste und Editor-Titel gibt es nicht: Füllen und Prüfen
+    brauchen den offenen Editor (die Prüfliste liegt dort) und stehen in seiner Werkzeugleiste.
+  - Das Kästchen eines Befunds ohne Korrektur bleibt `disabled`: Mit `aria-disabled` würde das gesteuerte Kästchen im
+    memoisierten Eintrag umschalten, ohne dass sich der Zustand ändert. Der Grund ist über das Textfeld erreichbar.
+- **Offen, als Folgeaufgaben:**
+  - Die Prüfliste vergleicht Texte mit `\r\n` nicht normalisiert und stellt sie beim Schreiben nicht wieder her (wie
+    `toTyped`/`withLineBreaksOf` im Zellen-Editor); im Datenordner gibt es solche Texte nicht.
+  - Vorhanden: Die memoisierte `TableRow` liest `store.mailPreview.value` (sicher nur, weil ein neues Modell neue
+    Zeilen bringt); Strg+I auf einer Zelle bei ausgeschalteter KI öffnet den Editor und schluckt die Taste.
 
 ## Phasen 3–8 (Gliederung – Detailtasks folgen vor Phasenstart)
 
