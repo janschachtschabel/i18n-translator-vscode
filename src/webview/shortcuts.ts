@@ -21,8 +21,11 @@ export function useShortcuts(store: EditorStore): void {
           field.select();
         }
       } else if (event.altKey && !event.ctrlKey && !event.metaKey && event.key.toLowerCase() === 'm') {
-        handled(event);
-        store.toggleMissing();
+        // Not while the review list takes the place of the rows: the filter would change unseen.
+        if (store.review.list.peek() === undefined) {
+          handled(event);
+          store.toggleMissing();
+        }
       } else if (isCommand(event, 'z') && !isTextField(event.target)) {
         handled(event);
         store.undo();

@@ -379,6 +379,12 @@ describe('filling with AI', () => {
     expect(status()).toBe('Übersetzt: 100 von 100 …');
   });
 
+  it('leaves the filter of the rows alone while the list takes their place', () => {
+    const { store } = filling();
+    act(() => void fireEvent.keyDown(document.body, { key: 'm', altKey: true }));
+    expect(store.uiState.value.filter.status).toBe('all');
+  });
+
   it('keeps the list while its job runs, and says which texts were not saved', () => {
     const { send, posted: messages, store } = filling();
     act(() => void fireEvent.click(inReview().getByRole('button', { name: 'Ausgewählte übernehmen (1)' })));
