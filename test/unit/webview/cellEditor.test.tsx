@@ -43,7 +43,11 @@ beforeEach(() => {
   document.title = 'common';
   setWidth(1024);
 });
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  // A test that ended with a button down must not keep the next one waiting for it to come up.
+  window.dispatchEvent(new Event('blur'));
+});
 
 describe('cell editor in the table', () => {
   it('opens with Enter, F2 or a click, named by key and language, with the focus in it', () => {
@@ -260,6 +264,38 @@ describe('cell editor in the table', () => {
     await nextTask();
     expect(edits(posted)).toEqual([expect.objectContaining({ value: 'Sauver' })]);
     expect(screen.queryByRole('textbox')).toBeNull();
+  });
+
+  it('saves when the pointer moves with no button down, after the page missed the button coming up', async () => {
+    const { posted } = open();
+    act(() => void fireEvent.click(cellOf('SAVE', 2)));
+    typeText('Sauver');
+    act(() => void fireEvent.pointerDown(screen.getByRole('searchbox')));
+    act(() => screen.getByRole('searchbox').focus());
+    await nextTask();
+    expect(edits(posted)).toEqual([]);
+    // Still down while dragging: nothing yet.
+    act(() => void fireEvent.pointerMove(document.body, { buttons: 1 }));
+    await nextTask();
+    expect(edits(posted)).toEqual([]);
+    act(() => void fireEvent.pointerMove(document.body, { buttons: 0 }));
+    await nextTask();
+    expect(edits(posted)).toEqual([expect.objectContaining({ value: 'Sauver' })]);
+  });
+
+  it('waits for the last of several pointers, e.g. two fingers', async () => {
+    const { posted } = open();
+    act(() => void fireEvent.click(cellOf('SAVE', 2)));
+    typeText('Sauver');
+    act(() => void fireEvent.pointerDown(screen.getByRole('searchbox'), { pointerId: 1 }));
+    act(() => void fireEvent.pointerDown(screen.getByRole('searchbox'), { pointerId: 2 }));
+    act(() => screen.getByRole('searchbox').focus());
+    act(() => void fireEvent.pointerUp(document.body, { pointerId: 1 }));
+    await nextTask();
+    expect(edits(posted)).toEqual([]);
+    act(() => void fireEvent.pointerUp(document.body, { pointerId: 2 }));
+    await nextTask();
+    expect(edits(posted)).toEqual([expect.objectContaining({ value: 'Sauver' })]);
   });
 
   it('shows the old text again when saving fails, marks the cell and brings the typed text back', () => {
