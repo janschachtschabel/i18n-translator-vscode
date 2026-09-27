@@ -29,12 +29,16 @@ suite('AI setup', () => {
     );
     assert.equal(status.host, 'b-api.prod.openeduhub.net');
 
+    // The address in effect again: nothing changes.
+    assert.equal(await setBaseUrl(answering('https://b-api.prod.openeduhub.net')), undefined);
+
     // Back to staging: no setting, so that a later default applies.
     assert.equal(
       await setBaseUrl(answering('https://b-api.staging.openeduhub.net')),
       'https://b-api.staging.openeduhub.net',
     );
     assert.equal(config().inspect('ai.baseUrl')?.globalValue, undefined);
+    assert.equal(await setBaseUrl(answering('https://b-api.staging.openeduhub.net/')), undefined);
   });
 
   test('keeps no address the AI may not use, and nothing when cancelled', async () => {
@@ -42,6 +46,29 @@ suite('AI setup', () => {
     assert.equal(await setBaseUrl(asked), undefined);
     assert.equal(await setBaseUrl(answering()), undefined);
     assert.equal(config().inspect('ai.baseUrl')?.globalValue, undefined);
+  });
+
+  test('says first that the AI is turned off, which no step of the setup changes', async () => {
+    await config().update('ai.enabled', false, vscode.ConfigurationTarget.Global);
+    try {
+      await settled(
+        () => api.ai.service.status(),
+        (current) => !current.available,
+      );
+      let asked = '';
+      const prompts: Prompts = {
+        ...answering(),
+        pick: async (_items, placeHolder) => ((asked = placeHolder), undefined),
+      };
+      assert.equal(await setUpAi(api.ai.service, prompts, async () => undefined), undefined);
+      assert.match(asked, /^The AI functions are turned off \(eduI18n\.ai\.enabled\)\. Set up the AI/);
+    } finally {
+      await config().update('ai.enabled', undefined, vscode.ConfigurationTarget.Global);
+      await settled(
+        () => api.ai.service.status(),
+        (current) => current.available,
+      );
+    }
   });
 
   test('offers every step of the setup with what applies now, and runs the one picked', async () => {

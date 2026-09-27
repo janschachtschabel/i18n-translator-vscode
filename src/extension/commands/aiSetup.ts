@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { allowedBaseUrl, DEFAULT_BASE_URL } from '../../core/config/aiSettings';
 import { showInfo } from '../notify';
+import { unavailableMessage } from '../services/aiFeedback';
 import type { AiService } from '../services/aiService';
 import type { PickItem, Prompts } from './prompts';
 
@@ -14,13 +15,14 @@ const PRODUCTION_BASE_URL = 'https://b-api.prod.openeduhub.net';
  */
 export async function setBaseUrl(prompts: Prompts): Promise<string | undefined> {
   const config = vscode.workspace.getConfiguration('eduI18n');
+  const current = config.inspect<string>('ai.baseUrl')?.globalValue ?? DEFAULT_BASE_URL;
   const typed = await prompts.input({
     title: vscode.l10n.t('b-api Address'),
     prompt: vscode.l10n.t(
       'The address of the b-api, {staging} (staging, the default) or e.g. {production}. The key goes along with every request.',
       { staging: DEFAULT_BASE_URL, production: PRODUCTION_BASE_URL },
     ),
-    value: config.inspect<string>('ai.baseUrl')?.globalValue ?? DEFAULT_BASE_URL,
+    value: current,
     check: (text) =>
       allowedBaseUrl(text.trim()) === undefined
         ? {
@@ -31,7 +33,7 @@ export async function setBaseUrl(prompts: Prompts): Promise<string | undefined> 
         : undefined,
   });
   const url = typed === undefined ? undefined : allowedBaseUrl(typed.trim());
-  if (url === undefined) {
+  if (url === undefined || url === allowedBaseUrl(current)) {
     return undefined;
   }
   await config.update(
@@ -59,7 +61,8 @@ export async function setUpAi(
   prompts: Prompts,
   run: (command: string, ...args: unknown[]) => Thenable<unknown>,
 ): Promise<string | undefined> {
-  const { keySource, settings, host } = await ai.status();
+  const status = await ai.status();
+  const { keySource, settings, host } = status;
   const keyState = {
     secret: vscode.l10n.t("set, in VS Code's secret storage"),
     env: vscode.l10n.t('from the environment variable B_API_KEY'),
@@ -81,9 +84,14 @@ export async function setUpAi(
       value: 'workbench.action.openSettings',
     },
   ];
+  // Turned off, or in Restricted Mode, no step below helps: that comes first.
+  const off =
+    !status.available && (status.reason === 'disabled' || status.reason === 'untrusted')
+      ? `${unavailableMessage(status.reason)} `
+      : '';
   const picked = await prompts.pick(
     items,
-    vscode.l10n.t('Set up the AI: the address of the b-api, its key, the model'),
+    off + vscode.l10n.t('Set up the AI: the address of the b-api, its key, the model'),
   );
   if (picked !== undefined) {
     await (picked === 'workbench.action.openSettings' ? run(picked, 'eduI18n.ai') : run(picked));
