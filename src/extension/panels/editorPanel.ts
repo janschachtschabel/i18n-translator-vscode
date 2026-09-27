@@ -124,6 +124,7 @@ export class EditorPanel implements vscode.Disposable {
         aiCancel: (request) => this.aiPanel.cancel(request),
         aiSetup: () => this.aiPanel.setup(),
         aiFill: () => this.aiPanel.fill(),
+        aiCheck: () => this.aiPanel.check(),
         aiApply: (request) => this.aiPanel.apply(request),
       },
       this.services.log,

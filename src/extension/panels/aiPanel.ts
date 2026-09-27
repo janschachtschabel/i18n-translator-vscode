@@ -8,6 +8,7 @@ import type { AiService } from '../services/aiService';
 import { messageOf } from '../services/errors';
 import type { FileStore } from '../services/fileStore';
 import type { WorkspaceIndex } from '../services/workspaceIndex';
+import { CHECK } from './aiCheck';
 import { FILL } from './aiFill';
 import { AiJobs } from './aiJobs';
 import { requestSuggestion, suggestionRequest } from './suggestCell';
@@ -133,6 +134,11 @@ export class AiPanel implements vscode.Disposable {
   /** Fills a language of the bundle with AI, through the review list. */
   fill(): Promise<void> {
     return this.jobs.run(FILL);
+  }
+
+  /** Checks the translations of a language of the bundle with AI, through the review list. */
+  check(): Promise<void> {
+    return this.jobs.run(CHECK);
   }
 
   /** Writes reviewed texts of the last job as one change. */

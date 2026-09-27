@@ -11,12 +11,16 @@ export interface AiApplyItem {
   before: string | null;
 }
 
-/** A suggestion of a job for the review list; `source` is the text it was translated from. */
+/**
+ * A suggestion of a job for the review list; `source` is the text it was translated from. A check's item has the
+ * problem it found, and as `text` the correction, or the text as it is when there is none.
+ */
 export interface AiJobItem {
   entryId: string;
   source: string;
   before: string | null;
   text: string;
+  problem?: { severity: 'error' | 'warning' | 'info'; message: string };
 }
 
 /** What the webview asks of the AI (design §6.12); part of `WebviewToHost`, checked like the other messages. */
@@ -29,6 +33,8 @@ export type AiWebviewToHost =
   | { type: 'aiSetup' }
   /** Fills a language of the bundle; the host asks which. */
   | { type: 'aiFill' }
+  /** Checks the translations of a language of the bundle; the host asks which. */
+  | { type: 'aiCheck' }
   /** Writes reviewed texts of a job, as one change. */
   | { type: 'aiApply'; requestId: string; jobId: string; items: AiApplyItem[] };
 
@@ -38,7 +44,7 @@ export type AiHostToWebview =
   /** The text for the cell, or why there is none, in the user's language. */
   | { type: 'aiSuggestion'; requestId: string; text?: string; message?: string }
   /** A job began: the editor shows its review list; `source`: the language its texts are translated from. */
-  | { type: 'aiJob'; jobId: string; kind: 'fill'; locale: string; source: string; total: number }
+  | { type: 'aiJob'; jobId: string; kind: 'fill' | 'check'; locale: string; source: string; total: number }
   /** Suggestions of a job as they come, with how many texts are done. */
   | { type: 'aiJobItems'; jobId: string; items: AiJobItem[]; done: number; total: number }
   /** A job ended; `missing`: texts without an answer; `message`: why it failed, in the user's language. */
@@ -70,6 +76,7 @@ export function isAiWebviewToHost(value: Readonly<Record<string, unknown>>): boo
       return isId(value['requestId']);
     case 'aiSetup':
     case 'aiFill':
+    case 'aiCheck':
       return true;
     case 'aiApply':
       return (
