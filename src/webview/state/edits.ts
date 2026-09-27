@@ -72,6 +72,11 @@ export class Edits {
   /** By {@link cellKey}. */
   readonly rejected = signal<ReadonlyMap<string, Rejection>>(new Map());
   private requests = 0;
+  /**
+   * Part of every request id: the host outlives a reload of the page and answers a write to the page then loaded, whose
+   * own requests count from 1 again (audit L-20).
+   */
+  private readonly page = Math.random().toString(36).slice(2, 10);
   /** The last model, for the texts the cells have now. */
   private model: BundleViewModel | undefined;
 
@@ -236,16 +241,15 @@ export class Edits {
   answer({ requestId, ok, message, conflict }: WriteResult): void {
     const pending = this.pending.value;
     const edit = pending.find((candidate) => candidate.requestId === requestId);
-    if (ok) {
-      if (edit) {
-        this.pending.value = pending.map((candidate) =>
-          candidate === edit ? { ...candidate, written: true } : candidate,
-        );
-      }
-      this.announce(edit?.value === '' ? l10n.t('Text deleted.') : l10n.t('Saved.'));
+    // None: an answer to a request of the page before a reload, or of a text whose key or language went meanwhile.
+    if (!edit) {
       return;
     }
-    if (!edit) {
+    if (ok) {
+      this.pending.value = pending.map((candidate) =>
+        candidate === edit ? { ...candidate, written: true } : candidate,
+      );
+      this.announce(edit.value === '' ? l10n.t('Text deleted.') : l10n.t('Saved.'));
       return;
     }
     const later =
@@ -432,7 +436,7 @@ export class Edits {
   }
 
   private send(cell: CellRef, value: string, before: string | undefined): void {
-    const requestId = `edit-${++this.requests}`;
+    const requestId = `edit-${this.page}-${++this.requests}`;
     const { entryId, locale } = cell;
     batch(() => {
       this.forget(cell);

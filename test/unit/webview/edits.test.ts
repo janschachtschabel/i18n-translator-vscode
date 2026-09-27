@@ -96,6 +96,30 @@ describe('editing', () => {
     expect(store.edits.open.value).toBeNull();
   });
 
+  // The host answers a write to the page that is loaded, which may be one after a reload: its first write had the
+  // id of the old page's first, and the old answer marked it written or not saved (audit L-20).
+  it('takes no answer to a write of the page before a reload for one of its own', () => {
+    const before = open();
+    before.type('SAVE', 'fr', 'Sauvegarder');
+    const reloaded = open();
+    reloaded.type('CANCEL', 'fr', 'Abandonner');
+    expect(reloaded.lastRequest()).not.toBe(before.lastRequest());
+
+    const announced = reloaded.store.announcement.value;
+    reloaded.store.receive({ type: 'writeResult', requestId: before.lastRequest(), ok: true });
+    reloaded.store.receive({
+      type: 'writeResult',
+      requestId: before.lastRequest(),
+      ok: false,
+      message: 'Le disque est plein.',
+    });
+    expect(reloaded.store.announcement.value).toEqual(announced);
+    expect(reloaded.store.edits.pending.value).toEqual([
+      expect.objectContaining({ requestId: reloaded.lastRequest(), written: false }),
+    ]);
+    expect(reloaded.store.edits.rejected.value.size).toBe(0);
+  });
+
   it('shows a sent text at once, without the findings of the old one, until the model has it', () => {
     const { store, cell, type, lastRequest } = open();
     type('ERROR_TITLE', 'fr', 'Erreur ({{date}})');
