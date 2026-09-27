@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import type { FormatId } from '../../core/area/areaDefinition';
 import { editProblem } from '../../core/edit/editMessages';
 import { checkNewKey } from '../../core/edit/keyCheck';
 import { planEdit } from '../../core/edit/planEdit';
@@ -31,19 +32,7 @@ export async function addKey(
   const parse = (text: string) => parseKeyInput(text.trim(), flat);
   const check = (text: string) => checkNewKey(parse(text), bundle, root.analysis.bundles, root.analysis.area);
   const title = vscode.l10n.t('Add Key to {bundle}', { bundle: bundle.name });
-  const [prompt, placeHolder] = flat
-    ? [vscode.l10n.t('The new key as it stands in the file, e.g. section_title.'), 'section_title']
-    : format === 'mail-xml'
-      ? [
-          vscode.l10n.t('The new key: the template, a dot, then subject or message, e.g. invited.subject.'),
-          'invited.subject',
-        ]
-      : [
-          vscode.l10n.t(
-            'The new key, with a dot between its parts, e.g. SECTION.TITLE. A dot inside a part is written \\.',
-          ),
-          'SECTION.TITLE',
-        ];
+  const [prompt, placeHolder] = keyPrompt(format, flat);
   const typed = await context.prompts.input({
     title,
     prompt,
@@ -83,4 +72,23 @@ export async function addKey(
       planEdit(current, { kind: 'addKey', key, values: { [reference]: text }, ...(after ? { after } : {}) }),
     ),
   );
+}
+
+/** How the question for a new key reads in a format, with an example: its keys are names, paths or mail fields. */
+function keyPrompt(format: FormatId, flat: boolean): [prompt: string, placeHolder: string] {
+  if (flat) {
+    return [vscode.l10n.t('The new key as it stands in the file, e.g. section_title.'), 'section_title'];
+  }
+  if (format === 'mail-xml') {
+    return [
+      vscode.l10n.t('The new key: the template, a dot, then subject or message, e.g. invited.subject.'),
+      'invited.subject',
+    ];
+  }
+  return [
+    vscode.l10n.t(
+      'The new key, with a dot between its parts, e.g. SECTION.TITLE. A dot inside a part is written \\.',
+    ),
+    'SECTION.TITLE',
+  ];
 }
