@@ -38,6 +38,7 @@ const manifest = JSON.parse(read('package.json')) as {
   contributes: {
     configuration: { title: string; properties: Record<string, SettingSchema> }[];
     viewsWelcome: { view: string; contents: string; when: string }[];
+    menus: Record<string, { command: string; when?: string }[]>;
   };
 };
 // Settings in categories of their own, each a section of the Settings editor.
@@ -47,6 +48,21 @@ const properties: Record<string, SettingSchema> = Object.assign(
   ...categories.map((category) => category.properties),
 );
 const setting = (key: string): SettingSchema => properties[`eduI18n.${key}`]!;
+
+describe('package.json menus', () => {
+  it('offers to remove the API key only while one is stored; the other AI commands explain why they cannot run', () => {
+    const palette = manifest.contributes.menus['commandPalette'] ?? [];
+    expect(palette.find((entry) => entry.command === 'eduI18n.clearApiKey')?.when).toBe(
+      'eduI18n.aiKeyStored',
+    );
+    for (const command of ['eduI18n.setApiKey', 'eduI18n.testAiConnection', 'eduI18n.selectModel']) {
+      expect(
+        palette.find((entry) => entry.command === command),
+        command,
+      ).toBeUndefined();
+    }
+  });
+});
 
 describe('package.json configuration', () => {
   it('declares exactly the settings the extension reads', () => {

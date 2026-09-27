@@ -49,6 +49,10 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi | undef
   });
   const keyContext = { index, fileStore, prompts: vscodePrompts };
   const keys = new ApiKeyStore(context.secrets);
+  // "Remove API Key" is offered while there is a stored key to remove (the context key of the command palette).
+  const keyStored = async () =>
+    vscode.commands.executeCommand('setContext', 'eduI18n.aiKeyStored', (await keys.source()) === 'secret');
+  void keyStored();
   const ai = new AiService(keys, log);
   const consent = new AiConsent(context.globalState);
   const mailPreview = new MailPreview(index, log);
@@ -76,6 +80,7 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi | undef
     areas.disposable,
     statusBar,
     ai,
+    keys.onDidChange(() => void keyStored()),
     vscode.commands.registerCommand('eduI18n.check', () => checkTranslations(index)),
     vscode.commands.registerCommand('eduI18n.configureRoots', () => configureRoots()),
     // Returns nothing: VS Code would send a result to the workbench on every click in the tree.

@@ -201,6 +201,10 @@
         {
           "command": "eduI18n.deleteKey",
           "when": "false"
+        },
+        {
+          "command": "eduI18n.clearApiKey",
+          "when": "eduI18n.aiKeyStored"
         }
       ],
       "view/title": [
