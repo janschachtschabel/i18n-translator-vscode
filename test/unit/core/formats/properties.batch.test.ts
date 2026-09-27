@@ -144,19 +144,25 @@ function outcome(run: () => string): string {
 }
 
 describe('applyPropertiesOps with many operations', () => {
-  it('writes exactly what the operations write one by one, each on the text read again', () => {
-    for (let seed = 1; seed <= 10000; seed++) {
-      const rng = random(seed);
-      const text = propertiesText(rng);
-      const ops = operations(rng, text);
-      const bom = rng.next() < 0.2;
-      const oneByOne = () => ops.reduce((current, op) => applyPropertiesOps(current, [op], bom), text);
-      expect(
-        outcome(() => applyPropertiesOps(text, ops, bom)),
-        `seed ${seed}`,
-      ).toBe(outcome(oneByOne));
-    }
-  });
+  // 10,000 random cases take about 1.5 s alone, and more than the default 5 s in the CI, with coverage and beside
+  // other test files; the test compares texts, not time.
+  it(
+    'writes exactly what the operations write one by one, each on the text read again',
+    { timeout: 30_000 },
+    () => {
+      for (let seed = 1; seed <= 10000; seed++) {
+        const rng = random(seed);
+        const text = propertiesText(rng);
+        const ops = operations(rng, text);
+        const bom = rng.next() < 0.2;
+        const oneByOne = () => ops.reduce((current, op) => applyPropertiesOps(current, [op], bom), text);
+        expect(
+          outcome(() => applyPropertiesOps(text, ops, bom)),
+          `seed ${seed}`,
+        ).toBe(outcome(oneByOne));
+      }
+    },
+  );
 
   it('writes the texts of a new language of the largest bundle at once in well under a second', () => {
     // valuespaces_i18n: 1,546 keys, of which fr has 314; a fill inserts the other 1,232, each after the key before it.
