@@ -28,12 +28,8 @@ export async function testAiConnection(
   const { options, status } = client;
   const { model, reasoningEffort } = status.settings;
   try {
-    const result = await vscode.window.withProgress(
-      {
-        location: vscode.ProgressLocation.Notification,
-        title: vscode.l10n.t('Testing the b-api connection…'),
-      },
-      () => testConnection(options, { model, effort: reasoningEffort }),
+    const result = await withCancellableProgress(vscode.l10n.t('Testing the b-api connection…'), (signal) =>
+      testConnection(options, { model, effort: reasoningEffort }, Date.now, signal),
     );
     if (!result.modelFound) {
       const choose = vscode.l10n.t('Choose Model…');
@@ -61,6 +57,21 @@ export async function testAiConnection(
   }
 }
 
+/**
+ * Runs `work` with a notification that shows it runs and can cancel it: a server that hangs would otherwise keep it
+ * for minutes (the timeout and the repeats). A cancelled request fails as `aborted`, which needs no message.
+ */
+function withCancellableProgress<T>(title: string, work: (signal: AbortSignal) => Promise<T>): Thenable<T> {
+  return vscode.window.withProgress(
+    { location: vscode.ProgressLocation.Notification, title, cancellable: true },
+    (_progress, token) => {
+      const controller = new AbortController();
+      const subscription = token.onCancellationRequested(() => controller.abort());
+      return work(controller.signal).finally(() => subscription.dispose());
+    },
+  );
+}
+
 /** Lets the user choose the model among the chat models of the provider; the model id chosen, or undefined. */
 export async function selectModel(
   ai: AiService,
@@ -76,12 +87,9 @@ export async function selectModel(
   const { options, status } = client;
   let models: string[];
   try {
-    models = await vscode.window.withProgress(
-      {
-        location: vscode.ProgressLocation.Notification,
-        title: vscode.l10n.t('Loading the models of the b-api…'),
-      },
-      async () => chatModels(await listModels(options)),
+    models = await withCancellableProgress(
+      vscode.l10n.t('Loading the models of the b-api…'),
+      async (signal) => chatModels(await listModels(options, signal)),
     );
   } catch (error) {
     void showAiFailure(error, status, log);

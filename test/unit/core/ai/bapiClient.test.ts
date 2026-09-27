@@ -214,6 +214,14 @@ describe('listModels', () => {
 
   it('fails like a chat request', async () => {
     expect((await failure(listModels(options(fakeFetch(json(401, {})).fetch)))).code).toBe('unauthorized');
+    // No model is asked for: a list that is not there means the address or the provider is wrong.
+    expect(
+      await failure(listModels(options(fakeFetch(json(404, { request_id: 'r-2' })).fetch))),
+    ).toMatchObject({
+      code: 'endpoint-not-found',
+      status: 404,
+      requestId: 'r-2',
+    });
     expect((await failure(listModels(options(fakeFetch(json(200, { models: 3 })).fetch)))).code).toBe(
       'invalid-response',
     );

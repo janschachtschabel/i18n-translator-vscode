@@ -79,7 +79,12 @@ export async function listModels(options: ClientOptions, signal?: AbortSignal): 
     'models',
     { method: 'GET', headers: { 'X-API-KEY': options.key } },
     signal,
-  );
+  ).catch((error: unknown) => {
+    // No model was asked for: a 404 here is the address or the provider.
+    throw error instanceof AiError && error.code === 'model-not-found'
+      ? new AiError('endpoint-not-found', error.status, error.requestId)
+      : error;
+  });
   const models = Array.isArray(data) ? data : field(data, 'data');
   if (!Array.isArray(models)) {
     throw new AiError('invalid-response');

@@ -3,6 +3,8 @@ export type AiErrorCode =
   | 'bad-request'
   | 'unauthorized'
   | 'model-not-found'
+  /** The address and provider lead to no list of models: the settings are wrong, not the model. */
+  | 'endpoint-not-found'
   | 'unavailable'
   | 'network'
   | 'timeout'

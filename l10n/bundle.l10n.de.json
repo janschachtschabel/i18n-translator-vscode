@@ -75,6 +75,7 @@
   "Apply selected ({count})": "Ausgewählte übernehmen ({count})",
   "Area whose folders you want to set": "Bereich, dessen Ordner festgelegt werden sollen",
   "as reference": "wie Referenz",
+  "At {host} there is no b-api for the provider {provider} (HTTP {status}). Check eduI18n.ai.baseUrl and eduI18n.ai.provider.": "Unter {host} gibt es keine b-api für den Anbieter {provider} (HTTP {status}). Prüfen Sie eduI18n.ai.baseUrl und eduI18n.ai.provider.",
   "Automatic": "Automatisch",
   "Backup created. Files: {count}": "Sicherung erstellt. Dateien: {count}",
   "Backup to restore": "Wiederherzustellende Sicherung",

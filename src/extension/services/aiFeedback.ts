@@ -105,6 +105,14 @@ function failure(error: AiError, { host, settings }: AiStatus): [string, Step?] 
         vscode.l10n.t('The b-api does not know the model {model}. Choose another one.', { model }),
         chooseModel(),
       ];
+    case 'endpoint-not-found':
+      return [
+        vscode.l10n.t(
+          'At {host} there is no b-api for the provider {provider} (HTTP {status}). Check eduI18n.ai.baseUrl and eduI18n.ai.provider.',
+          { host, provider: settings.provider, status },
+        ),
+        openSettings(),
+      ];
     case 'bad-request':
       return [
         vscode.l10n.t(
