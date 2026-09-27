@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { AiError } from '../../core/ai/aiErrors';
+import { isRetried } from '../../core/ai/bapiClient';
 import type { AiUnavailable } from '../../core/ai/connection';
 import { showError, showWarning } from '../notify';
 import { messageOf } from './errors';
@@ -114,12 +115,12 @@ function failure(error: AiError, { host, settings }: AiStatus): [string, Step?] 
       ];
     case 'unavailable':
       return [
-        vscode.l10n.t(
-          'The b-api is busy or unavailable (HTTP {status}), also after four attempts. Try again later.',
-          {
-            status,
-          },
-        ),
+        error.status !== undefined && isRetried(error.status)
+          ? vscode.l10n.t(
+              'The b-api is busy or unavailable (HTTP {status}), also after four attempts. Try again later.',
+              { status },
+            )
+          : vscode.l10n.t('The b-api is unavailable (HTTP {status}). Try again later.', { status }),
       ];
     case 'network':
       return [

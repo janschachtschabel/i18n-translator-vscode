@@ -10,12 +10,7 @@ import {
   isText,
   MAX_TEXT_LENGTH,
 } from './messageChecks';
-import {
-  AI_MESSAGE_TYPES,
-  isAiWebviewToHost,
-  type AiHostToWebview,
-  type AiWebviewToHost,
-} from './aiProtocol';
+import { isAiWebviewToHost, type AiHostToWebview, type AiWebviewToHost } from './aiProtocol';
 import type { BundlePatch } from './patch';
 import type { BundleViewModel } from './viewModel';
 
@@ -149,7 +144,7 @@ export function isWebviewToHost(value: unknown): value is WebviewToHost {
     case 'unsaved':
       return isUnsavedTexts(value['texts']);
     default:
-      return AI_MESSAGE_TYPES.includes(value['type'] as string) && isAiWebviewToHost(value);
+      return isAiWebviewToHost(value);
   }
 }
 

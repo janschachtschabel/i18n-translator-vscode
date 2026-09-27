@@ -58,8 +58,6 @@ export type AiHostToWebview =
       message?: string;
     };
 
-export const AI_MESSAGE_TYPES: readonly string[] = ['aiSuggest', 'aiCancel', 'aiSetup', 'aiFill', 'aiApply'];
-
 /** Reviewed texts in one write, at most: far more than a language of a bundle holds, but bounded. */
 export const MAX_APPLY_ITEMS = 2000;
 

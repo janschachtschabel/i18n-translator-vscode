@@ -270,6 +270,7 @@
   "The b-api did not answer within {seconds} seconds (eduI18n.ai.timeoutSeconds).": "Die b-api hat nicht innerhalb von {seconds} Sekunden geantwortet (eduI18n.ai.timeoutSeconds).",
   "The b-api does not know the model {model}. Choose another one.": "Die b-api kennt das Modell {model} nicht. Wählen Sie ein anderes.",
   "The b-api is busy or unavailable (HTTP {status}), also after four attempts. Try again later.": "Die b-api ist ausgelastet oder nicht verfügbar (HTTP {status}), auch nach vier Versuchen. Versuchen Sie es später erneut.",
+  "The b-api is unavailable (HTTP {status}). Try again later.": "Die b-api ist nicht verfügbar (HTTP {status}). Versuchen Sie es später noch einmal.",
   "The b-api key is removed from VS Code. The AI functions are off until a key is set.": "Der b-api-Schlüssel ist aus VS Code entfernt. Die KI-Funktionen sind aus, bis ein Schlüssel gesetzt ist.",
   "The b-api key is removed from VS Code. The environment variable B_API_KEY still applies.": "Der b-api-Schlüssel ist aus VS Code entfernt. Die Umgebungsvariable B_API_KEY gilt weiterhin.",
   "The b-api key is saved in VS Code's secret storage.": "Der b-api-Schlüssel ist im Schlüsselspeicher von VS Code gespeichert.",

@@ -1,6 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AiError } from '../../../../src/core/ai/aiErrors';
-import { chatCompletion, listModels, type ClientOptions } from '../../../../src/core/ai/bapiClient';
+import {
+  chatCompletion,
+  isRetried,
+  listModels,
+  type ClientOptions,
+} from '../../../../src/core/ai/bapiClient';
 
 const KEY = 'unit-test-key-0815';
 const BODY = { model: 'gpt-6-luna', messages: [] };
@@ -122,8 +127,15 @@ describe('chatCompletion', () => {
     }
   });
 
+  it('keeps a request id that could fake a line of the log out of the error', async () => {
+    const { fetch } = fakeFetch(json(400, { request_id: 'req-1\n[error] the key is abc' }));
+    const error = await failure(chatCompletion(options(fetch), BODY));
+    expect(error).toMatchObject({ code: 'bad-request', status: 400, requestId: undefined });
+  });
+
   it('repeats a busy or failing gateway after 2.5, 5 and 10 seconds, four times at most', async () => {
     for (const status of [429, 502, 503, 504]) {
+      expect(isRetried(status), String(status)).toBe(true);
       const sleeps: number[] = [];
       const { fetch, calls } = fakeFetch(
         json(status, {}),

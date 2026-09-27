@@ -1,9 +1,11 @@
+import type { AiProvider } from '../config/aiSettings';
 import { AiError, type AiErrorCode } from './aiErrors';
 
 export interface ClientOptions {
   /** Without a slash at the end (see `allowedBaseUrl`). */
   baseUrl: string;
-  provider: string;
+  /** Part of the path of every request: one of the providers the settings allow. */
+  provider: AiProvider;
   key: string;
   /** For each request, until its answer is read. */
   timeoutMs: number;
@@ -31,6 +33,11 @@ export interface Completion {
  */
 const RETRY_DELAYS = [2500, 5000, 10000];
 const RETRIED = new Set([429, 502, 503, 504]);
+
+/** Whether the client asks again after an answer with this status, before it gives up. */
+export function isRetried(status: number): boolean {
+  return RETRIED.has(status);
+}
 const MAX_REQUEST_ID_LENGTH = 200;
 
 /** Sends a chat completion and reads its answer; throws an {@link AiError}. */
@@ -218,7 +225,10 @@ function codeFor(status: number): AiErrorCode {
 function requestIdOf(text: string): string | undefined {
   try {
     const id = field(JSON.parse(text), 'request_id');
-    return typeof id === 'string' && id.length <= MAX_REQUEST_ID_LENGTH ? id : undefined;
+    // It goes into the log: letters, digits and a few signs only, so that it cannot fake a line.
+    return typeof id === 'string' && id.length <= MAX_REQUEST_ID_LENGTH && /^[\w.:-]+$/.test(id)
+      ? id
+      : undefined;
   } catch {
     // No JSON: no request id.
     return undefined;
