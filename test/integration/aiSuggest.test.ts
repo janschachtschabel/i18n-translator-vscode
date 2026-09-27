@@ -9,6 +9,7 @@ import {
   answering,
   editorWith,
   nextPost,
+  PAGE_LOAD_MS,
   settled,
   waitFor,
   workspaceUri,
@@ -40,7 +41,9 @@ function translator(status = 200, delayMs = 0) {
   };
 }
 
-suite('AI suggestion for a cell', () => {
+suite('AI suggestion for a cell', function () {
+  this.timeout(2 * PAGE_LOAD_MS);
+
   let api: ExtensionApi;
   let panel: EditorPanel;
   let bapi: Awaited<ReturnType<typeof startMockBapi>> | undefined;

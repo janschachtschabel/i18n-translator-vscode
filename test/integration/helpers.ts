@@ -108,6 +108,9 @@ export function nextPost<T extends HostToWebview['type']>(
   >;
 }
 
+/** How long an editor's page may take to load: suites that open editors give their tests twice as long. */
+export const PAGE_LOAD_MS = 30000;
+
 /**
  * An editor of the bundle `common` of the first root whose questions `prompts` answers, and the messages it sends to
  * its webview, once the page has loaded and shows the bundle.
@@ -137,7 +140,8 @@ export async function editorWith(api: ExtensionApi, prompts: Prompts) {
   const posts: HostToWebview[] = [];
   editorPanel.onDidPost((message) => posts.push(message));
   // The page loads and says it is ready, which cancels the requests of a page before: wait for it, not pretend it.
-  await waitFor(editorPanel.onDidPost, (message) => message.type === 'bundle');
+  // The first page of a window may take long to load on a slow machine (CI with VS Code 1.90).
+  await waitFor(editorPanel.onDidPost, (message) => message.type === 'bundle', PAGE_LOAD_MS);
   const close = () => {
     panel.dispose();
     editorPanel.dispose();

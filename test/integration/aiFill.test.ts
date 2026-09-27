@@ -4,7 +4,15 @@ import { keyFromSegments } from '../../src/core/model/keys';
 import type { ExtensionApi } from '../../src/extension/extension';
 import type { AiJobItem } from '../../src/shared/aiProtocol';
 import type { HostToWebview } from '../../src/shared/protocol';
-import { activateExtension, answering, editorWith, settled, waitFor, workspaceUri } from './helpers';
+import {
+  activateExtension,
+  answering,
+  editorWith,
+  PAGE_LOAD_MS,
+  settled,
+  waitFor,
+  workspaceUri,
+} from './helpers';
 import { startMockBapi, type MockRequest } from './mockBapi';
 
 const id = (key: string) => keyFromSegments(key.split('.')).id;
@@ -24,7 +32,9 @@ function translator(request: MockRequest) {
   };
 }
 
-suite('Fill with AI', () => {
+suite('Fill with AI', function () {
+  this.timeout(2 * PAGE_LOAD_MS);
+
   let api: ExtensionApi;
   let bapi: Awaited<ReturnType<typeof startMockBapi>>;
   const config = () => vscode.workspace.getConfiguration('eduI18n');
