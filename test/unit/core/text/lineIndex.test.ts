@@ -15,6 +15,24 @@ describe('lineStartAt', () => {
       expect(lineStartAt(`${String.fromCharCode(lineBreak)}abc`, 0)).toBe(0);
     }
   });
+
+  // Looking for the last \r searched a text without one back to its start, at each call: removing a key defined 8,000
+  // times in a JSON file of 240 KB still took 2.5 s (audit S-14).
+  it('looks back only to the line break before, also in a text without carriage returns', () => {
+    const line = `${'x'.repeat(49)}${String.fromCharCode(10)}`;
+    const text = line.repeat(20_000);
+    const started = performance.now();
+    for (let offset = line.length - 1; offset < text.length; offset += line.length) {
+      expect(lineStartAt(text, offset)).toBe(offset - line.length + 1);
+    }
+    expect(performance.now() - started).toBeLessThan(500);
+  });
+
+  it('takes the end of the text for an offset beyond it', () => {
+    expect(lineStartAt('ab\ncd', 99)).toBe(3);
+    expect(lineStartAt('ab\n', 99)).toBe(3);
+    expect(lineStartAt('ab', 99)).toBe(0);
+  });
 });
 
 describe('createLineIndex', () => {
