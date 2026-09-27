@@ -4,7 +4,7 @@ import { applyEdits, type TextEdit } from '../../text/edits';
 import { lineStartAt } from '../../text/lineIndex';
 import { detectStyle, type TextStyle } from '../../text/style';
 import { escapeUnits } from '../../text/unicodeEscape';
-import { EditError, type FileOp } from '../adapter';
+import { EditError, setRun, type FileOp, type SetOp } from '../adapter';
 
 /** A property of a JSON object with its key and value nodes. */
 interface Property {
@@ -14,15 +14,29 @@ interface Property {
 }
 
 /**
- * Applies the operations one after another and re-reads the text in between. Only the affected lines change:
- * new lines copy the indentation of their sibling, and nothing else is reformatted.
+ * Applies the operations one after another and re-reads the text in between, except within a run of texts set:
+ * those go on one parse (reading the file again for each of 1,600 texts took 1.9 s, audit P-07). Only the affected
+ * lines change: new lines copy the indentation of their sibling, and nothing else is reformatted.
  */
 export function applyJsonOps(text: string, ops: readonly FileOp[]): string {
   const style = detectStyle(text);
   let current = text;
-  for (const op of ops) {
+  for (let index = 0; index < ops.length;) {
     // An empty file has no entries (see the reader); one with only whitespace is a syntax error.
-    current = applyOp(current === '' ? emptyJsonObject(style) : current, op, style);
+    const base = current === '' ? emptyJsonObject(style) : current;
+    const op = ops[index]!;
+    if (op.kind === 'set') {
+      const run = setRun(ops, index);
+      const root = parseObject(base);
+      current = applyEdits(
+        base,
+        run.map((set) => valueEdit(root, set.key, set.value)),
+      );
+      index += run.length;
+    } else {
+      current = applyOp(base, op, style);
+      index++;
+    }
   }
   return current;
 }
@@ -36,11 +50,9 @@ function jsonString(value: string): string {
   return escapeUnits(JSON.stringify(value), (unit) => unit === 0x2028 || unit === 0x2029);
 }
 
-function applyOp(text: string, op: FileOp, style: TextStyle): string {
+function applyOp(text: string, op: Exclude<FileOp, SetOp>, style: TextStyle): string {
   const root = parseObject(text);
   switch (op.kind) {
-    case 'set':
-      return setValue(text, root, op.key, op.value);
     case 'insert':
       return insertEntry(text, root, op.key, op.value, op.first ? 'first' : op.after, style);
     case 'delete':
@@ -68,7 +80,8 @@ function parseObject(text: string): Node {
   return root;
 }
 
-function setValue(text: string, root: Node, key: EntryKey, value: string): string {
+/** The edit that gives the text of `key` a new value. */
+function valueEdit(root: Node, key: EntryKey, value: string): TextEdit {
   const property = findProperty(root, key.segments);
   if (!property) {
     throw new EditError('missing-key', `${displayKey(key)} does not exist in this file.`, key);
@@ -76,9 +89,7 @@ function setValue(text: string, root: Node, key: EntryKey, value: string): strin
   if (property.value.type !== 'string') {
     throw new EditError('path-conflict', `${displayKey(key)} is not a text.`, key);
   }
-  return applyEdits(text, [
-    { offset: property.value.offset, length: property.value.length, content: jsonString(value) },
-  ]);
+  return { offset: property.value.offset, length: property.value.length, content: jsonString(value) };
 }
 
 function insertEntry(

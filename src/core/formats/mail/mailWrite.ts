@@ -3,7 +3,7 @@ import type { DecodedText } from '../../text/decode';
 import { applyEdits, type TextEdit } from '../../text/edits';
 import { lineStartAt } from '../../text/lineIndex';
 import { detectStyle } from '../../text/style';
-import { EditError, type FileOp, type TextRange } from '../adapter';
+import { EditError, setRun, type FileOp, type SetOp, type TextRange } from '../adapter';
 import {
   MAIL_FIELDS,
   readMail,
@@ -19,23 +19,33 @@ import { cdataInner, escapeAttribute, fieldBody, type Writer } from './xmlText';
 type Place = XmlElement | 'first' | undefined;
 
 /**
- * Applies the operations one after another and re-reads the text in between. A template is an object and its
- * subject and message are texts, as in nested JSON: only the affected elements and lines change, and new lines
- * take the indentation of their neighbors.
+ * Applies the operations one after another and re-reads the text in between, except within a run of texts set:
+ * those go on one read (audit P-07). A template is an object and its subject and message are texts, as in nested
+ * JSON: only the affected elements and lines change, and new lines take the indentation of their neighbors.
  */
 export function applyMailOps(doc: DecodedText, ops: readonly FileOp[]): string {
   const writer: Writer = { style: detectStyle(doc.text), latin1: doc.encoding === 'latin-1' };
   let current = doc.text;
-  for (const op of ops) {
-    current = applyOp(current, op, writer);
+  for (let index = 0; index < ops.length;) {
+    const op = ops[index]!;
+    if (op.kind === 'set') {
+      const run = setRun(ops, index);
+      const { templates } = read(current);
+      current = applyEdits(
+        current,
+        run.map((set) => fieldEdit(templates, set.key, set.value, writer)),
+      );
+      index += run.length;
+    } else {
+      current = applyOp(current, op, writer);
+      index++;
+    }
   }
   return current;
 }
 
-function applyOp(text: string, op: FileOp, writer: Writer): string {
+function applyOp(text: string, op: Exclude<FileOp, SetOp>, writer: Writer): string {
   switch (op.kind) {
-    case 'set':
-      return setField(text, op.key, op.value, writer);
     case 'insert':
       return insertField(text, op.key, op.value, op.first ? 'first' : op.after, writer);
     case 'delete':
@@ -45,9 +55,15 @@ function applyOp(text: string, op: FileOp, writer: Writer): string {
   }
 }
 
-function setField(text: string, key: EntryKey, value: string, writer: Writer): string {
+/** The edit that gives the field of `key` a new text. */
+function fieldEdit(
+  templates: readonly MailTemplateInfo[],
+  key: EntryKey,
+  value: string,
+  writer: Writer,
+): TextEdit {
   const { id, field } = partsOf(key);
-  const info = firstField(effectiveTemplate(read(text).templates, id), field);
+  const info = firstField(effectiveTemplate(templates, id), field);
   if (!info) {
     throw new EditError('missing-key', `${displayKey(key)} does not exist in this file.`, key);
   }
@@ -56,11 +72,11 @@ function setField(text: string, key: EntryKey, value: string, writer: Writer): s
   }
   switch (info.mode) {
     case 'cdata':
-      return replace(text, info.valueRange, cdataInner(value, writer));
+      return rangeEdit(info.valueRange, cdataInner(value, writer));
     case 'text':
-      return replace(text, info.valueRange, fieldBody(field, value, writer));
+      return rangeEdit(info.valueRange, fieldBody(field, value, writer));
     case 'empty':
-      return replace(text, info.element.range, fieldElement(field, value, writer));
+      return rangeEdit(info.element.range, fieldElement(field, value, writer));
   }
 }
 
@@ -283,6 +299,10 @@ function insertAt(text: string, offset: number, content: string): string {
   return applyEdits(text, [{ offset, length: 0, content }]);
 }
 
-function replace(text: string, [start, end]: TextRange, content: string): string {
-  return applyEdits(text, [{ offset: start, length: end - start, content }]);
+function replace(text: string, range: TextRange, content: string): string {
+  return applyEdits(text, [rangeEdit(range, content)]);
+}
+
+function rangeEdit([start, end]: TextRange, content: string): TextEdit {
+  return { offset: start, length: end - start, content };
 }

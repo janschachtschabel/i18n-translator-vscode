@@ -49,6 +49,8 @@ export type FileOp =
   | { kind: 'delete'; key: EntryKey }
   | { kind: 'rename'; from: EntryKey; to: EntryKey };
 
+export type SetOp = Extract<FileOp, { kind: 'set' }>;
+
 export type EditErrorCode = 'missing-key' | 'key-exists' | 'path-conflict' | 'unparsable';
 
 /** An operation that does not fit the file, e.g. setting a key the file does not have. */
@@ -98,4 +100,23 @@ export interface FormatAdapter {
 
 export function hasSyntaxError(parsed: ParsedFile): boolean {
   return parsed.problems.some((problem) => problem.code === 'parse-error');
+}
+
+/**
+ * The texts set from `start` on, up to another kind of operation or a key the run sets already: each replaces a value
+ * of its own, so that a writer can make them one edit of the text it read once, with the result of writing them one
+ * by one (audit P-07).
+ */
+export function setRun(ops: readonly FileOp[], start: number): SetOp[] {
+  const run: SetOp[] = [];
+  const keys = new Set<string>();
+  for (let index = start; index < ops.length; index++) {
+    const op = ops[index]!;
+    if (op.kind !== 'set' || keys.has(op.key.id)) {
+      break;
+    }
+    keys.add(op.key.id);
+    run.push(op);
+  }
+  return run;
 }
