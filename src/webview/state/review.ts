@@ -142,14 +142,19 @@ export class Review {
     this.change(entryId, (item) => ({ ...item, chosen: !item.chosen && writable(item) }));
   }
 
-  /** Chooses every text that has something to write, or none. */
+  /** Chooses every text that has something to write, or none; not while a write is on its way. */
   chooseAll(chosen: boolean): void {
     const list = this.list.peek();
-    if (list) {
-      this.list.value = {
-        ...list,
-        items: list.items.map((item) => ({ ...item, chosen: chosen && writable(item) })),
-      };
+    if (!list || list.applying !== undefined) {
+      return;
+    }
+    // Only the entries whose choice changes render again; none, for a button pressed while unavailable.
+    const items = list.items.map((item) => {
+      const next = chosen && writable(item);
+      return next === item.chosen ? item : { ...item, chosen: next };
+    });
+    if (items.some((item, index) => item !== list.items[index])) {
+      this.list.value = { ...list, items };
     }
   }
 

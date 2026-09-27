@@ -34,6 +34,8 @@ export function ReviewList({ store, list, locales }: ReviewListProps) {
   const count = useIncrementalCount(list.items.length);
   const chosen = list.items.filter((item) => item.chosen).length;
   const allChosen = list.items.every((item) => item.chosen || !writable(item));
+  // While the write is on its way, nothing changes what it writes or what the list says of it.
+  const applying = list.applying !== undefined;
   const running = progress.kind === 'running';
   const kind = useRef(list.kind);
   kind.current = list.kind;
@@ -108,17 +110,25 @@ export function ReviewList({ store, list, locales }: ReviewListProps) {
           <button
             type="button"
             class="primary"
-            aria-disabled={chosen === 0 || list.applying !== undefined}
+            aria-disabled={chosen === 0 || applying}
             onClick={() => review.apply()}
           >
             {l10n.t('Apply selected ({count})', { count: formatNumber(chosen) })}
           </button>
           {list.items.length > 0 && (
             <>
-              <button type="button" aria-disabled={allChosen} onClick={() => review.chooseAll(true)}>
+              <button
+                type="button"
+                aria-disabled={allChosen || applying}
+                onClick={() => review.chooseAll(true)}
+              >
                 {l10n.t('Select All')}
               </button>
-              <button type="button" aria-disabled={chosen === 0} onClick={() => review.chooseAll(false)}>
+              <button
+                type="button"
+                aria-disabled={chosen === 0 || applying}
+                onClick={() => review.chooseAll(false)}
+              >
                 {l10n.t('Select None')}
               </button>
             </>
@@ -128,14 +138,13 @@ export function ReviewList({ store, list, locales }: ReviewListProps) {
               {l10n.t('Cancel')}
             </button>
           )}
-          <button type="button" aria-disabled={list.applying !== undefined} onClick={() => review.discard()}>
+          <button type="button" aria-disabled={applying} onClick={() => review.discard()}>
             {list.items.length === 0 && !running ? l10n.t('Close') : l10n.t('Discard')}
           </button>
         </div>
       </div>
       {list.items.length > 0 && (
-        // While the write is on its way, nothing changes what it writes (inert).
-        <ol class="review-items" inert={list.applying !== undefined}>
+        <ol class="review-items" inert={applying}>
           {list.items.slice(0, count).map((item) => (
             <ReviewEntry
               key={item.entryId}

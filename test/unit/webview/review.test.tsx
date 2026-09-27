@@ -324,6 +324,13 @@ describe('filling with AI', () => {
     const discard = () => inReview().getByRole('button', { name: 'Verwerfen' });
     expect(items().inert).toBe(true);
     expect(discard().getAttribute('aria-disabled')).toBe('true');
+    // Nor does the choice change: the list shows what is being written.
+    for (const name of ['Alle auswählen', 'Keine auswählen']) {
+      const button = inReview().getByRole('button', { name });
+      expect(button.getAttribute('aria-disabled')).toBe('true');
+      act(() => void fireEvent.click(button));
+    }
+    expect(inReview().getByRole('button', { name: 'Ausgewählte übernehmen (1)' })).toBeTruthy();
     act(() => void fireEvent.click(discard()));
     expect(screen.queryByRole('region', { name: /^KI-Vorschläge/ })).not.toBeNull();
     const [apply] = posted(messages, 'aiApply') as Extract<WebviewToHost, { type: 'aiApply' }>[];
