@@ -71,6 +71,10 @@ function problemMessage(problem: NonNullable<ReturnType<typeof keyProblem>>): st
       return vscode.l10n.t('Enter the key.');
     case 'blank':
       return vscode.l10n.t('A key has no spaces or line breaks.');
+    case 'characters':
+      return vscode.l10n.t(
+        'A key has only visible letters, digits and signs; this one has another character, perhaps one copying added.',
+      );
     case 'too-long':
       return vscode.l10n.t('The key is longer than 512 characters.');
   }

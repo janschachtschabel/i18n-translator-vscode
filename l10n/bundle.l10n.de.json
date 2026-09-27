@@ -54,6 +54,7 @@
   "A click, Enter or F2 edits a text; in the key column, F2 renames the key and Delete (on macOS Cmd+Backspace) deletes it.": "Ein Klick, Enter oder F2 bearbeitet einen Text; in der Key-Spalte benennt F2 den Key um, Entf (auf dem Mac Cmd+Rücktaste) löscht ihn.",
   "A fill of this bundle is running; cancel it or wait until it ends.": "Diese Einheit wird gerade gefüllt; brechen Sie das ab oder warten Sie, bis es endet.",
   "A key has no spaces or line breaks.": "Ein Schlüssel enthält keine Leerzeichen oder Zeilenumbrüche.",
+  "A key has only visible letters, digits and signs; this one has another character, perhaps one copying added.": "Ein Schlüssel besteht nur aus sichtbaren Buchstaben, Ziffern und Zeichen; hier steckt ein anderes Zeichen, vielleicht vom Kopieren.",
   "A key needs a name.": "Ein Key braucht einen Namen.",
   "A part of the key starts or ends with a space.": "Ein Teil des Keys beginnt oder endet mit einem Leerzeichen.",
   "Add Key": "Key hinzufügen",

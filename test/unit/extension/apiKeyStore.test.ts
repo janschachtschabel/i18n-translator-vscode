@@ -32,9 +32,11 @@ describe('ApiKeyStore', () => {
     expect(await keys.key()).toEqual({ value: 'from-the-environment', source: 'env' });
   });
 
-  it('has none without either; an empty or blank environment variable counts as none', async () => {
+  it('has none without either; an empty, blank or garbled environment variable counts as none', async () => {
     expect(await new ApiKeyStore(secretStorage(), {}).source()).toBe('none');
     expect(await new ApiKeyStore(secretStorage(), { B_API_KEY: '  ' }).key()).toBeUndefined();
+    // A character no header can carry would fail every request as if the network were down.
+    expect(await new ApiKeyStore(secretStorage(), { B_API_KEY: 'abc\u200bdef' }).key()).toBeUndefined();
   });
 
   it('says when its own key changes, also in another window, and not for other secrets', async () => {
@@ -59,5 +61,11 @@ describe('keyProblem', () => {
     expect(keyProblem('abc def')).toBe('blank');
     expect(keyProblem('abc\ndef')).toBe('blank');
     expect(keyProblem('x'.repeat(513))).toBe('too-long');
+  });
+
+  it('takes only visible ASCII: a zero-width space, as copying from a web page adds, is none of it', () => {
+    expect(keyProblem('abc\u200bdef')).toBe('characters');
+    expect(keyProblem('\u200babc')).toBe('characters');
+    expect(keyProblem('schlüssel')).toBe('characters');
   });
 });
