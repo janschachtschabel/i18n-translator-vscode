@@ -1,24 +1,16 @@
 import * as vscode from 'vscode';
 import { compileFilePattern } from '../../core/area/filePattern';
-import { applyChanges } from '../../core/edit/applyChanges';
+import { applyChanges, type FileWrite } from '../../core/edit/applyChanges';
 import type { EditProblem } from '../../core/edit/editMessages';
 import type { PlanResult } from '../../core/edit/planEdit';
+import type { FormatAdapter } from '../../core/formats/adapter';
 import { ADAPTERS } from '../../core/formats/registry';
 import type { LoadedFile } from '../../core/model/bundle';
 import type { RootAnalysis } from '../../core/pipeline/analyze';
 import { revisionOf } from '../../core/util/hash';
 import { messageOf } from './errors';
 import { firstLinked } from './links';
-import {
-  holds,
-  isDirty,
-  putAllOrNone,
-  readIfExists,
-  relative,
-  sameBytes,
-  type FileAccess,
-  type Put,
-} from './files';
+import { holds, isDirty, putAllOrNone, readIfExists, relative, sameBytes, type FileAccess } from './files';
 import { UndoHistory, type UndoEntry, type UndoLimits } from './undoHistory';
 import { insideRoot, relativeUriPath } from './uriPaths';
 import {
@@ -58,6 +50,29 @@ export type WriteResult =
 
 /** A failure to read or write, the only result a step can end with before it has a result of its own. */
 type WriteError = Extract<WriteResult, { reason: 'error' }>;
+
+/** Unsaved changes in an editor, or changed on disk: a step ends without writing. */
+type NotWritten = Extract<WriteResult, { reason: 'dirty' | 'changed' }>;
+
+/** A file a step writes: the bytes it gets (none: the file goes), and those it has, which a failed write puts back. */
+interface Replacement {
+  uri: vscode.Uri;
+  bytes: Uint8Array | undefined;
+  before: Uint8Array | undefined;
+}
+
+/** A file that a write or a restore gives new bytes, and an undo its old ones. */
+type WrittenFile = Replacement & { bytes: Uint8Array };
+
+/** What the check of a step found: the files to write, or the result that ends the step without writing. */
+type Checked<W extends Replacement, R> = { write: W[] } | { result: R };
+
+/** A file that a planned write changes: where it is, the change, and the bytes it gets. */
+interface Target {
+  uri: vscode.Uri;
+  write: FileWrite;
+  bytes: Uint8Array;
+}
 
 /** What an undo did: which files got their bytes back, or why none did. */
 export type UndoResult =
@@ -209,37 +224,52 @@ export class FileStore {
         );
         backedUp = true;
       }
-      const dirty = targets.filter((target) => isDirty(target.uri)).map((target) => target.uri);
-      if (dirty.length > 0) {
-        return { ok: false, reason: 'dirty', files: dirty };
+      const checked = await this.checkAndPut(
+        targets.map((target) => target.uri),
+        () => this.checkWrite(indexed, targets, adapter),
+      );
+      if ('write' in checked) {
+        return this.recordWrite('write', checked.write, started);
       }
-      // The plan rests on every file of the bundles it changes (B5), not only on those it writes: e.g. a key that a
-      // git pull deleted from the others must not come back in the file that is written.
-      const written = new Set(targets.map((target) => target.write.relPath));
-      const inputs = bundleFiles(analysis, [...written])
-        .filter((file) => !written.has(file.relPath))
-        .map((file) => ({ uri: vscode.Uri.joinPath(indexed.folder.uri, ...file.relPath.split('/')), file }));
-      const [onDisk, inputsOnDisk] = await Promise.all([
-        Promise.all(targets.map((target) => readIfExists(target.uri, this.files))),
-        Promise.all(inputs.map((input) => readIfExists(input.uri, this.files))),
-      ]);
-      const uris = [
-        ...targets.filter((target, i) => !holds(onDisk[i], target.write.before, adapter)),
-        ...inputs.filter((input, i) => !holds(inputsOnDisk[i], input.file.doc, adapter)),
-      ].map((changed) => changed.uri);
-      if (uris.length === 0) {
-        return this.commit(
-          'write',
-          targets.map((target, i) => ({ uri: target.uri, bytes: target.bytes, before: onDisk[i] })),
-          started,
-        );
+      if (checked.result.reason !== 'changed' || attempt === PLAN_ATTEMPTS) {
+        return checked.result;
       }
-      if (attempt === PLAN_ATTEMPTS) {
-        return { ok: false, reason: 'changed', files: uris };
-      }
-      this.log.info(`Changed on disk since indexing, planning again: ${uris.map(relative).join(', ')}`);
+      this.log.info(
+        `Changed on disk since indexing, planning again: ${checked.result.files.map(relative).join(', ')}`,
+      );
       await this.index.refreshRoot(ref);
     }
+  }
+
+  /**
+   * Whether a planned write may go ahead: no editor has unsaved changes in its files, and the files of the bundles it
+   * changes still hold what the plan read (B5), not only those it writes: e.g. a key that a git pull deleted from the
+   * others must not come back in the file that is written.
+   */
+  private async checkWrite(
+    indexed: IndexedRoot,
+    targets: readonly Target[],
+    adapter: FormatAdapter,
+  ): Promise<Checked<WrittenFile, NotWritten>> {
+    const dirty = targets.filter((target) => isDirty(target.uri)).map((target) => target.uri);
+    if (dirty.length > 0) {
+      return { result: { ok: false, reason: 'dirty', files: dirty } };
+    }
+    const written = new Set(targets.map((target) => target.write.relPath));
+    const inputs = bundleFiles(indexed.analysis, [...written])
+      .filter((file) => !written.has(file.relPath))
+      .map((file) => ({ uri: vscode.Uri.joinPath(indexed.folder.uri, ...file.relPath.split('/')), file }));
+    const [onDisk, inputsOnDisk] = await Promise.all([
+      Promise.all(targets.map((target) => readIfExists(target.uri, this.files))),
+      Promise.all(inputs.map((input) => readIfExists(input.uri, this.files))),
+    ]);
+    const changed = [
+      ...targets.filter((target, i) => !holds(onDisk[i], target.write.before, adapter)),
+      ...inputs.filter((input, i) => !holds(inputsOnDisk[i], input.file.doc, adapter)),
+    ].map((file) => file.uri);
+    return changed.length > 0
+      ? { result: { ok: false, reason: 'changed', files: changed } }
+      : { write: targets.map((target, i) => ({ uri: target.uri, bytes: target.bytes, before: onDisk[i] })) };
   }
 
   private async undoNow(
@@ -275,24 +305,27 @@ export class FileStore {
   }
 
   private async undoEntry(entry: UndoEntry): Promise<UndoResult> {
-    const dirty = entry.files.filter((file) => isDirty(file.uri)).map((file) => file.uri);
-    if (dirty.length > 0) {
-      return { ok: false, reason: 'dirty', files: dirty };
-    }
-    const onDisk = await Promise.all(entry.files.map((file) => readIfExists(file.uri, this.files)));
-    const changed = entry.files.filter((file, i) => {
-      const bytes = onDisk[i];
-      return bytes === undefined || revisionOf(bytes) !== file.afterRevision;
-    });
-    if (changed.length > 0) {
-      return { ok: false, reason: 'changed', files: changed.map((file) => file.uri) };
-    }
-    const failure = await this.putAll(
-      entry.files.map((file) => ({ uri: file.uri, bytes: file.before })),
-      entry.files.map((file, i) => ({ uri: file.uri, bytes: onDisk[i] })),
+    const checked = await this.checkAndPut(
+      entry.files.map((file) => file.uri),
+      async (): Promise<Checked<Replacement, NotWritten>> => {
+        const dirty = entry.files.filter((file) => isDirty(file.uri)).map((file) => file.uri);
+        if (dirty.length > 0) {
+          return { result: { ok: false, reason: 'dirty', files: dirty } };
+        }
+        const onDisk = await Promise.all(entry.files.map((file) => readIfExists(file.uri, this.files)));
+        const changed = entry.files.filter((file, i) => {
+          const bytes = onDisk[i];
+          return bytes === undefined || revisionOf(bytes) !== file.afterRevision;
+        });
+        return changed.length > 0
+          ? { result: { ok: false, reason: 'changed', files: changed.map((file) => file.uri) } }
+          : {
+              write: entry.files.map((file, i) => ({ uri: file.uri, bytes: file.before, before: onDisk[i] })),
+            };
+      },
     );
-    if (failure) {
-      return failure;
+    if ('result' in checked) {
+      return checked.result;
     }
     this.log.info(`Undid the write of ${entry.files.map((file) => relative(file.uri)).join(', ')}`);
     this.indexing = this.reindex(entry.files.map((file) => file.uri));
@@ -327,30 +360,29 @@ export class FileStore {
       return { ok: false, reason: 'error', message };
     }
     // After the backup, which takes a moment: a file may have got unsaved changes meanwhile.
-    const dirty = files.filter((file) => isDirty(file.uri)).map((file) => file.uri);
-    if (dirty.length > 0) {
-      return { ok: false, reason: 'dirty', files: dirty };
-    }
-    const onDisk = await Promise.all(files.map((file) => readIfExists(file.uri, this.files)));
-    const differing = files
-      .map((file, i) => ({ ...file, before: onDisk[i] }))
-      .filter((file) => file.before === undefined || !sameBytes(file.before, file.bytes));
-    return differing.length === 0 ? { ok: true } : this.commit('restore', differing, started);
+    const checked = await this.checkAndPut(
+      files.map((file) => file.uri),
+      async (): Promise<Checked<WrittenFile, NotWritten | { ok: true }>> => {
+        const dirty = files.filter((file) => isDirty(file.uri)).map((file) => file.uri);
+        if (dirty.length > 0) {
+          return { result: { ok: false, reason: 'dirty', files: dirty } };
+        }
+        const onDisk = await Promise.all(files.map((file) => readIfExists(file.uri, this.files)));
+        const differing = files
+          .map((file, i) => ({ uri: file.uri, bytes: file.bytes, before: onDisk[i] }))
+          .filter((file) => file.before === undefined || !sameBytes(file.before, file.bytes));
+        return differing.length === 0 ? { result: { ok: true } } : { write: differing };
+      },
+    );
+    return 'write' in checked ? this.recordWrite('restore', checked.write, started) : checked.result;
   }
 
-  /** Writes all files or none and keeps the write for undo; `started`: when the task began, for the log. */
-  private async commit(
+  /** Keeps a written step for undo and indexes its files; `started`: when the task began, for the log. */
+  private recordWrite(
     kind: 'write' | 'restore',
-    files: { uri: vscode.Uri; bytes: Uint8Array; before: Uint8Array | undefined }[],
+    files: readonly WrittenFile[],
     started: number,
-  ): Promise<WriteResult> {
-    const failure = await this.putAll(
-      files,
-      files.map((file) => ({ uri: file.uri, bytes: file.before })),
-    );
-    if (failure) {
-      return failure;
-    }
+  ): WriteResult {
     this.history.push({
       files: files.map((file) => ({
         uri: file.uri,
@@ -365,9 +397,17 @@ export class FileStore {
     return { ok: true };
   }
 
-  /** Writes all files or none, and none through a symbolic link; the failure, if any, as a result. */
-  private async putAll(files: Put[], restore: Put[]): Promise<WriteError | undefined> {
-    const linked = await firstLinked(files.map((file) => file.uri));
+  /**
+   * Checks the files and writes them, all or none, and none through a symbolic link. The check runs under the lock of
+   * the index, right before the write: a step waits there for the runs of the index queued before it (a few hundred
+   * milliseconds), and a check before that wait would miss what changed meanwhile (audit L-16). So nothing slow may
+   * happen in `check`.
+   */
+  private async checkAndPut<W extends Replacement, R>(
+    uris: readonly vscode.Uri[],
+    check: () => Promise<Checked<W, R>>,
+  ): Promise<Checked<W, R | WriteError>> {
+    const linked = await firstLinked(uris);
     if (linked) {
       const message = vscode.l10n.t(
         '{file} is reached through the symbolic link {link}; nothing was written.',
@@ -376,14 +416,27 @@ export class FileStore {
           link: linked.link,
         },
       );
-      return { ok: false, reason: 'error', message };
+      return { result: { ok: false, reason: 'error', message } };
     }
-    const failure = await this.index.whileWriting(() => putAllOrNone(this.files, files, restore, this.log));
-    if (!failure) {
-      return undefined;
-    }
-    const result = { ok: false, reason: 'error', message: messageOf(failure.error) } as const;
-    return failure.notRestored.length > 0 ? { ...result, notRestored: failure.notRestored } : result;
+    return this.index.whileWriting(async (): Promise<Checked<W, R | WriteError>> => {
+      const checked = await check();
+      if ('result' in checked) {
+        return checked;
+      }
+      const failure = await putAllOrNone(
+        this.files,
+        checked.write.map(({ uri, bytes }) => ({ uri, bytes })),
+        checked.write.map(({ uri, before }) => ({ uri, bytes: before })),
+        this.log,
+      );
+      if (!failure) {
+        return checked;
+      }
+      const error = { ok: false, reason: 'error', message: messageOf(failure.error) } as const;
+      return {
+        result: failure.notRestored.length > 0 ? { ...error, notRestored: failure.notRestored } : error,
+      };
+    });
   }
 
   /** The indexed root, after a new run if the last one does not have it (e.g. before the first run ended). */
