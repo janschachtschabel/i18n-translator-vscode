@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { createLineIndex, lineStartAt } from '../../../../src/core/text/lineIndex';
+import {
+  atLineStart,
+  blanksAfter,
+  blanksBefore,
+  createLineIndex,
+  lineStartAt,
+} from '../../../../src/core/text/lineIndex';
 
 describe('lineStartAt', () => {
   it('finds the start of the line after \\n, \\r\\n or a lone \\r', () => {
@@ -32,6 +38,31 @@ describe('lineStartAt', () => {
     expect(lineStartAt('ab\ncd', 99)).toBe(3);
     expect(lineStartAt('ab\n', 99)).toBe(3);
     expect(lineStartAt('ab', 99)).toBe(0);
+  });
+});
+
+describe('blanksBefore, blanksAfter and atLineStart', () => {
+  const NBSP = String.fromCharCode(0xa0);
+
+  it('walk over the white space of a line only, and stop at a line break', () => {
+    const text = `a\n \t${NBSP}b${NBSP} \r\nc`;
+    expect(blanksBefore(text, 5)).toBe(2);
+    expect(atLineStart(text, 2)).toBe(true);
+    expect(blanksAfter(text, 6)).toBe(8);
+    expect(text[8]).toBe('\r');
+  });
+
+  it('say where a line starts: at the start of the text, after LF or CR, and nowhere else', () => {
+    expect([0, 1, 2, 3, 4].map((index) => atLineStart('a\nb\rc', index))).toEqual([
+      true,
+      false,
+      true,
+      false,
+      true,
+    ]);
+    expect(blanksBefore('  x', 2)).toBe(0);
+    expect(blanksBefore('a x', 2)).toBe(1);
+    expect(atLineStart('a x', 1)).toBe(false);
   });
 });
 

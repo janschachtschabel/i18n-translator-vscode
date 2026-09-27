@@ -27,6 +27,32 @@ export function lineStartAt(text: string, offset: number): number {
   return start;
 }
 
+/** White space within a line. */
+const BLANK = /[^\S\r\n]/;
+
+/** Where the blanks before `offset` begin: a walk back over them, not to the start of a long line. */
+export function blanksBefore(text: string, offset: number): number {
+  let index = offset;
+  while (index > 0 && BLANK.test(text[index - 1]!)) {
+    index--;
+  }
+  return index;
+}
+
+/** Where the blanks from `offset` on end: at the next line break, other character or the end of the text. */
+export function blanksAfter(text: string, offset: number): number {
+  let index = offset;
+  while (index < text.length && BLANK.test(text[index]!)) {
+    index++;
+  }
+  return index;
+}
+
+/** Whether a line starts at `index`: at the start of the text or after a line break. */
+export function atLineStart(text: string, index: number): boolean {
+  return index === 0 || text.charCodeAt(index - 1) === LF || text.charCodeAt(index - 1) === CR;
+}
+
 /** Maps text offsets to line/character positions; \n, \r\n and a lone \r end a line, as in VS Code. */
 export function createLineIndex(text: string): LineIndex {
   const lineStarts = [0];

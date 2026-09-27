@@ -1,7 +1,7 @@
 import { parseTree, type Node, type ParseError } from 'jsonc-parser';
 import { displayKey, keyFromSegments, type EntryKey } from '../../model/keys';
 import { applyEdits, type TextEdit } from '../../text/edits';
-import { lineStartAt } from '../../text/lineIndex';
+import { atLineStart, blanksBefore, lineStartAt } from '../../text/lineIndex';
 import { detectStyle, type TextStyle } from '../../text/style';
 import { escapeUnits } from '../../text/unicodeEscape';
 import { EditError, setRun, type FileOp, type SetOp } from '../adapter';
@@ -337,8 +337,9 @@ function indentationOfLine(text: string, offset: number): string {
   return /^[ \t]*/.exec(text.slice(lineStartAt(text, offset)))![0];
 }
 
+/** Whether only blanks stand before the node on its line, found by walking back over them. */
 function onOwnLine(text: string, node: Node): boolean {
-  return !/\S/.test(text.slice(lineStartAt(text, node.offset), node.offset));
+  return atLineStart(text, blanksBefore(text, node.offset));
 }
 
 function nextNonSpace(text: string, offset: number): number {

@@ -269,23 +269,27 @@ describe('jsonNestedAdapter.applyOps and encode', () => {
 
     // Each removal read the whole file again: a key defined 8,000 times took 35 s to delete, and duplicates are only
     // a finding, so a user who fixes them runs into it (audit S-14).
+    // Also written on one line: looking for the start of the line of each run went back to the start of the file.
     it('deletes and renames a key defined thousands of times in well under a second', () => {
-      const lines = Array.from(
-        { length: 8_000 },
-        (_, index) => `  "dup": "${index}",\n  "other_${index}": "x"`,
-      );
-      const text = `{\n${lines.join(',\n')}\n}\n`;
-      for (const op of [
-        { kind: 'delete', key: key('dup') },
-        { kind: 'rename', from: key('dup'), to: key('single') },
-      ] satisfies FileOp[]) {
-        const started = performance.now();
-        const written = apply(text, op);
-        const elapsed = performance.now() - started;
-        const names = jsonNestedAdapter.parse(doc(written)).entries.map((entry) => displayKey(entry.key));
-        expect(names.filter((name) => name === 'dup')).toEqual([]);
-        expect(names.filter((name) => name.startsWith('other_'))).toHaveLength(8_000);
-        expect(elapsed).toBeLessThan(1500);
+      const pairs = Array.from({ length: 8_000 }, (_, index) => [
+        `"dup": "${index}"`,
+        `"other_${index}": "x"`,
+      ]);
+      const lines = `{\n${pairs.map((pair) => `  ${pair.join(',\n  ')}`).join(',\n')}\n}\n`;
+      const oneLine = `{${pairs.map((pair) => pair.join(', ')).join(', ')}}\n`;
+      for (const text of [lines, oneLine]) {
+        for (const op of [
+          { kind: 'delete', key: key('dup') },
+          { kind: 'rename', from: key('dup'), to: key('single') },
+        ] satisfies FileOp[]) {
+          const started = performance.now();
+          const written = apply(text, op);
+          const elapsed = performance.now() - started;
+          const names = jsonNestedAdapter.parse(doc(written)).entries.map((entry) => displayKey(entry.key));
+          expect(names.filter((name) => name === 'dup')).toEqual([]);
+          expect(names.filter((name) => name.startsWith('other_'))).toHaveLength(8_000);
+          expect(elapsed).toBeLessThan(1500);
+        }
       }
     });
   });
