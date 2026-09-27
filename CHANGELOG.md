@@ -70,8 +70,15 @@ Klick daneben.
     (8.000 Wiederholungen: 76 ms statt 24 s). In einer Datei mit Byte-Order-Mark bleibt die erste Zeile frei von Keys,
     auch beim Löschen des ersten und beim Einfügen in eine leere Datei; die Prüfung meldet auch einen Key nach
     Leerzeichen in der ersten Zeile.
+  - **JSON und Mail-Vorlagen:** Ein doppelter Key und ein wiederholtes Feld löschen oder benennen sich in Millisekunden
+    um, auch in einer Datei auf einer Zeile (8.000 Wiederholungen in JSON: Löschen und Umbenennen zusammen 0,3 s, das Löschen allein brauchte 108 s). Viele Texte auf einmal,
+    etwa aus der Prüfliste, schreibt die Extension in einem Durchgang (1.600 Texte: unter 20 ms statt 1,6 s).
+  - **Speichern:** Ein Speichern kurz nach dem vorigen wartet nicht mehr auf den Lauf des Index, den der Watcher nach
+    dem vorigen startete; das zweite Speichern antwortet in 42–57 ms statt bis zu 165 ms.
   - **Mail-Vorlagen:** Zeilen- und Absatztrenner (U+2028, U+2029) werden als Zeichenreferenzen geschrieben; `&constructor;`
-    und ähnliche Namen gelten nicht mehr als XML-Entity.
+    und ähnliche Namen gelten nicht mehr als XML-Entity. Ein Platzhalter mit Leerzeichen wie `{{ link }}` gilt als falsch
+    geschrieben und weicht von `{{link}}` ab: edu-sharing ersetzt nur genau `{{link}}` (Schreibweise
+    `double-brace-exact`, siehe [Einstellungen](docs/einstellungen.md#edui18nareas)).
   - **Editor:** Ein KI-Vorschlag, der während einer Änderung von außen kommt, ersetzt den Entwurf nicht mehr, und „Neuen
     Text übernehmen“ beendet ihn. Nach dem Neuladen der Seite gilt keine Antwort der alten Seite für einen Text der
     neuen. Die kompakte Liste zeigt eine ausgeblendete Referenz nicht mehr.

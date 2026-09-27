@@ -2047,7 +2047,8 @@ jedem Commit das Gate. Nach A4 und nach A8 prüft je ein Reviewer mit frischem K
 **Entscheidung:** Neue Schreibweise `double-brace-exact` für `placeholderSyntax`, gesetzt im Mail-Preset: edu-sharing
 ersetzt dort nur genau `{{name}}` (`Mail.replaceString`). Angular bleibt bei `double-brace`, weil ngx-translate auch
 `{{ name }}` ersetzt; im Clone steht das oft (`{{ element }}` 29-mal). Die Mails im Clone haben keine Platzhalter mit
-Leerzeichen.
+Leerzeichen. In der Umsetzung ergänzt: Ein Platzhalter mit Leerzeichen am Rand ist in Mails zudem
+`placeholder-malformed`, weil kein Parameter einer Mail eines hat; so fällt er auch auf, wo die Referenz ihn genauso hat.
 **Dateien:** Modify `src/core/area/areaDefinition.ts`, `presets.ts`, `src/core/checks/placeholders.ts`,
 `src/webview/inlineCheck.ts` (Bedingungen auch bei `double-brace-exact`), `src/shared/viewModel.ts` (Schreibweise
 übertragen, wenn sie nicht der Standard ist), `package.json` (Enum), `package.nls*.json`, `docs/einstellungen.md`;
@@ -2127,6 +2128,20 @@ und axe bleiben grün; Fokus-Tests wie bisher.
 `npm run test:integration` (alle Profile), `npm run test:perf`, Abschnitt 10 des Audits, CHANGELOG (sichtbar: `L-31`,
 Leistung), README und `docs/einstellungen.md` (`double-brace-exact`); Push auf `feat/extension-v1`, CI einmal prüfen,
 Beschreibung von PR #10 ergänzen.
+
+**Ergebnis (27.09.2026):** Alle acht Befunde umgesetzt, Einzelheiten in Abschnitt 10 des Audits.
+- **Abweichungen vom Plan:**
+  - `lineStartAt` bekam einen eigenen Commit: Es suchte in Texten ohne CR bis zum Anfang.
+  - Das Review fand `S-14` für JSON auf einer Zeile noch quadratisch und die Mails in derselben Klasse. Beides ist
+    behoben.
+  - `edits.ts` bleibt ungeteilt: Die Konflikte berühren jeden Übergang der Zustandsmaschine.
+  - `checkWrite` bleibt im `FileStore`: Die Prüfung liest die Platte und muss in der Sperre von `checkAndPut` laufen.
+    In `writeScope.ts` ging nur die reine Planung.
+  - Von den Fokusregeln bleibt nur die der Tabelle außerhalb des Hooks: Sie holt auch einen Fokus im Raster zurück,
+    der nicht verloren ist.
+- **Reviews mit frischem Kontext:**
+  - Nach dem Verhalten: 1 MAJOR, 3 MINOR, 2 NIT, alle behoben.
+  - Nach den Umbauten: 2 MINOR, 1 NIT und ein Einwand zur Werkzeugleiste, alle umgesetzt.
 
 ## Phasen 3–8 (Gliederung – Detailtasks folgen vor Phasenstart)
 
