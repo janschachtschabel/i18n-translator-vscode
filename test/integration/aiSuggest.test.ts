@@ -1,6 +1,7 @@
 import * as assert from 'node:assert/strict';
 import * as vscode from 'vscode';
 import { keyFromSegments } from '../../src/core/model/keys';
+import type { Prompts } from '../../src/extension/commands/prompts';
 import type { ExtensionApi } from '../../src/extension/extension';
 import type { EditorPanel } from '../../src/extension/panels/editorPanel';
 import type { HostToWebview } from '../../src/shared/protocol';
@@ -149,6 +150,63 @@ suite('AI suggestion for a cell', function () {
       [],
     );
     assert.equal(server.requests.filter((request) => request.path.endsWith('/chat/completions')).length, 0);
+  });
+
+  test('asks nothing and answers nothing for a request cancelled before its consent', async () => {
+    // A new address: the consent is still to be asked.
+    const { server } = await serve(translator());
+    const prompts = answering(true);
+    const editor = await editorWith(api, prompts);
+    try {
+      const before = editor.posts.length;
+      const done = editor.editorPanel.receive({
+        type: 'aiSuggest',
+        requestId: 'n1',
+        entryId: id('CANCEL'),
+        locale: 'fr',
+      });
+      await editor.editorPanel.receive({ type: 'aiCancel', requestId: 'n1' });
+      await done;
+      assert.deepEqual(prompts.asked, [], 'no question for a cancelled request');
+      assert.deepEqual(
+        editor.posts.slice(before).filter((message) => message.type === 'aiSuggestion'),
+        [],
+      );
+      assert.equal(server.requests.filter((request) => request.path.endsWith('/chat/completions')).length, 0);
+    } finally {
+      editor.close();
+    }
+  });
+
+  test('answers nothing to a request cancelled while its consent is asked, even when asking fails', async () => {
+    const { server } = await serve(translator());
+    let cancel = async (): Promise<void> => undefined;
+    const prompts: Prompts = {
+      ...answering(),
+      // As VS Code's test host refuses a modal dialog, after the editor cancelled the request.
+      confirm: async () => {
+        await cancel();
+        throw new Error('The dialog was refused.');
+      },
+    };
+    const editor = await editorWith(api, prompts);
+    cancel = () => editor.editorPanel.receive({ type: 'aiCancel', requestId: 'n2' });
+    try {
+      const before = editor.posts.length;
+      await editor.editorPanel.receive({
+        type: 'aiSuggest',
+        requestId: 'n2',
+        entryId: id('CANCEL'),
+        locale: 'fr',
+      });
+      assert.deepEqual(
+        editor.posts.slice(before).filter((message) => message.type === 'aiSuggestion'),
+        [],
+      );
+      assert.equal(server.requests.filter((request) => request.path.endsWith('/chat/completions')).length, 0);
+    } finally {
+      editor.close();
+    }
   });
 
   test('asks for the consent only when there is a text to send, and sends nothing without it', async () => {

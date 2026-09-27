@@ -62,32 +62,14 @@ export class AiPanel implements vscode.Disposable {
     this.jobs.abort();
   }
 
-  /** Answers a request for a suggestion; whatever happens, the editor gets an answer and waits no longer. */
-  async suggest(request: { requestId: string; entryId: string; locale: string }): Promise<void> {
-    try {
-      await this.answer(request);
-    } catch (error) {
-      this.services.log.error('A suggestion failed.', error);
-      await this.post({
-        type: 'aiSuggestion',
-        requestId: request.requestId,
-        message: vscode.l10n.t('The suggestion failed: {error}', { error: messageOf(error) }),
-      });
-    }
-  }
-
-  private async answer({
-    requestId,
-    entryId,
-    locale,
-  }: {
-    requestId: string;
-    entryId: string;
-    locale: string;
-  }) {
+  /**
+   * Answers a request for a suggestion; whatever happens, the editor gets an answer and waits no longer. A request it
+   * cancelled (or one of a page that reloaded) sends nothing and gets no answer.
+   */
+  async suggest({ requestId, entryId, locale }: { requestId: string; entryId: string; locale: string }) {
     const { ai, consent, index, prompts, log } = this.services;
-    // Cancellable from the start: a cancel (or a reload of the page) may come while the settings are read or the
-    // consent is asked, before anything is sent. A cancelled request sends nothing and gets no answer.
+    // Cancellable from the start: a cancel may come while the settings are read or the consent is asked, before
+    // anything is sent.
     const controller = new AbortController();
     this.pending.get(requestId)?.abort();
     this.pending.set(requestId, controller);
@@ -110,9 +92,12 @@ export class AiPanel implements vscode.Disposable {
         { entryId, locale },
         client.status.settings,
       );
-      // Nothing to send: no reason to ask for the consent.
+      // Nothing to send: no reason to ask for the consent. Nor for a request cancelled meanwhile.
       if ('message' in request) {
         await reply(request);
+        return;
+      }
+      if (controller.signal.aborted) {
         return;
       }
       if (!(await consent.ensure(client.status.host, prompts))) {
@@ -123,6 +108,9 @@ export class AiPanel implements vscode.Disposable {
         return;
       }
       await reply(await requestSuggestion(client, request, log, controller.signal));
+    } catch (error) {
+      log.error('A suggestion failed.', error);
+      await reply({ message: vscode.l10n.t('The suggestion failed: {error}', { error: messageOf(error) }) });
     } finally {
       // A request of a reloaded page may have taken the id meanwhile.
       if (this.pending.get(requestId) === controller) {
