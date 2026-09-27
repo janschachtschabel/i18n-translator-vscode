@@ -116,13 +116,13 @@ function operations(rng: Rng, paths: readonly string[][]): FileOp[] {
   return ops;
 }
 
-/** The text after the operations, or the code of the error that stopped them. */
+/** The text after the operations, or the error that stopped them, with the keys it names. */
 function outcome(run: () => string): string {
   try {
     return run();
   } catch (error) {
     if (error instanceof EditError) {
-      return `EditError ${error.code}`;
+      return `EditError ${error.code} ${error.key?.id} ${error.other?.id}`;
     }
     throw error;
   }
