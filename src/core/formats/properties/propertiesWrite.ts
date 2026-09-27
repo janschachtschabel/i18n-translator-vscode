@@ -174,32 +174,46 @@ function removeEvery(text: string, key: EntryKey, required: boolean, bom: boolea
   if (definitions.length === 0 && required) {
     throw new EditError('missing-key', `${displayKey(key)} does not exist in this file.`, key);
   }
-  // From the last to the first, on one reading: a removal changes nothing before it but the line break that a last
-  // line without one takes from the line before, which removeLines reads in the text as it is then. Reading the file
-  // again after each removal took quadratic time (audit S-14).
-  let current = text;
-  for (const definition of definitions.reverse()) {
-    current = removeLines(current, definition, bom);
+  // On one reading and as one edit, from the last definition to the first: a removal changes nothing before it but
+  // the line break that the last line of the text, without one, takes from the line before; `end` follows where the
+  // text ends meanwhile. Reading the file again after each removal took quadratic time (audit S-14).
+  const edits: TextEdit[] = [];
+  let end = text.length;
+  for (const definition of [...definitions].reverse()) {
+    const edit = removal(text, definition, end, bom);
+    if (edit.offset + edit.length === end) {
+      end = edit.offset;
+    }
+    if (edit.length > 0) {
+      edits.push(edit);
+    }
   }
-  return current;
+  return applyEdits(text, edits);
 }
 
 /**
- * The lines of a definition; for a last line without line break, the line break before it goes instead. In a file
- * with a byte order mark, the first line stays, empty: the next key would take the mark (audit L-25).
+ * The lines of a definition, in a text that ends at `end` meanwhile; for a last line without line break, the line
+ * break before it goes instead. In a file with a byte order mark, the first line stays, empty: the next key would
+ * take the mark (audit L-25).
  */
-function removeLines(text: string, definition: Definition, bom: boolean): string {
-  // The line break after the definition as the text has it now: a removal after it may have taken it.
-  const end = definition.valueRange[1];
-  const lineBreak = text.startsWith('\r\n', end) ? 2 : text[end] === '\n' || text[end] === '\r' ? 1 : 0;
+function removal(text: string, definition: Definition, end: number, bom: boolean): TextEdit {
+  const valueEnd = definition.valueRange[1];
+  const lineBreak =
+    valueEnd >= end
+      ? 0
+      : text.startsWith('\r\n', valueEnd)
+        ? 2
+        : text[valueEnd] === '\n' || text[valueEnd] === '\r'
+          ? 1
+          : 0;
   if (bom && definition.lineStart === 0 && lineBreak > 0) {
-    return applyEdits(text, [{ offset: 0, length: end, content: '' }]);
+    return { offset: 0, length: valueEnd, content: '' };
   }
   let start = definition.lineStart;
   if (lineBreak === 0 && start > 0) {
     start -= text.startsWith('\r\n', start - 2) ? 2 : 1;
   }
-  return applyEdits(text, [{ offset: start, length: end + lineBreak - start, content: '' }]);
+  return { offset: start, length: valueEnd + lineBreak - start, content: '' };
 }
 
 function read(text: string): Definition[] {

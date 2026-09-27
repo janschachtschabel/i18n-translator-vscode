@@ -176,6 +176,12 @@ describe('propertiesAdapter.applyOps: delete and rename', () => {
     expect(apply('a=1\nb=2\na=3\n', { kind: 'delete', key: key('a') })).toBe('b=2\n');
   });
 
+  // Only the lines of the definitions go: a removal one by one brought the CR of one line and the LF of a blank line
+  // together, read them as one line break and took the blank line along.
+  it('removes the lines of the definitions and no others', () => {
+    expect(apply('x=0\rx=1\n\nb=2\n', { kind: 'delete', key: key('x') })).toBe('\nb=2\n');
+  });
+
   it('removes all lines of a continued definition', () => {
     expect(apply('a=x\\\n  y\nb=2\n', { kind: 'delete', key: key('a') })).toBe('b=2\n');
   });
