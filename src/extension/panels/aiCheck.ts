@@ -1,6 +1,5 @@
 import * as vscode from 'vscode';
 import { runAiJob, type JobResult } from '../../core/ai/aiJob';
-import { chatCompletion } from '../../core/ai/bapiClient';
 import {
   CHECK_FORMAT,
   checkMessages,
@@ -8,9 +7,8 @@ import {
   type CheckItem,
   type CheckVerdict,
 } from '../../core/ai/checkPrompt';
-import { describeLanguage } from '../../core/ai/languages';
-import { completionBody, tokenBudget } from '../../core/ai/modelProfiles';
 import { checkItems, MAX_CHARACTERS, requestCount } from '../../core/ai/jobItems';
+import { askChunk, itemCharacters, promptFrame } from '../../core/ai/jobPrompt';
 import { checkEntries, sourceLocale } from '../../core/ai/sources';
 import type { Bundle } from '../../core/model/bundle';
 import type { AiJobItem } from '../../shared/aiProtocol';
@@ -43,41 +41,33 @@ export function runCheck({
   onItems,
 }: JobRun): Promise<JobResult> {
   const { settings } = status;
-  const { variants, baseFileLanguage } = root.settings;
-  const describe = (code: string) => ({
-    code,
-    description: describeLanguage(code, settings.languageDescriptions, baseFileLanguage),
-  });
-  const { items, entries } = checkItems(bundle, choice, Object.keys(variants));
+  const { items, entries } = checkItems(bundle, choice, Object.keys(root.settings.variants));
   const prompt = {
-    source: describe(choice.source),
-    target: describe(choice.locale),
-    variant: choice.source === variants[choice.locale]?.base,
-    syntax: root.analysis.area.placeholderSyntax ?? 'double-brace',
-    html: bundle.format === 'mail-xml',
+    ...promptFrame({
+      format: bundle.format,
+      area: root.analysis.area,
+      settings: root.settings,
+      descriptions: settings.languageDescriptions,
+      source: choice.source,
+      target: choice.locale,
+    }),
     uiLanguage: uiLanguage(vscode.env.language),
-  } as const;
-  const effort = settings.reviewReasoningEffort;
+  };
   return runAiJob<CheckItem, CheckVerdict>(items, {
     batchSize: settings.batchSize,
     maxCharacters: MAX_CHARACTERS,
     concurrency: settings.maxConcurrency,
     signal,
     ask: async (chunk, chunkSignal) => {
-      const characters = chunk.reduce(
-        (sum, item) =>
-          sum + item.source.length + item.text.length + Object.values(item.context ?? {}).join('').length,
-        0,
-      );
-      const { content } = await chatCompletion(
+      const { content } = await askChunk(
         client,
-        completionBody({
+        {
           model: settings.model,
+          effort: settings.reviewReasoningEffort,
           messages: checkMessages({ ...prompt, items: chunk }),
           format: CHECK_FORMAT,
-          effort,
-          maxTokens: tokenBudget(characters, effort),
-        }),
+          characters: chunk.reduce((sum, item) => sum + itemCharacters(item), 0),
+        },
         chunkSignal,
       );
       return parseCheck(

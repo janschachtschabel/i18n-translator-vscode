@@ -1,7 +1,5 @@
 import * as vscode from 'vscode';
-import { chatCompletion } from '../../core/ai/bapiClient';
-import { describeLanguage } from '../../core/ai/languages';
-import { completionBody, tokenBudget } from '../../core/ai/modelProfiles';
+import { askChunk, itemCharacters, promptFrame } from '../../core/ai/jobPrompt';
 import { parseTranslations, TRANSLATIONS_FORMAT, translationMessages } from '../../core/ai/prompts';
 import { fillEntries, sourceLocale, type FillScope } from '../../core/ai/sources';
 import { runAiJob, type JobResult } from '../../core/ai/aiJob';
@@ -39,38 +37,30 @@ export function runFill({
   onItems,
 }: JobRun): Promise<JobResult> {
   const { settings } = status;
-  const { variants, baseFileLanguage } = root.settings;
-  const describe = (code: string) => ({
-    code,
-    description: describeLanguage(code, settings.languageDescriptions, baseFileLanguage),
+  const { items, entries } = fillItems(bundle, choice, Object.keys(root.settings.variants));
+  const frame = promptFrame({
+    format: bundle.format,
+    area: root.analysis.area,
+    settings: root.settings,
+    descriptions: settings.languageDescriptions,
+    source: choice.source,
+    target: choice.locale,
   });
-  const { items, entries } = fillItems(bundle, choice, Object.keys(variants));
-  const prompt = {
-    source: describe(choice.source),
-    target: describe(choice.locale),
-    variant: choice.source === variants[choice.locale]?.base,
-    syntax: root.analysis.area.placeholderSyntax ?? 'double-brace',
-    html: bundle.format === 'mail-xml',
-  } as const;
   return runAiJob(items, {
     batchSize: settings.batchSize,
     maxCharacters: MAX_CHARACTERS,
     concurrency: settings.maxConcurrency,
     signal,
     ask: async (chunk, chunkSignal) => {
-      const characters = chunk.reduce(
-        (sum, item) => sum + item.source.length + Object.values(item.context ?? {}).join('').length,
-        0,
-      );
-      const { content } = await chatCompletion(
+      const { content } = await askChunk(
         client,
-        completionBody({
+        {
           model: settings.model,
-          messages: translationMessages({ ...prompt, items: chunk }),
-          format: TRANSLATIONS_FORMAT,
           effort: settings.reasoningEffort,
-          maxTokens: tokenBudget(characters, settings.reasoningEffort),
-        }),
+          messages: translationMessages({ ...frame, items: chunk }),
+          format: TRANSLATIONS_FORMAT,
+          characters: chunk.reduce((sum, item) => sum + itemCharacters(item), 0),
+        },
         chunkSignal,
       );
       return parseTranslations(

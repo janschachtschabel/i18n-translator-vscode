@@ -1,8 +1,8 @@
 import * as vscode from 'vscode';
 import type { AiSettings } from '../../core/config/aiSettings';
-import { chatCompletion, type ClientOptions } from '../../core/ai/bapiClient';
-import { describeLanguage } from '../../core/ai/languages';
-import { completionBody, tokenBudget, type ChatMessage } from '../../core/ai/modelProfiles';
+import type { ClientOptions } from '../../core/ai/bapiClient';
+import { askChunk, itemCharacters, promptFrame } from '../../core/ai/jobPrompt';
+import type { ChatMessage } from '../../core/ai/modelProfiles';
 import { parseTranslations, TRANSLATIONS_FORMAT, translationMessages } from '../../core/ai/prompts';
 import { contextTexts, sourceLocale } from '../../core/ai/sources';
 import { displayKey } from '../../core/model/keys';
@@ -64,21 +64,20 @@ export function suggestionRequest(
       message: vscode.l10n.t('{key} has no text in {locale} to translate from.', { key, locale: source }),
     };
   }
-  const describe = (code: string) => ({
-    code,
-    description: describeLanguage(code, settings.languageDescriptions, root.settings.baseFileLanguage),
-  });
   const context = contextTexts(bundle, entryId, [source, locale, ...Object.keys(root.settings.variants)]);
+  const item = { key, source: sourceText, context };
   const messages = translationMessages({
-    source: describe(source),
-    target: describe(locale),
-    variant: source === root.settings.variants[locale]?.base,
-    syntax: root.analysis.area.placeholderSyntax ?? 'double-brace',
-    html: bundle.format === 'mail-xml',
-    items: [{ key, source: sourceText, context }],
+    ...promptFrame({
+      format: bundle.format,
+      area: root.analysis.area,
+      settings: root.settings,
+      descriptions: settings.languageDescriptions,
+      source,
+      target: locale,
+    }),
+    items: [item],
   });
-  const characters = sourceText.length + Object.values(context).join('').length;
-  return { bundleName: bundle.name, locale, key, messages, characters };
+  return { bundleName: bundle.name, locale, key, messages, characters: itemCharacters(item) };
 }
 
 /** Sends a prepared request; the answer is the text for the key, or why there is none, in the user's language. */
@@ -93,15 +92,15 @@ export async function requestSuggestion(
   const { bundleName, locale, key, messages, characters } = request;
   const started = Date.now();
   try {
-    const { content, usage } = await chatCompletion(
+    const { content, usage } = await askChunk(
       options,
-      completionBody({
+      {
         model: settings.model,
+        effort: settings.reasoningEffort,
         messages,
         format: TRANSLATIONS_FORMAT,
-        effort: settings.reasoningEffort,
-        maxTokens: tokenBudget(characters, settings.reasoningEffort),
-      }),
+        characters,
+      },
       signal,
     );
     const text = parseTranslations(content, [key]).texts.get(key);
