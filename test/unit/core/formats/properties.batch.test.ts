@@ -164,6 +164,27 @@ describe('applyPropertiesOps with many operations', () => {
     },
   );
 
+  // Each removal read the whole file again: a key defined 8,000 times (47 KB) took 24 s to delete, and duplicates are
+  // only a finding, so a user who fixes them runs into it (audit S-14).
+  it('deletes and renames a key defined thousands of times in well under a second', () => {
+    const text = Array.from({ length: 8_000 }, (_, index) => `dup=${index}${LF}other.${index}=x${LF}`).join(
+      '',
+    );
+    for (const op of [
+      { kind: 'delete', key: key('dup') },
+      { kind: 'rename', from: key('dup'), to: key('single') },
+    ] satisfies FileOp[]) {
+      const started = performance.now();
+      const written = applyPropertiesOps(text, [op]);
+      const elapsed = performance.now() - started;
+      const read = readDefinitions(written);
+      const names = read.ok ? read.definitions.map((definition) => definition.key) : [];
+      expect(names.filter((name) => name === 'dup')).toEqual([]);
+      expect(names.filter((name) => name.startsWith('other.'))).toHaveLength(8_000);
+      expect(elapsed).toBeLessThan(1500);
+    }
+  });
+
   it('writes the texts of a new language of the largest bundle at once in well under a second', () => {
     // valuespaces_i18n: 1,546 keys, of which fr has 314; a fill inserts the other 1,232, each after the key before it.
     const all = Array.from(

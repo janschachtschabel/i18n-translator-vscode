@@ -183,6 +183,9 @@ describe('propertiesAdapter.applyOps: delete and rename', () => {
   it('keeps a file without a final line break without one', () => {
     expect(apply('a=1\nb=2', { kind: 'delete', key: key('b') })).toBe('a=1');
     expect(apply('a=1', { kind: 'delete', key: key('a') })).toBe('');
+    // Also when a continued definition of the key ends on a blank line before its last definition; reading the file
+    // again after each removal (before S-14) added a line break here.
+    expect(apply('a=1\nk=ends \\\n\nk=v', { kind: 'delete', key: key('k') })).toBe('a=1');
   });
 
   it('renames the definition that applies and drops the earlier ones', () => {

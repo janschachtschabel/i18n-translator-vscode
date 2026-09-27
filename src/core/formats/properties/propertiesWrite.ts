@@ -169,14 +169,17 @@ function renameKey(text: string, from: EntryKey, to: EntryKey, bom: boolean): st
 
 /** Removes every definition of the key with its lines; `required`: the key must be there. */
 function removeEvery(text: string, key: EntryKey, required: boolean, bom: boolean): string {
-  let current = text;
-  let definition = lastDefinition(read(current), key);
-  if (!definition && required) {
+  const name = nameOf(key);
+  const definitions = read(text).filter((definition) => definition.key === name);
+  if (definitions.length === 0 && required) {
     throw new EditError('missing-key', `${displayKey(key)} does not exist in this file.`, key);
   }
-  while (definition) {
+  // From the last to the first, on one reading: a removal changes nothing before it but the line break that a last
+  // line without one takes from the line before, which removeLines reads in the text as it is then. Reading the file
+  // again after each removal took quadratic time (audit S-14).
+  let current = text;
+  for (const definition of definitions.reverse()) {
     current = removeLines(current, definition, bom);
-    definition = lastDefinition(read(current), key);
   }
   return current;
 }
@@ -186,15 +189,17 @@ function removeEvery(text: string, key: EntryKey, required: boolean, bom: boolea
  * with a byte order mark, the first line stays, empty: the next key would take the mark (audit L-25).
  */
 function removeLines(text: string, definition: Definition, bom: boolean): string {
-  if (bom && definition.lineStart === 0 && hasLineBreak(definition)) {
-    const lineBreak = text.slice(definition.lineEnd - 2, definition.lineEnd) === '\r\n' ? 2 : 1;
-    return applyEdits(text, [{ offset: 0, length: definition.lineEnd - lineBreak, content: '' }]);
+  // The line break after the definition as the text has it now: a removal after it may have taken it.
+  const end = definition.valueRange[1];
+  const lineBreak = text.startsWith('\r\n', end) ? 2 : text[end] === '\n' || text[end] === '\r' ? 1 : 0;
+  if (bom && definition.lineStart === 0 && lineBreak > 0) {
+    return applyEdits(text, [{ offset: 0, length: end, content: '' }]);
   }
   let start = definition.lineStart;
-  if (!hasLineBreak(definition) && start > 0) {
-    start -= text.slice(0, start).endsWith('\r\n') ? 2 : 1;
+  if (lineBreak === 0 && start > 0) {
+    start -= text.startsWith('\r\n', start - 2) ? 2 : 1;
   }
-  return applyEdits(text, [{ offset: start, length: definition.lineEnd - start, content: '' }]);
+  return applyEdits(text, [{ offset: start, length: end + lineBreak - start, content: '' }]);
 }
 
 function read(text: string): Definition[] {
