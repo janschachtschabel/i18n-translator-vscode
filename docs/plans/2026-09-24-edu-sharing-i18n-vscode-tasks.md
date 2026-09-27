@@ -2033,6 +2033,101 @@ ist in VS Code belegt (in der Capture-Phase abfangen, Knopf als zweiter Weg).
   - Vorhanden: Die memoisierte `TableRow` liest `store.mailPreview.value` (sicher nur, weil ein neues Modell neue
     Zeilen bringt); Strg+I auf einer Zelle bei ausgeschalteter KI öffnet den Editor und schluckt die Taste.
 
+## Offene Befunde des zweiten Audits (27.09.2026)
+
+**Anlass:** Der Nutzer bittet, die offenen Befunde des zweiten Audits zu lösen
+([`docs/audits/2026-09-27-audit.md`](../audits/2026-09-27-audit.md), Abschnitt 10): `L-31`, die JSON-Hälfte von
+`S-14`, `P-07`, `P-06`, `M-10`, den Rest von `M-08`, `M-09` und `M-07`.
+
+**Schritt 0:** `/better-coding-workflow`, für A8 zusätzlich `/better-coding-frontend`. Erst das Verhalten (Korrektheit,
+dann Leistung), dann die Umbauten: Kein Umbau versteckt eine Änderung des Verhaltens. Ein Commit je Befund, vor
+jedem Commit das Gate. Nach A4 und nach A8 prüft je ein Reviewer mit frischem Kontext den Block.
+
+### Task A1: Platzhalter in Mails exakt (`L-31`)
+**Entscheidung:** Neue Schreibweise `double-brace-exact` für `placeholderSyntax`, gesetzt im Mail-Preset: edu-sharing
+ersetzt dort nur genau `{{name}}` (`Mail.replaceString`). Angular bleibt bei `double-brace`, weil ngx-translate auch
+`{{ name }}` ersetzt; im Clone steht das oft (`{{ element }}` 29-mal). Die Mails im Clone haben keine Platzhalter mit
+Leerzeichen.
+**Dateien:** Modify `src/core/area/areaDefinition.ts`, `presets.ts`, `src/core/checks/placeholders.ts`,
+`src/webview/inlineCheck.ts` (Bedingungen auch bei `double-brace-exact`), `src/shared/viewModel.ts` (Schreibweise
+übertragen, wenn sie nicht der Standard ist), `package.json` (Enum), `package.nls*.json`, `docs/einstellungen.md`;
+Test: `placeholders.test.ts`, `rules/placeholders.test.ts`, `inlineCheck.test.ts`, `viewModel.test.ts`,
+`presets.test.ts`
+**Testfälle:** Mail-Bereich: Referenz `{{link}}`, Übersetzung `{{ link }}` → `placeholder-mismatch` mit
+`missing={{link}}` und `extra={{ link }}`; in Angular kein Befund; `{{ }}` bleibt `placeholder-malformed`; Bedingungen
+und `{{GENDER_SEPARATOR}}` wie bisher; die Prüfung beim Tippen meldet im Mail-Editor dasselbe und weiter die
+Bedingungen.
+**Commit:** `fix(core): compare mail placeholders exactly, as edu-sharing replaces them`
+
+### Task A2: Doppelte JSON-Keys in einem Durchgang entfernen (`S-14`, JSON)
+**Dateien:** Modify `src/core/formats/json/jsonWrite.ts` (`removeEvery`); Test: `jsonNested.write.test.ts`
+**Vorgehen:** Alle Definitionen des Namens aus einem Lesen. Zusammenhängende Läufe gehen mit einer Änderung je Lauf:
+bis zur nächsten bleibenden Eigenschaft oder, am Ende des Objekts, ab dem Wert davor. Alle Änderungen gehen mit einem
+`applyEdits`. Eine Probe im Scratchpad vergleicht auf Zufallsdateien mit dem bisherigen Entfernen; Abweichungen werden
+mit Test festgehalten.
+**Testfälle:** 8.000 Wiederholungen löschen und umbenennen in deutlich unter 1 s; Läufe am Anfang, in der Mitte, am
+Ende, auf einer Zeile und gemischt, mit CRLF.
+**Commit:** `fix(core): remove every definition of a JSON key in one pass`
+
+### Task A3: Folgen von Setzungen auf einem Lesen (`P-07`)
+**Dateien:** Modify `src/core/formats/json/jsonWrite.ts` (`applyJsonOps`), `src/core/formats/mail/mailWrite.ts`
+(`applyMailOps`); Test: `jsonNested.batch.test.ts` (neu), `mail.write.test.ts`
+**Vorgehen:** Eine Folge von `set` mit verschiedenen Keys geht auf einem Lesen mit einem `applyEdits`; die Setzungen
+treffen getrennte Bereiche, das Ergebnis gleicht also dem Schreiben Text für Text. Neu gelesen wird vor einem
+Einfügen, Löschen oder Umbenennen und vor einem Key, den die Folge schon setzt.
+**Testfälle:** Stapel gleich Operation für Operation auf 10.000 Zufallsfällen (wie `properties.batch.test.ts`); ein
+Fehler mitten in der Folge ist derselbe; 1.600 Setzungen in 120 KiB in deutlich unter 1 s.
+**Commit:** `perf(core): write a run of JSON and mail texts on one parse`
+
+### Task A4: Nach dem Watcher nur die gemeldeten Dateien vergleichen (`P-06`)
+**Dateien:** Modify `src/extension/services/indexWatchers.ts` (die Datei geht an `onChange`), `workspaceIndex.ts`;
+Test: `test/integration/workspaceIndex.test.ts`
+**Vorgehen:** `schedule` sammelt je Wurzel die gemeldeten Dateien. Nach der Wartezeit liest der Index unter seiner
+Sperre nur diese und vergleicht sie mit den indexierten Revisionen. Einen Lauf der Wurzel gibt es nur, wenn eine
+Datei anders ist, neu, verschwunden, zu groß oder ein Link, oder wenn die Wurzel beim letzten Lauf Fehler hatte.
+**Testfälle:** Eigener Index mit `limits.files = 1`, sodass jeder Lauf der Wurzel scheitert und das meldet. Eine
+Datei bekommt dieselben Bytes: kein Lauf. Andere Bytes: Lauf. Hinzufügen und Löschen wie bisher. `npm run
+test:perf`: das zweite Speichern unter 150 ms, mehrmals gemessen.
+**Commit:** `perf(index): compare the reported files before a root run, so that a save need not wait for it`
+
+**Review nach A4:** Kern und Host, frischer Kontext.
+
+### Task A5: Typ-Zyklus der KI-Panels (`M-10`)
+**Dateien:** Create `src/extension/panels/aiPanelServices.ts` (`AiPanelServices`); Modify `aiPanel.ts`, `aiJobs.ts`
+**Prüfung:** madge (auch mit Typ-Importen) ohne Zyklus.
+**Commit:** `refactor(ai): give the services of the AI panel a module of their own`
+
+### Task A6: Prompt-Rahmen und Anfrage im Kern (`M-08`)
+**Dateien:** Create `src/core/ai/jobPrompt.ts` (Sprachen, Variante, Schreibweise, HTML; die Anfrage eines Pakets mit
+Token-Budget); Modify `src/extension/panels/aiFill.ts`, `aiCheck.ts`, `suggestCell.ts`; Test:
+`test/unit/core/ai/jobPrompt.test.ts`
+**Testfälle:** Beschreibung der Sprachen samt Basisdatei, Variante nur zu ihrer Basis, Schreibweise des Bereichs,
+HTML nur bei Mails; die Anfrage trägt Modell, Format, Aufwand und Budget aus den Zeichen des Pakets.
+**Commit:** `refactor(ai): build the prompt frame and ask for a chunk in the core`
+
+### Task A7: Lange Funktionen und Dateien (`M-09`)
+Nach Verantwortung geteilt, nicht nach Zeilen; jede Teilung verschiebt Code, ohne ihn zu ändern:
+- `workspaceIndex.ts`: der Schritt je Wurzel (auflisten, lesen, analysieren), den `index` und `indexRoot` teilen.
+- `fileStore.ts`: die Prüfungen vor dem Schreiben (`checkWrite` und die Helfer zu Einheiten und Wurzeln) in ein eigenes
+  Modul.
+- `edits.ts` (Webview): die Konflikte mit Änderungen von außen in ein eigenes Modul.
+- `store.ts`, `xmlTokens.ts`, `backupService.ts`, `jsonWrite.ts`: prüfen, ob sie mehr als eine Verantwortung tragen;
+  sonst bleiben sie.
+**Commit:** je Datei `refactor(…): …`
+
+### Task A8: Status-Markup und Fokusrückfall (`M-07`)
+**Dateien:** Create eine Komponente für Symbol und Text der Schwere (aus `Note` in `reviewEntry.tsx`) für alle elf
+Stellen; ein Hook für den Rückfall des Fokus mit geordneten Zielen, wo die Regeln dasselbe tun. Tests der Komponenten
+und axe bleiben grün; Fokus-Tests wie bisher.
+**Commit:** `refactor(webview): one component for a status symbol and its text`, `refactor(webview): …focus…`
+
+**Review nach A8:** Umbauten und Webview, frischer Kontext.
+
+### Task A9: Nachweise, Doku, Push
+`npm run test:integration` (alle Profile), `npm run test:perf`, Abschnitt 10 des Audits, CHANGELOG (sichtbar: `L-31`,
+Leistung), README und `docs/einstellungen.md` (`double-brace-exact`); Push auf `feat/extension-v1`, CI einmal prüfen,
+Beschreibung von PR #10 ergänzen.
+
 ## Phasen 3–8 (Gliederung – Detailtasks folgen vor Phasenstart)
 
 **Phase 3 – Füllen (Übersetzungsspeicher und KI).** Detailtasks: siehe „Phase 3 – Füllen mit KI“ oben; die
