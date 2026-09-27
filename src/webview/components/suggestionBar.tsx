@@ -9,7 +9,7 @@ export const SUGGESTION_ID = 'editor-suggestion';
 interface SuggestionBarProps {
   store: EditorStore;
   editor: OpenEditor;
-  /** Whether the cell has a text to translate from: the reference's, or a variant's base. */
+  /** Whether the cell has a text to translate from, as far as the page knows: the reference has one. */
   hasSource: boolean;
   /** Asks for a suggestion; the field keeps the focus. */
   onSuggest: () => void;
@@ -41,7 +41,12 @@ export function SuggestionBar({ store, editor, hasSource, onSuggest }: Suggestio
   const loading = mine && state.kind === 'loading';
   return (
     <div class="editor-ai">
-      <button type="button" aria-keyshortcuts="Control+I Meta+I" disabled={loading} onClick={onSuggest}>
+      <button
+        type="button"
+        aria-keyshortcuts="Control+I Meta+I"
+        disabled={loading || editor.conflict !== undefined}
+        onClick={onSuggest}
+      >
         {l10n.t('AI Suggestion')}
       </button>
       <p id={SUGGESTION_ID} role="status" class="editor-note">

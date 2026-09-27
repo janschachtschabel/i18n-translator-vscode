@@ -1,4 +1,4 @@
-import { useLayoutEffect, useMemo, useRef } from 'preact/hooks';
+import { useEffect, useLayoutEffect, useMemo, useRef } from 'preact/hooks';
 import { l10n } from '../l10n';
 import type { OpenEditor } from '../state/edits';
 import type { EditorStore, LocaleColumn } from '../state/store';
@@ -75,20 +75,30 @@ export function CellEditor({ store, editor, locale, keyText, referenceText }: Ce
   }, []);
   useLayoutEffect(() => grow(field.current!), [text]);
   // The choice went with the focus on one of its buttons (e.g. the text is back as it was), or a suggestion came
-  // while VS Code had the focus (the consent dialog): the field takes it, before the table or the list would give it
-  // to the cell or the card.
+  // after a dialog of VS Code (the consent) took the focus from the page: the field takes it, before the table or the
+  // list would give it to the cell or the card. Not while VS Code has the focus: the user may be typing there.
   useLayoutEffect(() => {
-    if (!editor.conflict && focusIsLost()) {
+    if (!editor.conflict && focusIsLost() && document.hasFocus()) {
       field.current?.focus();
     }
   }, [editor.conflict, editor.suggestion]);
+  // A dialog of VS Code took the focus from the page, which leaves it with nothing: when the page gets it back, the
+  // field takes it, also when nothing changed in the editor meanwhile (the request failed, or is still on its way).
+  useEffect(() => {
+    const onFocus = () => {
+      if (focusIsLost()) {
+        field.current?.focus();
+      }
+    };
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
+  }, []);
 
-  // A suggestion of the AI for the text, from the reference (or a variant's base); the field keeps the focus.
+  // A suggestion of the AI for the text; the field keeps the focus. The page knows no bases of variants: it offers
+  // one where the reference has a text, and the host translates a variant from its base.
   const hasSource = Boolean(referenceText?.trim());
   const suggest = () => {
-    if (hasSource) {
-      store.suggestions.request();
-    }
+    store.suggestions.request(referenceText);
     field.current?.focus();
   };
   const onFieldKeyDown = (event: KeyboardEvent) => {
@@ -96,9 +106,12 @@ export function CellEditor({ store, editor, locale, keyText, referenceText }: Ce
     if (event.isComposing) {
       return;
     }
-    if (isCommand(event, 'i') && !editor.conflict) {
+    // During a conflict there is no suggestion, but Ctrl+I is still the editor's: VS Code must not act on it.
+    if (isCommand(event, 'i')) {
       handled(event);
-      suggest();
+      if (!editor.conflict) {
+        suggest();
+      }
       return;
     }
     const command = event.ctrlKey || event.metaKey;

@@ -1,4 +1,4 @@
-import { signal } from '@preact/signals';
+import { effect, signal } from '@preact/signals';
 import type { AiHostToWebview, AiUnavailableReason } from '../../shared/aiProtocol';
 import type { WebviewToHost } from '../../shared/protocol';
 import type { CellRef, Edits } from './edits';
@@ -16,26 +16,54 @@ export type SuggestionState =
   | { kind: 'failed'; cell: CellRef; message: string };
 
 /**
- * Suggestions of the AI for the open editor: one request at a time, whose answer goes into the editor's field if
- * it is still that cell's; an answer for a cancelled request or a closed editor is dropped.
+ * Suggestions of the AI for the open editor: one request at a time, which belongs to the editor that asked. When
+ * that editor closes or another opens, the request is cancelled and a failure forgotten; an answer that comes
+ * anyway is dropped.
  */
 export class Suggestions {
   readonly ai = signal<AiAvailability>({ available: false, model: '' });
   readonly state = signal<SuggestionState>({ kind: 'idle' });
   private requests = 0;
+  /**
+   * Part of every request id: the host outlives a reload of the page, and an answer to a request of the page before
+   * must not pass for one of this page.
+   */
+  private readonly page = Math.random().toString(36).slice(2, 10);
 
   constructor(
     private readonly post: (message: WebviewToHost) => void,
     private readonly edits: Edits,
-  ) {}
+  ) {
+    effect(() => {
+      const open = this.edits.open.value;
+      const state = this.state.peek();
+      if (state.kind === 'idle' || (open && sameCell(open, state.cell))) {
+        return;
+      }
+      if (state.kind === 'loading') {
+        this.post({ type: 'aiCancel', requestId: state.requestId });
+      }
+      this.state.value = { kind: 'idle' };
+    });
+  }
 
-  /** Asks the host for a suggestion for the cell of the open editor. */
-  request(): void {
+  /**
+   * Asks the host for a suggestion for the cell of the open editor, translated from `source` (the reference's text
+   * or a variant's base): nothing without one. Without a key, it leads to setting one.
+   */
+  request(source: string | undefined): void {
     const open = this.edits.open.peek();
-    if (!open || !this.ai.peek().available || this.state.peek().kind === 'loading') {
+    const ai = this.ai.peek();
+    if (!open || !source?.trim() || this.state.peek().kind === 'loading') {
       return;
     }
-    const requestId = `suggestion-${++this.requests}`;
+    if (!ai.available) {
+      if (ai.reason === 'no-key') {
+        this.setup();
+      }
+      return;
+    }
+    const requestId = `suggestion-${this.page}-${++this.requests}`;
     this.state.value = { kind: 'loading', requestId, cell: { entryId: open.entryId, locale: open.locale } };
     this.post({ type: 'aiSuggest', requestId, entryId: open.entryId, locale: open.locale });
   }
@@ -77,4 +105,8 @@ export class Suggestions {
   setup(): void {
     this.post({ type: 'aiSetup' });
   }
+}
+
+function sameCell(a: CellRef, b: CellRef): boolean {
+  return a.entryId === b.entryId && a.locale === b.locale;
 }

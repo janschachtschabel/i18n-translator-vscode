@@ -2,7 +2,7 @@
 import { act, cleanup, fireEvent, screen, within } from '@testing-library/preact';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { WebviewToHost } from '../../../src/shared/protocol';
-import { axeProblems, openWith as open } from './support';
+import { axeProblems, findingsModel, openWith as open, text } from './support';
 
 const id = (key: string) => JSON.stringify(key.split('.'));
 const grid = () => screen.getByRole('grid', { name: 'common' });
@@ -18,6 +18,22 @@ const requests = (posted: readonly WebviewToHost[]) =>
     (message): message is Extract<WebviewToHost, { type: 'aiSuggest' }> => message.type === 'aiSuggest',
   );
 const status = () => document.querySelector('.editor-ai [role="status"]')?.textContent ?? '';
+const hint = () => document.getElementById('cell-editor-hint')?.textContent ?? '';
+/** The French text of SAVE changes outside the editor. */
+const saveInFrench = (value: string) => {
+  const save = findingsModel.rows[0]!;
+  return {
+    type: 'patch' as const,
+    patch: { rows: [{ ...save, cells: { ...save.cells, fr: text(value) } }] },
+  };
+};
+/** VS Code takes the focus from the page (a dialog), and the field loses it; returns the end of the dialog. */
+async function dialogOpens() {
+  const hasFocus = vi.spyOn(document, 'hasFocus').mockReturnValue(false);
+  act(() => field().blur());
+  await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+  return () => hasFocus.mockRestore();
+}
 
 beforeEach(() => {
   document.documentElement.lang = 'de';
@@ -110,10 +126,8 @@ describe('the AI suggestion in the cell editor', () => {
     send({ type: 'aiState', available: true, model: 'gpt-6-luna' });
     act(() => void fireEvent.click(cellOf('CANCEL', 2)));
     press('i', { ctrlKey: true });
-    const hasFocus = vi.spyOn(document, 'hasFocus').mockReturnValue(false);
-    act(() => field().blur());
-    await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
-    hasFocus.mockRestore();
+    const dialogCloses = await dialogOpens();
+    dialogCloses();
     send({ type: 'aiSuggestion', requestId: requests(posted)[0]!.requestId, text: 'Annuler' });
     expect(field().value).toBe('Annuler');
     expect(document.activeElement).toBe(field());
@@ -147,5 +161,128 @@ describe('the AI suggestion in the cell editor', () => {
     press('i', { ctrlKey: true });
     expect(field()).toBe(screen.getByRole('textbox', { name: 'CANCEL in fr' }));
     expect(requests(posted)).toEqual([expect.objectContaining({ entryId: id('CANCEL'), locale: 'fr' })]);
+  });
+
+  it('cancels the request of an editor that closes: the next editor closes with its first Esc, and can ask', () => {
+    const { send, posted } = open();
+    send({ type: 'aiState', available: true, model: 'gpt-6-luna' });
+    act(() => void fireEvent.click(cellOf('CANCEL', 2)));
+    press('i', { ctrlKey: true });
+    const [first] = requests(posted);
+    press('Tab');
+    expect(posted.at(-1)).toEqual({ type: 'aiCancel', requestId: first!.requestId });
+    expect(field()).toBe(screen.getByRole('textbox', { name: 'CANCEL in it' }));
+    press('Escape');
+    expect(screen.queryByRole('textbox')).toBeNull();
+
+    act(() => void fireEvent.click(cellOf('ERROR_TITLE', 2)));
+    press('i', { ctrlKey: true });
+    expect(requests(posted)).toHaveLength(2);
+    expect(status()).toBe('Vorschlag von gpt-6-luna wird geholt … Esc bricht ab.');
+  });
+
+  it('forgets why there was no suggestion once its editor closes', () => {
+    const { send, posted } = open();
+    send({ type: 'aiState', available: true, model: 'gpt-6-luna' });
+    act(() => void fireEvent.click(cellOf('CANCEL', 2)));
+    press('i', { ctrlKey: true });
+    send({ type: 'aiSuggestion', requestId: requests(posted)[0]!.requestId, message: 'Kaputt.' });
+    expect(status()).toBe('✖ Fehler: Kaputt.');
+    press('Escape');
+    act(() => void fireEvent.click(cellOf('CANCEL', 2)));
+    expect(status()).toBe('');
+  });
+
+  it('gives the field the focus back when the page gets it back after a dialog, also after a failure', async () => {
+    const { send, posted } = open();
+    send({ type: 'aiState', available: true, model: 'gpt-6-luna' });
+    act(() => void fireEvent.click(cellOf('CANCEL', 2)));
+    press('i', { ctrlKey: true });
+    const dialogCloses = await dialogOpens();
+    try {
+      send({
+        type: 'aiSuggestion',
+        requestId: requests(posted)[0]!.requestId,
+        message: 'Keine Einwilligung.',
+      });
+      expect(document.activeElement).toBe(document.body);
+    } finally {
+      dialogCloses();
+    }
+    act(() => void window.dispatchEvent(new FocusEvent('focus')));
+    expect(document.activeElement).toBe(field());
+    press('Escape');
+    expect(screen.queryByRole('textbox')).toBeNull();
+  });
+
+  it('leaves the focus with VS Code when a suggestion comes while VS Code has it', async () => {
+    const { send, posted } = open();
+    send({ type: 'aiState', available: true, model: 'gpt-6-luna' });
+    act(() => void fireEvent.click(cellOf('CANCEL', 2)));
+    press('i', { ctrlKey: true });
+    const dialogCloses = await dialogOpens();
+    try {
+      send({ type: 'aiSuggestion', requestId: requests(posted)[0]!.requestId, text: 'Annuler' });
+      expect(field().value).toBe('Annuler');
+      expect(document.activeElement).toBe(document.body);
+    } finally {
+      dialogCloses();
+    }
+    act(() => void window.dispatchEvent(new FocusEvent('focus')));
+    expect(document.activeElement).toBe(field());
+  });
+
+  it('asks nothing for a text of the reference with Ctrl+I: it only opens its editor', () => {
+    const { send, posted } = open();
+    send({ type: 'aiState', available: true, model: 'gpt-6-luna' });
+    act(() => cellOf('CANCEL', 0).focus());
+    press('i', { ctrlKey: true });
+    expect(field()).toBe(screen.getByRole('textbox', { name: 'CANCEL in de' }));
+    expect(requests(posted)).toEqual([]);
+  });
+
+  it('leads Ctrl+I to setting the key when there is none', () => {
+    const { send, posted } = open();
+    send({ type: 'aiState', available: false, reason: 'no-key', model: 'gpt-6-luna' });
+    act(() => void fireEvent.click(cellOf('CANCEL', 2)));
+    press('i', { ctrlKey: true });
+    expect(posted.at(-1)).toEqual({ type: 'aiSetup' });
+    expect(requests(posted)).toEqual([]);
+  });
+
+  it('offers no suggestion while the text changed outside the editor, and keeps Ctrl+I from VS Code', () => {
+    const { send, posted } = open();
+    send({ type: 'aiState', available: true, model: 'gpt-6-luna' });
+    act(() => void fireEvent.click(cellOf('SAVE', 2)));
+    act(() => void fireEvent.input(field(), { target: { value: 'Sauver' } }));
+    send(saveInFrench('Sauvegarder'));
+    expect(suggestButton()!.hasAttribute('disabled')).toBe(true);
+    expect(fireEvent.keyDown(field(), { key: 'i', ctrlKey: true })).toBe(false);
+    expect(requests(posted)).toEqual([]);
+  });
+
+  it('takes a suggestion of several lines back with Enter saving again', () => {
+    const { send, posted } = open();
+    send({ type: 'aiState', available: true, model: 'gpt-6-luna' });
+    act(() => void fireEvent.click(cellOf('CANCEL', 2)));
+    press('i', { ctrlKey: true });
+    send({ type: 'aiSuggestion', requestId: requests(posted)[0]!.requestId, text: 'Annuler\nmaintenant' });
+    expect(hint()).toMatch(/^Strg\+Enter speichert/);
+    press('Escape');
+    expect(field().value).toBe('');
+    expect(hint()).toMatch(/^Enter speichert/);
+  });
+
+  it('asks with ids that a reloaded page does not use again', () => {
+    const ids = [0, 1].map(() => {
+      const { send, posted } = open();
+      send({ type: 'aiState', available: true, model: 'gpt-6-luna' });
+      act(() => void fireEvent.click(cellOf('CANCEL', 2)));
+      press('i', { ctrlKey: true });
+      const [request] = requests(posted);
+      cleanup();
+      return request!.requestId;
+    });
+    expect(ids[0]).not.toBe(ids[1]);
   });
 });

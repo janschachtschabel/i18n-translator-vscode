@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { moveInGrid, type GridPosition } from '../../a11y/gridKeys';
 import { isCommand } from '../../shortcuts';
-import type { ShownRow } from '../../state/shownRows';
+import { referenceTextOf, type ShownRow } from '../../state/shownRows';
 import type { EditorStore, LocaleColumn } from '../../state/store';
 import { EDITOR_CLASS } from '../cellEditor';
 import { focusIsLost, onFocusLeaving } from '../focus';
@@ -109,12 +109,12 @@ export function Table({ store, rows, locales, reference, wrap, labelledBy, descr
       editAt(at);
       return;
     }
-    // Ctrl+I opens the editor of a text and asks the AI for a suggestion for it.
+    // Ctrl+I opens the editor of a text and asks the AI for a suggestion for it, if it has a text to translate from.
     if (isCommand(event, 'i') && at.row > 0 && at.column > 0) {
       event.preventDefault();
       event.stopPropagation();
       editAt(at);
-      store.suggestions.request();
+      store.suggestions.request(referenceTextOf(rows[at.row - 1]!, reference, locales[at.column - 1]!.code));
       return;
     }
     const openPoint = openPointDirection(event);

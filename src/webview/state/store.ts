@@ -114,7 +114,7 @@ export class EditorStore {
     () => this.placeholderSyntax.peek(),
   );
   /**
-   * The keys whose texts were edited since the filter or the languages shown last changed. Their rows stay when the
+   * The keys whose editor opened since the filter or the languages shown last changed. Their rows stay when the
    * filter no longer lets them through (e.g. "missing" once the text is there): a row that went would move the
    * rows below it, and a click on the next cell, which saves this one, would land beside it.
    */

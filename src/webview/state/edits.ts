@@ -31,8 +31,11 @@ export interface OpenEditor extends CellRef {
    * host refused the draft): then only the user's choice ends the conflict, not a text that changes back.
    */
   conflict?: { text: string | undefined; baseUnknown?: true } | undefined;
-  /** The field holds a suggestion of the AI; `before` is the text it replaced, which Esc brings back. */
-  suggestion?: { before: string } | undefined;
+  /**
+   * The field holds a suggestion of the AI: `replaced` is the text it replaced, which Esc brings back with the
+   * `multiline` the editor had before it.
+   */
+  suggestion?: { replaced: string; multiline: boolean } | undefined;
 }
 
 /** A text sent to the host. */
@@ -195,7 +198,7 @@ export class Edits {
       this.open.value = {
         ...open,
         multiline: open.multiline || typed.includes('\n'),
-        suggestion: { before: open.suggestion?.before ?? this.draft.value },
+        suggestion: open.suggestion ?? { replaced: this.draft.value, multiline: open.multiline },
       };
       this.draft.value = typed;
     });
@@ -208,10 +211,10 @@ export class Edits {
     if (!open?.suggestion) {
       return false;
     }
-    const { before } = open.suggestion;
+    const { replaced, multiline } = open.suggestion;
     batch(() => {
-      this.open.value = { ...open, suggestion: undefined };
-      this.draft.value = before;
+      this.open.value = { ...open, multiline, suggestion: undefined };
+      this.draft.value = replaced;
     });
     return true;
   }
