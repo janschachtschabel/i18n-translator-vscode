@@ -49,10 +49,21 @@
   border-radius: 4px;
 }
 
-/* A suggestion the file could not take as it is: the bar of a marked text (the notes say why). */
+/* A text with an error or a warning (a suggestion the file could not take, a problem a check found): the bar of a
+   marked text; the notes say why. */
 .review-item.marked-error {
   padding-inline-start: 10px;
   border-inline-start: 3px solid var(--mark-error);
+}
+
+.review-item.marked-warning {
+  padding-inline-start: 10px;
+  border-inline-start: 3px solid var(--mark-warning);
+}
+
+.review-problem {
+  margin: 4px 0;
+  overflow-wrap: anywhere;
 }
 
 .review-choice {

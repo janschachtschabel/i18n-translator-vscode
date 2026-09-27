@@ -36,7 +36,7 @@ function filling() {
     total: 3,
     items: [
       item('CANCEL', 'Abbrechen', 'Annuler'),
-      item('ERROR_TITLE', 'Fehler ({{date}})', 'Erreur ({{data}})', 'Erreur ({{data}})'),
+      item('ERROR_TITLE', 'Fehler ({{date}})', 'Erreur : {{data}}', 'Erreur ({{data}})'),
     ],
   });
   return editor;

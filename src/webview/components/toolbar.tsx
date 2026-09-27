@@ -75,11 +75,11 @@ export function Toolbar({ store }: { store: EditorStore }) {
 function AiTools({ store }: { store: EditorStore }) {
   const ai = store.suggestions.ai.value;
   const fill = useRef<HTMLButtonElement>(null);
-  // The review list of a fill closed with the focus in it: back to where the fill began.
+  const check = useRef<HTMLButtonElement>(null);
+  // The review list of a job closed with the focus in it: back to the button that started the job.
   useLayoutEffect(() => {
-    if (store.review.takeFocusBack()) {
-      fill.current?.focus();
-    }
+    const back = store.review.takeFocusBack();
+    (back === 'check' ? check : back === 'fill' ? fill : undefined)?.current?.focus();
   }, [store]);
   if (!ai.available && ai.reason !== 'no-key') {
     return null;
@@ -91,9 +91,14 @@ function AiTools({ store }: { store: EditorStore }) {
         {ai.available ? l10n.t('ready · {model}', { model: ai.model }) : l10n.t('no API key')}
       </span>
       {ai.available ? (
-        <button ref={fill} type="button" onClick={() => store.review.fill()}>
-          {l10n.t('Fill with AI…')}
-        </button>
+        <>
+          <button ref={fill} type="button" onClick={() => store.review.fill()}>
+            {l10n.t('Fill with AI…')}
+          </button>
+          <button ref={check} type="button" onClick={() => store.review.check()}>
+            {l10n.t('Check with AI…')}
+          </button>
+        </>
       ) : (
         <button type="button" onClick={() => store.suggestions.setup()}>
           {l10n.t('Set API Key…')}

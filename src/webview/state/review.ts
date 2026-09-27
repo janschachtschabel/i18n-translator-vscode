@@ -17,7 +17,10 @@ export interface ReviewItem {
   before: string | null;
   /** The suggestion, as the user edited it. */
   text: string;
+  /** Chosen to be written; never while the text is the one the cell has, which leaves nothing to write. */
   chosen: boolean;
+  /** What the check found, in the user's language. */
+  problem?: { severity: 'error' | 'warning' | 'info'; message: string };
   /** Why the last write left it out, in the user's language. */
   notSaved?: string;
 }
@@ -30,10 +33,14 @@ export type ReviewProgress =
 /** The suggestions of a job, which the editor shows in place of the rows (K1) until they are written or discarded. */
 export interface ReviewList {
   jobId: string;
+  /** A fill (suggestions for missing texts) or a check (corrections of what it found). */
+  kind: JobKind;
   locale: string;
   /** The language the texts are translated from. */
   source: string;
   items: readonly ReviewItem[];
+  /** How many texts the job asks about. */
+  total: number;
   /** How many suggestions came, also those written since. */
   received: number;
   progress: ReviewProgress;
@@ -44,16 +51,18 @@ export interface ReviewList {
 }
 
 type JobMessage = Extract<AiHostToWebview, { type: 'aiJob' | 'aiJobItems' | 'aiJobEnd' | 'aiApplyResult' }>;
+export type JobKind = Extract<AiHostToWebview, { type: 'aiJob' }>['kind'];
 
 /**
- * The review list of a fill (design §6.12, K3/K4): the suggestions come chunk by chunk, those without an error
- * chosen; the user edits and chooses, and writes the chosen ones at once. Esc cancels nothing (K10).
+ * The review list of a job (design §6.12, K3/K4): the suggestions come chunk by chunk. Those of a fill are chosen
+ * unless they have an error, the corrections of a check are not (they change texts the user wrote); the user edits
+ * and chooses, and writes the chosen ones at once. Esc cancels nothing (K10).
  */
 export class Review {
   readonly list = signal<ReviewList | undefined>(undefined);
   private applies = 0;
-  /** Whether the list had the focus when it closed; the button that starts a fill takes it then. */
-  private focusBack = false;
+  /** The kind of the job whose list closed with the focus in it: the button that started it takes the focus. */
+  private focusBack: JobKind | undefined;
 
   constructor(
     private readonly post: (message: WebviewToHost) => void,
@@ -66,12 +75,17 @@ export class Review {
     this.post({ type: 'aiFill' });
   }
 
+  /** Has the host ask which language to check; the list opens when the job begins. */
+  check(): void {
+    this.post({ type: 'aiCheck' });
+  }
+
   receive(message: JobMessage): void {
     switch (message.type) {
       case 'aiJob': {
-        const { jobId, locale, source, total } = message;
+        const { jobId, kind, locale, source, total } = message;
         const progress: ReviewProgress = { kind: 'running', done: 0, total };
-        this.list.value = { jobId, locale, source, items: [], received: 0, progress };
+        this.list.value = { jobId, kind, locale, source, items: [], total, received: 0, progress };
         return;
       }
       case 'aiJobItems': {
@@ -82,7 +96,7 @@ export class Review {
         const known = new Set(list.items.map((item) => item.entryId));
         const items = message.items
           .filter((item) => !known.has(item.entryId))
-          .map((item) => this.itemOf(item));
+          .map((item) => this.itemOf(item, list.kind));
         this.list.value = {
           ...list,
           items: [...list.items, ...items],
@@ -113,11 +127,11 @@ export class Review {
   }
 
   setText(entryId: string, text: string): void {
-    this.change(entryId, (item) => ({ ...item, text }));
+    this.change(entryId, (item) => ({ ...item, text, chosen: item.chosen && text !== item.before }));
   }
 
   toggle(entryId: string): void {
-    this.change(entryId, (item) => ({ ...item, chosen: !item.chosen }));
+    this.change(entryId, (item) => ({ ...item, chosen: !item.chosen && item.text !== item.before }));
   }
 
   /** Cancels the job; the suggestions that came stay. */
@@ -156,15 +170,15 @@ export class Review {
     this.list.value = undefined;
   }
 
-  /** Called by the list when it closes with the focus in it. */
-  handBackFocus(): void {
-    this.focusBack = true;
+  /** Called by the list of a job of `kind` when it closes with the focus in it. */
+  handBackFocus(kind: JobKind): void {
+    this.focusBack = kind;
   }
 
-  /** Whether the list closed with the focus in it, once. */
-  takeFocusBack(): boolean {
+  /** The kind of the job whose list closed with the focus in it, once; undefined: none did. */
+  takeFocusBack(): JobKind | undefined {
     const back = this.focusBack;
-    this.focusBack = false;
+    this.focusBack = undefined;
     return back;
   }
 
@@ -214,10 +228,17 @@ export class Review {
     }
   }
 
-  /** A suggestion is chosen unless the file could not take it as it is: empty, or with placeholders wrong (K3/K4). */
-  private itemOf({ entryId, source, before, text }: AiJobItem): ReviewItem {
+  /**
+   * A fill's suggestion is chosen unless the file could not take it as it is: empty, or with placeholders wrong; a
+   * check's correction is never chosen, since it changes a text the user wrote (K3/K4).
+   */
+  private itemOf({ entryId, source, before, text, problem }: AiJobItem, kind: JobKind): ReviewItem {
     const blocked =
-      !text.trim() || inlineCheck(source, text, this.syntax()).some((line) => line.severity === 'error');
-    return { entryId, key: displayKey(keyFromId(entryId)), source, before, text, chosen: !blocked };
+      kind === 'check' ||
+      !text.trim() ||
+      text === before ||
+      inlineCheck(source, text, this.syntax()).some((line) => line.severity === 'error');
+    const key = displayKey(keyFromId(entryId));
+    return { entryId, key, source, before, text, chosen: !blocked, ...(problem ? { problem } : {}) };
   }
 }
