@@ -8,6 +8,13 @@ describe('lineStartAt', () => {
       0, 0, 2, 2, 5, 5, 7, 7,
     ]);
   });
+
+  // lastIndexOf(char, -1) searches index 0: offset 0 of a text that starts with a line break gave 1 (audit L-30).
+  it('puts offset 0 on the first line, also when the text starts with a line break', () => {
+    for (const lineBreak of [10, 13]) {
+      expect(lineStartAt(`${String.fromCharCode(lineBreak)}abc`, 0)).toBe(0);
+    }
+  });
 });
 
 describe('createLineIndex', () => {

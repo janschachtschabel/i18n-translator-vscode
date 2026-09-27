@@ -11,6 +11,10 @@ export interface LineIndex {
 
 /** Where the line of `offset` starts: after the last \n or lone \r before it (a \r\n ends one line). */
 export function lineStartAt(text: string, offset: number): number {
+  // lastIndexOf with -1 would search index 0.
+  if (offset <= 0) {
+    return 0;
+  }
   return Math.max(text.lastIndexOf('\n', offset - 1), text.lastIndexOf('\r', offset - 1)) + 1;
 }
 
