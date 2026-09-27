@@ -2,7 +2,7 @@ import * as assert from 'node:assert/strict';
 import * as vscode from 'vscode';
 import { selectModel, testAiConnection } from '../../src/extension/commands/aiConnection';
 import type { ExtensionApi } from '../../src/extension/extension';
-import { activateExtension, answering, settled } from './helpers';
+import { activateExtension, answering, settled, workspaceUri } from './helpers';
 import { startMockBapi, type MockAnswer, type MockRequest } from './mockBapi';
 
 // The profiles set B_API_KEY to a key of their own (.vscode-test.mjs); every request goes to a server on this
@@ -81,18 +81,38 @@ suite('AI connection', () => {
     assert.equal((await api.ai.service.status()).settings.model, 'gpt-4.1');
   });
 
-  test('takes the address of the b-api from the user settings only, never from the workspace', async () => {
+  test('takes the address, the provider, the model and the efforts from the user settings only', async () => {
+    // As in a cloned repository; the timeout, which a workspace may set, shows when VS Code has read the file.
+    const folder = workspaceUri('.vscode');
+    const repository = {
+      'eduI18n.ai.baseUrl': 'https://elsewhere.example',
+      'eduI18n.ai.provider': 'academiccloud',
+      'eduI18n.ai.model': 'expensive-model',
+      'eduI18n.ai.reasoningEffort': 'xhigh',
+      'eduI18n.ai.reviewReasoningEffort': 'xhigh',
+      'eduI18n.ai.timeoutSeconds': 61,
+    };
+    await vscode.workspace.fs.writeFile(
+      vscode.Uri.joinPath(folder, 'settings.json'),
+      new TextEncoder().encode(JSON.stringify(repository)),
+    );
     try {
-      await config().update('ai.baseUrl', 'https://elsewhere.example', vscode.ConfigurationTarget.Workspace);
-    } catch {
-      // VS Code may refuse to write a machine setting into the workspace; either way it must not apply.
-    }
-    try {
-      assert.equal((await api.ai.service.status()).settings.baseUrl, 'https://b-api.staging.openeduhub.net');
+      const { settings } = await settled(
+        () => api.ai.service.status(),
+        (current) => current.settings.timeoutSeconds === 61,
+      );
+      assert.equal(settings.timeoutSeconds, 61, 'the workspace settings were read');
+      assert.equal(settings.baseUrl, 'https://b-api.staging.openeduhub.net');
+      assert.equal(settings.provider, 'openai');
+      assert.equal(settings.model, 'gpt-6-luna');
+      assert.equal(settings.reasoningEffort, 'low');
+      assert.equal(settings.reviewReasoningEffort, 'medium');
     } finally {
-      await config()
-        .update('ai.baseUrl', undefined, vscode.ConfigurationTarget.Workspace)
-        .then(undefined, () => undefined);
+      await vscode.workspace.fs.delete(folder, { recursive: true });
+      await settled(
+        () => api.ai.service.status(),
+        (current) => current.settings.timeoutSeconds === 120,
+      );
     }
   });
 });

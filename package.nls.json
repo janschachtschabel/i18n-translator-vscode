@@ -42,7 +42,7 @@
   "config.ai.title": "AI (b-api)",
   "config.ai.enabled": "Turns the AI functions on or off: suggestions for a text, filling and the AI check. The key is set with [Set API Key…](command:eduI18n.setApiKey). In Restricted Mode the AI is always off.",
   "config.ai.baseUrl": "Address of the b-api, e.g. `https://b-api.prod.openeduhub.net` for production. Only `https:` (`http:` only on this machine), and only in the user settings, so that no workspace can send the key elsewhere.",
-  "config.ai.provider": "Provider behind the b-api: `openai` or `academiccloud`.",
+  "config.ai.provider": "Provider behind the b-api: `openai` or `academiccloud`. Only in the user settings, as the model and the efforts: whoever owns the key decides what it is spent on.",
   "config.ai.model": "Model id, as the b-api lists them. `gpt-5*`, `gpt-6*` and `o3`-like models get `max_completion_tokens` and `reasoning_effort`, others `max_tokens` and `temperature: 0`.",
   "config.ai.reasoningEffort": "How much the model reasons before it translates: more is slower and needs more tokens. `minimal` is not offered, the b-api refuses it.",
   "config.ai.reviewReasoningEffort": "How much the model reasons in the AI check of translations.",

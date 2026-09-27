@@ -62,11 +62,21 @@ describe('package.json configuration', () => {
     );
   });
 
-  it('lets only user settings choose where the AI requests go, with the key', () => {
-    // A workspace setting could send the key to another host (a cloned repository's .vscode/settings.json).
-    expect(setting('ai.baseUrl').scope).toBe('machine');
+  it('lets only user settings choose where the AI requests go, with the key, and what the key is spent on', () => {
+    // A workspace setting (a cloned repository's .vscode/settings.json) could send the key to another host, or
+    // spend it on another provider, an expensive model or more reasoning.
+    const userOnly = [
+      'ai.baseUrl',
+      'ai.provider',
+      'ai.model',
+      'ai.reasoningEffort',
+      'ai.reviewReasoningEffort',
+    ];
+    expect(AI_SETTING_KEYS.filter((key) => setting(key).scope === 'machine').sort()).toEqual(userOnly.sort());
     expect(
-      AI_SETTING_KEYS.filter((key) => key !== 'ai.baseUrl' && (setting(key).scope ?? 'window') !== 'window'),
+      AI_SETTING_KEYS.filter(
+        (key) => !userOnly.includes(key) && (setting(key).scope ?? 'window') !== 'window',
+      ),
     ).toEqual([]);
   });
 

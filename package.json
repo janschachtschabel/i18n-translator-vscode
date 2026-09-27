@@ -754,6 +754,7 @@
           "eduI18n.ai.provider": {
             "type": "string",
             "default": "openai",
+            "scope": "machine",
             "enum": [
               "openai",
               "academiccloud"
@@ -763,11 +764,13 @@
           "eduI18n.ai.model": {
             "type": "string",
             "default": "gpt-6-luna",
+            "scope": "machine",
             "markdownDescription": "%config.ai.model%"
           },
           "eduI18n.ai.reasoningEffort": {
             "type": "string",
             "default": "low",
+            "scope": "machine",
             "enum": [
               "none",
               "low",
@@ -780,6 +783,7 @@
           "eduI18n.ai.reviewReasoningEffort": {
             "type": "string",
             "default": "medium",
+            "scope": "machine",
             "enum": [
               "none",
               "low",

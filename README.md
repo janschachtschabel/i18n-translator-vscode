@@ -361,9 +361,9 @@ Adresse; ein Wechsel etwa zur Produktion fragt erneut). Im eingeschränkten Modu
 ist die KI aus.
 
 **Einstellungen** (Kategorie „KI (b-api)“, Einzelheiten in [docs/einstellungen.md](docs/einstellungen.md#ki-b-api)):
-`eduI18n.ai.enabled`, `ai.baseUrl` (nur in den Benutzereinstellungen), `ai.provider`, `ai.model`,
-`ai.reasoningEffort`, `ai.reviewReasoningEffort`, `ai.batchSize`, `ai.maxConcurrency`, `ai.timeoutSeconds`,
-`ai.languageDescriptions`.
+`eduI18n.ai.enabled`, `ai.baseUrl`, `ai.provider`, `ai.model`, `ai.reasoningEffort`, `ai.reviewReasoningEffort`
+(diese fünf nur in den Benutzereinstellungen, damit kein Repository den Schlüssel umlenkt), `ai.batchSize`,
+`ai.maxConcurrency`, `ai.timeoutSeconds`, `ai.languageDescriptions`.
 
 Die KI-Prüfung aller Texte einer Sprache folgt.
 

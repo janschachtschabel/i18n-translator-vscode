@@ -48,10 +48,10 @@ Drei Regeln gelten für alle Einstellungen:
 | `eduI18n.backup.keep` | `10` | Anzahl der aufbewahrten Sicherungen |
 | `eduI18n.ai.enabled` | `true` | KI-Funktionen an oder aus |
 | `eduI18n.ai.baseUrl` | `https://b-api.staging.openeduhub.net` | Adresse der b-api (nur Benutzereinstellungen) |
-| `eduI18n.ai.provider` | `openai` | Anbieter hinter der b-api |
-| `eduI18n.ai.model` | `gpt-6-luna` | Modell |
-| `eduI18n.ai.reasoningEffort` | `low` | Denkaufwand beim Übersetzen |
-| `eduI18n.ai.reviewReasoningEffort` | `medium` | Denkaufwand bei der KI-Prüfung |
+| `eduI18n.ai.provider` | `openai` | Anbieter hinter der b-api (nur Benutzereinstellungen) |
+| `eduI18n.ai.model` | `gpt-6-luna` | Modell (nur Benutzereinstellungen) |
+| `eduI18n.ai.reasoningEffort` | `low` | Denkaufwand beim Übersetzen (nur Benutzereinstellungen) |
+| `eduI18n.ai.reviewReasoningEffort` | `medium` | Denkaufwand bei der KI-Prüfung (nur Benutzereinstellungen) |
 | `eduI18n.ai.batchSize` | `25` | Texte je Anfrage beim Füllen und Prüfen |
 | `eduI18n.ai.maxConcurrency` | `2` | gleichzeitige Anfragen |
 | `eduI18n.ai.timeoutSeconds` | `120` | Sekunden je Anfrage |
@@ -387,6 +387,9 @@ Standard: `openai` und `gpt-6-luna`. Welche Modelle es gibt, zeigt „KI-Modell 
 - Modelle wie `gpt-5*`, `gpt-6*` und `o3` bekommen `max_completion_tokens` und `reasoning_effort`, alle anderen
   `max_tokens` und `temperature: 0`; Qwen3-Modelle zusätzlich `enable_thinking: false`.
 - Jede Anfrage verlangt die Antwort als JSON nach einem festen Schema.
+- Wie die Adresse nur in den Benutzereinstellungen, ebenso die beiden Denkaufwände: Wer den Schlüssel hat,
+  entscheidet, wofür er genutzt wird. Ein Arbeitsbereich kann ihn nicht auf einen anderen Anbieter, ein teures
+  Modell oder mehr Denkaufwand lenken.
 
 ### `eduI18n.ai.reasoningEffort` und `eduI18n.ai.reviewReasoningEffort`
 
@@ -413,7 +416,9 @@ Beschreibung bekommen ihren englischen Namen (`fr_FR`: „French (France)“).
 }
 ```
 
-Ein eigener Wert ersetzt die ganze Liste: Wer die deutschen Beschreibungen behalten will, übernimmt sie.
+Eigene Einträge kommen zu den Standardbeschreibungen hinzu oder ersetzen die einer Sprache; die deutschen
+Beschreibungen bleiben also erhalten (VS Code führt Objekte aus Standard, Benutzer- und Arbeitsbereichseinstellungen
+zusammen).
 
 ## Grenzen
 
