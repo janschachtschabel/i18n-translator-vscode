@@ -103,7 +103,7 @@ describe('filling with AI', () => {
   });
 
   it('chooses all suggestions that have something to write, or none', () => {
-    const { send } = filling();
+    const { send, store } = filling();
     send({
       type: 'aiJobItems',
       jobId: 'fill-1',
@@ -123,9 +123,12 @@ describe('filling with AI', () => {
     // Unavailable now, but it keeps the focus it had: a disabled button would lose it.
     expect([all().hasAttribute('disabled'), all().getAttribute('aria-disabled')]).toEqual([false, 'true']);
     expect(document.activeElement).toBe(all());
+    // Screen readers hear what changed, not only that the button is unavailable now.
+    expect(store.announcement.value.text).toBe('Ausgewählt: 2.');
     act(() => void fireEvent.click(none()));
     expect(chosen()).toBe(0);
     expect(none().getAttribute('aria-disabled')).toBe('true');
+    expect(store.announcement.value.text).toBe('Ausgewählt: 0.');
   });
 
   it('lets no one choose an empty text, which would write nothing, not even Select All', () => {

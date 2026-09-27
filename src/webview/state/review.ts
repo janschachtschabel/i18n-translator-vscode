@@ -155,6 +155,8 @@ export class Review {
     });
     if (items.some((item, index) => item !== list.items[index])) {
       this.list.value = { ...list, items };
+      const count = items.filter((item) => item.chosen).length;
+      this.announce(l10n.t('Selected: {count}.', { count: formatNumber(count) }));
     }
   }
 

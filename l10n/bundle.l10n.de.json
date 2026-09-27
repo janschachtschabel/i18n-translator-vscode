@@ -246,6 +246,7 @@
   "Second language": "Zweite Sprache",
   "Select All": "Alle auswählen",
   "Select None": "Keine auswählen",
+  "Selected: {count}.": "Ausgewählt: {count}.",
   "Send Texts": "Texte senden",
   "Set API Key": "API-Schlüssel setzen",
   "Set API Key…": "API-Schlüssel setzen…",
