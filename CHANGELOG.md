@@ -58,7 +58,29 @@ Klick daneben.
 - **`.properties`: Ein neuer Key verändert den Text davor nicht mehr**, wenn die letzte Zeile auf einen Backslash und
   ein einzelnes CR endet (Datei mit gemischten Zeilenenden): Bisher setzte sich der Backslash in die neue Zeile fort,
   der Wert davor bekam die neue Zeile angehängt, und der neue Key fehlte.
-- **Nach dem zweiten Audit:**
+- **Nach dem zweiten Audit** ([Bericht](docs/audits/2026-09-27-audit.md)):
+  - **Sicherheit:** Hinweis und Prüfmeldung der Eingabefelder („Key hinzufügen…“, „Key umbenennen…“) zeigen Namen aus
+    dem Repository als Text; ein präparierter Key wie `[x](command:…)` wurde dort zu einem Link, der einen Befehl
+    ausführte. Antworten der b-api werden höchstens bis 4 MB gelesen; der Host nimmt je Editor eine Anfrage für einen
+    Vorschlag an.
+  - **Schreiben:** Der Vergleich mit den Dateien und die Prüfung auf ungespeicherte Editoren laufen direkt vor dem
+    Schreiben, nach dem Warten auf den Index; eine Änderung von außen in dieser Zeit wurde bisher überschrieben.
+    Wiederherstellen ohne Unterschied legt keine Sicherung mehr an.
+  - **`.properties`:** Ein Key, den eine Datei vielfach wiederholt, löscht oder benennt sich in Millisekunden um
+    (8.000 Wiederholungen: 76 ms statt 24 s). In einer Datei mit Byte-Order-Mark bleibt die erste Zeile frei von Keys,
+    auch beim Löschen des ersten und beim Einfügen in eine leere Datei; die Prüfung meldet auch einen Key nach
+    Leerzeichen in der ersten Zeile.
+  - **Mail-Vorlagen:** Zeilen- und Absatztrenner (U+2028, U+2029) werden als Zeichenreferenzen geschrieben; `&constructor;`
+    und ähnliche Namen gelten nicht mehr als XML-Entity.
+  - **Editor:** Ein KI-Vorschlag, der während einer Änderung von außen kommt, ersetzt den Entwurf nicht mehr, und „Neuen
+    Text übernehmen“ beendet ihn. Nach dem Neuladen der Seite gilt keine Antwort der alten Seite für einen Text der
+    neuen. Die kompakte Liste zeigt eine ausgeblendete Referenz nicht mehr.
+  - **Tastatur und Screenreader:** Bleibt kein Key übrig, geht der Fokus an die Trefferzahl statt verloren; schließt die
+    Prüfliste, nachdem die KI ausgeschaltet wurde, geht er an „KI einrichten…“; die Prüfung eines Texts der Prüfliste
+    wird beim Tippen angesagt.
+  - **Meldungen:** Scheitert ein Schritt, der aus einer Meldung heraus startet (etwa das Speichern des Schlüssels ohne
+    Schlüsselbund) oder der Start eines KI-Auftrags, sagt die Extension es; bisher geschah still nichts. Eine Wurzel,
+    deren Neueinlesen scheitert, wird als „konnte nicht geprüft werden“ gemeldet.
   - Neue Prüfung `condition-unbalanced` (Fehler): Mail-Texte, deren Bedingungen (`{{if …}}` … `{{endif}}`) von der
     Referenz abweichen oder denen ein `{{endif}}` fehlt. edu-sharing verschickt solche Mails nicht. Auch die Prüfung
     beim Tippen und die Vorauswahl der Prüfliste kennen sie.
