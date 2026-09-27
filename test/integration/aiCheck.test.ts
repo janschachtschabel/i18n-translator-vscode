@@ -111,6 +111,66 @@ suite('Check with AI', function () {
     }
   });
 
+  // The question before a job of many requests had no test: a changed threshold, or an answer it ignored, kept every
+  // test green (audit T-15). One text per request makes the check of the 9 French texts 9 requests.
+  test('asks before a job of five or more requests, and sends nothing when the answer is no', async () => {
+    await config().update('ai.batchSize', 1, vscode.ConfigurationTarget.Global);
+    const prompts = answering('fr', false);
+    const { editorPanel, posts, close } = await editorWith(api, prompts);
+    const sent = bapi.requests.length;
+    try {
+      await settled(
+        () => api.ai.service.status(),
+        (current) => current.settings.batchSize === 1,
+      );
+      await editorPanel.receive({ type: 'aiCheck' });
+      assert.match(
+        prompts.asked.at(-1) ?? '',
+        /^Check 9 texts of common in fr\? That takes about 9 requests/,
+      );
+      assert.equal(bapi.requests.length, sent);
+      assert.equal(
+        posts.some((message) => message.type === 'aiJob'),
+        false,
+      );
+    } finally {
+      close();
+      await config().update('ai.batchSize', undefined, vscode.ConfigurationTarget.Global);
+    }
+  });
+
+  // Nor had a declined consent before a job: without the question, texts would go to a new address (audit T-15).
+  test('asks for the consent before a job at a new address, and sends nothing when the answer is no', async () => {
+    const other = await startMockBapi(checker);
+    const prompts = answering('fr', false);
+    const { editorPanel, posts, close } = await editorWith(api, prompts);
+    try {
+      await config().update('ai.baseUrl', other.url, vscode.ConfigurationTarget.Global);
+      await settled(
+        () => api.ai.service.status(),
+        (current) => current.settings.baseUrl === other.url,
+      );
+      await editorPanel.receive({ type: 'aiCheck' });
+      assert.match(
+        prompts.asked.at(-1) ?? '',
+        /^The AI sends texts of these translation files to 127\.0\.0\.1:/,
+      );
+      assert.deepEqual(other.requests, []);
+      assert.equal(
+        posts.some((message) => message.type === 'aiJob'),
+        false,
+      );
+    } finally {
+      close();
+      await config().update('ai.baseUrl', bapi.url, vscode.ConfigurationTarget.Global);
+      await settled(
+        () => api.ai.service.status(),
+        (current) => current.settings.baseUrl === bapi.url,
+      );
+      await other.close();
+    }
+  });
+
   test('writes a chosen correction against the text it checked, which one undo takes back', async () => {
     const prompts = answering('fr');
     const { editorPanel, posts, close } = await editorWith(api, prompts);
