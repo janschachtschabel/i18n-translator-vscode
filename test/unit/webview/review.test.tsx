@@ -290,6 +290,26 @@ describe('filling with AI', () => {
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Mit KI füllen…' }));
   });
 
+  // The fill and check buttons exist only while the AI can be used: closing the list after the AI went off left the
+  // focus on the page (audit F-05).
+  it('hands the focus to the setup of the AI, or to the count of keys, when the AI went off meanwhile', () => {
+    for (const [reason, target] of [
+      ['no-key', 'KI einrichten…'],
+      ['disabled', undefined],
+    ] as const) {
+      const { send } = filling();
+      send({ type: 'aiJobEnd', jobId: 'fill-1', status: 'done', missing: 1 });
+      const discard = inReview().getByRole('button', { name: 'Verwerfen' });
+      act(() => discard.focus());
+      send({ type: 'aiState', available: false, reason, model: 'gpt-6-luna' });
+      act(() => void fireEvent.click(discard));
+      expect(document.activeElement, reason).toBe(
+        target ? screen.getByRole('button', { name: target }) : document.getElementById('filter-result'),
+      );
+      cleanup();
+    }
+  });
+
   it('hands the focus back to where the fill began when the list closes, also with the focus lost', () => {
     const { send, posted: messages } = filling();
     send({ type: 'aiJobEnd', jobId: 'fill-1', status: 'done', missing: 1 });

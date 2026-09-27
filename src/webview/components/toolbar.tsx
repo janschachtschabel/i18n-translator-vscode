@@ -3,6 +3,7 @@ import type { UiState } from '../../shared/protocol';
 import { l10n } from '../l10n';
 import type { EditorStore } from '../state/store';
 import './toolbar.css';
+import { RESULT_ID } from './filterBar';
 import { focusIsLost } from './focus';
 
 /**
@@ -78,10 +79,15 @@ function AiTools({ store }: { store: EditorStore }) {
   const ai = store.suggestions.ai.value;
   const fill = useRef<HTMLButtonElement>(null);
   const check = useRef<HTMLButtonElement>(null);
-  // The review list of a job closed with the focus in it: back to the button that started the job.
+  const setUp = useRef<HTMLButtonElement>(null);
+  // The review list of a job closed with the focus in it: back to the button that started the job. Those buttons go
+  // when the AI can no longer be used: then its setup, or without the group the count of keys (audit F-05).
   useLayoutEffect(() => {
     const back = store.review.takeFocusBack();
-    (back === 'check' ? check : back === 'fill' ? fill : undefined)?.current?.focus();
+    if (back) {
+      const started = (back === 'check' ? check : fill).current;
+      (started ?? setUp.current ?? document.getElementById(RESULT_ID))?.focus();
+    }
   }, [store]);
   // "Set API Key…" goes once the key is set, and with it the focus it had when pressed: the fill takes it.
   const setupPressed = useRef(false);
@@ -128,7 +134,7 @@ function AiTools({ store }: { store: EditorStore }) {
           {l10n.t('Set API Key…')}
         </button>
       )}
-      <button type="button" onClick={() => store.suggestions.configure()}>
+      <button ref={setUp} type="button" onClick={() => store.suggestions.configure()}>
         {l10n.t('Set Up AI…')}
       </button>
     </fieldset>
