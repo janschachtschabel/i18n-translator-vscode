@@ -26,22 +26,27 @@ export const ReviewEntry = memo(
   ({ item, review, syntax, locale, lang, sourceLocale, sourceLang }: EntryProps) => {
     const notes = notesOf(item, syntax);
     const id = encodeURIComponent(item.entryId);
+    const sourceId = `review-source-${id}`;
+    const beforeId = `review-before-${id}`;
     const problemId = `review-problem-${id}`;
     const notesId = `review-notes-${id}`;
-    const described = [item.problem && problemId, notes.length > 0 && notesId].filter(Boolean).join(' ');
+    // Why a text is left out, on its checkbox too; the field is described by what it translates or corrects first.
+    const reasons = [item.problem && problemId, notes.length > 0 && notesId].filter(Boolean).join(' ');
+    const described = [sourceId, item.before !== null && beforeId, reasons].filter(Boolean).join(' ');
     const mark = markOf([
       ...(item.problem ? [item.problem.severity] : []),
       ...notes.map((note) => note.severity),
     ]);
     return (
       <li class={mark ? `review-item marked-${mark}` : 'review-item'}>
-        <label class="review-choice">
+        <label class="option">
           <input
             type="checkbox"
             checked={item.chosen}
             // The text the cell has leaves nothing to write.
             disabled={item.text === item.before}
             aria-label={l10n.t('Apply {key}', { key: item.key })}
+            aria-describedby={reasons || undefined}
             onChange={() => review.toggle(item.entryId)}
           />
           <span class="review-key">{item.key}</span>
@@ -51,14 +56,14 @@ export const ReviewEntry = memo(
             <Note severity={item.problem.severity} text={item.problem.message} />
           </p>
         )}
-        <p class="review-source">
+        <p id={sourceId} class="review-source">
           <span class="review-label">{l10n.t('Source ({locale}):', { locale: sourceLocale })}</span>{' '}
           <span lang={sourceLang} dir="auto">
             {item.source}
           </span>
         </p>
         {item.before !== null && (
-          <p class="review-before">
+          <p id={beforeId} class="review-before">
             <span class="review-label">{l10n.t('Current text:')}</span>{' '}
             {item.before === '' ? (
               <EmptyValue value="" variant={false} />
@@ -76,7 +81,7 @@ export const ReviewEntry = memo(
           lang={lang}
           dir="auto"
           aria-label={l10n.t('{key} in {locale}', { key: item.key, locale })}
-          aria-describedby={described || undefined}
+          aria-describedby={described}
           onInput={(event) => review.setText(item.entryId, event.currentTarget.value)}
         />
         {notes.length > 0 && (

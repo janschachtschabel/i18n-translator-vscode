@@ -82,14 +82,6 @@ html:has(.review) {
   overflow-wrap: anywhere;
 }
 
-.review-choice {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-block-size: 24px;
-  cursor: pointer;
-}
-
 .review-key {
   overflow-wrap: anywhere;
   font-family: var(--vscode-editor-font-family);

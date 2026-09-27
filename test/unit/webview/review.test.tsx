@@ -310,6 +310,23 @@ describe('filling with AI', () => {
     expect(discard().getAttribute('aria-disabled')).toBe('false');
   });
 
+  it('says on its checkbox why a text is left out, and describes each field by its source and current text', () => {
+    filling();
+    const description = (element: Element) =>
+      (element.getAttribute('aria-describedby') ?? '')
+        .split(' ')
+        .map((id) => document.getElementById(id)?.textContent ?? '')
+        .join(' | ');
+    const box = inReview().getByRole('checkbox', { name: 'ERROR_TITLE übernehmen' });
+    expect(description(box)).toContain('Fehlende Platzhalter: {{date}}');
+    const field = inReview().getByRole('textbox', { name: 'ERROR_TITLE in fr' });
+    expect(description(field)).toMatch(
+      /Fehler \(\{\{date\}\}\).*Erreur \(\{\{data\}\}\).*Fehlende Platzhalter/,
+    );
+    // A text chosen as it came gives its checkbox nothing to explain.
+    expect(description(inReview().getByRole('checkbox', { name: 'CANCEL übernehmen' }))).toBe('');
+  });
+
   it('keeps the list while its job runs, and says which texts were not saved', () => {
     const { send, posted: messages, store } = filling();
     act(() => void fireEvent.click(inReview().getByRole('button', { name: 'Ausgewählte übernehmen (1)' })));
