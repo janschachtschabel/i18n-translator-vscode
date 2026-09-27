@@ -34,6 +34,25 @@ function fakeFetch(...responses: (Response | Error | 'hang')[]) {
   return { fetch, calls };
 }
 
+/** A fetch whose answer comes, but whose body waits until the request is aborted; `reading` resolves once it waits. */
+function bodyThatWaits() {
+  let started!: () => void;
+  const reading = new Promise<void>((resolve) => (started = resolve));
+  const fetch = (async (_url: string, init: RequestInit) => {
+    const response = new Response(null, { status: 200 });
+    Object.defineProperty(response, 'text', {
+      value: () => {
+        started();
+        return new Promise((_, reject) =>
+          init.signal?.addEventListener('abort', () => reject(new Error('aborted'))),
+        );
+      },
+    });
+    return response;
+  }) as unknown as typeof globalThis.fetch;
+  return { fetch, reading };
+}
+
 const json = (status: number, body: unknown) =>
   new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
 const answer = (message: Record<string, unknown>, finish = 'stop') =>
@@ -186,18 +205,43 @@ describe('chatCompletion', () => {
     expect((await call).code).toBe('aborted');
     expect(calls).toHaveLength(1);
 
+    // The caller cancels while the client waits to repeat: the wait gets the caller's signal and ends with it.
     const waiting = new AbortController();
     const retry = fakeFetch(json(429, {}), answer({ content: '{}' }));
+    let slept: AbortSignal | undefined;
     const pausing: ClientOptions = {
       ...options(retry.fetch),
-      sleep: (_ms, signal) =>
-        new Promise((_, reject) => signal?.addEventListener('abort', () => reject(new Error('aborted')))),
+      sleep: (_ms, signal) => {
+        slept = signal;
+        if (!signal) {
+          return Promise.resolve();
+        }
+        const paused = new Promise<void>((_, reject) =>
+          signal.addEventListener('abort', () => reject(new Error('aborted'))),
+        );
+        waiting.abort();
+        return paused;
+      },
     };
-    const repeated = failure(chatCompletion(pausing, BODY, waiting.signal));
-    await Promise.resolve();
-    waiting.abort();
-    expect((await repeated).code).toBe('aborted');
+    expect((await failure(chatCompletion(pausing, BODY, waiting.signal))).code).toBe('aborted');
+    expect(slept).toBe(waiting.signal);
     expect(retry.calls).toHaveLength(1);
+  });
+
+  it('stops, or gives up, also while the body of the answer is on its way', async () => {
+    const cancel = new AbortController();
+    const cancelled = bodyThatWaits();
+    const stopped = failure(chatCompletion(options(cancelled.fetch), BODY, cancel.signal));
+    await cancelled.reading;
+    cancel.abort();
+    expect((await stopped).code).toBe('aborted');
+
+    vi.useFakeTimers();
+    const slow = bodyThatWaits();
+    const call = failure(chatCompletion(options(slow.fetch), BODY));
+    await slow.reading;
+    await vi.advanceTimersByTimeAsync(1000);
+    expect((await call).code).toBe('timeout');
   });
 });
 
