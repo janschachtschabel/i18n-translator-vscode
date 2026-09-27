@@ -243,9 +243,50 @@ describe('jsonNestedAdapter.applyOps and encode', () => {
       );
     });
 
+    it('removes runs of definitions at the start, in the middle and at the end, on lines or on one', () => {
+      const lines =
+        '{\n  "A": "1",\n  "A": "2",\n  "B": "3",\n  "A": "4",\n  "A": "5",\n  "C": "6",\n  "A": "7"\n}\n';
+      expect(apply(lines, { kind: 'delete', key: key('A') })).toBe('{\n  "B": "3",\n  "C": "6"\n}\n');
+      expect(apply(lines.replaceAll('\n', '\r\n'), { kind: 'delete', key: key('A') })).toBe(
+        '{\r\n  "B": "3",\r\n  "C": "6"\r\n}\r\n',
+      );
+      expect(apply('{"A":"1","A":"2","B":"3","A":"4"}', { kind: 'delete', key: key('A') })).toBe('{"B":"3"}');
+      expect(apply('{"A":"1", "A":"2"}', { kind: 'delete', key: key('A') })).toBe('{}');
+    });
+
+    // A run of definitions goes with one edit (audit S-14): the line after it stays as it was. Removed one by one, it
+    // took the indentation of the first definition, when the others shared its line.
+    it('leaves the line after a run as it was', () => {
+      expect(apply('{\n  "A": "1", "A": "2",\n   "B": "3"\n}\n', { kind: 'delete', key: key('A') })).toBe(
+        '{\n   "B": "3"\n}\n',
+      );
+    });
+
     it('stays valid in objects written on one line', () => {
       expect(apply('{"A":"1","B":"2"}', { kind: 'delete', key: key('A') })).toBe('{"B":"2"}');
       expect(apply('{"A":"1","B":"2"}', { kind: 'delete', key: key('B') })).toBe('{"A":"1"}');
+    });
+
+    // Each removal read the whole file again: a key defined 8,000 times took 35 s to delete, and duplicates are only
+    // a finding, so a user who fixes them runs into it (audit S-14).
+    it('deletes and renames a key defined thousands of times in well under a second', () => {
+      const lines = Array.from(
+        { length: 8_000 },
+        (_, index) => `  "dup": "${index}",\n  "other_${index}": "x"`,
+      );
+      const text = `{\n${lines.join(',\n')}\n}\n`;
+      for (const op of [
+        { kind: 'delete', key: key('dup') },
+        { kind: 'rename', from: key('dup'), to: key('single') },
+      ] satisfies FileOp[]) {
+        const started = performance.now();
+        const written = apply(text, op);
+        const elapsed = performance.now() - started;
+        const names = jsonNestedAdapter.parse(doc(written)).entries.map((entry) => displayKey(entry.key));
+        expect(names.filter((name) => name === 'dup')).toEqual([]);
+        expect(names.filter((name) => name.startsWith('other_'))).toHaveLength(8_000);
+        expect(elapsed).toBeLessThan(1500);
+      }
     });
   });
 

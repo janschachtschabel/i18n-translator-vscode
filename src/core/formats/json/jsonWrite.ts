@@ -1,6 +1,6 @@
 import { parseTree, type Node, type ParseError } from 'jsonc-parser';
 import { displayKey, keyFromSegments, type EntryKey } from '../../model/keys';
-import { applyEdits } from '../../text/edits';
+import { applyEdits, type TextEdit } from '../../text/edits';
 import { lineStartAt } from '../../text/lineIndex';
 import { detectStyle, type TextStyle } from '../../text/style';
 import { escapeUnits } from '../../text/unicodeEscape';
@@ -204,45 +204,51 @@ function deleteEntry(text: string, root: Node, key: EntryKey): string {
   return removeEvery(text, root, key.segments.slice(0, level), key.segments[level]!);
 }
 
-/** Removes every definition of `name` from the object at `path`; `root` is the tree of `text`. */
+/**
+ * Removes every definition of `name` from the object at `path`; `root` is the tree of `text`. All go with one edit
+ * each run of neighbours, on this one tree: reading the text again after each took 35 s for a key defined 8,000
+ * times (audit S-14).
+ */
 function removeEvery(text: string, root: Node, path: readonly string[], name: string): string {
-  let current = text;
-  let object = objectAt(root, path)!;
-  for (;;) {
-    const named = propertiesOf(object).filter((property) => property.key.value === name);
-    const doomed = named.at(-1);
-    if (!doomed) {
-      return current;
-    }
-    current = removeProperty(current, object, doomed);
-    if (named.length === 1) {
-      return current;
-    }
-    // The offsets have changed: read the text again for the next definition.
-    object = objectAt(parseObject(current), path)!;
-  }
-}
-
-function removeProperty(text: string, object: Node, property: Property): string {
+  const object = objectAt(root, path)!;
   const properties = propertiesOf(object);
-  const index = properties.findIndex((candidate) => candidate.node === property.node);
-  if (properties.length === 1) {
+  const doomed = properties.map((property) => property.key.value === name);
+  if (!doomed.includes(true)) {
+    return text;
+  }
+  if (!doomed.includes(false)) {
     return applyEdits(text, [{ offset: object.offset + 1, length: object.length - 2, content: '' }]);
   }
-  const next = properties[index + 1];
-  if (next) {
-    // The whole line including its comma, or on one-line objects the property up to the next one.
-    const ownLines = onOwnLine(text, property.node) && onOwnLine(text, next.node);
-    const start = ownLines ? lineStartAt(text, property.node.offset) : property.node.offset;
-    const end = ownLines ? lineStartAt(text, next.node.offset) : next.node.offset;
-    return applyEdits(text, [{ offset: start, length: end - start, content: '' }]);
+  const edits: TextEdit[] = [];
+  for (let first = 0; first < properties.length; first++) {
+    if (doomed[first]) {
+      let last = first;
+      while (doomed[last + 1]) {
+        last++;
+      }
+      edits.push(removal(text, properties, first, last));
+      first = last;
+    }
   }
-  // The last property: from the end of the previous value, which takes the comma with it.
-  const previous = properties[index - 1]!;
-  const start = previous.value.offset + previous.value.length;
-  return applyEdits(text, [
-    { offset: start, length: property.node.offset + property.node.length - start, content: '' },
-  ]);
+  return applyEdits(text, edits);
+}
+
+/** The edit that removes the properties from `first` to `last` of an object that keeps others. */
+function removal(text: string, properties: readonly Property[], first: number, last: number): TextEdit {
+  const start = properties[first]!.node;
+  const next = properties[last + 1];
+  if (next) {
+    // Whole lines including their commas, or on one-line objects the properties up to the next one.
+    const ownLines = onOwnLine(text, start) && onOwnLine(text, next.node);
+    const from = ownLines ? lineStartAt(text, start.offset) : start.offset;
+    const to = ownLines ? lineStartAt(text, next.node.offset) : next.node.offset;
+    return { offset: from, length: to - from, content: '' };
+  }
+  // The last properties: from the end of the value before them, which takes the comma with it.
+  const previous = properties[first - 1]!.value;
+  const from = previous.offset + previous.length;
+  const end = properties[last]!.node;
+  return { offset: from, length: end.offset + end.length - from, content: '' };
 }
 
 function renameEntry(text: string, root: Node, from: EntryKey, to: EntryKey, style: TextStyle): string {
