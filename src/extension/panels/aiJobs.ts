@@ -104,6 +104,10 @@ export class AiJobs {
   private async ask(kind: JobKind, signal: AbortSignal): Promise<JobStart | undefined> {
     const { ai, consent, index, prompts } = this.services;
     const client = await ai.client();
+    // Stopped meanwhile (the editor closed, a new start): nothing to explain either.
+    if (signal.aborted) {
+      return undefined;
+    }
     if (!client) {
       void explainUnavailable((await ai.status()).reason ?? 'no-key');
       return undefined;
