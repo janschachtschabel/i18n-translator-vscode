@@ -88,40 +88,43 @@ export class AiPanel implements vscode.Disposable {
     locale: string;
   }) {
     const { ai, consent, index, prompts, log } = this.services;
-    // One reading of the settings for the checks, the consent and the request: the texts go to the host asked about.
-    const client = await ai.client();
-    if (!client) {
-      const message = unavailableMessage((await ai.status()).reason ?? 'no-key');
-      await this.post({ type: 'aiSuggestion', requestId, message });
-      return;
-    }
-    const request = suggestionRequest(
-      await index.latest(),
-      this.target,
-      { entryId, locale },
-      client.status.settings,
-    );
-    // Nothing to send: no reason to ask for the consent.
-    if ('message' in request) {
-      await this.post({ type: 'aiSuggestion', requestId, message: request.message });
-      return;
-    }
-    if (!(await consent.ensure(client.status.host, prompts))) {
-      await this.post({
-        type: 'aiSuggestion',
-        requestId,
-        message: vscode.l10n.t('No texts were sent: the AI needs your consent first.'),
-      });
-      return;
-    }
+    // Cancellable from the start: a cancel (or a reload of the page) may come while the settings are read or the
+    // consent is asked, before anything is sent. A cancelled request sends nothing and gets no answer.
     const controller = new AbortController();
     this.pending.get(requestId)?.abort();
     this.pending.set(requestId, controller);
-    try {
-      const result = await requestSuggestion(client, request, log, controller.signal);
+    const reply = async (answer: { text: string } | { message: string }) => {
       if (!controller.signal.aborted) {
-        await this.post({ type: 'aiSuggestion', requestId, ...result });
+        await this.post({ type: 'aiSuggestion', requestId, ...answer });
       }
+    };
+    try {
+      // One reading of the settings for the checks, the consent and the request: the texts go to the host asked
+      // about.
+      const client = await ai.client();
+      if (!client) {
+        await reply({ message: unavailableMessage((await ai.status()).reason ?? 'no-key') });
+        return;
+      }
+      const request = suggestionRequest(
+        await index.latest(),
+        this.target,
+        { entryId, locale },
+        client.status.settings,
+      );
+      // Nothing to send: no reason to ask for the consent.
+      if ('message' in request) {
+        await reply(request);
+        return;
+      }
+      if (!(await consent.ensure(client.status.host, prompts))) {
+        await reply({ message: vscode.l10n.t('No texts were sent: the AI needs your consent first.') });
+        return;
+      }
+      if (controller.signal.aborted) {
+        return;
+      }
+      await reply(await requestSuggestion(client, request, log, controller.signal));
     } finally {
       // A request of a reloaded page may have taken the id meanwhile.
       if (this.pending.get(requestId) === controller) {

@@ -133,15 +133,16 @@ suite('AI suggestion for a cell', () => {
     assert.match((await suggest('CANCEL', 'fr', 's4')).message ?? '', /refused the key \(HTTP 401\)/);
   });
 
-  test('answers nothing to a request the editor cancelled', async () => {
-    const { host } = await serve(translator(200, 3000));
+  test('answers nothing to a request the editor cancelled, and sends none cancelled before it went', async () => {
+    const { server, host } = await serve(translator(200, 3000));
     await api.ai.consent.ensure(host, answering(true));
     const count = posts.filter((message) => message.type === 'aiSuggestion').length;
     const done = panel.receive({ type: 'aiSuggest', requestId: 's5', entryId: id('CANCEL'), locale: 'fr' });
-    await new Promise((resolve) => setTimeout(resolve, 200));
+    // At once, while the host still reads the settings: the cancel must not get lost.
     await panel.receive({ type: 'aiCancel', requestId: 's5' });
     await done;
     assert.equal(posts.filter((message) => message.type === 'aiSuggestion').length, count);
+    assert.equal(server.requests.filter((request) => request.path.endsWith('/chat/completions')).length, 0);
   });
 
   test('asks for the consent only when there is a text to send, and sends nothing without it', async () => {
@@ -184,7 +185,7 @@ suite('AI suggestion for a cell', () => {
     const count = posts.filter((message) => message.type === 'aiSuggestion').length;
     const started = Date.now();
     const done = panel.receive({ type: 'aiSuggest', requestId: 's6', entryId: id('CANCEL'), locale: 'fr' });
-    await new Promise((resolve) => setTimeout(resolve, 200));
+    // At once, while the host still reads the settings.
     await panel.receive({ type: 'ready' });
     await done;
     assert.ok(Date.now() - started < 2500, 'the request ended with its page');
