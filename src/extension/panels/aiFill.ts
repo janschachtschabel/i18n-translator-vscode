@@ -10,7 +10,7 @@ import {
   type PromptItem,
 } from '../../core/ai/prompts';
 import { contextTexts, fillEntries, sourceLocale, type FillScope } from '../../core/ai/sources';
-import { runTranslationJob, type JobResult } from '../../core/ai/translationJob';
+import { runAiJob, type JobResult } from '../../core/ai/aiJob';
 import { planTexts } from '../../core/edit/planTexts';
 import type { Bundle } from '../../core/model/bundle';
 import { displayKey, keyFromId } from '../../core/model/keys';
@@ -61,7 +61,7 @@ export interface FillRun {
   onItems: (items: AiJobItem[], done: number, total: number) => void;
 }
 
-/** Translates the texts of a choice in chunks, as `runTranslationJob` does; the result names the texts without one. */
+/** Translates the texts of a choice in chunks, as `runAiJob` does; the result names the texts without one. */
 export function runFill({
   client,
   status,
@@ -92,12 +92,12 @@ export function runFill({
     syntax: root.analysis.area.placeholderSyntax ?? 'double-brace',
     html: bundle.format === 'mail-xml',
   } as const;
-  return runTranslationJob(items, {
+  return runAiJob(items, {
     batchSize: settings.batchSize,
     maxCharacters: MAX_CHARACTERS,
     concurrency: settings.maxConcurrency,
     signal,
-    translate: async (chunk, chunkSignal) => {
+    ask: async (chunk, chunkSignal) => {
       const characters = chunk.reduce(
         (sum, item) => sum + item.source.length + Object.values(item.context ?? {}).join('').length,
         0,
@@ -118,9 +118,9 @@ export function runFill({
         chunk.map((item) => item.key),
       ).texts;
     },
-    onProgress: ({ texts, done, total }) =>
+    onProgress: ({ answers, done, total }) =>
       onItems(
-        [...texts].flatMap(([key, text]) => {
+        [...answers].flatMap(([key, text]) => {
           const entry = entries.get(key);
           return entry ? [{ ...entry, text }] : [];
         }),

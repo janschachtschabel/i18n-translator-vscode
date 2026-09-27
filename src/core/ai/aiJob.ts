@@ -1,26 +1,29 @@
 import { AiError } from './aiErrors';
 import type { PromptItem } from './prompts';
 
+/** A text of a job: what a request carries about it; for a check, also the translation to check. */
+export type JobItem = PromptItem & { text?: string };
+
 export interface ChunkLimits {
   /** Texts per request. */
   batchSize: number;
-  /** Characters of source and context per request; a longer text goes alone. */
+  /** Characters of the texts and their context per request; a longer text goes alone. */
   maxCharacters: number;
 }
 
-export interface JobProgress {
-  /** The texts of the chunk just answered, by key. */
-  texts: Map<string, string>;
+/** A chunk answered: its answers by key (a translation, a verdict), with the texts done so far. */
+export interface JobProgress<T = string> {
+  answers: Map<string, T>;
   /** Texts answered or given up so far. */
   done: number;
   total: number;
 }
 
-export interface JobOptions extends ChunkLimits {
+export interface JobOptions<I extends JobItem = PromptItem, T = string> extends ChunkLimits {
   concurrency: number;
-  /** Translates a chunk; its texts by key. Throws an AiError. */
-  translate: (chunk: readonly PromptItem[], signal: AbortSignal) => Promise<Map<string, string>>;
-  onProgress: (progress: JobProgress) => void;
+  /** Asks the model about a chunk; its answers by key. Throws an AiError. */
+  ask: (chunk: readonly I[], signal: AbortSignal) => Promise<Map<string, T>>;
+  onProgress: (progress: JobProgress<T>) => void;
   signal?: AbortSignal;
 }
 
@@ -29,12 +32,12 @@ export type JobResult =
   | { status: 'failed'; error: AiError; missing: string[] };
 
 /** Cuts items into chunks of at most `batchSize` texts and `maxCharacters` characters, in their order. */
-export function chunkItems(
-  items: readonly PromptItem[],
+export function chunkItems<I extends JobItem>(
+  items: readonly I[],
   { batchSize, maxCharacters }: ChunkLimits,
-): PromptItem[][] {
-  const chunks: PromptItem[][] = [];
-  let chunk: PromptItem[] = [];
+): I[][] {
+  const chunks: I[][] = [];
+  let chunk: I[] = [];
   let characters = 0;
   for (const item of items) {
     const size = charactersOf(item);
@@ -53,17 +56,17 @@ export function chunkItems(
 }
 
 /**
- * Translates items in chunks, `concurrency` at a time, and reports each chunk as it is answered. A chunk whose answer
- * the token limit cut off is halved, down to single texts; one the model answered unreadably, and keys an answer left
- * out, end up in `missing`. Any other failure would hit every request (a refused key, an unknown model, the b-api
- * down after its retries): the job stops and aborts what runs, as when it is cancelled. What came before stays
- * reported.
+ * Asks the model about items in chunks (to translate them, or to check their translations), `concurrency` at a time,
+ * and reports each chunk as it is answered. A chunk whose answer the token limit cut off is halved, down to single
+ * texts; one the model answered unreadably, and keys an answer left out, end up in `missing`. Any other failure would
+ * hit every request (a refused key, an unknown model, the b-api down after its retries): the job stops and aborts
+ * what runs, as when it is cancelled. What came before stays reported.
  */
-export async function runTranslationJob(
-  items: readonly PromptItem[],
-  options: JobOptions,
+export async function runAiJob<I extends JobItem, T>(
+  items: readonly I[],
+  options: JobOptions<I, T>,
 ): Promise<JobResult> {
-  const { concurrency, translate, onProgress } = options;
+  const { concurrency, ask, onProgress } = options;
   const queue = chunkItems(items, options);
   const job = new AbortController();
   const cancel = () => job.abort();
@@ -72,16 +75,16 @@ export async function runTranslationJob(
   let done = 0;
   let failure: AiError | undefined;
 
-  const report = (chunk: readonly PromptItem[], texts: Map<string, string>) => {
+  const report = (chunk: readonly I[], answers: Map<string, T>) => {
     const asked = new Set(chunk.map((item) => item.key));
-    const own = new Map([...texts].filter(([key]) => asked.has(key)));
+    const own = new Map([...answers].filter(([key]) => asked.has(key)));
     own.forEach((_, key) => answered.add(key));
     done += chunk.length;
-    onProgress({ texts: own, done, total: items.length });
+    onProgress({ answers: own, done, total: items.length });
   };
-  const run = async (chunk: readonly PromptItem[]): Promise<void> => {
+  const run = async (chunk: readonly I[]): Promise<void> => {
     try {
-      report(chunk, await translate(chunk, job.signal));
+      report(chunk, await ask(chunk, job.signal));
     } catch (error) {
       if (job.signal.aborted) {
         return;
@@ -116,6 +119,6 @@ export async function runTranslationJob(
   return { status: options.signal?.aborted ? 'cancelled' : 'done', missing };
 }
 
-function charactersOf(item: PromptItem): number {
-  return item.source.length + Object.values(item.context ?? {}).join('').length;
+function charactersOf(item: JobItem): number {
+  return item.source.length + (item.text?.length ?? 0) + Object.values(item.context ?? {}).join('').length;
 }

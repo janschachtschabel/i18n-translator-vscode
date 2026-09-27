@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { AiError } from '../../../../src/core/ai/aiErrors';
 import type { PromptItem } from '../../../../src/core/ai/prompts';
-import { chunkItems, runTranslationJob, type JobProgress } from '../../../../src/core/ai/translationJob';
+import { chunkItems, runAiJob, type JobProgress } from '../../../../src/core/ai/aiJob';
 
 const items = (count: number, source = 'text'): PromptItem[] =>
   Array.from({ length: count }, (_, index) => ({ key: `K${index}`, source: `${source} ${index}` }));
@@ -26,14 +26,14 @@ describe('chunkItems', () => {
   });
 });
 
-describe('runTranslationJob', () => {
+describe('runAiJob', () => {
   it('translates every chunk, reports each as it comes, and ends done', async () => {
     const progress: JobProgress[] = [];
-    const result = await runTranslationJob(items(5), {
+    const result = await runAiJob(items(5), {
       batchSize: 2,
       maxCharacters: 1000,
       concurrency: 2,
-      translate: async (chunk) => upper(chunk),
+      ask: async (chunk) => upper(chunk),
       onProgress: (step) => progress.push(step),
     });
     expect(result).toEqual({ status: 'done', missing: [] });
@@ -42,17 +42,17 @@ describe('runTranslationJob', () => {
       [4, 5],
       [5, 5],
     ]);
-    expect(new Map(progress.flatMap(({ texts }) => [...texts]))).toEqual(upper(items(5)));
+    expect(new Map(progress.flatMap(({ answers }) => [...answers]))).toEqual(upper(items(5)));
   });
 
   it('runs no more requests at once than allowed', async () => {
     let running = 0;
     let most = 0;
-    await runTranslationJob(items(12), {
+    await runAiJob(items(12), {
       batchSize: 2,
       maxCharacters: 1000,
       concurrency: 3,
-      translate: async (chunk) => {
+      ask: async (chunk) => {
         running++;
         most = Math.max(most, running);
         await new Promise((resolve) => setTimeout(resolve, 5));
@@ -66,11 +66,11 @@ describe('runTranslationJob', () => {
 
   it('halves a chunk whose answer the token limit cut off, down to single texts, and names what stays without', async () => {
     const sizes: number[] = [];
-    const result = await runTranslationJob(items(4), {
+    const result = await runAiJob(items(4), {
       batchSize: 4,
       maxCharacters: 1000,
       concurrency: 1,
-      translate: async (chunk) => {
+      ask: async (chunk) => {
         sizes.push(chunk.length);
         if (chunk.length > 1 || chunk[0]!.key === 'K3') {
           throw new AiError('length');
@@ -84,11 +84,11 @@ describe('runTranslationJob', () => {
   });
 
   it('names the keys an answer left out, and those of a chunk it could not read', async () => {
-    const result = await runTranslationJob(items(4), {
+    const result = await runAiJob(items(4), {
       batchSize: 2,
       maxCharacters: 1000,
       concurrency: 1,
-      translate: async (chunk) => {
+      ask: async (chunk) => {
         if (chunk[0]!.key === 'K2') {
           throw new AiError('invalid-response');
         }
@@ -102,11 +102,11 @@ describe('runTranslationJob', () => {
   it('stops at a failure every request would have, and keeps what came before', async () => {
     const progress: JobProgress[] = [];
     const refused = new AiError('unauthorized', 401);
-    const result = await runTranslationJob(items(6), {
+    const result = await runAiJob(items(6), {
       batchSize: 2,
       maxCharacters: 1000,
       concurrency: 1,
-      translate: async (chunk) => {
+      ask: async (chunk) => {
         if (chunk[0]!.key === 'K2') {
           throw refused;
         }
@@ -115,25 +115,25 @@ describe('runTranslationJob', () => {
       onProgress: (step) => progress.push(step),
     });
     expect(result).toEqual({ status: 'failed', error: refused, missing: ['K2', 'K3', 'K4', 'K5'] });
-    expect(progress.map(({ texts }) => [...texts.keys()])).toEqual([['K0', 'K1']]);
+    expect(progress.map(({ answers }) => [...answers.keys()])).toEqual([['K0', 'K1']]);
   });
 
   it('stops when cancelled: no new requests, the running one aborted', async () => {
     const cancel = new AbortController();
     const sent: string[] = [];
-    const result = await runTranslationJob(items(6), {
+    const result = await runAiJob(items(6), {
       batchSize: 2,
       maxCharacters: 1000,
       concurrency: 1,
       signal: cancel.signal,
-      translate: (chunk, signal) => {
+      ask: (chunk, signal) => {
         sent.push(chunk[0]!.key);
         if (chunk[0]!.key === 'K0') {
           return Promise.resolve(upper(chunk));
         }
         // The user cancels while this request runs.
         setTimeout(() => cancel.abort(), 0);
-        return new Promise((_, reject) =>
+        return new Promise<Map<string, string>>((_, reject) =>
           signal.addEventListener('abort', () => reject(new AiError('aborted'))),
         );
       },
