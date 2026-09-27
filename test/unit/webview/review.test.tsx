@@ -74,8 +74,9 @@ describe('filling with AI', () => {
     send({ type: 'aiState', available: true, model: 'gpt-6-luna' });
     expect(document.activeElement).toBe(within(ai()).getByRole('button', { name: 'Mit KI füllen…' }));
 
-    // A focus elsewhere stays where it is.
+    // Pressed, but the focus went elsewhere before the key was set: it stays there.
     send({ type: 'aiState', available: false, reason: 'no-key', model: 'gpt-6-luna' });
+    act(() => void fireEvent.click(within(ai()).getByRole('button', { name: 'API-Schlüssel setzen…' })));
     const undo = screen.getByRole('button', { name: 'Letzte Änderung rückgängig machen' });
     undo.focus();
     send({ type: 'aiState', available: true, model: 'gpt-6-luna' });

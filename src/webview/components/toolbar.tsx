@@ -70,8 +70,9 @@ export function Toolbar({ store }: { store: EditorStore }) {
 }
 
 /**
- * Whether the AI is ready, with which model, and the fill; without a key, the way to set one. Nothing where the AI
- * is off or in Restricted Mode.
+ * Whether the AI is ready and with which model, the fill and the check, and the way to its setup; without a key,
+ * also the way to set one, and with an address it may not use, that it is off. Nothing where the AI is turned off or
+ * in Restricted Mode.
  */
 function AiTools({ store }: { store: EditorStore }) {
   const ai = store.suggestions.ai.value;
