@@ -16,7 +16,7 @@ const CR = 13;
 export function lineStartAt(text: string, offset: number): number {
   // Back to the line break before, not further: lastIndexOf('\r') searched a text without one back to its start, and
   // writers ask for many lines of one text.
-  let start = Math.min(offset, text.length);
+  let start = Math.max(0, Math.min(offset, text.length));
   while (start > 0) {
     const unit = text.charCodeAt(start - 1);
     if (unit === LF || unit === CR) {

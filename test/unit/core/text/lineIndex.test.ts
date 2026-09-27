@@ -39,7 +39,8 @@ describe('lineStartAt', () => {
     expect(elapsed).toBeLessThan(500);
   });
 
-  it('takes the end of the text for an offset beyond it', () => {
+  it('takes the end of the text for an offset beyond it, and its start for one before it', () => {
+    expect(lineStartAt('ab', -5)).toBe(0);
     expect(lineStartAt('ab\ncd', 99)).toBe(3);
     expect(lineStartAt('ab\n', 99)).toBe(3);
     expect(lineStartAt('ab', 99)).toBe(0);
