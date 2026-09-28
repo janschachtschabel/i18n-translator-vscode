@@ -5,6 +5,19 @@ Bis 0.2 entsprach die Stufe der Phase der [Taskliste](docs/plans/2026-09-24-edu-
 Phasen 5 und 6 vorgezogen sind, zählt sie weiter, ohne die Phase zu nennen. Die Installation beschreibt das
 [README](README.md#installation).
 
+## 0.4.1 – 28.09.2026
+
+Korrigiert das Speichern in einem seltenen Moment und bringt alles aus 0.4.0 mit, das nicht als Release erschien: Der
+Test, der diesen Fehler zeigte, scheiterte in dessen CI-Lauf.
+
+- **Kein falscher Konflikt und keine verschluckte Änderung mehr**, wenn die Extension eine Übersetzungsdatei liest,
+  während ein anderes Programm (ein Editor, git) sie schreibt, und sie deshalb kurz leer sieht. Bevor sie meldet, ein
+  Text sei inzwischen geändert worden oder es gebe nichts zu schreiben, liest sie die Dateien neu und plant noch einmal.
+  Bisher hieß es in diesem Moment „… wurde inzwischen geändert“, obwohl die Datei es nicht war, oder das Leeren eines
+  Textes meldete Erfolg und löschte nichts.
+- **Ein Text wird nur nach der Rückfrage gelöscht:** Findet das Speichern einen Text zum Leeren, den die Tabelle beim
+  Leeren noch nicht hatte, meldet der Editor einen Konflikt, statt ohne Rückfrage zu löschen; erneutes Leeren fragt.
+
 ## 0.4.0 – 27.09.2026
 
 Die KI kommt hinzu: über die b-api (Staging), mit Schlüssel, Adresse und Modell an einem Ort, als Vorschlag für eine
